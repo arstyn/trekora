@@ -1,0 +1,28 @@
+{
+	"name": "trekora",
+	"version": "0.0.1",
+	"description": "This application is a SaaS-based Travel Management Platform that enables travel agencies, tour operators, and businesses in the travel industry to manage their operations, customer bookings, finances, and reporting in a unified and efficient manner. By providing customizable features such as package creation, booking workflows, finance management, and multi-department collaboration, this platform allows any organization to streamline their processes, improve customer satisfaction, and increase profitability. The system is designed for scalability and can be easily adapted to meet the needs of any organization, regardless of size.",
+	"private": true,
+	"scripts": {
+		"dev": "turbo run dev"
+	},
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	],
+	"devDependencies": {
+		"turbo": "^1.11.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feyzibrahim/trekora.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"type": "commonjs",
+	"bugs": {
+		"url": "https://github.com/feyzibrahim/trekora/issues"
+	},
+	"homepage": "https://github.com/feyzibrahim/trekora#readme"
+}

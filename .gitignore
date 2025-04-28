@@ -1,0 +1,18 @@
+# Node
+node_modules/
+dist/
+
+# Turbo cache
+.turbo/
+
+# Environment variables
+.env
+
+# Build output
+.next/
+out/
+
+# Logs
+*.log
+
+.vscode
