@@ -1,14 +1,19 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Home() {
 	return (
 		<div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 flex items-center justify-center overflow-hidden">
+			<div className="absolute top-4 right-4 z-50">
+				<ThemeToggle />
+			</div>
+
 			{/* Decorative shapes */}
-			<div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 blur-3xl" />
-			<div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 blur-3xl" />
-			<div className="absolute top-1/3 right-1/4 w-40 h-40 rounded-full bg-pink-500/10 blur-2xl" />
+			<div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-3xl" />
+			<div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 blur-3xl" />
+			<div className="absolute top-1/3 right-1/4 w-40 h-40 rounded-full bg-pink-500/10 dark:bg-pink-500/20 blur-2xl" />
 
 			{/* Animated background elements */}
 			<div className="absolute inset-0 overflow-hidden">
@@ -27,9 +32,9 @@ export default function Home() {
 			</div>
 
 			{/* Geometric shapes */}
-			<div className="absolute top-20 right-20 w-20 h-20 border border-purple-500/20 rounded-lg rotate-12" />
-			<div className="absolute bottom-32 left-20 w-16 h-16 border border-cyan-500/20 rounded-full" />
-			<div className="absolute top-1/2 left-1/4 w-12 h-12 border border-pink-500/20 rotate-45" />
+			<div className="absolute top-20 right-20 w-20 h-20 border border-purple-500/20 dark:border-purple-500/30 rounded-lg rotate-12" />
+			<div className="absolute bottom-32 left-20 w-16 h-16 border border-cyan-500/20 dark:border-cyan-500/30 rounded-full" />
+			<div className="absolute top-1/2 left-1/4 w-12 h-12 border border-pink-500/20 dark:border-pink-500/30 rotate-45" />
 
 			<div className="relative z-10 max-w-md mx-auto p-8 rounded-xl bg-background/80 backdrop-blur-sm border border-muted shadow-xl">
 				<div className="space-y-6 text-center">

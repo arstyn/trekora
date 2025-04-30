@@ -1,12 +1,17 @@
 {
-	"pipeline": {
-		"build": {
-			"dependsOn": ["^build"],
-			"outputs": ["dist/**", ".next/**"]
-		},
-		"dev": {
-			"dependsOn": [],
-			"outputs": []
-		}
-	}
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**"
+      ]
+    },
+    "dev": {
+      "dependsOn": [],
+      "outputs": []
+    }
+  }
 }
