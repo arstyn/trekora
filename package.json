@@ -24,5 +24,8 @@
 	"bugs": {
 		"url": "https://github.com/feyzibrahim/trekora/issues"
 	},
-	"homepage": "https://github.com/feyzibrahim/trekora#readme"
+	"homepage": "https://github.com/feyzibrahim/trekora#readme",
+	"dependencies": {
+		"lucide-react": "^0.503.0"
+	}
 }
