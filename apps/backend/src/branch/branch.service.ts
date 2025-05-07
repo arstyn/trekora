@@ -26,6 +26,11 @@ export class BranchService {
     return await this.branchRepository.findOne({ where: { id } });
   }
 
+  // Find a branch by Name
+  async findOneByName(name: string): Promise<Branch | null> {
+    return await this.branchRepository.findOne({ where: { name } });
+  }
+
   // Update a branch by ID
   async update(
     id: string,

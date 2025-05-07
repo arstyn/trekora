@@ -12,7 +12,6 @@ export class AuthService {
     password: string;
     phone?: string;
   }): Promise<{ message: string; userId: string }> {
-    console.log('🚀 ~ auth.service.ts:15 ~ AuthService ~ userData:', userData);
     const existingUser = await this.userService.findOneWithEmail(
       userData.email,
     );

@@ -25,6 +25,10 @@ export class OrganizationService {
   async findOne(id: string): Promise<Organization | null> {
     return await this.organizationRepository.findOne({ where: { id } });
   }
+  // Find a organization by ID
+  async findOneByName(name: string): Promise<Organization | null> {
+    return await this.organizationRepository.findOne({ where: { name } });
+  }
 
   // Update a organization by ID
   async update(

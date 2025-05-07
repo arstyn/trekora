@@ -8,7 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 
-@Entity('branches')
+@Entity('branch')
 export class Branch {
   @PrimaryGeneratedColumn('uuid')
   id: string;
