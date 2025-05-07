@@ -7,29 +7,29 @@ import {
   Param,
   Body,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { User } from './entity/users.entity';
+import { UserService } from './user.service';
+import { User } from './entity/user.entity';
 
-@Controller('users')
-export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+@Controller('user')
+export class UserController {
+  constructor(private readonly userService: UserService) {}
 
   // Create a new user
   @Post()
   async create(@Body() userData: Partial<User>): Promise<User> {
-    return await this.usersService.create(userData);
+    return await this.userService.create(userData);
   }
 
   // Get all users
   @Get()
   async findAll(): Promise<User[]> {
-    return await this.usersService.findAll();
+    return await this.userService.findAll();
   }
 
   // Get a user by ID
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<User | null> {
-    return await this.usersService.findOne(id);
+    return await this.userService.findOne(id);
   }
 
   // Update a user by ID
@@ -38,12 +38,12 @@ export class UsersController {
     @Param('id') id: string,
     @Body() updateData: Partial<User>,
   ): Promise<User | null> {
-    return await this.usersService.update(id, updateData);
+    return await this.userService.update(id, updateData);
   }
 
   // Delete a user by ID
   @Delete(':id')
   async remove(@Param('id') id: string): Promise<void> {
-    return await this.usersService.remove(id);
+    return await this.userService.remove(id);
   }
 }
