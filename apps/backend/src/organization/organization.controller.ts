@@ -6,11 +6,14 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { Organization } from './entity/organization.entity';
+import { AuthGuard } from 'src/auth/guard/auth.guard';
 
-@Controller('organization')
+@UseGuards(AuthGuard)
+@Controller('api/organization')
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
 

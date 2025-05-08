@@ -10,10 +10,6 @@ export class AuthController {
   async signup(
     @Body() userData: { email: string; password: string; phone?: string },
   ) {
-    console.log(
-      '🚀 ~ auth.controller.ts:13 ~ AuthController ~ userData:',
-      userData,
-    );
     return await this.authService.signup(userData);
   }
 
@@ -28,5 +24,11 @@ export class AuthController {
   @Post('logout')
   logout() {
     return this.authService.logout();
+  }
+
+  // Refresh Access Token API
+  @Post('refresh-token')
+  async refreshAccessToken(@Body() body: { refreshToken: string }) {
+    return await this.authService.refreshAccessToken(body.refreshToken);
   }
 }

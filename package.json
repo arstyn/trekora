@@ -12,7 +12,8 @@
   ],
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
-    "turbo": "^2.5.2"
+    "@types/jsonwebtoken": "^9.0.9",
+    "turbo": "^2.5.3"
   },
   "repository": {
     "type": "git",
@@ -32,10 +33,12 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@nestjs/config": "^4.0.2",
+    "@nestjs/jwt": "^11.0.0",
     "@nestjs/typeorm": "^11.0.0",
     "@tanstack/react-table": "^8.21.3",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.5.0",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.503.0",
     "next-themes": "^0.4.6",
     "pg": "^8.15.6",
