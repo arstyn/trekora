@@ -1,0 +1,423 @@
+'use client';
+
+import { useState } from 'react';
+import {
+  CheckCircle2Icon,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Filter,
+  LoaderIcon,
+  MoreHorizontal,
+  Search,
+  UserPlus,
+} from 'lucide-react';
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import DataTableFooter from '@/components/data-table-footer';
+
+// Define the Team type
+type Team = {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  role: string;
+  status: 'active' | 'on leave' | 'terminated';
+  joinDate: string;
+  avatar: string;
+};
+
+// Sample employee data
+const employees: Team[] = [
+  {
+    id: 'EMP001',
+    name: 'Alex Johnson',
+    email: 'alex.johnson@company.com',
+    department: 'Engineering',
+    role: 'Senior Developer',
+    status: 'active',
+    joinDate: '2021-03-15',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+  {
+    id: 'EMP002',
+    name: 'Sarah Williams',
+    email: 'sarah.williams@company.com',
+    department: 'Design',
+    role: 'UI/UX Designer',
+    status: 'active',
+    joinDate: '2022-01-10',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+  {
+    id: 'EMP003',
+    name: 'Michael Chen',
+    email: 'michael.chen@company.com',
+    department: 'Product',
+    role: 'Product Manager',
+    status: 'on leave',
+    joinDate: '2020-11-05',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+  {
+    id: 'EMP004',
+    name: 'Emily Rodriguez',
+    email: 'emily.rodriguez@company.com',
+    department: 'Marketing',
+    role: 'Marketing Specialist',
+    status: 'active',
+    joinDate: '2022-06-20',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+  {
+    id: 'EMP005',
+    name: 'David Kim',
+    email: 'david.kim@company.com',
+    department: 'Engineering',
+    role: 'Frontend Developer',
+    status: 'active',
+    joinDate: '2021-09-12',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+  {
+    id: 'EMP006',
+    name: 'Lisa Patel',
+    email: 'lisa.patel@company.com',
+    department: 'HR',
+    role: 'HR Manager',
+    status: 'active',
+    joinDate: '2020-05-18',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+  {
+    id: 'EMP007',
+    name: 'James Wilson',
+    email: 'james.wilson@company.com',
+    department: 'Sales',
+    role: 'Sales Representative',
+    status: 'terminated',
+    joinDate: '2021-02-03',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+  {
+    id: 'EMP008',
+    name: 'Olivia Martinez',
+    email: 'olivia.martinez@company.com',
+    department: 'Engineering',
+    role: 'QA Engineer',
+    status: 'active',
+    joinDate: '2022-04-25',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+  {
+    id: 'EMP009',
+    name: 'Robert Taylor',
+    email: 'robert.taylor@company.com',
+    department: 'Finance',
+    role: 'Financial Analyst',
+    status: 'on leave',
+    joinDate: '2021-07-30',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+  {
+    id: 'EMP010',
+    name: 'Sophia Lee',
+    email: 'sophia.lee@company.com',
+    department: 'Design',
+    role: 'Graphic Designer',
+    status: 'active',
+    joinDate: '2022-02-14',
+    avatar: '/placeholder.svg?height=40&width=40',
+  },
+];
+
+// Define the columns for the table
+const columns: ColumnDef<Team>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Team',
+    cell: ({ row }) => {
+      const employee = row.original;
+      return (
+        <div className="flex items-center gap-3">
+          <Avatar>
+            <AvatarImage
+              src={employee.avatar || '/placeholder.svg'}
+              alt={employee.name}
+            />
+            <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="font-medium">{employee.name}</div>
+            <div className="text-sm text-muted-foreground">
+              {employee.email}
+            </div>
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'department',
+    header: ({ column }) => {
+      return (
+        <div
+          className="flex items-center cursor-pointer"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Department
+          {column.getIsSorted() === 'asc' ? (
+            <ChevronUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ChevronDown className="ml-2 h-4 w-4" />
+          ) : null}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'role',
+    header: 'Role',
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }) => (
+      <Badge
+        variant="outline"
+        className="flex gap-1 px-1.5 text-muted-foreground [&_svg]:size-3 capitalize"
+      >
+        {row.original.status === 'active' ? (
+          <CheckCircle2Icon className="text-green-500 dark:text-green-400" />
+        ) : (
+          <LoaderIcon />
+        )}
+        {row.original.status}
+      </Badge>
+    ),
+  },
+  {
+    accessorKey: 'joinDate',
+    header: ({ column }) => {
+      return (
+        <div
+          className="flex items-center cursor-pointer"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Join Date
+          {column.getIsSorted() === 'asc' ? (
+            <ChevronUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ChevronDown className="ml-2 h-4 w-4" />
+          ) : null}
+        </div>
+      );
+    },
+    cell: ({ row }) => {
+      const date = new Date(row.original.joinDate);
+      return <div>{date.toLocaleDateString()}</div>;
+    },
+  },
+  {
+    id: 'actions',
+    cell: ({ row }) => {
+      const employee = row.original;
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem>View profile</DropdownMenuItem>
+            <DropdownMenuItem>Edit details</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-red-600">
+              Deactivate
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
+  },
+];
+
+export function TeamTable() {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+
+  const table = useReactTable({
+    data: employees,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
+    state: {
+      sorting,
+      columnFilters,
+    },
+  });
+
+  // Handle department filter change
+  const handleDepartmentChange = (value: string) => {
+    setDepartmentFilter(value);
+    if (value === 'all') {
+      table.getColumn('department')?.setFilterValue('');
+    } else {
+      table.getColumn('department')?.setFilterValue(value);
+    }
+  };
+
+  // Get unique departments for filter dropdown
+  const departments = Array.from(
+    new Set(employees.map((employee) => employee.department)),
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <div className="flex w-full sm:w-auto items-center gap-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search employees..."
+            value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+            onChange={(event) =>
+              table.getColumn('name')?.setFilterValue(event.target.value)
+            }
+            className="max-w-sm"
+          />
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={departmentFilter}
+              onValueChange={handleDepartmentChange}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((department) => (
+                  <SelectItem key={department} value={department}>
+                    {department}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+            <Button size="sm">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add Team
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader className="bg-muted">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <DataTableFooter table={table} />
+    </div>
+  );
+}
