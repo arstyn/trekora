@@ -3,10 +3,12 @@ import { SeedService } from './seed.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { typeOrmConfig } from 'src/config/typeorm.config';
-import { AuthModule } from 'src/auth/auth.module';
-import { UserModule } from 'src/user/user.module';
-import { OrganizationModule } from 'src/organization/organization.module';
-import { BranchModule } from 'src/branch/branch.module';
+import { AuthModule } from 'src/modules/auth/auth.module';
+import { UserModule } from 'src/modules/user/user.module';
+import { OrganizationModule } from 'src/modules/organization/organization.module';
+import { BranchModule } from 'src/modules/branch/branch.module';
+import { RoleModule } from 'src/modules/role/role.module';
+import { UserRoleModule } from 'src/modules/user_role/user_role.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { BranchModule } from 'src/branch/branch.module';
     UserModule,
     OrganizationModule,
     BranchModule,
+    RoleModule,
+    UserRoleModule,
   ],
   providers: [SeedService],
 })

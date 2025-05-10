@@ -22,8 +22,8 @@ export async function login(formData: LoginFormValues) {
       password,
     });
 
-    (await cookies()).set('accessToken', accessToken, { httpOnly: true });
-    (await cookies()).set('refreshToken', refreshToken, { httpOnly: true });
+    cookies().set('accessToken', accessToken, { httpOnly: true });
+    cookies().set('refreshToken', refreshToken, { httpOnly: true });
     session = await getSession();
   } catch (error) {
     throw Error(error as string);

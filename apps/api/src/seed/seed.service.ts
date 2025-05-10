@@ -1,28 +1,60 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { OrganizationService } from 'src/organization/organization.service';
+import { OrganizationService } from 'src/modules/organization/organization.service';
 import { organizations } from './seeds/organization.seed';
 import { branches } from './seeds/branch.seed';
-import { BranchService } from 'src/branch/branch.service';
-import { UserService } from 'src/user/user.service';
+import { BranchService } from 'src/modules/branch/branch.service';
+import { UserService } from 'src/modules/user/user.service';
 import { users } from './seeds/user.seed';
 import * as bcrypt from 'bcrypt';
+import { Connection } from 'typeorm';
+import { RoleService } from 'src/modules/role/role.service';
+import { roles } from './seeds/role.seed';
+import { UserRoleService } from 'src/modules/user_role/user_role.service';
 
 @Injectable()
 export class SeedService {
   private readonly logger = new Logger(SeedService.name);
 
   constructor(
+    private connection: Connection,
     private readonly organizationService: OrganizationService,
     private readonly branchService: BranchService,
     private readonly userService: UserService,
+    private readonly roleService: RoleService,
+    private readonly userRoleService: UserRoleService,
   ) {}
 
   async seed() {
+    this.logger.log('Deleting existing data...');
+    await this.deleteAllTable();
+    this.logger.log('Data deletion completed');
     this.logger.log('Seeding started...');
+    await this.seedRoles();
     await this.seedOrganizations();
     await this.seedBranches();
     await this.seedUsers();
+    await this.seedUserRoles();
     this.logger.log('Seeding completed');
+  }
+
+  async deleteAllTable(): Promise<void> {
+    try {
+      const entities = this.connection.entityMetadatas;
+
+      for (const entity of entities) {
+        await this.connection.query(
+          `TRUNCATE TABLE "${entity.tableName}" CASCADE`,
+        );
+        this.logger.log(
+          `Data deleted successfully from table: ${entity.tableName}`,
+        );
+      }
+      this.logger.log('Deletion process completed.');
+    } catch (error) {
+      const errorData = error as { message: string };
+      this.logger.error(`Error deleting data: ${errorData.message}`);
+      throw new Error('Failed to delete data.');
+    }
   }
 
   async seedOrganizations() {
@@ -79,5 +111,27 @@ export class SeedService {
     }
 
     this.logger.log('Seeded users');
+  }
+
+  async seedRoles() {
+    for (const role of roles) {
+      await this.roleService.create(role);
+    }
+
+    this.logger.log('Seeded roles');
+  }
+
+  async seedUserRoles() {
+    const role = await this.roleService.findByName('admin');
+    const users = await this.userService.findAll();
+
+    for (const user of users) {
+      await this.userRoleService.create({
+        userId: user.id,
+        roleId: role.id,
+      });
+    }
+
+    this.logger.log('Seeded user roles');
   }
 }
