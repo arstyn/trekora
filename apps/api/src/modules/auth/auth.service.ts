@@ -1,15 +1,16 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { ILoginResponse } from '@repo/api/auth/dto/auth.types';
+import { UserRoleService } from '../user_role/user_role.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly userRoleService: UserRoleService,
+  ) {}
 
   private generateAccessToken(userId: string): string {
     return jwt.sign({ userId }, process.env.JWT_ACCESS_SECRET as string, {
@@ -92,11 +93,14 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id);
     const refreshToken = this.generateRefreshToken(user.id);
 
+    const userRoles = await this.userRoleService.getUserRoleNames(user.id);
+
     return {
       message: 'Login successful',
       userId: user.id,
       accessToken,
       refreshToken,
+      userRoles,
     };
   }
 

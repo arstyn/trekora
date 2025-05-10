@@ -1,5 +1,5 @@
-import { Branch } from 'src/branch/entity/branch.entity';
-import { Organization } from 'src/organization/entity/organization.entity';
+import { Branch } from 'src/modules/branch/entity/branch.entity';
+import { Organization } from 'src/modules/organization/entity/organization.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -39,7 +39,7 @@ export class User {
   password: string;
 
   @Column('uuid', { nullable: true })
-  role_id?: string;
+  roleId?: string;
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;

@@ -1,4 +1,4 @@
-import { Organization } from 'src/organization/entity/organization.entity';
+import { Organization } from 'src/modules/organization/entity/organization.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,

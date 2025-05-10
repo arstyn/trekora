@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { Organization } from './entity/organization.entity';
-import { AuthGuard } from 'src/auth/guard/auth.guard';
+import { AuthGuard } from 'src/modules/auth/guard/auth.guard';
 
 @UseGuards(AuthGuard)
 @Controller('api/organization')

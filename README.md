@@ -79,25 +79,6 @@ npm install
 
 ## Environment Variables
 
-Create `.env` files in the `apps/frontend` and `apps/backend` directories.
-
-### Backend `.env` Example
-
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME='postgres'
-DB_PASSWORD='postgres'
-DB_NAME='trekora'
-DB_SYNCHRONIZE=true
-```
-
-### Frontend `.env.local` Example
-
-```
-NEXT_PUBLIC_API_URL=http://localhost:3000
-```
-
 ---
 
 ## Scripts
@@ -119,11 +100,10 @@ npm run start
 
 ```
 apps/
-  frontend/        # Next.js frontend app
-  backend/         # Nest.js backend app
+  web/        # Next.js frontend app
+  api/         # Nest.js backend app
 packages/
-  shared/          # Common models, types, and utilities
-  config/          # Shared configuration
+  api/          # Common models, types, and utilities
 
 infrastructure/    # AWS setup files, deployment scripts
 ```
