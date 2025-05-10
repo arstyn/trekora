@@ -1,7 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { LoginFormValues } from './component/login-form';
+import { LoginFormValues } from './_component/login-form';
 import { AxiosRequest } from '@/lib/axios';
 import { getSession } from '@/lib/auth.utils';
 import { redirect } from 'next/navigation';

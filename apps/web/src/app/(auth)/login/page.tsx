@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import Link from 'next/link';
-import LoginForm from './component/login-form';
+import LoginForm from './_component/login-form';
 
 export default function LoginPage() {
   return (
