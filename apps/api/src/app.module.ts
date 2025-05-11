@@ -10,6 +10,7 @@ import { BranchModule } from './modules/branch/branch.module';
 import { SeedModule } from './seed/seed.module';
 import { UserRoleModule } from './modules/user_role/user_role.module';
 import { RoleModule } from './modules/role/role.module';
+import { FeatureModule } from './modules/feature/feature.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { RoleModule } from './modules/role/role.module';
     SeedModule,
     RoleModule,
     UserRoleModule,
+    FeatureModule,
   ],
   controllers: [AppController],
   providers: [AppService],
