@@ -52,125 +52,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import DataTableFooter from '@/components/data-table-footer';
-
-// Define the Team type
-type Team = {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  role: string;
-  status: 'active' | 'on leave' | 'terminated';
-  joinDate: string;
-  avatar: string;
-};
-
-// Sample employee data
-const employees: Team[] = [
-  {
-    id: 'EMP001',
-    name: 'Alex Johnson',
-    email: 'alex.johnson@company.com',
-    department: 'Engineering',
-    role: 'Senior Developer',
-    status: 'active',
-    joinDate: '2021-03-15',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 'EMP002',
-    name: 'Sarah Williams',
-    email: 'sarah.williams@company.com',
-    department: 'Design',
-    role: 'UI/UX Designer',
-    status: 'active',
-    joinDate: '2022-01-10',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 'EMP003',
-    name: 'Michael Chen',
-    email: 'michael.chen@company.com',
-    department: 'Product',
-    role: 'Product Manager',
-    status: 'on leave',
-    joinDate: '2020-11-05',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 'EMP004',
-    name: 'Emily Rodriguez',
-    email: 'emily.rodriguez@company.com',
-    department: 'Marketing',
-    role: 'Marketing Specialist',
-    status: 'active',
-    joinDate: '2022-06-20',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 'EMP005',
-    name: 'David Kim',
-    email: 'david.kim@company.com',
-    department: 'Engineering',
-    role: 'Frontend Developer',
-    status: 'active',
-    joinDate: '2021-09-12',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 'EMP006',
-    name: 'Lisa Patel',
-    email: 'lisa.patel@company.com',
-    department: 'HR',
-    role: 'HR Manager',
-    status: 'active',
-    joinDate: '2020-05-18',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 'EMP007',
-    name: 'James Wilson',
-    email: 'james.wilson@company.com',
-    department: 'Sales',
-    role: 'Sales Representative',
-    status: 'terminated',
-    joinDate: '2021-02-03',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 'EMP008',
-    name: 'Olivia Martinez',
-    email: 'olivia.martinez@company.com',
-    department: 'Engineering',
-    role: 'QA Engineer',
-    status: 'active',
-    joinDate: '2022-04-25',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 'EMP009',
-    name: 'Robert Taylor',
-    email: 'robert.taylor@company.com',
-    department: 'Finance',
-    role: 'Financial Analyst',
-    status: 'on leave',
-    joinDate: '2021-07-30',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 'EMP010',
-    name: 'Sophia Lee',
-    email: 'sophia.lee@company.com',
-    department: 'Design',
-    role: 'Graphic Designer',
-    status: 'active',
-    joinDate: '2022-02-14',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-];
+import { IEmployee } from '@repo/api/employee/employee.entity';
 
 // Define the columns for the table
-const columns: ColumnDef<Team>[] = [
+const columns: ColumnDef<IEmployee>[] = [
   {
     accessorKey: 'name',
     header: 'Team',
@@ -235,7 +120,7 @@ const columns: ColumnDef<Team>[] = [
     ),
   },
   {
-    accessorKey: 'joinDate',
+    accessorKey: 'hire_date',
     header: ({ column }) => {
       return (
         <div
@@ -252,7 +137,13 @@ const columns: ColumnDef<Team>[] = [
       );
     },
     cell: ({ row }) => {
-      const date = new Date(row.original.joinDate);
+      const date = row.original.hire_date
+        ? new Date(row.original.hire_date)
+        : null;
+
+      if (!date) {
+        return <div></div>;
+      }
       return <div>{date.toLocaleDateString()}</div>;
     },
   },
@@ -284,7 +175,11 @@ const columns: ColumnDef<Team>[] = [
   },
 ];
 
-export function TeamTable() {
+interface Props {
+  employees: IEmployee[];
+}
+
+export function TeamTable({ employees }: Props) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -345,11 +240,14 @@ export function TeamTable() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Departments</SelectItem>
-                {departments.map((department) => (
-                  <SelectItem key={department} value={department}>
-                    {department}
-                  </SelectItem>
-                ))}
+                {departments.map(
+                  (department) =>
+                    department && (
+                      <SelectItem key={department} value={department}>
+                        {department}
+                      </SelectItem>
+                    ),
+                )}
               </SelectContent>
             </Select>
           </div>

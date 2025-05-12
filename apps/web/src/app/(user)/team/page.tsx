@@ -1,9 +1,12 @@
 import { TeamTable } from './_component/team-table';
+import { getEmployees } from './action';
 
-export default function Page() {
+export default async function Page() {
+  const { employees, error } = await getEmployees();
+
   return (
     <div className="px-6 py-5">
-      <TeamTable />
+      <TeamTable employees={employees} />
     </div>
   );
 }

@@ -10,7 +10,7 @@ import {
 import { EmployeeService } from './employee.service';
 import { Employee } from './entity/employee.entity';
 
-@Controller('employee')
+@Controller('api/employee')
 export class EmployeeController {
   constructor(private readonly employeeService: EmployeeService) {}
 
