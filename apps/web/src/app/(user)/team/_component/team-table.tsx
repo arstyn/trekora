@@ -1,17 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import {
-  CheckCircle2Icon,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  Filter,
-  LoaderIcon,
-  MoreHorizontal,
-  Search,
-  UserPlus,
-} from 'lucide-react';
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -23,9 +11,22 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-
+import {
+  CheckCircle2Icon,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Filter,
+  LoaderIcon,
+  MoreHorizontal,
+  Search,
+  UserPlus,
+} from 'lucide-react';
+import { useState } from 'react';
+import DataTableFooter from '@/components/data-table-footer';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -49,9 +51,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import DataTableFooter from '@/components/data-table-footer';
 import { IEmployee } from '@repo/api/employee/employee.entity';
 import { AddEmployeeModal } from './add-employee-modal';
 
@@ -138,8 +137,8 @@ const columns: ColumnDef<IEmployee>[] = [
       );
     },
     cell: ({ row }) => {
-      const date = row.original.hire_date
-        ? new Date(row.original.hire_date)
+      const date = row.original.joinDate
+        ? new Date(row.original.joinDate)
         : null;
 
       if (!date) {
@@ -177,10 +176,13 @@ const columns: ColumnDef<IEmployee>[] = [
 ];
 
 interface Props {
-  employees: IEmployee[];
+  initialEmployees: IEmployee[];
 }
 
-export function TeamTable({ employees }: Props) {
+export function TeamTable({ initialEmployees }: Props) {
+  const [employees, setEmployees] = useState<IEmployee[]>(
+    initialEmployees ?? [],
+  );
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -209,15 +211,6 @@ export function TeamTable({ employees }: Props) {
     } else {
       table.getColumn('department')?.setFilterValue(value);
     }
-  };
-
-  const handleAddEmployee = (newEmployee: IEmployee) => {
-    // In a real application, this would be an API call
-    // For now, we'll just update our local state
-    employees.push(newEmployee);
-    // Force a re-render
-    table.setPageIndex(0);
-    table.resetColumnFilters();
   };
 
   // Get unique departments for filter dropdown
@@ -333,9 +326,11 @@ export function TeamTable({ employees }: Props) {
       <DataTableFooter table={table} />
 
       <AddEmployeeModal
+        table={table}
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
-        onAddEmployee={handleAddEmployee}
+        employees={employees}
+        setEmployees={setEmployees}
         departments={departments}
       />
     </div>

@@ -11,27 +11,27 @@ export enum IEmployeeStatus {
 
 export class IEmployee {
   id: string;
-  user_id?: string;
+  userId?: string;
   user?: IUser;
-  branch_id?: string;
+  branchId?: string;
   branch?: IBranch;
   department?: string;
-  //   designation_id: string;
+  //   designationId: string;
   //   designation: Designation;
-  organization_id: string;
+  organizationId?: string;
   organization?: IOrganization;
   name: string;
   address?: string;
-  phone_number?: string;
+  phoneNumber?: string;
   email?: string;
-  date_of_birth?: Date;
+  dateOfBirth?: Date;
   gender?: string;
   nationality?: string;
   marital_status?: string;
-  hire_date?: Date;
-  avatar: string;
-  created_at: Date;
-  updated_at: Date;
-  is_active: boolean;
+  joinDate?: Date;
+  avatar?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  isActive?: boolean;
   status: IEmployeeStatus;
 }

@@ -17,8 +17,12 @@ export class EmployeeService {
   }
 
   // Get all employees
-  async findAll(): Promise<Employee[]> {
-    return this.employeeRepository.find();
+  async findAll(organizationId: string): Promise<Employee[]> {
+    return this.employeeRepository.find({
+      where: {
+        organizationId,
+      },
+    });
   }
 
   // Get a single employee by ID

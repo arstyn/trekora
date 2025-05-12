@@ -1,13 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { CalendarIcon, X } from 'lucide-react';
-import { format } from 'date-fns';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog,
   DialogContent,
@@ -26,25 +20,33 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { IEmployee } from '@repo/api/employee/employee.entity';
+import { Table } from '@tanstack/react-table';
+import { format } from 'date-fns';
+import { CalendarIcon, X } from 'lucide-react';
+import { Dispatch, SetStateAction, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { createEmployee } from '../action';
 
 // Define the form schema with Zod
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
-  department: z.string().min(1, { message: 'Please select a department' }),
+  // department: z.string().min(1, { message: 'Please select a department' }),
   role: z.string().min(1, { message: 'Role is required' }),
   status: z.enum(['active', 'on leave', 'terminated'], {
     required_error: 'Please select a status',
@@ -55,31 +57,36 @@ const formSchema = z.object({
 });
 
 // Define the type for the form values
-type FormValues = z.infer<typeof formSchema>;
+export type ICreateEmployeeFormValues = z.infer<typeof formSchema>;
 
 // Define the props for the AddEmployeeModal component
 type AddEmployeeModalProps = {
+  table: Table<IEmployee>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddEmployee: (employee: any) => void;
+  employees: IEmployee[];
+  setEmployees: Dispatch<SetStateAction<IEmployee[]>>;
   departments: (string | undefined)[];
 };
 
 export function AddEmployeeModal({
+  table,
   open,
   onOpenChange,
-  onAddEmployee,
+  employees,
+  setEmployees,
   departments,
 }: AddEmployeeModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string>();
 
   // Initialize the form
-  const form = useForm<FormValues>({
+  const form = useForm<ICreateEmployeeFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       email: '',
-      department: '',
+      // department: '',
       role: '',
       status: 'active',
       joinDate: new Date(),
@@ -87,31 +94,35 @@ export function AddEmployeeModal({
   });
 
   // Handle form submission
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: ICreateEmployeeFormValues) => {
     setIsSubmitting(true);
 
     try {
-      // Generate a unique ID (in a real app, this would come from the backend)
-      const id = `EMP${Math.floor(1000 + Math.random() * 9000)}`;
-
       // Create the new employee object
       const newEmployee = {
-        id,
         name: data.name,
         email: data.email,
-        department: data.department,
+        // department: data.department,
         role: data.role,
         status: data.status,
         joinDate: format(data.joinDate, 'yyyy-MM-dd'),
         avatar: '/placeholder.svg?height=40&width=40', // Default avatar
       };
 
-      // Add the new employee
-      onAddEmployee(newEmployee);
+      const { employee, error } = await createEmployee(newEmployee);
+      // For now, we'll just update our local state
+      if (employee) {
+        setEmployees([employee, ...employees]);
+        // Force a re-render
+        table.setPageIndex(0);
+        table.resetColumnFilters();
 
-      // Reset the form and close the modal
-      form.reset();
-      onOpenChange(false);
+        // Reset the form and close the modal
+        form.reset();
+        onOpenChange(false);
+      } else {
+        setError(error);
+      }
     } catch (error) {
       console.error('Error adding employee:', error);
     } finally {
@@ -170,7 +181,7 @@ export function AddEmployeeModal({
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
+              {/* <FormField
                 control={form.control}
                 name="department"
                 render={({ field }) => (
@@ -199,7 +210,7 @@ export function AddEmployeeModal({
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              /> */}
 
               <FormField
                 control={form.control}

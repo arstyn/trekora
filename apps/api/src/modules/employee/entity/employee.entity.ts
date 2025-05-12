@@ -23,13 +23,13 @@ export class Employee {
   id: string;
 
   @Column({ type: 'uuid', nullable: true })
-  user_id?: string;
+  userId?: string;
 
   @ManyToOne(() => User, (user) => user.id, { eager: false, nullable: true })
   user?: User;
 
   @Column({ type: 'uuid', nullable: true })
-  branch_id?: string;
+  branchId?: string;
 
   @ManyToOne(() => Branch, (branch) => branch.id, {
     eager: false,
@@ -38,7 +38,7 @@ export class Employee {
   branch?: Branch;
 
   //   @Column({ type: 'uuid' })
-  //   designation_id: string;
+  //   designationId: string;
 
   //   @ManyToOne(() => Designation, (designation) => designation.id, {
   //     eager: false,
@@ -46,7 +46,7 @@ export class Employee {
   //   designation: Designation;
 
   @Column({ type: 'uuid' })
-  organization_id: string;
+  organizationId: string;
 
   @ManyToOne(() => Organization, (organization) => organization.id, {
     eager: false,
@@ -60,13 +60,13 @@ export class Employee {
   address?: string;
 
   @Column({ type: 'varchar', nullable: true })
-  phone_number?: string;
+  phoneNumber?: string;
 
   @Column({ type: 'varchar', nullable: true })
   email?: string;
 
   @Column({ type: 'date', nullable: true })
-  date_of_birth?: Date;
+  dateOfBirth?: Date;
 
   @Column({ type: 'varchar', nullable: true })
   gender?: string;
@@ -75,19 +75,19 @@ export class Employee {
   nationality?: string;
 
   @Column({ type: 'varchar', nullable: true })
-  marital_status?: string;
+  maritalStatus?: string;
 
   @Column({ type: 'date', nullable: true })
-  hire_date?: Date;
+  joinDate?: Date;
 
   @CreateDateColumn({ type: 'timestamp' })
-  created_at: Date;
+  createdAt: Date;
 
   @UpdateDateColumn({ type: 'timestamp' })
-  updated_at: Date;
+  updatedAt: Date;
 
   @Column({ type: 'boolean', default: true })
-  is_active: boolean;
+  isActive: boolean;
 
   @Column({
     type: 'enum',

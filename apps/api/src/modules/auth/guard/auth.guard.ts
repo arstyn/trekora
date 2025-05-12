@@ -41,7 +41,7 @@ export class AuthGuard implements CanActivate {
         );
       }
 
-      request.userId = decoded;
+      request.user = decoded;
       return true;
     } catch (err) {
       if (err instanceof TokenExpiredError) {
