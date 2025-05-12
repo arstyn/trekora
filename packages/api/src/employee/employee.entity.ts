@@ -18,7 +18,7 @@ export class IEmployee {
   department?: string;
   //   designationId: string;
   //   designation: Designation;
-  organizationId?: string;
+  organizationId: string;
   organization?: IOrganization;
   name: string;
   address?: string;
@@ -29,9 +29,9 @@ export class IEmployee {
   nationality?: string;
   marital_status?: string;
   joinDate?: Date;
-  avatar?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isActive?: boolean;
+  avatar: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isActive: boolean;
   status: IEmployeeStatus;
 }

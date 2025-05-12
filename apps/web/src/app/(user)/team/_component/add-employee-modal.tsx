@@ -66,7 +66,6 @@ type AddEmployeeModalProps = {
   onOpenChange: (open: boolean) => void;
   employees: IEmployee[];
   setEmployees: Dispatch<SetStateAction<IEmployee[]>>;
-  departments: (string | undefined)[];
 };
 
 export function AddEmployeeModal({
@@ -75,7 +74,6 @@ export function AddEmployeeModal({
   onOpenChange,
   employees,
   setEmployees,
-  departments,
 }: AddEmployeeModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>();
@@ -136,14 +134,6 @@ export function AddEmployeeModal({
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Add New Employee
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              className="h-6 w-6 rounded-full"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </DialogTitle>
           <DialogDescription>
             Fill in the details to add a new employee to the directory.
