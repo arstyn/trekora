@@ -53,6 +53,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import DataTableFooter from '@/components/data-table-footer';
 import { IEmployee } from '@repo/api/employee/employee.entity';
+import { AddEmployeeModal } from './add-employee-modal';
 
 // Define the columns for the table
 const columns: ColumnDef<IEmployee>[] = [
@@ -183,6 +184,7 @@ export function TeamTable({ employees }: Props) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const table = useReactTable({
     data: employees,
@@ -207,6 +209,15 @@ export function TeamTable({ employees }: Props) {
     } else {
       table.getColumn('department')?.setFilterValue(value);
     }
+  };
+
+  const handleAddEmployee = (newEmployee: IEmployee) => {
+    // In a real application, this would be an API call
+    // For now, we'll just update our local state
+    employees.push(newEmployee);
+    // Force a re-render
+    table.setPageIndex(0);
+    table.resetColumnFilters();
   };
 
   // Get unique departments for filter dropdown
@@ -256,9 +267,13 @@ export function TeamTable({ employees }: Props) {
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-            <Button size="sm">
+            <Button
+              size="sm"
+              onClick={() => setIsAddModalOpen(true)}
+              className="cursor-pointer"
+            >
               <UserPlus className="mr-2 h-4 w-4" />
-              Add Team
+              Add Employee
             </Button>
           </div>
         </div>
@@ -316,6 +331,13 @@ export function TeamTable({ employees }: Props) {
       </div>
 
       <DataTableFooter table={table} />
+
+      <AddEmployeeModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onAddEmployee={handleAddEmployee}
+        departments={departments}
+      />
     </div>
   );
 }
