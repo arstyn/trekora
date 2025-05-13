@@ -6,7 +6,7 @@ export default async function Page() {
 
   return (
     <div className="px-6 py-5">
-      <TeamTable employees={employees} />
+      <TeamTable initialEmployees={employees} />
     </div>
   );
 }

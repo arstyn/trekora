@@ -3,7 +3,7 @@ import { IEmployeeStatus } from 'employee/employee.entity';
 export class IEmployeeCreateDTO {
   userId?: string;
   branchId?: string;
-  department?: string;
+  department?: string[];
   //   designationId: string;
   //   designation: Designation;
   name: string;

@@ -1,9 +1,7 @@
-import { Organization } from 'src/modules/organization/entity/organization.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
-  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -18,14 +16,6 @@ export class Department {
 
   @Column({ type: 'varchar', nullable: true })
   description?: string;
-
-  @Column({ type: 'uuid' })
-  organizationId: string;
-
-  @ManyToOne(() => Organization, (organization) => organization.id, {
-    eager: false,
-  })
-  organization: Organization;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;

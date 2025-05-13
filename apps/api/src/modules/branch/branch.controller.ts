@@ -6,10 +6,13 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { BranchService } from './branch.service';
 import { Branch } from './entity/branch.entity';
+import { AuthGuard } from '../auth/guard/auth.guard';
 
+@UseGuards(AuthGuard)
 @Controller('branch')
 export class BranchController {
   constructor(private readonly branchService: BranchService) {}

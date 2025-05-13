@@ -32,21 +32,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IEmployee } from '@repo/api/employee/employee.entity';
 import { Table } from '@tanstack/react-table';
 import { format } from 'date-fns';
-import { CalendarIcon, X } from 'lucide-react';
-import { Dispatch, SetStateAction, useState } from 'react';
+import { CalendarIcon, ChevronDown, X } from 'lucide-react';
+import { Dispatch, SetStateAction, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { createEmployee } from '../action';
+import { createEmployee, getDepartments, getRoles } from '../action';
+import { IRole } from '@repo/api/auth/dto/role.types';
+import { IDepartment } from '@repo/api/department/department.entity';
 
 // Define the form schema with Zod
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
-  // department: z.string().min(1, { message: 'Please select a department' }),
+  department: z
+    .array(z.string())
+    .min(1, { message: 'Please select at least one department' }),
   role: z.string().min(1, { message: 'Role is required' }),
   status: z.enum(['active', 'on leave', 'terminated'], {
     required_error: 'Please select a status',
@@ -77,6 +82,25 @@ export function AddEmployeeModal({
 }: AddEmployeeModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>();
+  const [roles, setRoles] = useState<IRole[]>([]);
+  const [departments, setDepartments] = useState<IDepartment[]>([]);
+
+  // Fetch roles and departments from the backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { roles } = await getRoles();
+        const { departments } = await getDepartments();
+
+        setRoles(roles);
+        setDepartments(departments);
+      } catch (error) {
+        console.error('Error fetching roles or departments:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Initialize the form
   const form = useForm<ICreateEmployeeFormValues>({
@@ -84,7 +108,7 @@ export function AddEmployeeModal({
     defaultValues: {
       name: '',
       email: '',
-      // department: '',
+      department: [],
       role: '',
       status: 'active',
       joinDate: new Date(),
@@ -100,7 +124,7 @@ export function AddEmployeeModal({
       const newEmployee = {
         name: data.name,
         email: data.email,
-        // department: data.department,
+        department: data.department,
         role: data.role,
         status: data.status,
         joinDate: format(data.joinDate, 'yyyy-MM-dd'),
@@ -108,14 +132,10 @@ export function AddEmployeeModal({
       };
 
       const { employee, error } = await createEmployee(newEmployee);
-      // For now, we'll just update our local state
       if (employee) {
         setEmployees([employee, ...employees]);
-        // Force a re-render
         table.setPageIndex(0);
         table.resetColumnFilters();
-
-        // Reset the form and close the modal
         form.reset();
         onOpenChange(false);
       } else {
@@ -171,36 +191,61 @@ export function AddEmployeeModal({
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* <FormField
+              <FormField
                 control={form.control}
                 name="department"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Department</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {departments.map(
-                          (department) =>
-                            department && (
-                              <SelectItem key={department} value={department}>
-                                {department}
-                              </SelectItem>
-                            ),
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Departments</FormLabel>
+                    <FormControl>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={`w-full justify-between ${
+                              field.value.length === 0
+                                ? 'text-muted-foreground'
+                                : ''
+                            }`}
+                          >
+                            {field.value.length > 0
+                              ? field.value.join(', ')
+                              : 'Select departments'}
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-2">
+                          <div className="flex flex-col space-y-2">
+                            {departments.map((dept) => (
+                              <div
+                                key={dept.id}
+                                className="flex items-center space-x-2"
+                              >
+                                <Checkbox
+                                  checked={field.value.includes(dept.id)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      field.onChange([...field.value, dept.id]);
+                                    } else {
+                                      field.onChange(
+                                        field.value.filter(
+                                          (item) => item !== dept.id,
+                                        ),
+                                      );
+                                    }
+                                  }}
+                                />
+                                <span>{dept.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
-              /> */}
+              />
 
               <FormField
                 control={form.control}
@@ -209,7 +254,27 @@ export function AddEmployeeModal({
                   <FormItem>
                     <FormLabel>Role</FormLabel>
                     <FormControl>
-                      <Input placeholder="Software Engineer" {...field} />
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="capitalize">
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {roles.map((role) => (
+                            <SelectItem
+                              key={role.id}
+                              value={role.id}
+                              className="capitalize"
+                            >
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -288,7 +353,6 @@ export function AddEmployeeModal({
                         disabled={(date: any) =>
                           date > new Date() || date < new Date('1900-01-01')
                         }
-                        initialFocus
                       />
                     </PopoverContent>
                   </Popover>

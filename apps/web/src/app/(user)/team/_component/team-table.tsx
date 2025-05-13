@@ -180,6 +180,10 @@ interface Props {
 }
 
 export function TeamTable({ initialEmployees }: Props) {
+  console.log(
+    '🚀 ~ team-table.tsx:183 ~ TeamTable ~ initialEmployees:',
+    initialEmployees,
+  );
   const [employees, setEmployees] = useState<IEmployee[]>(
     initialEmployees ?? [],
   );
@@ -331,7 +335,6 @@ export function TeamTable({ initialEmployees }: Props) {
         onOpenChange={setIsAddModalOpen}
         employees={employees}
         setEmployees={setEmployees}
-        departments={departments}
       />
     </div>
   );

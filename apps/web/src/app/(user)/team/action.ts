@@ -1,8 +1,9 @@
 'use server';
-import { IEmployee } from '@repo/api/employee/employee.entity';
-import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
 import { AxiosRequest } from '@/lib/axios';
-import { ICreateEmployeeFormValues } from './_component/add-employee-modal';
+import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
+import { IEmployee } from '@repo/api/employee/employee.entity';
+import { IDepartment } from '@repo/api/department/department.entity';
+import { IRole } from '@repo/api/auth/dto/role.types';
 
 export async function getEmployees() {
   try {
@@ -26,5 +27,27 @@ export async function createEmployee(newEmployee: IEmployeeCreateDTO) {
     const errorMessage =
       error.message ?? 'An error occurred while fetching employees.';
     return { error: errorMessage };
+  }
+}
+
+export async function getRoles() {
+  try {
+    const roles = await AxiosRequest.get<IRole[]>('/role');
+    return { roles };
+  } catch (error: any) {
+    const errorMessage =
+      error.message ?? 'An error occurred while fetching roles.';
+    return { error: errorMessage, roles: [] };
+  }
+}
+
+export async function getDepartments() {
+  try {
+    const departments = await AxiosRequest.get<IDepartment[]>('/department');
+    return { departments };
+  } catch (error: any) {
+    const errorMessage =
+      error.message ?? 'An error occurred while fetching departments.';
+    return { error: errorMessage, departments: [] };
   }
 }
