@@ -12,16 +12,24 @@ export class AuthService {
     private readonly userRoleService: UserRoleService,
   ) {}
 
-  private generateAccessToken(userId: string): string {
-    return jwt.sign({ userId }, process.env.JWT_ACCESS_SECRET as string, {
-      expiresIn: '15m', // Access token expires in 15 minutes
-    });
+  private generateAccessToken(userId: string, organizationId: string): string {
+    return jwt.sign(
+      { userId, organizationId },
+      process.env.JWT_ACCESS_SECRET as string,
+      {
+        expiresIn: '15m', // Access token expires in 15 minutes
+      },
+    );
   }
 
-  private generateRefreshToken(userId: string): string {
-    return jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET as string, {
-      expiresIn: '7d', // Refresh token expires in 7 days
-    });
+  private generateRefreshToken(userId: string, organizationId: string): string {
+    return jwt.sign(
+      { userId, organizationId },
+      process.env.JWT_REFRESH_SECRET as string,
+      {
+        expiresIn: '7d', // Refresh token expires in 7 days
+      },
+    );
   }
 
   // Refresh Access Token functionality
@@ -39,7 +47,10 @@ export class AuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      const newAccessToken = this.generateAccessToken(user.id);
+      const newAccessToken = this.generateAccessToken(
+        user.id,
+        user.organizationId,
+      );
       return { accessToken: newAccessToken };
     } catch (error) {
       console.log('🚀 ~ auth.service.ts:43 ~ AuthService ~ error:', error);
@@ -71,8 +82,14 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    const accessToken = this.generateAccessToken(newUser.id);
-    const refreshToken = this.generateRefreshToken(newUser.id);
+    const accessToken = this.generateAccessToken(
+      newUser.id,
+      newUser.organizationId,
+    );
+    const refreshToken = this.generateRefreshToken(
+      newUser.id,
+      newUser.organizationId,
+    );
 
     return {
       message: 'User registered successfully',
@@ -90,8 +107,11 @@ export class AuthService {
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) throw new UnauthorizedException('Invalid credentials');
 
-    const accessToken = this.generateAccessToken(user.id);
-    const refreshToken = this.generateRefreshToken(user.id);
+    const accessToken = this.generateAccessToken(user.id, user.organizationId);
+    const refreshToken = this.generateRefreshToken(
+      user.id,
+      user.organizationId,
+    );
 
     const userRoles = await this.userRoleService.getUserRoleNames(user.id);
 
