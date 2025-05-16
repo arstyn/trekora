@@ -10,6 +10,8 @@ import { Connection } from 'typeorm';
 import { RoleService } from 'src/modules/role/role.service';
 import { roles } from './seeds/role.seed';
 import { UserRoleService } from 'src/modules/user_role/user_role.service';
+import { DepartmentService } from 'src/modules/department/department.service';
+import { departments } from './seeds/department.seed';
 
 @Injectable()
 export class SeedService {
@@ -22,6 +24,7 @@ export class SeedService {
     private readonly userService: UserService,
     private readonly roleService: RoleService,
     private readonly userRoleService: UserRoleService,
+    private readonly departmentService: DepartmentService,
   ) {}
 
   async seed() {
@@ -34,6 +37,7 @@ export class SeedService {
     await this.seedBranches();
     await this.seedUsers();
     await this.seedUserRoles();
+    await this.seedDepartments();
     this.logger.log('Seeding completed');
   }
 
@@ -133,5 +137,11 @@ export class SeedService {
     }
 
     this.logger.log('Seeded user roles');
+  }
+
+  async seedDepartments() {
+    for (const dept of departments) {
+      await this.departmentService.create(dept);
+    }
   }
 }

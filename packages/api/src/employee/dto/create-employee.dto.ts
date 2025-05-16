@@ -1,9 +1,9 @@
-import { IEmployeeStatus } from 'employee/employee.entity';
+import { IEmployeeStatus } from '../employee.entity';
 
 export class IEmployeeCreateDTO {
   userId?: string;
   branchId?: string;
-  department?: string[];
+  departments?: string[];
   //   designationId: string;
   //   designation: Designation;
   name: string;

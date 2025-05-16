@@ -49,9 +49,9 @@ import { IDepartment } from '@repo/api/department/department.entity';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
-  department: z
+  departments: z
     .array(z.string())
-    .min(1, { message: 'Please select at least one department' }),
+    .min(1, { message: 'Please select at least one departments' }),
   role: z.string().min(1, { message: 'Role is required' }),
   status: z.enum(['active', 'on leave', 'terminated'], {
     required_error: 'Please select a status',
@@ -108,7 +108,7 @@ export function AddEmployeeModal({
     defaultValues: {
       name: '',
       email: '',
-      department: [],
+      departments: [],
       role: '',
       status: 'active',
       joinDate: new Date(),
@@ -124,7 +124,7 @@ export function AddEmployeeModal({
       const newEmployee = {
         name: data.name,
         email: data.email,
-        department: data.department,
+        departments: data.departments,
         role: data.role,
         status: data.status,
         joinDate: format(data.joinDate, 'yyyy-MM-dd'),
@@ -193,7 +193,7 @@ export function AddEmployeeModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="department"
+                name="departments"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Departments</FormLabel>
@@ -202,14 +202,19 @@ export function AddEmployeeModal({
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
-                            className={`w-full justify-between ${
+                            className={`w-full justify-between text-left truncate ${
                               field.value.length === 0
                                 ? 'text-muted-foreground'
                                 : ''
                             }`}
                           >
                             {field.value.length > 0
-                              ? field.value.join(', ')
+                              ? departments
+                                  .filter((dep) =>
+                                    field.value.find((a) => a === dep.id),
+                                  )
+                                  .map((d) => d.name)
+                                  .join(', ')
                               : 'Select departments'}
                             <ChevronDown className="ml-2 h-4 w-4" />
                           </Button>

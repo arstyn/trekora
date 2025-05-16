@@ -1,5 +1,5 @@
-import { IBranch } from 'branch/branch.entity';
-import { IOrganization } from 'organization/organization.entity';
+import { IBranch } from '../branch/branch.entity';
+import { IOrganization } from '../organization/organization.entity';
 
 export class IUser {
   id: string;

@@ -1,4 +1,4 @@
-import { IOrganization } from 'organization/organization.entity';
+import { IOrganization } from '../organization/organization.entity';
 
 export class IBranch {
   id: string;
