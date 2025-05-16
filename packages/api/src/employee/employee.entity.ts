@@ -1,6 +1,6 @@
-import { IBranch } from 'branch/branch.entity';
-import { IOrganization } from 'organization/organization.entity';
-import { IUser } from 'user/user.entity';
+import { IBranch } from '../branch/branch.entity';
+import { IOrganization } from '../organization/organization.entity';
+import { IUser } from '../user/user.entity';
 
 export enum IEmployeeStatus {
   ACTIVE = 'active',

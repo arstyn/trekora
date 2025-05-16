@@ -1,5 +1,3 @@
-import { IUserRole } from './user-role.types';
-
 export class ILoginDto {
   email: string;
   password: string;
@@ -11,4 +9,8 @@ export class ILoginResponse {
   accessToken: string;
   refreshToken: string;
   userRoles: string[];
+}
+
+export class IRefreshResponseDto {
+  accessToken: string;
 }
