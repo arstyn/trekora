@@ -17,5 +17,5 @@ export class IEmployeeCreateDTO {
   joinDate?: string;
   avatar?: string;
   isActive?: boolean;
-  status: IEmployeeStatus;
+  status: 'active' | 'inactive' | 'suspended' | 'terminated';
 }

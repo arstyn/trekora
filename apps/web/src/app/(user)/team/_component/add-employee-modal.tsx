@@ -52,8 +52,8 @@ const formSchema = z.object({
   departments: z
     .array(z.string())
     .min(1, { message: 'Please select at least one departments' }),
-  role: z.string().min(1, { message: 'Role is required' }),
-  status: z.enum(['active', 'on leave', 'terminated'], {
+  roleId: z.string().min(1, { message: 'Role is required' }),
+  status: z.enum(['active', 'inactive', 'terminated', 'suspended'], {
     required_error: 'Please select a status',
   }),
   joinDate: z.date({
@@ -109,7 +109,7 @@ export function AddEmployeeModal({
       name: '',
       email: '',
       departments: [],
-      role: '',
+      roleId: '',
       status: 'active',
       joinDate: new Date(),
     },
@@ -125,7 +125,7 @@ export function AddEmployeeModal({
         name: data.name,
         email: data.email,
         departments: data.departments,
-        role: data.role,
+        roleId: data.roleId,
         status: data.status,
         joinDate: format(data.joinDate, 'yyyy-MM-dd'),
         avatar: '/placeholder.svg?height=40&width=40', // Default avatar
@@ -254,7 +254,7 @@ export function AddEmployeeModal({
 
               <FormField
                 control={form.control}
-                name="role"
+                name="roleId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
@@ -307,9 +307,15 @@ export function AddEmployeeModal({
                       </FormItem>
                       <FormItem className="flex items-center space-x-2 space-y-0">
                         <FormControl>
-                          <RadioGroupItem value="on leave" />
+                          <RadioGroupItem value="inactive" />
                         </FormControl>
-                        <FormLabel className="font-normal">On Leave</FormLabel>
+                        <FormLabel className="font-normal">In Active</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="suspended" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Suspended</FormLabel>
                       </FormItem>
                       <FormItem className="flex items-center space-x-2 space-y-0">
                         <FormControl>
