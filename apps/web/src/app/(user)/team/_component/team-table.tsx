@@ -101,6 +101,19 @@ const columns: ColumnDef<IEmployee>[] = [
   {
     accessorKey: 'role',
     header: 'Role',
+    cell: ({ row }) => {
+      const employee = row.original;
+      // If employee.role is an object, display its name property
+      if (
+        employee.role &&
+        typeof employee.role === 'object' &&
+        'name' in employee.role
+      ) {
+        return <span className="capitalize">{employee.role.name || ''}</span>;
+      }
+      // Fallback: display as string
+      return <span className="capitalize">{employee.role || ''}</span>;
+    },
   },
   {
     accessorKey: 'status',

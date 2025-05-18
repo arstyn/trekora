@@ -9,7 +9,6 @@ import * as bcrypt from 'bcrypt';
 import { Connection } from 'typeorm';
 import { RoleService } from 'src/modules/role/role.service';
 import { roles } from './seeds/role.seed';
-import { UserRoleService } from 'src/modules/user_role/user_role.service';
 import { DepartmentService } from 'src/modules/department/department.service';
 import { departments } from './seeds/department.seed';
 
@@ -23,7 +22,6 @@ export class SeedService {
     private readonly branchService: BranchService,
     private readonly userService: UserService,
     private readonly roleService: RoleService,
-    private readonly userRoleService: UserRoleService,
     private readonly departmentService: DepartmentService,
   ) {}
 
@@ -36,7 +34,6 @@ export class SeedService {
     await this.seedOrganizations();
     await this.seedBranches();
     await this.seedUsers();
-    await this.seedUserRoles();
     await this.seedDepartments();
     this.logger.log('Seeding completed');
   }
@@ -104,12 +101,20 @@ export class SeedService {
         this.logger.error(`Branch ${branch} not found`);
         continue;
       }
+
       user.password = await bcrypt.hash(user.password, 10);
+
+      const role = await this.roleService.findByName('admin');
+      if (!role) {
+        this.logger.error(`Admin role not found`);
+        continue;
+      }
 
       await this.userService.create({
         ...userDetails,
         branchId: branchData.id,
         organizationId: organizationData.id,
+        roleId: role.id,
         password: user.password,
       });
     }
@@ -123,20 +128,6 @@ export class SeedService {
     }
 
     this.logger.log('Seeded roles');
-  }
-
-  async seedUserRoles() {
-    const role = await this.roleService.findByName('admin');
-    const users = await this.userService.findAll();
-
-    for (const user of users) {
-      await this.userRoleService.create({
-        userId: user.id,
-        roleId: role.id,
-      });
-    }
-
-    this.logger.log('Seeded user roles');
   }
 
   async seedDepartments() {
