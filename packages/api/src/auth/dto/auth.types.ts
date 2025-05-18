@@ -8,7 +8,6 @@ export class ILoginResponse {
   userId: string;
   accessToken: string;
   refreshToken: string;
-  userRoles: string[];
 }
 
 export class IRefreshResponseDto {

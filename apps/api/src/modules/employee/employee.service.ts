@@ -14,7 +14,11 @@ export class EmployeeService {
   // Create a new employee
   async create(employeeData: Partial<Employee>): Promise<Employee> {
     const employee = this.employeeRepository.create(employeeData);
-    return this.employeeRepository.save(employee);
+    await this.employeeRepository.save(employee);
+    return this.employeeRepository.findOne({
+      where: { id: employee.id },
+      relations: ['role'],
+    });
   }
 
   // Get all employees
@@ -23,6 +27,8 @@ export class EmployeeService {
       where: {
         organizationId,
       },
+      relations: ['role'],
+      order: { createdAt: 'DESC' },
     });
   }
 

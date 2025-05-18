@@ -4,13 +4,11 @@ import { ILoginResponse } from '@repo/api/auth/dto/auth.types';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { UserService } from '../user/user.service';
-import { UserRoleService } from '../user_role/user_role.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
-    private readonly userRoleService: UserRoleService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -114,14 +112,11 @@ export class AuthService {
       user.organizationId,
     );
 
-    const userRoles = await this.userRoleService.getUserRoleNames(user.id);
-
     return {
       message: 'Login successful',
       userId: user.id,
       accessToken,
       refreshToken,
-      userRoles,
     };
   }
 
