@@ -1,0 +1,356 @@
+'use client';
+
+import { zodResolver } from '@hookform/resolvers/zod';
+import { format } from 'date-fns';
+import { CalendarIcon, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { IDepartment } from '@repo/api/department/department.entity';
+import { IEmployee } from '@repo/api/employee/employee.entity';
+import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
+import { IRole } from '@repo/api/auth/dto/role.types';
+import { getDepartments, getRoles } from '../action';
+
+// Define the form schema with Zod
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+  department: z.string().min(1, { message: 'Please select a department' }),
+  role: z.string().min(1, { message: 'Role is required' }),
+  status: z.enum(['active', 'inactive', 'suspended', 'terminated'], {
+    required_error: 'Please select a status',
+  }),
+  joinDate: z.date({
+    required_error: 'Join date is required',
+  }),
+});
+
+// Define the type for the form values
+export type IEditEmployeeFormValues = z.infer<typeof formSchema>;
+
+// Define the props for the EditEmployeeDialog component
+type EditEmployeeDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  employee: IEmployee | null;
+  onUpdateEmployee: (
+    id: string,
+    updatedEmployee: IEditEmployeeFormValues,
+  ) => void;
+};
+
+export function EditEmployeeDialog({
+  open,
+  onOpenChange,
+  employee,
+  onUpdateEmployee,
+}: EditEmployeeDialogProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [roles, setRoles] = useState<IRole[]>([]);
+  const [departments, setDepartments] = useState<IDepartment[]>([]);
+
+  // Fetch roles and departments from the backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { roles } = await getRoles();
+        const { departments } = await getDepartments();
+
+        setRoles(roles);
+        setDepartments(departments);
+      } catch (error) {
+        console.error('Error fetching roles or departments:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Initialize the form
+  const form = useForm<IEditEmployeeFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: employee
+      ? {
+          name: employee.name,
+          email: employee.email,
+          department: employee.department,
+          role: employee.role.id,
+          status: employee.status,
+          joinDate: employee.joinDate
+            ? new Date(employee.joinDate)
+            : new Date(),
+        }
+      : {
+          name: '',
+          email: '',
+          department: '',
+          role: '',
+          status: 'active',
+          joinDate: new Date(),
+        },
+  });
+
+  // Update form values when employee changes
+  useState(() => {
+    if (employee) {
+      form.reset({
+        name: employee.name,
+        email: employee.email,
+        department: employee.department,
+        role: employee.role.id,
+        status: employee.status,
+        joinDate: new Date(employee.joinDate ?? new Date()),
+      });
+    }
+  });
+
+  // Handle form submission
+  const onSubmit = async (data: IEditEmployeeFormValues) => {
+    if (!employee) return;
+
+    setIsSubmitting(true);
+
+    try {
+      // Create the updated employee object
+      const updatedEmployee = {
+        name: data.name,
+        email: data.email,
+        department: data.department,
+        role: data.role,
+        status: data.status,
+        joinDate: format(data.joinDate, 'yyyy-MM-dd'),
+      };
+
+      // Update the employee
+      //   onUpdateEmployee(employee.id, updatedEmployee);
+
+      // Close the dialog
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error updating employee:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!employee) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between">
+            Edit Employee
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenChange(false)}
+              className="h-6 w-6 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogTitle>
+          <DialogDescription>Update employee information.</DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="john.doe@company.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {departments.map((department) => (
+                          <SelectItem key={department.id} value={department.id}>
+                            {department.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Software Engineer" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Status</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="active" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Active</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="on leave" />
+                        </FormControl>
+                        <FormLabel className="font-normal">On Leave</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="terminated" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                          Terminated
+                        </FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="joinDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Join Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={'outline'}
+                          className={`w-full pl-3 text-left font-normal ${!field.value ? 'text-muted-foreground' : ''}`}
+                        >
+                          {field.value ? (
+                            format(field.value, 'PPP')
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date('1900-01-01')
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter className="pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
