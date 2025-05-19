@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Progress } from '@/components/ui/progress'; // If you want a progress bar
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
@@ -32,18 +34,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { IRole } from '@repo/api/auth/dto/role.types';
+import { IDepartment } from '@repo/api/department/department.entity';
 import { IEmployee } from '@repo/api/employee/employee.entity';
 import { Table } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { CalendarIcon, ChevronDown, X } from 'lucide-react';
-import { Dispatch, SetStateAction, useState, useEffect } from 'react';
+import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { createEmployee, getDepartments, getRoles } from '../action';
-import { IRole } from '@repo/api/auth/dto/role.types';
-import { IDepartment } from '@repo/api/department/department.entity';
 
 // Define the form schema with Zod
 const formSchema = z.object({
@@ -59,6 +60,27 @@ const formSchema = z.object({
   joinDate: z.date({
     required_error: 'Join date is required',
   }),
+  address: z.string().optional(),
+  phoneNumber: z.string().optional(),
+  dateOfBirth: z.date({
+    required_error: 'Date of birth is required',
+  }),
+  gender: z.enum(['male', 'female', 'other']).optional(),
+  nationality: z.string().optional(),
+  maritalStatus: z.enum(['single', 'married']).optional(),
+  emergencyContacts: z
+    .array(
+      z.object({
+        name: z
+          .string()
+          .min(2, { message: 'Contact name must be at least 2 characters' }),
+        relation: z
+          .string()
+          .min(2, { message: 'Relation must be at least 2 characters' }),
+        phoneNumber: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 // Define the type for the form values
@@ -84,6 +106,7 @@ export function AddEmployeeModal({
   const [error, setError] = useState<string>();
   const [roles, setRoles] = useState<IRole[]>([]);
   const [departments, setDepartments] = useState<IDepartment[]>([]);
+  const [step, setStep] = useState(1);
 
   // Fetch roles and departments from the backend
   useEffect(() => {
@@ -112,6 +135,13 @@ export function AddEmployeeModal({
       roleId: '',
       status: 'active',
       joinDate: new Date(),
+      address: '',
+      phoneNumber: '',
+      dateOfBirth: new Date(),
+      gender: undefined,
+      nationality: '',
+      maritalStatus: undefined,
+      emergencyContacts: [],
     },
   });
 
@@ -128,7 +158,14 @@ export function AddEmployeeModal({
         roleId: data.roleId,
         status: data.status,
         joinDate: format(data.joinDate, 'yyyy-MM-dd'),
-        avatar: '/placeholder.svg?height=40&width=40', // Default avatar
+        avatar: '/placeholder.svg?height=40&width=40',
+        address: data.address,
+        phoneNumber: data.phoneNumber,
+        dateOfBirth: format(data.dateOfBirth, 'yyyy-MM-dd'),
+        gender: data.gender,
+        nationality: data.nationality,
+        maritalStatus: data.maritalStatus,
+        emergencyContacts: data.emergencyContacts,
       };
 
       const { employee, error } = await createEmployee(newEmployee);
@@ -138,6 +175,7 @@ export function AddEmployeeModal({
         table.resetColumnFilters();
         form.reset();
         onOpenChange(false);
+        setStep(1);
       } else {
         setError(error);
       }
@@ -148,20 +186,13 @@ export function AddEmployeeModal({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            Add New Employee
-          </DialogTitle>
-          <DialogDescription>
-            Fill in the details to add a new employee to the directory.
-          </DialogDescription>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+  // Step 1: Basic Info, Step 2: More Details, Step 3: Other Info
+  const renderStep = () => {
+    switch (step) {
+      case 1:
+        return (
+          <>
+            {/* Basic Info */}
             <FormField
               control={form.control}
               name="name"
@@ -175,7 +206,6 @@ export function AddEmployeeModal({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="email"
@@ -189,7 +219,6 @@ export function AddEmployeeModal({
                 </FormItem>
               )}
             />
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -251,7 +280,6 @@ export function AddEmployeeModal({
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="roleId"
@@ -286,7 +314,6 @@ export function AddEmployeeModal({
                 )}
               />
             </div>
-
             <FormField
               control={form.control}
               name="status"
@@ -331,7 +358,6 @@ export function AddEmployeeModal({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="joinDate"
@@ -347,8 +373,9 @@ export function AddEmployeeModal({
                             !field.value ? 'text-muted-foreground' : ''
                           }`}
                         >
-                          {field.value ? (
-                            format(field.value, 'PPP')
+                          {field.value &&
+                          !isNaN(new Date(field.value).getTime()) ? (
+                            format(new Date(field.value), 'PPP')
                           ) : (
                             <span>Pick a date</span>
                           )}
@@ -371,19 +398,281 @@ export function AddEmployeeModal({
                 </FormItem>
               )}
             />
+            <div className="flex justify-end pt-4">
+              <Button type="button" onClick={() => setStep(2)}>
+                Next
+              </Button>
+            </div>
+          </>
+        );
+      case 2:
+        return (
+          <>
+            {/* More Details */}
 
-            <DialogFooter className="pt-4">
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Address</FormLabel>
+                  <FormControl>
+                    <Input placeholder="123 Main St" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="+1234567890" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dateOfBirth"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Date of Birth</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={'outline'}
+                          className={`w-full pl-3 text-left font-normal ${
+                            !field.value ? 'text-muted-foreground' : ''
+                          }`}
+                        >
+                          {field.value &&
+                          !isNaN(new Date(field.value).getTime()) ? (
+                            format(new Date(field.value), 'PPP')
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date: any) =>
+                          date > new Date() || date < new Date('1900-01-01')
+                        }
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="gender"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Gender</FormLabel>
+                  <FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="nationality"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nationality</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nationality" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter className="pt-4 flex justify-between">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => setStep(1)}
               >
-                Cancel
+                Back
+              </Button>
+              <Button type="button" onClick={() => setStep(3)}>
+                Next
+              </Button>
+            </DialogFooter>
+          </>
+        );
+      case 3:
+        return (
+          <>
+            {/* Other Info */}
+            <FormField
+              control={form.control}
+              name="maritalStatus"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Marital Status</FormLabel>
+                  <FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="single">Single</SelectItem>
+                        <SelectItem value="married">Married</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="emergencyContacts"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Emergency Contacts</FormLabel>
+                  <FormControl>
+                    <div>
+                      {(Array.isArray(field.value) ? field.value : []).map(
+                        (contact: any, idx: number) => (
+                          <div key={idx} className="flex gap-2 mb-2">
+                            <Input
+                              placeholder="Name"
+                              value={contact.name}
+                              onChange={(e) => {
+                                const updated = [...(field.value ?? [])];
+                                if (updated[idx]) {
+                                  updated[idx].name = e.target.value;
+                                  field.onChange(updated);
+                                }
+                              }}
+                            />
+                            <Input
+                              placeholder="Relation"
+                              value={contact.relation}
+                              onChange={(e) => {
+                                const updated = [...(field.value ?? [])];
+                                if (updated[idx]) {
+                                  updated[idx].relation = e.target.value;
+                                  field.onChange(updated);
+                                }
+                              }}
+                            />
+                            <Input
+                              placeholder="Phone Number"
+                              value={contact.relation}
+                              onChange={(e) => {
+                                const updated = [...(field.value ?? [])];
+                                if (updated[idx]) {
+                                  updated[idx].relation = e.target.value;
+                                  field.onChange(updated);
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => {
+                                const updated = [...(field.value ?? [])];
+                                updated.splice(idx, 1);
+                                field.onChange(updated);
+                              }}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ),
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          field.onChange([
+                            ...(field.value ?? []),
+                            { name: '', relation: '' },
+                          ])
+                        }
+                      >
+                        Add Contact
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter className="pt-4 flex justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(2)}
+              >
+                Back
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Adding...' : 'Add Employee'}
               </Button>
             </DialogFooter>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between">
+            Add New Employee
+          </DialogTitle>
+          <DialogDescription>Step {step} of 3</DialogDescription>
+        </DialogHeader>
+        <Progress value={(step / 3) * 100} className="mb-4" />
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+            autoComplete="off"
+          >
+            {renderStep()}
           </form>
         </Form>
       </DialogContent>
