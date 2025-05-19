@@ -3,13 +3,12 @@ import { Organization } from 'src/modules/organization/entity/organization.entit
 import { Role } from 'src/modules/role/entity/role.entity';
 import { User } from 'src/modules/user/entity/user.entity';
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
   CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
-  JoinColumn,
 } from 'typeorm';
 
 export enum EmployeeStatus {
