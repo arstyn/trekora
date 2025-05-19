@@ -1,5 +1,3 @@
-import { IEmployeeStatus } from '../employee.entity';
-
 export class IEmployeeCreateDTO {
   userId?: string;
   branchId?: string;
