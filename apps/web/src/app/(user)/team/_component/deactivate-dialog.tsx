@@ -40,21 +40,13 @@ export function DeactivateDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Deactivate Employee
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              className="h-6 w-6 rounded-full"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </DialogTitle>
           <DialogDescription>
             Are you sure you want to deactivate this employee?
           </DialogDescription>
         </DialogHeader>
 
-        <Alert variant="destructive" className="border-red-300 bg-red-50">
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Warning</AlertTitle>
           <AlertDescription>
@@ -85,7 +77,7 @@ export function DeactivateDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
