@@ -1,3 +1,4 @@
+import { IUserDepartments } from 'user-departments/user-departments.entity';
 import { IRole } from '../auth/dto/role.types';
 import { IBranch } from '../branch/branch.entity';
 import { IOrganization } from '../organization/organization.entity';
@@ -35,4 +36,5 @@ export class IEmployee {
   updatedAt: Date;
   isActive: boolean;
   status: IEmployeeStatus;
+  employeeDepartments?: IUserDepartments[];
 }

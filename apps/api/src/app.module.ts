@@ -11,6 +11,7 @@ import { SeedModule } from './seed/seed.module';
 import { RoleModule } from './modules/role/role.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { DepartmentModule } from './modules/department/department.module';
+import { UserDepartmentsModule } from './modules/user-departments/user-departments.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { DepartmentModule } from './modules/department/department.module';
     RoleModule,
     EmployeeModule,
     DepartmentModule,
+    UserDepartmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

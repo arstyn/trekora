@@ -1,12 +1,14 @@
 import { Branch } from 'src/modules/branch/entity/branch.entity';
 import { Organization } from 'src/modules/organization/entity/organization.entity';
 import { Role } from 'src/modules/role/entity/role.entity';
+import { UserDepartments } from 'src/modules/user-departments/entity/user-departments.entity';
 import { User } from 'src/modules/user/entity/user.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -54,6 +56,9 @@ export class Employee {
 
   @Column('uuid', { nullable: true })
   roleId?: string;
+
+  @OneToMany(() => UserDepartments, (ud) => ud.employee)
+  employeeDepartments: UserDepartments[];
 
   @Column({ type: 'varchar' })
   name: string;

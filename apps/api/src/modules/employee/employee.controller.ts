@@ -1,18 +1,19 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Put,
-  Delete,
-  Param,
-  Body,
-  UseGuards,
   Request,
+  UseGuards,
 } from '@nestjs/common';
+import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
+import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
+import { AuthGuard } from '../auth/guard/auth.guard';
 import { EmployeeService } from './employee.service';
 import { Employee } from './entity/employee.entity';
-import { AuthGuard } from '../auth/guard/auth.guard';
-import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 
 @UseGuards(AuthGuard)
 @Controller('api/employee')
@@ -23,7 +24,7 @@ export class EmployeeController {
   @Post()
   async create(
     @Request() req: ApiRequestJWT,
-    @Body() employeeData: Partial<Employee>,
+    @Body() employeeData: IEmployeeCreateDTO,
   ): Promise<Employee> {
     return this.employeeService.create({
       ...employeeData,

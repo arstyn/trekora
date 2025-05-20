@@ -103,7 +103,7 @@ export function TeamTable({ initialEmployees }: Props) {
       },
     },
     {
-      accessorKey: 'department',
+      accessorKey: 'employeeDepartments',
       header: ({ column }) => {
         return (
           <div
@@ -117,6 +117,25 @@ export function TeamTable({ initialEmployees }: Props) {
               <ChevronDown className="ml-2 h-4 w-4" />
             ) : null}
           </div>
+        );
+      },
+      cell: ({ row }) => {
+        const employee = row.original;
+        // If employee.role is an object, display its name property
+        if (employee.employeeDepartments) {
+          return (
+            <span className="capitalize">
+              {employee.employeeDepartments
+                .map((ed) => ed.department.name)
+                .join(', ') || ''}
+            </span>
+          );
+        }
+        // Fallback: display as string
+        return (
+          <span className="capitalize">
+            {employee.employeeDepartments || ''}
+          </span>
         );
       },
     },

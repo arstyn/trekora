@@ -8,6 +8,7 @@ import { IRole } from '@repo/api/auth/dto/role.types';
 export async function getEmployees() {
   try {
     const employees = await AxiosRequest.get<IEmployee[]>('/employee');
+    console.log('🚀 ~ action.ts:15 ~ getEmployees ~ employees:', employees);
     return { employees };
   } catch (error: any) {
     const errorMessage =
