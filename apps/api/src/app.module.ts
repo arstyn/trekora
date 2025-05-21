@@ -12,6 +12,7 @@ import { UserRoleModule } from './modules/user_role/user_role.module';
 import { RoleModule } from './modules/role/role.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { DepartmentModule } from './modules/department/department.module';
+import { PackageModule } from './modules/package/package.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { DepartmentModule } from './modules/department/department.module';
     UserRoleModule,
     EmployeeModule,
     DepartmentModule,
+    PackageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
