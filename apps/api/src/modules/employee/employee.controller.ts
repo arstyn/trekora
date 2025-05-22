@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Request,
@@ -48,9 +49,15 @@ export class EmployeeController {
   @Put(':id')
   async update(
     @Param('id') id: string,
-    @Body() updateData: Partial<Employee>,
+    @Body() updateData: IEmployeeCreateDTO,
   ): Promise<Employee> {
     return this.employeeService.update(id, updateData);
+  }
+
+  // Terminate an employee by ID
+  @Patch(':id/terminate')
+  async terminate(@Param('id') id: string): Promise<Employee> {
+    return this.employeeService.terminate(id);
   }
 
   // Delete an employee by ID

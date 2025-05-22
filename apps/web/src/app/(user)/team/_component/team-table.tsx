@@ -1,8 +1,8 @@
 'use client';
 
 import DataTableFooter from '@/components/data-table-footer';
+import StatusBadge from '@/components/status-badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { IDepartment } from '@repo/api/department/department.entity';
 import { IEmployee, IEmployeeStatus } from '@repo/api/employee/employee.entity';
 import {
   type ColumnDef,
@@ -41,12 +42,10 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import {
-  CheckCircle2Icon,
   ChevronDown,
   ChevronUp,
   Download,
   Filter,
-  LoaderIcon,
   MoreHorizontal,
   Search,
   UserPlus,
@@ -56,12 +55,15 @@ import { AddEmployeeModal } from './add-employee-modal';
 import { DeactivateDialog } from './deactivate-dialog';
 import { EditEmployeeDialog } from './edit-employee-dialog';
 import { ViewEmployeeDialog } from './view-employee-dialog';
+import { IRole } from '@repo/api/auth/dto/role.types';
 
 interface Props {
   initialEmployees: IEmployee[];
+  departments: IDepartment[];
+  roles: IRole[];
 }
 
-export function TeamTable({ initialEmployees }: Props) {
+export function TeamTable({ initialEmployees, departments, roles }: Props) {
   const [employees, setEmployees] = useState<IEmployee[]>(
     initialEmployees ?? [],
   );
@@ -122,7 +124,11 @@ export function TeamTable({ initialEmployees }: Props) {
       cell: ({ row }) => {
         const employee = row.original;
         // If employee.role is an object, display its name property
-        if (employee.employeeDepartments) {
+        if (
+          employee.employeeDepartments &&
+          Array.isArray(employee.employeeDepartments) &&
+          employee.employeeDepartments.length > 0
+        ) {
           return (
             <span className="capitalize">
               {employee.employeeDepartments
@@ -159,19 +165,7 @@ export function TeamTable({ initialEmployees }: Props) {
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => (
-        <Badge
-          variant="outline"
-          className="flex gap-1 px-1.5 text-muted-foreground [&_svg]:size-3 capitalize"
-        >
-          {row.original.status === 'active' ? (
-            <CheckCircle2Icon className="text-green-500 dark:text-green-400" />
-          ) : (
-            <LoaderIcon />
-          )}
-          {row.original.status}
-        </Badge>
-      ),
+      cell: ({ row }) => <StatusBadge status={row.original.status} />,
     },
     {
       accessorKey: 'hire_date',
@@ -228,7 +222,7 @@ export function TeamTable({ initialEmployees }: Props) {
                 onClick={() => handleDeactivateEmployee(employee)}
                 disabled={employee.status === 'terminated'}
               >
-                Deactivate
+                Terminate
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -263,11 +257,11 @@ export function TeamTable({ initialEmployees }: Props) {
   };
 
   // Handle deactivating an employee
-  const handleDeactivate = (id: string) => {
+  const handleDeactivate = (terminatedEmployee: IEmployee) => {
     setEmployees((prev) =>
       prev.map((employee) =>
-        employee.id === id
-          ? { ...employee, status: IEmployeeStatus.TERMINATED }
+        employee.id === terminatedEmployee.id
+          ? { ...employee, ...terminatedEmployee }
           : employee,
       ),
     );
@@ -303,11 +297,6 @@ export function TeamTable({ initialEmployees }: Props) {
     );
   };
 
-  // Get unique departments for filter dropdown
-  const departments = Array.from(
-    new Set(employees.map((employee) => employee.department)),
-  );
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between gap-4">
@@ -334,14 +323,11 @@ export function TeamTable({ initialEmployees }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Departments</SelectItem>
-                {departments.map(
-                  (department) =>
-                    department && (
-                      <SelectItem key={department} value={department}>
-                        {department}
-                      </SelectItem>
-                    ),
-                )}
+                {departments.map((department, index) => (
+                  <SelectItem key={index} value={department.name}>
+                    {department.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -421,31 +407,44 @@ export function TeamTable({ initialEmployees }: Props) {
         onOpenChange={setIsAddModalOpen}
         employees={employees}
         setEmployees={setEmployees}
+        departments={departments}
+        roles={roles}
       />
 
-      <ViewEmployeeDialog
-        open={isViewDialogOpen}
-        onOpenChange={setIsViewDialogOpen}
-        employee={selectedEmployee}
-        onEdit={(employee) => {
-          setSelectedEmployee(employee);
-          setIsEditDialogOpen(true);
-        }}
-      />
+      {selectedEmployee && (
+        <ViewEmployeeDialog
+          open={isViewDialogOpen}
+          onOpenChange={(open) => {
+            setIsViewDialogOpen(open);
+            setSelectedEmployee(null);
+          }}
+          employee={selectedEmployee}
+          onEdit={(employee) => handleEditEmployee(employee)}
+        />
+      )}
 
-      {/* <EditEmployeeDialog
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        employee={selectedEmployee}
-        onUpdateEmployee={handleUpdateEmployee}
-      /> */}
+      {selectedEmployee && (
+        <EditEmployeeDialog
+          open={isEditDialogOpen}
+          onOpenChange={(open) => {
+            setIsEditDialogOpen(open);
+            setSelectedEmployee(null);
+          }}
+          employee={selectedEmployee}
+          onUpdateEmployee={handleUpdateEmployee}
+          departments={departments}
+          roles={roles}
+        />
+      )}
 
-      <DeactivateDialog
-        open={isDeactivateDialogOpen}
-        onOpenChange={setIsDeactivateDialogOpen}
-        employee={selectedEmployee}
-        onDeactivate={handleDeactivate}
-      />
+      {selectedEmployee && (
+        <DeactivateDialog
+          open={isDeactivateDialogOpen}
+          onOpenChange={setIsDeactivateDialogOpen}
+          employee={selectedEmployee}
+          onDeactivate={handleDeactivate}
+        />
+      )}
     </div>
   );
 }

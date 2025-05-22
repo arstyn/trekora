@@ -17,7 +17,6 @@ export class IEmployee {
   user?: IUser;
   branchId?: string;
   branch?: IBranch;
-  department?: string;
   role: IRole;
   roleId?: string;
   organizationId: string;
@@ -27,9 +26,9 @@ export class IEmployee {
   phoneNumber?: string;
   email?: string;
   dateOfBirth?: Date;
-  gender?: string;
+  gender?: 'male' | 'female' | 'other';
   nationality?: string;
-  marital_status?: string;
+  maritalStatus?: 'single' | 'married';
   joinDate?: Date;
   avatar: string;
   createdAt: Date;

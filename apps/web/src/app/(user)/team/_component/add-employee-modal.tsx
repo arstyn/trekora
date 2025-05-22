@@ -39,10 +39,10 @@ import { IEmployee } from '@repo/api/employee/employee.entity';
 import { Table } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { CalendarIcon, ChevronDown, X } from 'lucide-react';
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { createEmployee, getDepartments, getRoles } from '../action';
+import { createEmployee } from '../action';
 
 // Define the form schema with Zod
 const formSchema = z.object({
@@ -91,6 +91,8 @@ type AddEmployeeModalProps = {
   onOpenChange: (open: boolean) => void;
   employees: IEmployee[];
   setEmployees: Dispatch<SetStateAction<IEmployee[]>>;
+  roles: IRole[];
+  departments: IDepartment[];
 };
 
 export function AddEmployeeModal({
@@ -99,28 +101,11 @@ export function AddEmployeeModal({
   onOpenChange,
   employees,
   setEmployees,
+  roles,
+  departments,
 }: AddEmployeeModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>();
-  const [roles, setRoles] = useState<IRole[]>([]);
-  const [departments, setDepartments] = useState<IDepartment[]>([]);
-
-  // Fetch roles and departments from the backend
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { roles } = await getRoles();
-        const { departments } = await getDepartments();
-
-        setRoles(roles);
-        setDepartments(departments);
-      } catch (error) {
-        console.error('Error fetching roles or departments:', error);
-      }
-    };
-
-    fetchData();
-  }, []);
 
   // Initialize the form
   const form = useForm<ICreateEmployeeFormValues>({

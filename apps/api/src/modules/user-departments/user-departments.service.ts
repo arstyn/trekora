@@ -42,4 +42,15 @@ export class UserDepartmentsService {
   async remove(id: string): Promise<void> {
     await this.userDepartmentsRepository.delete(id);
   }
+
+  async removeByEmployeeId(
+    employeeId: string,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const repository = manager
+      ? manager.getRepository(UserDepartments)
+      : this.userDepartmentsRepository;
+
+    await repository.delete({ employeeId });
+  }
 }

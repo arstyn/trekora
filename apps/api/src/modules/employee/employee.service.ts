@@ -108,9 +108,131 @@ export class EmployeeService {
   }
 
   // Update an employee by ID
-  async update(id: string, updateData: Partial<Employee>): Promise<Employee> {
-    await this.employeeRepository.update(id, updateData);
-    return this.findOne(id);
+
+  // Update an employee by ID
+  async update(id: string, updateData: IEmployeeCreateDTO): Promise<Employee> {
+    const {
+      roleId,
+      emergencyContactName,
+      departments,
+      status,
+      joinDate,
+      dateOfBirth,
+      avatar,
+      ...rest
+    } = updateData;
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      if (roleId) {
+        const role = await this.roleService.findOne(roleId);
+        if (!role) {
+          throw new Error('Role not found');
+        }
+      }
+
+      // Prepare update object
+      const updateObj: any = {
+        ...rest,
+        roleId,
+        status: status
+          ? EmployeeStatus[status.toUpperCase() as keyof typeof EmployeeStatus]
+          : undefined,
+        joinDate: joinDate ? new Date(joinDate) : undefined,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      };
+
+      // Remove undefined fields to avoid overwriting with undefined
+      Object.keys(updateObj).forEach(
+        (key) => updateObj[key] === undefined && delete updateObj[key],
+      );
+
+      await queryRunner.manager.update(Employee, id, updateObj);
+
+      // Update departments if provided
+      if (departments) {
+        // Remove existing departments
+        await this.userDepartmentsService.removeByEmployeeId(
+          id,
+          queryRunner.manager,
+        );
+        // Add new departments
+        for (const departmentId of departments) {
+          await this.userDepartmentsService.create(
+            {
+              departmentId,
+              employeeId: id,
+            },
+            queryRunner.manager,
+          );
+        }
+      }
+
+      const updatedEmployee = await queryRunner.manager.findOne(Employee, {
+        where: { id },
+        relations: [
+          'role',
+          'employeeDepartments',
+          'employeeDepartments.department',
+        ],
+      });
+
+      await queryRunner.commitTransaction();
+
+      return updatedEmployee!;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async terminate(id: string): Promise<Employee> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const employee = await this.employeeRepository.findOne({
+        where: { id },
+        relations: ['employeeDepartments'],
+      });
+
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+
+      // Update employee status to terminated
+      employee.status = EmployeeStatus.TERMINATED;
+      await queryRunner.manager.save(employee);
+
+      // Remove all departments associated with the employee
+      await this.userDepartmentsService.removeByEmployeeId(
+        id,
+        queryRunner.manager,
+      );
+
+      const terminatedEmployee = await queryRunner.manager.findOne(Employee, {
+        where: { id },
+        relations: [
+          'role',
+          'employeeDepartments',
+          'employeeDepartments.department',
+        ],
+      });
+
+      await queryRunner.commitTransaction();
+
+      return terminatedEmployee;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // Delete an employee by ID
