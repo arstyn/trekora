@@ -1,12 +1,15 @@
 import { Branch } from 'src/modules/branch/entity/branch.entity';
 import { Organization } from 'src/modules/organization/entity/organization.entity';
+import { Role } from 'src/modules/role/entity/role.entity';
+import { UserDepartments } from 'src/modules/user-departments/entity/user-departments.entity';
 import { User } from 'src/modules/user/entity/user.entity';
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
   CreateDateColumn,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
@@ -37,14 +40,6 @@ export class Employee {
   })
   branch?: Branch;
 
-  //   @Column({ type: 'uuid' })
-  //   designationId: string;
-
-  //   @ManyToOne(() => Designation, (designation) => designation.id, {
-  //     eager: false,
-  //   })
-  //   designation: Designation;
-
   @Column({ type: 'uuid' })
   organizationId: string;
 
@@ -52,6 +47,18 @@ export class Employee {
     eager: false,
   })
   organization: Organization;
+
+  @ManyToOne(() => Role, (role) => role.id, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  role: Role;
+
+  @Column('uuid', { nullable: true })
+  roleId?: string;
+
+  @OneToMany(() => UserDepartments, (ud) => ud.employee)
+  employeeDepartments: UserDepartments[];
 
   @Column({ type: 'varchar' })
   name: string;

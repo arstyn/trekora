@@ -1,6 +1,8 @@
-import { IBranch } from 'branch/branch.entity';
-import { IOrganization } from 'organization/organization.entity';
-import { IUser } from 'user/user.entity';
+import { IUserDepartments } from 'user-departments/user-departments.entity';
+import { IRole } from '../auth/dto/role.types';
+import { IBranch } from '../branch/branch.entity';
+import { IOrganization } from '../organization/organization.entity';
+import { IUser } from '../user/user.entity';
 
 export enum IEmployeeStatus {
   ACTIVE = 'active',
@@ -16,8 +18,8 @@ export class IEmployee {
   branchId?: string;
   branch?: IBranch;
   department?: string;
-  //   designationId: string;
-  //   designation: Designation;
+  role: IRole;
+  roleId?: string;
   organizationId: string;
   organization?: IOrganization;
   name: string;
@@ -34,4 +36,5 @@ export class IEmployee {
   updatedAt: Date;
   isActive: boolean;
   status: IEmployeeStatus;
+  employeeDepartments?: IUserDepartments[];
 }

@@ -13,7 +13,7 @@ import { Department } from './entity/department.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
 
 @UseGuards(AuthGuard)
-@Controller('department')
+@Controller('api/department')
 export class DepartmentController {
   constructor(private readonly departmentService: DepartmentService) {}
 

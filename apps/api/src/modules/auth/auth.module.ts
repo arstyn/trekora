@@ -2,11 +2,10 @@ import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UserModule } from 'src/modules/user/user.module';
-import { UserRoleModule } from '../user_role/user_role.module';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-  imports: [UserModule, UserRoleModule, JwtModule.register({})],
+  imports: [UserModule, JwtModule.register({})],
   providers: [AuthService],
   controllers: [AuthController],
 })

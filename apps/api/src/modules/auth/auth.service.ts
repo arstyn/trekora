@@ -1,15 +1,15 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UserService } from '../user/user.service';
+import { JwtService } from '@nestjs/jwt';
+import { ILoginResponse } from '@repo/api/auth/dto/auth.types';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
-import { ILoginResponse } from '@repo/api/auth/dto/auth.types';
-import { UserRoleService } from '../user_role/user_role.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
-    private readonly userRoleService: UserRoleService,
+    private readonly jwtService: JwtService,
   ) {}
 
   private generateAccessToken(userId: string, organizationId: string): string {
@@ -37,10 +37,9 @@ export class AuthService {
     refreshToken: string,
   ): Promise<{ accessToken: string }> {
     try {
-      const payload = jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET as string,
-      ) as { userId: string };
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET || 'your_refresh_token_secret',
+      }) as { userId: string };
 
       const user = await this.userService.findOne(payload.userId);
       if (!user) {
@@ -113,14 +112,11 @@ export class AuthService {
       user.organizationId,
     );
 
-    const userRoles = await this.userRoleService.getUserRoleNames(user.id);
-
     return {
       message: 'Login successful',
       userId: user.id,
       accessToken,
       refreshToken,
-      userRoles,
     };
   }
 

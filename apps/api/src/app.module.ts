@@ -8,11 +8,11 @@ import { AuthModule } from './modules/auth/auth.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { BranchModule } from './modules/branch/branch.module';
 import { SeedModule } from './seed/seed.module';
-import { UserRoleModule } from './modules/user_role/user_role.module';
 import { RoleModule } from './modules/role/role.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { DepartmentModule } from './modules/department/department.module';
 import { PackageModule } from './modules/package/package.module';
+import { UserDepartmentsModule } from './modules/user-departments/user-departments.module';
 
 @Module({
   imports: [
@@ -23,9 +23,9 @@ import { PackageModule } from './modules/package/package.module';
     BranchModule,
     SeedModule,
     RoleModule,
-    UserRoleModule,
     EmployeeModule,
     DepartmentModule,
+    UserDepartmentsModule,
     PackageModule,
   ],
   controllers: [AppController],

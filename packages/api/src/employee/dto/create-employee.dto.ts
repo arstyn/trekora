@@ -1,21 +1,22 @@
-import { IEmployeeStatus } from 'employee/employee.entity';
-
 export class IEmployeeCreateDTO {
-  userId?: string;
-  branchId?: string;
-  department?: string[];
-  //   designationId: string;
-  //   designation: Designation;
   name: string;
+  email?: string;
+  departments?: string[];
+  roleId?: string;
+  status: 'active' | 'inactive' | 'suspended' | 'terminated';
+  joinDate?: string;
+  avatar?: string;
   address?: string;
   phoneNumber?: string;
-  email?: string;
   dateOfBirth?: string;
   gender?: string;
   nationality?: string;
-  marital_status?: string;
-  joinDate?: string;
-  avatar?: string;
-  isActive?: boolean;
-  status: IEmployeeStatus;
+  maritalStatus?: string;
+  organizationId?: string;
+  emergencyContactName?: {
+    name: string;
+    phoneNumber: string;
+    relation: string;
+  }[];
+  // branchId?: string;
 }
