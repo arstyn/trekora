@@ -67,8 +67,8 @@ const data = {
   ],
   documents: [
     {
-      name: 'Data Library',
-      url: '#',
+      name: 'Leads',
+      url: '/leads',
       icon: DatabaseIcon,
     },
     {
