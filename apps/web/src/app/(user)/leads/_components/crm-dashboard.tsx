@@ -91,7 +91,7 @@ export function CrmDashboard() {
 
   return (
     <div className="h-full">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-6 py-5">
         <div className="flex flex-col space-y-6">
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
             <div className="flex flex-1 flex-col space-y-4 md:flex-row md:space-x-4 md:space-y-0">
@@ -99,6 +99,7 @@ export function CrmDashboard() {
                 onSearch={handleSearch}
                 onStatusFilter={handleStatusFilter}
                 currentStatus={statusFilter}
+                view={view}
               />
             </div>
             <div className="flex items-center space-x-2">
@@ -109,7 +110,7 @@ export function CrmDashboard() {
             </div>
           </div>
 
-          <div className="rounded-xl border shadow-sm overflow-hidden">
+          <div>
             {view === 'table' ? (
               <LeadTable
                 leads={filteredLeads}

@@ -28,8 +28,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { IRole } from '@repo/api/auth/dto/role.types';
 import { IDepartment } from '@repo/api/department/department.entity';
-import { IEmployee, IEmployeeStatus } from '@repo/api/employee/employee.entity';
+import { IEmployee } from '@repo/api/employee/employee.entity';
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -55,7 +56,6 @@ import { AddEmployeeModal } from './add-employee-modal';
 import { DeactivateDialog } from './deactivate-dialog';
 import { EditEmployeeDialog } from './edit-employee-dialog';
 import { ViewEmployeeDialog } from './view-employee-dialog';
-import { IRole } from '@repo/api/auth/dto/role.types';
 
 interface Props {
   initialEmployees: IEmployee[];
