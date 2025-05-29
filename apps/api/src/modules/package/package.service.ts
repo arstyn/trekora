@@ -8,12 +8,14 @@ import { ICreatePackageDto } from '@repo/api/package/dto/create-package.dto'
 export class PackageService {
     constructor(
         @InjectRepository(Package)
-        private packageRepo: Repository<Package>
+        private readonly packageRepo: Repository<Package>
     ) { }
-    async create(data: ICreatePackageDto): Promise<Package> {
+    // create a new package
+    async create(packageData: ICreatePackageDto) {
         try {
-            const newPackage = await this.packageRepo.create(data)
-            return await this.packageRepo.save(newPackage)
+            const newPackage =   this.packageRepo.create(packageData)
+            await this.packageRepo.save(newPackage) 
+            return newPackage
         } catch (error) {
             throw new InternalServerErrorException('Failed to create package');
         }

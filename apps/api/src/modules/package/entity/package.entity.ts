@@ -1,15 +1,8 @@
 
+import { IPackageStatus, IPackageType } from '@repo/api/package/dto/create-package.dto';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-export enum IPackageStatus{
-    ACTIVE = 'active',
-    INACTIVE = 'inactive',
-    DRAFT = 'draft'
-}
-export enum PackageType{
-    FLIGHT = 'flight',
-    TRAIN = 'train'
-}
+
 
 @Entity('package')
 export class Package {
@@ -37,9 +30,9 @@ export class Package {
 
   @Column({
     type: 'enum',
-    enum : PackageType
+    enum : IPackageType
   })
-  type: PackageType; // flight, train, vehicle
+  type: IPackageType; // flight, train, vehicle
 
   @Column('int')
   default_slot_limit: number;
