@@ -61,10 +61,18 @@ Fully customizable per company, the platform is scalable, secure, and ready for 
 
 ## Installation
 
+Download 👇
+
 Postgresql
 Link: https://www.enterprisedb.com/downloads/postgres-postgresql-downloads
 
 Version: 17.0.1
+
+# Install pnpm as Global
+
+```bash
+npm i -g pnpm
+```
 
 ```bash
 # Clone the repository
