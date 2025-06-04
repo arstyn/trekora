@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Customer, Itinerary, Group } from ".../../web/src/lib/types";
 import { generateSampleData } from "../../../api/src/seed/seeds/customer.seeds";
+import { Input } from "./ui/input";
 
 export default function CustomerManagement() {
     const [customers, setCustomers] = useState<Customer[]>([])
@@ -33,12 +34,42 @@ export default function CustomerManagement() {
     }
 
     return (
-        <div className="Main div">
-            <div className="Second main flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+        <div className="Main div y-6 ">
+            <div className="flex  flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
 
                 <div>
-                    <h1 className="Main Heading font-bold tracking-tigh">Trekora</h1>
+                    <h1 className="Main Heading  font-bold tracking-tigh">Trekora</h1>
                     <p className="Sub heading ">This is the subheading </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <div className="relative">
+                        <search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="Search"
+                            placeholder="Search customers"
+                            className="w-full pl-8 md:w-[200px] lg:w-[300px]"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <div style={{ padding: "16px" }}>
+                        <button
+                            className="btn"
+                            style={{
+                                backgroundColor: "#FFFFFFF",
+                                padding: "8px 16px",
+                                border: "none",
+                                borderRadius: "4px",
+                                cursor: "pointer"
+                            }}
+                            disabled={isAddingCustomer}
+                            onClick={() => setIsAddingCustomer(true)}
+                        >
+                            Add Customers
+                        </button>
+                    </div>
+
+
                 </div>
 
             </div>
