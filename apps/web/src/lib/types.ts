@@ -5,7 +5,7 @@ export interface Customer {
   phone: string;
   address?: string;
   notes?: string;
-  status: string;     // ← And this
+  status: string;    
 }
 
 
