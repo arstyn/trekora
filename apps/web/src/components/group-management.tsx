@@ -45,5 +45,5 @@ export default function GroupManagement({
     , onAdd, onUpdate, onDelete,
 }: GroupManagementProps) {
 
-
+const [isAddingGroup, setIsAddingGroup] = useState(false)
 }
