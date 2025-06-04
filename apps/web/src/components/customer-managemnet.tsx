@@ -1,6 +1,8 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import type { Customer, Itinerary, Group } from ".../../web/src/lib/types";
-import { generateSampleData } from ".../../api/src/seed/seeds/customer.seeds";
+import { generateSampleData } from "../../../api/src/seed/seeds/customer.seeds";
 
 export default function CustomerManagement() {
     const [customers, setCustomers] = useState<Customer[]>([])
@@ -32,7 +34,14 @@ export default function CustomerManagement() {
 
     return (
         <div className="Main div">
-            <div className="Second main "></div>
+            <div className="Second main flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+
+                <div>
+                    <h1 className="Main Heading font-bold tracking-tigh">Trekora</h1>
+                    <p className="Sub heading ">This is the subheading </p>
+                </div>
+
+            </div>
         </div>
     );
 
