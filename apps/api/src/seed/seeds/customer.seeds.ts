@@ -1,4 +1,6 @@
-import type { Customer, Itinerary, Group } from "./types"
+import type { Customer, Itinerary, Group } from ".../../../web/src/lib/types";
+
+
 
 export function generateSampleData() {
   const customers: Customer[] = [
@@ -37,7 +39,7 @@ export function generateSampleData() {
       notes: "Frequent traveler, gold member",
       status: "active",
     },
-  ]
+    ]
 
   const itineraries: Itinerary[] = [
     {

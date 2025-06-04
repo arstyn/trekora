@@ -1,23 +1,28 @@
-export interface Customer{
-    id: string,
-    name: string,
-    phone: string,
-    address?: string,
-    notes?:string,
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;      // ← Add this
+  phone: string;
+  address?: string;
+  notes?: string;
+  status: string;     // ← And this
 }
-export interface Itineray{
-    id:string,
-    customerId:string,
-    destination:string,
-    startDate:string,
-    endDate:string,
-    description?:string,
-    status:string,
-    totalCost:number
+
+
+export interface Itinerary {
+  id: string;
+  customerId: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  description?: string;
+  status: string;
+  totalCost: number;
 }
-export interface Group{
-id:string,
-name:string,
-type:string,
-memberIds:string[],
+
+export interface Group {
+  id: string;
+  name: string;
+  type: string;
+  memberIds: string[];
 }
