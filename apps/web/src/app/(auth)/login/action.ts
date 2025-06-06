@@ -23,10 +23,10 @@ export async function login(formData: LoginFormValues) {
     });
 
     cookies().set('accessToken', accessToken, { httpOnly: true });
-    cookies().set('refreshToken', refreshToken, { httpOnly: true });
+    cookies().set('x', refreshToken, { httpOnly: true });
     session = await getSession();
   } catch (error) {
-    throw Error("error as string");
+    throw Error(error as string);
   }
 
   if (session) {

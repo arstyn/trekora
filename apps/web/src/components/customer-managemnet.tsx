@@ -1,6 +1,6 @@
 "use client";
-
 import { useEffect, useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Customer, Itinerary, Group } from ".../../web/src/lib/types";
 import { generateSampleData } from "../../../api/src/seed/seeds/customer.seeds";
 import { Input } from "./ui/input";
@@ -68,9 +68,13 @@ export default function CustomerManagement() {
                             Add Customers
                         </button>
                     </div>
-
-
                 </div>
+
+
+                <Tabs defaultValue="customers" value={activeTab} onValueChange={setActiveTab}>
+                
+
+                </Tabs>
 
             </div>
         </div>
