@@ -15,7 +15,7 @@ export class Lead {
   id: string;
 
   @Column()
-  fullName: string;
+  name: string;
 
   @Column({ unique: true })
   email: string;
@@ -36,7 +36,7 @@ export class Lead {
   organization: Organization;
 
   @Column({ type: 'text', nullable: true })
-  interest: string;
+  notes: string;
 
   @Column({ default: 'new' })
   status: 'new' | 'contacted' | 'qualified' | 'lost' | 'converted';

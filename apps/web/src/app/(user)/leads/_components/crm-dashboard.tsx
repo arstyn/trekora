@@ -1,25 +1,30 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { ILead, ILeadStatus } from '@repo/api/lead/lead.entity';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { LeadTable } from './lead-table';
 import { KanbanBoard } from './kanban-board';
-import { ViewToggle } from './view-toggle';
 import { LeadFilter } from './lead-filter';
 import { LeadSheet } from './lead-sheet';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { ILead, ILeadStatus } from '@repo/api/lead/lead.entity';
-import { mockLeads } from './mock-leads';
+import { LeadTable } from './lead-table';
+import { ViewToggle } from './view-toggle';
+import { createLead } from '../action';
 
-export function CrmDashboard() {
+interface Props {
+  leadsData: ILead[];
+}
+
+export function CrmDashboard({ leadsData }: Props) {
   const [view, setView] = useState<'table' | 'kanban'>('table');
-  const [leads, setLeads] = useState<ILead[]>(mockLeads);
-  const [filteredLeads, setFilteredLeads] = useState<ILead[]>(mockLeads);
+  const [leads, setLeads] = useState<ILead[]>(leadsData);
+  const [filteredLeads, setFilteredLeads] = useState<ILead[]>(leadsData);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ILeadStatus | 'all'>('all');
   const [selectedLead, setSelectedLead] = useState<ILead | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isCreatingLead, setIsCreatingLead] = useState(false);
+  const [error, setError] = useState<string>();
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -70,15 +75,16 @@ export function CrmDashboard() {
     setIsSheetOpen(true);
   };
 
-  const handleSaveLead = (lead: ILead) => {
+  const handleSaveLead = async (lead: ILead) => {
+    console.log('🚀 ~ crm-dashboard.tsx:79 ~ handleSaveLead ~ lead:', lead);
     if (isCreatingLead) {
-      // Generate a new ID for the lead
-      const newLead = {
-        ...lead,
-        id: (leads.length + 1).toString(),
-        createdAt: new Date().toISOString(),
-      };
-      setLeads([...leads, newLead]);
+      const { lead: newLead, error } = await createLead(lead);
+
+      if (newLead) {
+        setLeads([...leads, newLead]);
+      } else {
+        setError(error);
+      }
     } else {
       // Update existing lead
       const updatedLeads = leads.map((l) => (l.id === lead.id ? lead : l));

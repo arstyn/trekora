@@ -1,16 +1,18 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
-  Put,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Request,
   UseGuards,
 } from '@nestjs/common';
-import { LeadService } from './lead.service';
-import { Lead } from './entity/lead.entity';
+import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { Lead } from './entity/lead.entity';
+import { LeadService } from './lead.service';
 
 @UseGuards(AuthGuard)
 @Controller('api/lead')
@@ -18,8 +20,11 @@ export class LeadController {
   constructor(private readonly leadService: LeadService) {}
 
   @Post()
-  async create(@Body() leadData: Partial<Lead>): Promise<Lead> {
-    return this.leadService.create(leadData);
+  async create(
+    @Request() req: ApiRequestJWT,
+    @Body() leadData: Partial<Lead>,
+  ): Promise<Lead> {
+    return this.leadService.create(req.user, leadData);
   }
 
   @Get()
