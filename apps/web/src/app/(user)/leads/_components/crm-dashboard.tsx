@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { ILead, ILeadStatus } from '@repo/api/lead/lead.entity';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { KanbanBoard } from './kanban-board';
-import { LeadFilter } from './lead-filter';
-import { LeadSheet } from './lead-sheet';
-import { LeadTable } from './lead-table';
-import { ViewToggle } from './view-toggle';
 import { createLead } from '../action';
+import { KanbanBoard } from './kanban-board';
+import { CreateLeadModal } from './lead-create-modal';
+import { LeadFilter } from './lead-filter';
+import { LeadTable } from './lead-table';
+import { ViewLeadDialog } from './lead-view-modal';
+import { ViewToggle } from './view-toggle';
 
 interface Props {
   leadsData: ILead[];
@@ -22,7 +23,7 @@ export function CrmDashboard({ leadsData }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ILeadStatus | 'all'>('all');
   const [selectedLead, setSelectedLead] = useState<ILead | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isCreatingLead, setIsCreatingLead] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -66,17 +67,16 @@ export function CrmDashboard({ leadsData }: Props) {
   const handleLeadClick = (lead: ILead) => {
     setSelectedLead(lead);
     setIsCreatingLead(false);
-    setIsSheetOpen(true);
+    setIsViewModalOpen(true);
   };
 
   const handleCreateLead = () => {
     setSelectedLead(null);
     setIsCreatingLead(true);
-    setIsSheetOpen(true);
+    setIsViewModalOpen(true);
   };
 
   const handleSaveLead = async (lead: ILead) => {
-    console.log('🚀 ~ crm-dashboard.tsx:79 ~ handleSaveLead ~ lead:', lead);
     if (isCreatingLead) {
       const { lead: newLead, error } = await createLead(lead);
 
@@ -92,7 +92,7 @@ export function CrmDashboard({ leadsData }: Props) {
     }
 
     filterLeads(searchQuery, statusFilter);
-    setIsSheetOpen(false);
+    setIsViewModalOpen(false);
   };
 
   return (
@@ -134,11 +134,18 @@ export function CrmDashboard({ leadsData }: Props) {
         </div>
       </div>
 
-      <LeadSheet
-        isOpen={isSheetOpen}
-        onClose={() => setIsSheetOpen(false)}
+      <ViewLeadDialog
+        open={isViewModalOpen}
+        onOpenChange={(open) => {
+          setIsViewModalOpen(open);
+        }}
         lead={selectedLead}
-        isCreating={isCreatingLead}
+        // onEdit={(employee) => handleSaveLead(employee)}
+      />
+
+      <CreateLeadModal
+        open={isCreatingLead}
+        onOpenChange={setIsCreatingLead}
         onSave={handleSaveLead}
       />
     </div>
