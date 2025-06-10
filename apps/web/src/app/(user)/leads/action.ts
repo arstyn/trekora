@@ -23,3 +23,17 @@ export async function createLead(newLead: LeadFormData) {
     return { error: errorMessage };
   }
 }
+
+export async function updateLead(id: string, updateLead: LeadFormData) {
+  try {
+    const lead = await AxiosRequest.put<LeadFormData, ILead>(
+      `/lead/${id}`,
+      updateLead,
+    );
+    return { lead };
+  } catch (error: any) {
+    const errorMessage =
+      error.message ?? 'An error occurred while updating lead.';
+    return { error: errorMessage };
+  }
+}

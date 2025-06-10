@@ -16,12 +16,14 @@ type ViewLeadDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lead: ILead | null;
+  onEdit: (isCreating: boolean, leadData: ILead) => void;
 };
 
 export function ViewLeadDialog({
   open,
   onOpenChange,
   lead,
+  onEdit,
 }: ViewLeadDialogProps) {
   if (!lead) return null;
   const [showEditForm, setShowEditForm] = useState(false);
@@ -87,7 +89,7 @@ export function ViewLeadDialog({
           <LeadForm
             lead={lead}
             isCreating={false}
-            onSave={() => {}}
+            onSave={onEdit}
             onClose={() => setShowEditForm(false)}
           />
         )}

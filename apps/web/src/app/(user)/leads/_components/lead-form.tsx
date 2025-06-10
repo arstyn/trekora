@@ -16,7 +16,7 @@ import { ILead } from '@repo/api/lead/lead.entity';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { createLead } from '../action';
+import { createLead, updateLead } from '../action';
 
 // Define Zod schema for validation
 const leadSchema = z.object({
@@ -86,7 +86,16 @@ export function LeadForm({ lead, isCreating, onSave, onClose }: LeadFormProps) {
       }
       setError(error);
     } else if (lead) {
-      onSave(isCreating, { ...lead, ...data });
+      const { lead: updatedLead, error } = await updateLead(lead.id, data);
+
+      if (updatedLead) {
+        onSave(isCreating, { ...lead, ...updatedLead });
+        if (onClose) {
+          onClose(false);
+        }
+      } else {
+        setError(error);
+      }
     }
     setLoading(false);
   };

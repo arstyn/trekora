@@ -141,7 +141,7 @@ export function CrmDashboard({ leadsData }: Props) {
           setIsViewModalOpen(open);
         }}
         lead={selectedLead}
-        // onEdit={(employee) => handleSaveLead(employee)}
+        onEdit={handleSaveLead}
       />
 
       <CreateLeadModal
