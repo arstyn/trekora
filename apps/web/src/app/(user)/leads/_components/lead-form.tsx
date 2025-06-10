@@ -13,9 +13,10 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ILead } from '@repo/api/lead/lead.entity';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { createLead } from '../action';
 
 // Define Zod schema for validation
 const leadSchema = z.object({
@@ -27,16 +28,19 @@ const leadSchema = z.object({
   notes: z.string().optional(),
 });
 
-type LeadFormData = z.infer<typeof leadSchema>;
+export type LeadFormData = z.infer<typeof leadSchema>;
 
 interface LeadFormProps {
   lead?: ILead;
   isCreating: boolean;
-  onSave: (lead: ILead) => void;
+  onSave: (isCreating: boolean, lead: ILead) => void;
   onClose?: (open: boolean) => void;
 }
 
 export function LeadForm({ lead, isCreating, onSave, onClose }: LeadFormProps) {
+  const [error, setError] = useState<string>();
+  const [loading, setLoading] = useState(false);
+
   const {
     control,
     handleSubmit,
@@ -69,12 +73,22 @@ export function LeadForm({ lead, isCreating, onSave, onClose }: LeadFormProps) {
     }
   }, [lead, isCreating, reset]);
 
-  const onSubmit = (data: LeadFormData) => {
+  const onSubmit = async (data: LeadFormData) => {
+    setLoading(true);
     if (isCreating) {
-      onSave(data as ILead);
+      const { lead: newLead, error } = await createLead(data);
+
+      if (newLead) {
+        onSave(isCreating, newLead);
+        if (onClose) {
+          onClose(false);
+        }
+      }
+      setError(error);
     } else if (lead) {
-      onSave({ ...lead, ...data });
+      onSave(isCreating, { ...lead, ...data });
     }
+    setLoading(false);
   };
 
   return (
@@ -170,8 +184,8 @@ export function LeadForm({ lead, isCreating, onSave, onClose }: LeadFormProps) {
         >
           Cancel
         </Button>
-        <Button type="submit">
-          {isCreating ? 'Create Lead' : 'Save Changes'}
+        <Button type="submit" disabled={loading}>
+          {loading ? 'Loading...' : isCreating ? 'Create Lead' : 'Save Changes'}
         </Button>
       </div>
     </form>

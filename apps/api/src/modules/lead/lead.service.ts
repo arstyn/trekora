@@ -23,7 +23,9 @@ export class LeadService {
   }
 
   async findAll(): Promise<Lead[]> {
-    return this.leadRepository.find();
+    return this.leadRepository.find({
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<Lead | null> {

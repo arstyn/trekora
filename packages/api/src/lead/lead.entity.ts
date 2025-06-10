@@ -13,5 +13,6 @@ export class ILead {
   phone: string;
   status: ILeadStatus;
   createdAt: string;
+  updatedAt: string;
   notes?: string;
 }

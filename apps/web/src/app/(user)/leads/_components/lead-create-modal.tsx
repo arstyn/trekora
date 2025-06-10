@@ -12,7 +12,7 @@ import { ILead } from '@repo/api/lead/lead.entity';
 type CreateLeadModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (lead: ILead) => Promise<void>;
+  onSave: (handleSaveLead: boolean, lead: ILead) => void;
 };
 
 export function CreateLeadModal({

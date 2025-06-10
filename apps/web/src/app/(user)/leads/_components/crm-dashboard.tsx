@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { ILead, ILeadStatus } from '@repo/api/lead/lead.entity';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { createLead } from '../action';
 import { KanbanBoard } from './kanban-board';
 import { CreateLeadModal } from './lead-create-modal';
 import { LeadFilter } from './lead-filter';
@@ -25,7 +24,6 @@ export function CrmDashboard({ leadsData }: Props) {
   const [selectedLead, setSelectedLead] = useState<ILead | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isCreatingLead, setIsCreatingLead] = useState(false);
-  const [error, setError] = useState<string>();
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -37,8 +35,12 @@ export function CrmDashboard({ leadsData }: Props) {
     filterLeads(searchQuery, status);
   };
 
-  const filterLeads = (query: string, status: ILeadStatus | 'all') => {
-    let filtered = leads;
+  const filterLeads = (
+    query: string,
+    status: ILeadStatus | 'all',
+    leadsToFilter: ILead[] = leads,
+  ) => {
+    let filtered = leadsToFilter; // Use the passed leads instead of state
 
     if (query) {
       filtered = filtered.filter(
@@ -76,22 +78,21 @@ export function CrmDashboard({ leadsData }: Props) {
     setIsViewModalOpen(true);
   };
 
-  const handleSaveLead = async (lead: ILead) => {
-    if (isCreatingLead) {
-      const { lead: newLead, error } = await createLead(lead);
-
-      if (newLead) {
-        setLeads([...leads, newLead]);
-      } else {
-        setError(error);
-      }
+  const handleSaveLead = (isCreating: boolean, leadData: ILead) => {
+    let updatedLeads;
+    if (isCreating) {
+      updatedLeads = [leadData, ...leads];
     } else {
       // Update existing lead
-      const updatedLeads = leads.map((l) => (l.id === lead.id ? lead : l));
-      setLeads(updatedLeads);
+      updatedLeads = leads.map((l) => (l.id === leadData.id ? leadData : l));
     }
 
-    filterLeads(searchQuery, statusFilter);
+    // Update leads state
+    setLeads(updatedLeads);
+
+    // Pass updated leads directly to filterLeads
+    filterLeads(searchQuery, statusFilter, updatedLeads);
+
     setIsViewModalOpen(false);
   };
 

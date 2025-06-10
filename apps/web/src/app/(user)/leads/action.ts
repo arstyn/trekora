@@ -1,5 +1,6 @@
 import { AxiosRequest } from '@/lib/axios';
 import { ILead } from '@repo/api/lead/lead.entity';
+import { LeadFormData } from './_components/lead-form';
 
 export async function getLeads() {
   try {
@@ -12,10 +13,9 @@ export async function getLeads() {
   }
 }
 
-export async function createLead(newLead: ILead) {
-  console.log('🚀 ~ action.ts:16 ~ createLead ~ newLead:', newLead);
+export async function createLead(newLead: LeadFormData) {
   try {
-    const lead = await AxiosRequest.post<ILead, ILead>('/lead', newLead);
+    const lead = await AxiosRequest.post<LeadFormData, ILead>('/lead', newLead);
     return { lead };
   } catch (error: any) {
     const errorMessage =
