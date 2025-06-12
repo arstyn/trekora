@@ -17,7 +17,7 @@ export class Lead {
   @Column()
   name: string;
 
-  @Column({ unique: true })
+  @Column({ nullable: true })
   email: string;
 
   @Column({ nullable: true })

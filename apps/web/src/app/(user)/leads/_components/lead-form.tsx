@@ -22,7 +22,7 @@ import { createLead, updateLead } from '../action';
 const leadSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   company: z.string().optional(),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').optional(),
   phone: z.string().optional(),
   status: z.enum(['new', 'contacted', 'qualified', 'lost', 'converted']),
   notes: z.string().optional(),
@@ -51,7 +51,7 @@ export function LeadForm({ lead, isCreating, onSave, onClose }: LeadFormProps) {
     defaultValues: {
       name: '',
       company: '',
-      email: '',
+      email: undefined,
       phone: '',
       status: 'new',
       notes: '',
