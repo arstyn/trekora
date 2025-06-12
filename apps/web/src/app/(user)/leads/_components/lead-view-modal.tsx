@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Assuming Tabs component exists
 import { ILead } from '@repo/api/lead/lead.entity';
 import { format } from 'date-fns';
 import { useState } from 'react';
@@ -45,6 +46,24 @@ export function ViewLeadDialog({
       }}
     >
       <DialogContent className="sm:max-w-[600px]">
+        {/* Top strip for lead stages */}
+        <div className="bg-gray-100 p-4 rounded-t-md flex justify-between items-center">
+          {['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed'].map(
+            (status, index) => (
+              <div
+                key={index}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  lead.status === status
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-300'
+                }`}
+              >
+                {status}
+              </div>
+            ),
+          )}
+        </div>
+
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Lead Details
@@ -74,6 +93,30 @@ export function ViewLeadDialog({
                 </div>
               </div>
             </div>
+
+            {/* Tabs for Chat and Updates */}
+            <Tabs defaultValue="chat">
+              <TabsList className="flex justify-center">
+                <TabsTrigger value="chat">Chat</TabsTrigger>
+                <TabsTrigger value="updates">Updates</TabsTrigger>
+              </TabsList>
+              <TabsContent value="chat">
+                <div className="p-4 border rounded-md">
+                  <p className="text-sm text-muted-foreground">
+                    Chat messages go here...
+                  </p>
+                  <p className="text-sm italic">[Dummy data]</p>
+                </div>
+              </TabsContent>
+              <TabsContent value="updates">
+                <div className="p-4 border rounded-md">
+                  <p className="text-sm text-muted-foreground">
+                    Updates go here...
+                  </p>
+                  <p className="text-sm italic">[Dummy data]</p>
+                </div>
+              </TabsContent>
+            </Tabs>
 
             <div className="pt-4 pr-4 flex justify-end gap-2 border-t">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
