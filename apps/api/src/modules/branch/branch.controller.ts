@@ -6,47 +6,47 @@ import {
   Param,
   Post,
   Put,
+  Request,
   UseGuards,
 } from '@nestjs/common';
-import { BranchService } from './branch.service';
 import { Branch } from './entity/branch.entity';
+import { IBranchCreateDTO } from '@repo/api/branch/dto/create-branch.dto';
+import { IBranchUpdateDTO } from '@repo/api/branch/dto/update-branch.dto';
+import { BranchService } from './branch.service';
+import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 import { AuthGuard } from '../auth/guard/auth.guard';
 
 @UseGuards(AuthGuard)
-@Controller('branch')
+@Controller('api/branches')
 export class BranchController {
   constructor(private readonly branchService: BranchService) {}
 
-  // Create a new branch
   @Post()
-  async create(@Body() branchData: Partial<Branch>): Promise<Branch> {
-    return await this.branchService.create(branchData);
+  async create(
+    @Request() req: ApiRequestJWT,
+    @Body() branchData: IBranchCreateDTO,
+  ): Promise<Branch> {
+    return this.branchService.create({
+      ...branchData,
+      organizationId: req.user.organizationId,
+    });
   }
 
-  // Get all branches
   @Get()
-  async findAll(): Promise<Branch[]> {
-    return await this.branchService.findAll();
+  async get(@Request() req: ApiRequestJWT): Promise<Branch[]> {
+    return this.branchService.findAll();
   }
 
-  // Get a branch by ID
-  @Get(':id')
-  async findOne(@Param('id') id: string): Promise<Branch | null> {
-    return await this.branchService.findOne(id);
-  }
-
-  // Update a branch by ID
   @Put(':id')
   async update(
     @Param('id') id: string,
-    @Body() updateData: Partial<Branch>,
+    @Body() updateData: IBranchUpdateDTO,
   ): Promise<Branch | null> {
-    return await this.branchService.update(id, updateData);
+    return this.branchService.update(id, updateData);
   }
 
-  // Delete a branch by ID
   @Delete(':id')
-  async remove(@Param('id') id: string): Promise<void> {
-    return await this.branchService.remove(id);
+  async remove(@Param('id') id: string): Promise<Branch> {
+    return this.branchService.remove(id);
   }
 }

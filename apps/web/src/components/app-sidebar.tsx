@@ -12,6 +12,7 @@ import {
   ListIcon,
   SearchIcon,
   SettingsIcon,
+  Split,
   UsersIcon,
 } from 'lucide-react';
 import * as React from 'react';
@@ -42,6 +43,11 @@ const data = {
       title: 'Dashboard',
       url: '#',
       icon: LayoutDashboardIcon,
+    },
+    {
+      title: 'Branches',
+      url: '/branches',
+      icon: Split,
     },
     {
       title: 'Packages',

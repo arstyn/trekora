@@ -1,11 +1,13 @@
 import { Organization } from 'src/modules/organization/entity/organization.entity';
+import { Employee } from 'src/modules/employee/entity/employee.entity';
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Entity,
   ManyToOne,
-  JoinColumn,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('branch')
@@ -13,24 +15,30 @@ export class Branch {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid', name: 'organization_id' })
+  @Column({ type: 'uuid' })
   organizationId: string;
 
   @ManyToOne(() => Organization, (organization) => organization.id, {
-    onDelete: 'CASCADE',
+    eager: false,
+    nullable: false,
   })
-  @JoinColumn({ name: 'organization_id' })
   organization: Organization;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'varchar' })
   name: string;
 
-  @Column({ type: 'text', nullable: true })
-  location?: string;
+  @Column({ type: 'varchar' })
+  location: string;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
-  @Column({ type: 'boolean', default: true, name: 'is_active' })
+  @UpdateDateColumn({ type: 'timestamp' })
+  updatedAt: Date;
+
+  @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @OneToMany(() => Employee, (employee) => employee.branch)
+  employees: Employee[];
 }

@@ -213,7 +213,7 @@ export class EmployeeService {
       await this.userDepartmentsService.removeByEmployeeId(
         id,
         queryRunner.manager,
-      );
+      ); 
 
       const terminatedEmployee = await queryRunner.manager.findOne(Employee, {
         where: { id },

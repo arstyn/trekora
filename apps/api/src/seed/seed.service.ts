@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OrganizationService } from 'src/modules/organization/organization.service';
 import { organizations } from './seeds/organization.seed';
-import { branches } from './seeds/branch.seed';
-import { BranchService } from 'src/modules/branch/branch.service';
+// import { branches } from './seeds/branch.seed';
+// import { BranchService } from 'src/modules/branch/branch.service';
 import { UserService } from 'src/modules/user/user.service';
 import { users } from './seeds/user.seed';
 import * as bcrypt from 'bcrypt';
@@ -19,7 +19,7 @@ export class SeedService {
   constructor(
     private connection: Connection,
     private readonly organizationService: OrganizationService,
-    private readonly branchService: BranchService,
+    // private readonly branchService: BranchService,
     private readonly userService: UserService,
     private readonly roleService: RoleService,
     private readonly departmentService: DepartmentService,
@@ -32,7 +32,7 @@ export class SeedService {
     this.logger.log('Seeding started...');
     await this.seedRoles();
     await this.seedOrganizations();
-    await this.seedBranches();
+    // await this.seedBranches();
     await this.seedUsers();
     await this.seedDepartments();
     this.logger.log('Seeding completed');
@@ -66,25 +66,25 @@ export class SeedService {
     this.logger.log('Seeded organizations');
   }
 
-  async seedBranches() {
-    for (const branch of branches) {
-      const { organization, ...branchDetails } = branch;
-      const organizationData =
-        await this.organizationService.findOneByName(organization);
+  // async seedBranches() {
+  //   for (const branch of branches) {
+  //     const { organization, ...branchDetails } = branch;
+  //     const organizationData =
+  //       await this.organizationService.findOneByName(organization);
 
-      if (!organizationData) {
-        this.logger.error(`Organization ${organization} not found`);
-        continue;
-      }
+  //     if (!organizationData) {
+  //       this.logger.error(`Organization ${organization} not found`);
+  //       continue;
+  //     }
 
-      await this.branchService.create({
-        ...branchDetails,
-        organizationId: organizationData.id,
-      });
-    }
+  //     await this.branchService.create({
+  //       ...branchDetails,
+  //       organizationId: organizationData.id,
+  //     });
+  //   }
 
-    this.logger.log('Seeded branches');
-  }
+  //   this.logger.log('Seeded branches');
+  // }
 
   async seedUsers() {
     for (const user of users) {
@@ -96,11 +96,11 @@ export class SeedService {
         this.logger.error(`Organization ${organization} not found`);
         continue;
       }
-      const branchData = await this.branchService.findOneByName(branch);
-      if (!branchData) {
-        this.logger.error(`Branch ${branch} not found`);
-        continue;
-      }
+      // const branchData = await this.branchService.findOneByName(branch);
+      // if (!branchData) {
+      //   this.logger.error(`Branch ${branch} not found`);
+      //   continue;
+      // }
 
       user.password = await bcrypt.hash(user.password, 10);
 
@@ -112,7 +112,7 @@ export class SeedService {
 
       await this.userService.create({
         ...userDetails,
-        branchId: branchData.id,
+        // branchId: branchData.id,
         organizationId: organizationData.id,
         roleId: role.id,
         password: user.password,

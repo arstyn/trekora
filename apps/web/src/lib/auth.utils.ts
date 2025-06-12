@@ -41,6 +41,7 @@ export const getSession = async () => {
 
 export const getAccessToken = async () => {
   const token = cookies().get('accessToken')?.value;
+  console.log("🚀 ~ getAccessToken ~ token:", token)
   if (!token) {
     return null;
   }
