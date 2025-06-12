@@ -1,3 +1,4 @@
+
 import { Branch } from 'src/modules/branch/entity/branch.entity';
 import { Organization } from 'src/modules/organization/entity/organization.entity';
 import { Role } from 'src/modules/role/entity/role.entity';
@@ -16,15 +17,15 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('uuid', { nullable: true, name: 'branchId' })
-  branchId?: string;
+  // @Column('uuid', { nullable: true, name: 'branchId' })
+  // branchId?: string;
 
   @Column('uuid', { nullable: true, name: 'organizationId' })
   organizationId?: string;
 
-  @ManyToOne(() => Branch, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'branchId' })
-  branch?: Branch;
+  // @ManyToOne(() => Branch, { nullable: true, onDelete: 'SET NULL' })
+  // @JoinColumn({ name: 'branchId' })
+  // branch?: Branch;
 
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'organizationId' })
