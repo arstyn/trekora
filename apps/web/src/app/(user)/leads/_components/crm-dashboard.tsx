@@ -1,24 +1,28 @@
 'use client';
 
-import { useState } from 'react';
-import { LeadTable } from './lead-table';
-import { KanbanBoard } from './kanban-board';
-import { ViewToggle } from './view-toggle';
-import { LeadFilter } from './lead-filter';
-import { LeadSheet } from './lead-sheet';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 import { ILead, ILeadStatus } from '@repo/api/lead/lead.entity';
-import { mockLeads } from './mock-leads';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
+import { KanbanBoard } from './kanban-board';
+import { CreateLeadModal } from './lead-create-modal';
+import { LeadFilter } from './lead-filter';
+import { LeadTable } from './lead-table';
+import { ViewLeadDialog } from './lead-view-modal';
+import { ViewToggle } from './view-toggle';
 
-export function CrmDashboard() {
+interface Props {
+  leadsData: ILead[];
+}
+
+export function CrmDashboard({ leadsData }: Props) {
   const [view, setView] = useState<'table' | 'kanban'>('table');
-  const [leads, setLeads] = useState<ILead[]>(mockLeads);
-  const [filteredLeads, setFilteredLeads] = useState<ILead[]>(mockLeads);
+  const [leads, setLeads] = useState<ILead[]>(leadsData);
+  const [filteredLeads, setFilteredLeads] = useState<ILead[]>(leadsData);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ILeadStatus | 'all'>('all');
   const [selectedLead, setSelectedLead] = useState<ILead | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isCreatingLead, setIsCreatingLead] = useState(false);
 
   const handleSearch = (query: string) => {
@@ -31,8 +35,12 @@ export function CrmDashboard() {
     filterLeads(searchQuery, status);
   };
 
-  const filterLeads = (query: string, status: ILeadStatus | 'all') => {
-    let filtered = leads;
+  const filterLeads = (
+    query: string,
+    status: ILeadStatus | 'all',
+    leadsToFilter: ILead[] = leads,
+  ) => {
+    let filtered = leadsToFilter; // Use the passed leads instead of state
 
     if (query) {
       filtered = filtered.filter(
@@ -61,32 +69,31 @@ export function CrmDashboard() {
   const handleLeadClick = (lead: ILead) => {
     setSelectedLead(lead);
     setIsCreatingLead(false);
-    setIsSheetOpen(true);
+    setIsViewModalOpen(true);
   };
 
   const handleCreateLead = () => {
     setSelectedLead(null);
     setIsCreatingLead(true);
-    setIsSheetOpen(true);
+    setIsViewModalOpen(true);
   };
 
-  const handleSaveLead = (lead: ILead) => {
-    if (isCreatingLead) {
-      // Generate a new ID for the lead
-      const newLead = {
-        ...lead,
-        id: (leads.length + 1).toString(),
-        createdAt: new Date().toISOString(),
-      };
-      setLeads([...leads, newLead]);
+  const handleSaveLead = (isCreating: boolean, leadData: ILead) => {
+    let updatedLeads;
+    if (isCreating) {
+      updatedLeads = [leadData, ...leads];
     } else {
       // Update existing lead
-      const updatedLeads = leads.map((l) => (l.id === lead.id ? lead : l));
-      setLeads(updatedLeads);
+      updatedLeads = leads.map((l) => (l.id === leadData.id ? leadData : l));
     }
 
-    filterLeads(searchQuery, statusFilter);
-    setIsSheetOpen(false);
+    // Update leads state
+    setLeads(updatedLeads);
+
+    // Pass updated leads directly to filterLeads
+    filterLeads(searchQuery, statusFilter, updatedLeads);
+
+    setIsViewModalOpen(false);
   };
 
   return (
@@ -128,11 +135,18 @@ export function CrmDashboard() {
         </div>
       </div>
 
-      <LeadSheet
-        isOpen={isSheetOpen}
-        onClose={() => setIsSheetOpen(false)}
+      <ViewLeadDialog
+        open={isViewModalOpen}
+        onOpenChange={(open) => {
+          setIsViewModalOpen(open);
+        }}
         lead={selectedLead}
-        isCreating={isCreatingLead}
+        onEdit={handleSaveLead}
+      />
+
+      <CreateLeadModal
+        open={isCreatingLead}
+        onOpenChange={setIsCreatingLead}
         onSave={handleSaveLead}
       />
     </div>
