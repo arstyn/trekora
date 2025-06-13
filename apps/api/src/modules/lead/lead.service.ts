@@ -16,6 +16,7 @@ export class LeadService {
   ): Promise<Lead> {
     const lead = this.leadRepository.create({
       ...leadData,
+      createdById: user.userId,
       organizationId: user.organizationId,
     });
     return this.leadRepository.save(lead);

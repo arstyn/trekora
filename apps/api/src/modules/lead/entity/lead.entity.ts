@@ -1,4 +1,5 @@
 import { Organization } from 'src/modules/organization/entity/organization.entity';
+import { User } from 'src/modules/user/entity/user.entity';
 import {
   Entity,
   Column,
@@ -25,6 +26,15 @@ export class Lead {
 
   @Column({ nullable: true })
   company: string;
+
+  @Column({ type: 'uuid', name: 'created_by_id', nullable: true })
+  createdById: string;
+
+  @ManyToOne(() => User, (createdBy) => createdBy.id, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'created_by' })
+  createdBy: User;
 
   @Column({ type: 'uuid', name: 'organization_id' })
   organizationId: string;
