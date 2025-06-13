@@ -12,6 +12,7 @@ import {
   ListIcon,
   SearchIcon,
   SettingsIcon,
+  Split,
   UsersIcon,
 } from 'lucide-react';
 import * as React from 'react';
@@ -40,8 +41,13 @@ const data = {
   navMain: [
     {
       title: 'Dashboard',
-      url: '#',
+      url: '/dashboard',
       icon: LayoutDashboardIcon,
+    },
+    {
+      title: 'Branches',
+      url: '/branches',
+      icon: Split,
     },
     {
       title: 'Packages',
@@ -67,8 +73,8 @@ const data = {
   ],
   documents: [
     {
-      name: 'Data Library',
-      url: '#',
+      name: 'Leads',
+      url: '/leads',
       icon: DatabaseIcon,
     },
     {

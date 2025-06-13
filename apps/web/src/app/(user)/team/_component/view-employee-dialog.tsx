@@ -1,8 +1,7 @@
 'use client';
 
-import { format } from 'date-fns';
+import StatusBadge from '@/components/status-badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { IEmployee } from '@repo/api/employee/employee.entity';
+import { format } from 'date-fns';
 
 type ViewEmployeeDialogProps = {
   open: boolean;
@@ -32,25 +32,31 @@ export function ViewEmployeeDialog({
     ? format(new Date(employee.joinDate), 'PPP')
     : '';
 
-  // Status badge styles
-  //   const statusStyles = {
-  //     active: 'bg-green-100 text-green-800 hover:bg-green-100',
-  //     'on leave': 'bg-amber-100 text-amber-800 hover:bg-amber-100',
-  //     terminated: 'bg-red-100 text-red-800 hover:bg-red-100',
-  //   };
+  // Format date of birth
+  const formattedDOB = employee.dateOfBirth
+    ? format(new Date(employee.dateOfBirth), 'PPP')
+    : '';
+
+  // Helper for empty fields
+  const display = (value?: string | number | boolean | null) =>
+    value !== undefined && value !== null && value !== '' ? (
+      value
+    ) : (
+      <span className="text-muted-foreground italic">N/A</span>
+    );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Employee Details
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Employee header with avatar */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center border-b pb-4">
             <Avatar className="h-16 w-16">
               <AvatarImage
                 src={employee.avatar || '/placeholder.svg'}
@@ -60,57 +66,87 @@ export function ViewEmployeeDialog({
                 {employee.name.charAt(0)}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <h3 className="text-xl font-semibold">{employee.name}</h3>
-              <p className="text-sm text-muted-foreground">{employee.email}</p>
+            <div className="flex items-center justify-between w-full px-4">
+              <div>
+                <h3 className="text-xl font-semibold">{employee.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {employee.email}
+                </p>
+              </div>
+              <StatusBadge status={employee.status} />
             </div>
           </div>
 
           {/* Employee details */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
-                Employee ID
-              </p>
-              <p>{employee.id}</p>
+          <div className="max-h-[50vh] overflow-auto space-y-5">
+            <div className="grid grid-cols-2 gap-6 ">
+              {/* Left column */}
+              <div className="space-y-3">
+                <Detail label="Employee ID" value={employee.id} />
+                <Detail label="Branch" value={display(employee.branch?.name)} />
+                <Detail label="Role" value={display(employee.role?.name)} />
+                <Detail
+                  label="Organization"
+                  value={display(employee.organization?.name)}
+                />
+                <Detail label="Email" value={display(employee.email)} />
+                <Detail label="Phone" value={display(employee.phoneNumber)} />
+                <Detail
+                  label="Marital Status"
+                  value={display(employee.maritalStatus)}
+                />
+                <Detail label="Address" value={display(employee.address)} />
+              </div>
+              {/* Right column */}
+              <div className="space-y-3">
+                <Detail label="Date of Birth" value={display(formattedDOB)} />
+                <Detail label="Gender" value={display(employee.gender)} />
+                <Detail
+                  label="Nationality"
+                  value={display(employee.nationality)}
+                />
+
+                <Detail label="Join Date" value={display(formattedDate)} />
+                <Detail
+                  label="Employment Duration"
+                  value={
+                    employee.joinDate && calculateDuration(employee.joinDate)
+                  }
+                />
+                <Detail
+                  label="Created At"
+                  value={format(new Date(employee.createdAt), 'PPP')}
+                />
+                <Detail
+                  label="Updated At"
+                  value={format(new Date(employee.updatedAt), 'PPP')}
+                />
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Status
+                  </p>
+                  <StatusBadge status={employee.status} />
+                </div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
-                Status
-              </p>
-              <Badge
-                // className={statusStyles[employee.status]}
-                variant="outline"
-              >
-                {employee.status.charAt(0).toUpperCase() +
-                  employee.status.slice(1)}
-              </Badge>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
-                Department
-              </p>
-              <p>{employee.department}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Role</p>
-              <p>{employee.role.name}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
-                Join Date
-              </p>
-              <p>{formattedDate}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
-                Employment Duration
-              </p>
-              <p>{employee.joinDate && calculateDuration(employee.joinDate)}</p>
-            </div>
+
+            {/* Departments (if any) */}
+            {employee.employeeDepartments &&
+              employee.employeeDepartments.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    Departments
+                  </p>
+                  <ul className="list-disc list-inside text-sm">
+                    {employee.employeeDepartments.map((dep, idx) => (
+                      <li key={idx}>{dep.department.name || 'N/A'}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
           </div>
 
-          <div className="pt-4 flex justify-end gap-2">
+          <div className="pt-4 pr-4 flex justify-end gap-2 border-t">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
@@ -131,17 +167,31 @@ export function ViewEmployeeDialog({
   );
 }
 
+// Helper component for details
+function Detail({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="text-sm">{value}</p>
+    </div>
+  );
+}
+
 // Helper function to calculate employment duration
 function calculateDuration(joinDate: Date): string {
   const start = new Date(joinDate);
   const now = new Date();
 
-  const yearDiff = now.getFullYear() - start.getFullYear();
-  const monthDiff = now.getMonth() - start.getMonth();
+  let years = now.getFullYear() - start.getFullYear();
+  let months = now.getMonth() - start.getMonth();
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
 
-  if (yearDiff > 0) {
-    return `${yearDiff} ${yearDiff === 1 ? 'year' : 'years'}, ${monthDiff < 0 ? 12 + monthDiff : monthDiff} ${Math.abs(monthDiff) === 1 ? 'month' : 'months'}`;
+  if (years > 0) {
+    return `${years} ${years === 1 ? 'year' : 'years'}, ${months} ${months === 1 ? 'month' : 'months'}`;
   } else {
-    return `${monthDiff} ${monthDiff === 1 ? 'month' : 'months'}`;
+    return `${months} ${months === 1 ? 'month' : 'months'}`;
   }
 }

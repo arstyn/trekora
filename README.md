@@ -61,10 +61,16 @@ Fully customizable per company, the platform is scalable, secure, and ready for 
 
 ## Installation
 
-Postgresql
+Download 👇
+
+Postgresql | Version: 17
 Link: https://www.enterprisedb.com/downloads/postgres-postgresql-downloads
 
-Version: 17.0.1
+# Install pnpm as Global
+
+```bash
+npm i -g pnpm
+```
 
 ```bash
 # Clone the repository
@@ -79,9 +85,15 @@ npm install
 
 ## Environment Variables
 
+Copy the .env.public from both backend and frontend.
+If any changes required in .env update it.
+
 ---
 
-## Scripts
+## Scripts to run the application
+
+No need for multiple terminals for backend & frontend.
+We use mono repo with turbo to run the project, so just run below commands in the root itself.
 
 ```bash
 # Start all apps for development
@@ -92,6 +104,16 @@ npm run build
 
 # Start all apps in production mode
 npm run start
+```
+
+## Additional | Database Seeding
+
+We have database seeding option, so to run the application locally you can use the seeding module, which will seed the db with a lot dummy data. Checkout the seed module in the backend [./apps/api/src/seed/seeds] to view the data.
+
+### Run the below command after opening the terminal inside backend folder [./apps/api]
+
+```bash
+npm run seed
 ```
 
 ---

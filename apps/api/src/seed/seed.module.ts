@@ -6,9 +6,9 @@ import { typeOrmConfig } from 'src/config/typeorm.config';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { UserModule } from 'src/modules/user/user.module';
 import { OrganizationModule } from 'src/modules/organization/organization.module';
-import { BranchModule } from 'src/modules/branch/branch.module';
 import { RoleModule } from 'src/modules/role/role.module';
 import { DepartmentModule } from 'src/modules/department/department.module';
+import { BranchModule } from 'src/modules/branch/branch.module';
 
 @Module({
   imports: [
