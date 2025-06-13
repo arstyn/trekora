@@ -10,7 +10,7 @@ export class Package {
   id: string;
 
   @Column()
-  organization_id: string;
+  organizationId: string;
 
   @Column()
   title: string;

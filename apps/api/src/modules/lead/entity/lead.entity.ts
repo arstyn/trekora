@@ -26,13 +26,13 @@ export class Lead {
   @Column({ nullable: true })
   company: string;
 
-  @Column({ type: 'uuid', name: 'organization_id' })
+  @Column({ type: 'uuid', name: 'organizationId' })
   organizationId: string;
 
   @ManyToOne(() => Organization, (organization) => organization.id, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'organization_id' })
+  @JoinColumn({ name: 'organizationId' })
   organization: Organization;
 
   @Column({ type: 'text', nullable: true })

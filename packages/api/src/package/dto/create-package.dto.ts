@@ -10,7 +10,7 @@ export enum IPackageType {
 
 
 export class ICreatePackageDto {
-  organization_id: string;
+  organizationId: string;
   title: string;
   description: string;
   status: IPackageStatus;
