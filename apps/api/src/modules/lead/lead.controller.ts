@@ -28,8 +28,8 @@ export class LeadController {
   }
 
   @Get()
-  async findAll(): Promise<Lead[]> {
-    return this.leadService.findAll();
+  async findAll(@Request() req: ApiRequestJWT): Promise<Lead[]> {
+    return this.leadService.findAll(req.user.organizationId);
   }
 
   @Get(':id')

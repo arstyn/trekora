@@ -80,20 +80,26 @@ export function CrmDashboard({ leadsData }: Props) {
 
   const handleSaveLead = (isCreating: boolean, leadData: ILead) => {
     let updatedLeads;
+
     if (isCreating) {
       updatedLeads = [leadData, ...leads];
     } else {
-      // Update existing lead
       updatedLeads = leads.map((l) => (l.id === leadData.id ? leadData : l));
     }
 
-    // Update leads state
     setLeads(updatedLeads);
 
-    // Pass updated leads directly to filterLeads
+    // ✅ Update filtered leads
     filterLeads(searchQuery, statusFilter, updatedLeads);
 
-    setIsViewModalOpen(false);
+    // ✅ Fix: Update selectedLead if this is the one being viewed
+    if (selectedLead?.id === leadData.id) {
+      setSelectedLead(leadData);
+    }
+
+    if (isCreating) {
+      setIsViewModalOpen(false);
+    }
   };
 
   return (
