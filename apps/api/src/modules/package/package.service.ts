@@ -22,9 +22,13 @@ export class PackageService {
     }
 
 
-    async findAll(): Promise<Package[]> {
+    async findAll(organizationId: string): Promise<Package[]> {
         try {
-          return await this.packageRepo.find();
+          return await this.packageRepo.find({
+            where: {
+              organizationId
+            },
+          });
         } catch (error) {
           throw new InternalServerErrorException('Failed to fetch packages');
         }
