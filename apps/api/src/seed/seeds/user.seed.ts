@@ -2,6 +2,7 @@ export const users = [
   {
     branch: 'Acme HQ', // Acme HQ
     organization: 'Acme Corp',
+    name: 'Alice Johnson',
     email: 'alice@acme.com',
     phone: '555-1010',
     password: 'hashed_password_1',
@@ -12,6 +13,7 @@ export const users = [
   {
     branch: 'Globex West', // Globex West
     organization: 'Globex Inc',
+    name: 'Bob Smith',
     email: 'bob@globex.com',
     phone: '555-2020',
     password: 'hashed_password_2',
@@ -22,6 +24,7 @@ export const users = [
   {
     branch: 'Soylent R&D', // Soylent R&D
     organization: 'Soylent Co',
+    name: 'Carol Williams',
     email: 'carol@soylent.io',
     phone: '555-3030',
     password: 'hashed_password_3',
@@ -32,6 +35,7 @@ export const users = [
   {
     branch: 'Initech Regional', // Initech Regional
     organization: 'Initech',
+    name: 'Dave Anderson',
     email: 'dave@initech.biz',
     phone: '555-4040',
     password: 'hashed_password_4',
@@ -42,6 +46,7 @@ export const users = [
   {
     branch: 'Umbrella Bio Lab', // Umbrella Bio Lab
     organization: 'Umbrella Corp',
+    name: 'Eve Martinez',
     email: 'eve@umbrella.org',
     phone: '555-5050',
     password: 'hashed_password_5',

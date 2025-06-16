@@ -1,4 +1,3 @@
-
 import { Branch } from 'src/modules/branch/entity/branch.entity';
 import { Organization } from 'src/modules/organization/entity/organization.entity';
 import { Role } from 'src/modules/role/entity/role.entity';
@@ -16,6 +15,9 @@ import {
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  name: string;
 
   // @Column('uuid', { nullable: true, name: 'branchId' })
   // branchId?: string;

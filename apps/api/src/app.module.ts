@@ -13,6 +13,7 @@ import { DepartmentModule } from './modules/department/department.module';
 import { UserDepartmentsModule } from './modules/user-departments/user-departments.module';
 import { LeadModule } from './modules/lead/lead.module';
 import { BranchModule } from './modules/branch/branch.module';
+import { LeadUpdatesModule } from './modules/lead-updates/lead-updates.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { BranchModule } from './modules/branch/branch.module';
     UserDepartmentsModule,
     LeadModule,
     BranchModule,
+    LeadUpdatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

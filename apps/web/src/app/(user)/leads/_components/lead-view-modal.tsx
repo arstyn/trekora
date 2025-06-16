@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { useState } from 'react';
 import { LeadForm } from './lead-form';
 import { updateLead } from '../action';
+import { LeadUpdates } from './lead-updates';
 
 type ViewLeadDialogProps = {
   open: boolean;
@@ -135,12 +136,7 @@ export function ViewLeadDialog({
                 </div>
               </TabsContent>
               <TabsContent value="updates">
-                <div className="p-4 border rounded-md">
-                  <p className="text-sm text-muted-foreground">
-                    Updates go here...
-                  </p>
-                  <p className="text-sm italic">[Dummy data]</p>
-                </div>
+                <LeadUpdates leadId={lead.id} />
               </TabsContent>
             </Tabs>
 
