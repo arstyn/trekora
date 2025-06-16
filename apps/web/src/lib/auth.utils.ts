@@ -41,7 +41,6 @@ export const getSession = async () => {
 
 export const getAccessToken = async () => {
   const token = cookies().get('accessToken')?.value;
-  console.log("🚀 ~ getAccessToken ~ token:", token)
   if (!token) {
     return null;
   }
@@ -65,11 +64,7 @@ export async function getNewAccessToken() {
   let session: JWTPayload | null;
 
   try {
-    const refreshToken = cookies().get('accessToken')?.value;
-    console.log(
-      '🚀 ~ auth.utils.ts:68 ~ getNewAccessToken ~ refreshToken:',
-      refreshToken,
-    );
+    const refreshToken = cookies().get('refreshToken')?.value;
 
     if (!refreshToken) {
       return null;
