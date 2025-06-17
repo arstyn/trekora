@@ -55,10 +55,7 @@ export class LeadUpdatesService {
   async update(id: string, updateLeadUpdateDto: UpdateLeadUpdateDto) {
     await this.leadUpdatesRepository.update(id, updateLeadUpdateDto);
     const updateOne = await this.findOne(id);
-    console.log(
-      '🚀 ~ lead-updates.service.ts:58 ~ LeadUpdatesService ~ update ~ updateOne:',
-      updateOne,
-    );
+
     return updateOne;
   }
 
