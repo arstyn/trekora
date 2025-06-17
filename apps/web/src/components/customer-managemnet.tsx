@@ -1,61 +1,67 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { PlusCircle, Search, Users, Calendar, MapPin } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import CustomerList from "@/components/customer-list"
-import CustomerForm from "@/components/customer-form"
-import ItineraryView from "@/components/itineray-view"
-import GroupManagement from "@/components/group-management"
-import type { Customer, Itinerary, Group } from "@/lib/types"
-import { generateSampleData } from "@/app/"
+import { useState, useEffect } from 'react';
+import { PlusCircle, Search, Users, Calendar, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CustomerList from '@/components/customer-list';
+import CustomerForm from '@/components/customer-form';
+import ItineraryView from '@/components/itineray-view';
+import GroupManagement from '@/components/group-management';
+import type { Customer, Itinerary, Group } from '@/lib/types';
+import { generateSampleData } from '@repo/api/seed/customer.seeds';
 
 export default function CustomerManagement() {
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [itineraries, setItineraries] = useState<Itinerary[]>([])
-  const [groups, setGroups] = useState<Group[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
-  const [isAddingCustomer, setIsAddingCustomer] = useState(false)
-  const [isViewingItinerary, setIsViewingItinerary] = useState(false)
-  const [activeTab, setActiveTab] = useState("customers")
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [itineraries, setItineraries] = useState<Itinerary[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null,
+  );
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+  const [isViewingItinerary, setIsViewingItinerary] = useState(false);
+  const [activeTab, setActiveTab] = useState('customers');
 
   // Load sample data
   useEffect(() => {
-    const data = generateSampleData()
-    setCustomers(data.customers)
-    setItineraries(data.itineraries)
-    setGroups(data.groups)
-  }, [])
+    const data = generateSampleData();
+    setCustomers(data.customers);
+    setItineraries(data.itineraries);
+    setGroups(data.groups);
+  }, []);
 
   const filteredCustomers = customers.filter(
     (customer) =>
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  );
 
   const handleAddCustomer = (newCustomer: Customer) => {
-    setCustomers([...customers, { ...newCustomer, id: Date.now().toString() }])
-    setIsAddingCustomer(false)
-  }
+    setCustomers([...customers, { ...newCustomer, id: Date.now().toString() }]);
+    setIsAddingCustomer(false);
+  };
 
   const handleUpdateCustomer = (updatedCustomer: Customer) => {
-    setCustomers(customers.map((c) => (c.id === updatedCustomer.id ? updatedCustomer : c)))
-    setSelectedCustomer(null)
-  }
+    setCustomers(
+      customers.map((c) => (c.id === updatedCustomer.id ? updatedCustomer : c)),
+    );
+    setSelectedCustomer(null);
+  };
 
   const handleDeleteCustomer = (customerId: string) => {
     // Delete customer
-    setCustomers(customers.filter((c) => c.id !== customerId))
+    setCustomers(customers.filter((c) => c.id !== customerId));
 
     // Cancel all associated itineraries
     setItineraries(
       itineraries.map((itinerary) =>
-        itinerary.customerId === customerId ? { ...itinerary, status: "cancelled" } : itinerary,
+        itinerary.customerId === customerId
+          ? { ...itinerary, status: 'cancelled' }
+          : itinerary,
       ),
-    )
+    );
 
     // Remove from all groups
     setGroups(
@@ -63,41 +69,52 @@ export default function CustomerManagement() {
         ...group,
         memberIds: group.memberIds.filter((id) => id !== customerId),
       })),
-    )
+    );
 
-    setSelectedCustomer(null)
-  }
+    setSelectedCustomer(null);
+  };
 
   const handleAddItinerary = (newItinerary: Itinerary) => {
-    setItineraries([...itineraries, { ...newItinerary, id: Date.now().toString() }])
-  }
+    setItineraries([
+      ...itineraries,
+      { ...newItinerary, id: Date.now().toString() },
+    ]);
+  };
 
   const handleUpdateItinerary = (updatedItinerary: Itinerary) => {
-    setItineraries(itineraries.map((i) => (i.id === updatedItinerary.id ? updatedItinerary : i)))
-  }
+    setItineraries(
+      itineraries.map((i) =>
+        i.id === updatedItinerary.id ? updatedItinerary : i,
+      ),
+    );
+  };
 
   const handleDeleteItinerary = (itineraryId: string) => {
-    setItineraries(itineraries.filter((i) => i.id !== itineraryId))
-  }
+    setItineraries(itineraries.filter((i) => i.id !== itineraryId));
+  };
 
   const handleAddGroup = (newGroup: Group) => {
-    setGroups([...groups, { ...newGroup, id: Date.now().toString() }])
-  }
+    setGroups([...groups, { ...newGroup, id: Date.now().toString() }]);
+  };
 
   const handleUpdateGroup = (updatedGroup: Group) => {
-    setGroups(groups.map((g) => (g.id === updatedGroup.id ? updatedGroup : g)))
-  }
+    setGroups(groups.map((g) => (g.id === updatedGroup.id ? updatedGroup : g)));
+  };
 
   const handleDeleteGroup = (groupId: string) => {
-    setGroups(groups.filter((g) => g.id !== groupId))
-  }
+    setGroups(groups.filter((g) => g.id !== groupId));
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Travel Agency CMS</h1>
-          <p className="text-muted-foreground">Manage customers, itineraries, and group bookings</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Travel Agency CMS
+          </h1>
+          <p className="text-muted-foreground">
+            Manage customers, itineraries, and group bookings
+          </p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="relative">
@@ -117,7 +134,11 @@ export default function CustomerManagement() {
         </div>
       </div>
 
-      <Tabs defaultValue="customers" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        defaultValue="customers"
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <TabsList>
           <TabsTrigger value="customers">
             <Users className="mr-2 h-4 w-4" />
@@ -134,7 +155,11 @@ export default function CustomerManagement() {
         </TabsList>
 
         <TabsContent value="customers" className="space-y-4">
-          <CustomerList customers={filteredCustomers} onSelect={setSelectedCustomer} onDelete={handleDeleteCustomer} />
+          <CustomerList
+            customers={filteredCustomers}
+            onSelect={setSelectedCustomer}
+            onDelete={handleDeleteCustomer}
+          />
         </TabsContent>
 
         <TabsContent value="itineraries" className="space-y-4">
@@ -158,7 +183,12 @@ export default function CustomerManagement() {
         </TabsContent>
       </Tabs>
 
-      {isAddingCustomer && <CustomerForm onSave={handleAddCustomer} onCancel={() => setIsAddingCustomer(false)} />}
+      {isAddingCustomer && (
+        <CustomerForm
+          onSave={handleAddCustomer}
+          onCancel={() => setIsAddingCustomer(false)}
+        />
+      )}
 
       {selectedCustomer && (
         <CustomerForm
@@ -168,5 +198,5 @@ export default function CustomerManagement() {
         />
       )}
     </div>
-  )
+  );
 }
