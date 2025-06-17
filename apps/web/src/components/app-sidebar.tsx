@@ -62,7 +62,7 @@ const data = {
     },
     {
       title: 'Customers',
-      url: '#',
+      url: '/customers',
       icon: BarChartIcon,
     },
     {
