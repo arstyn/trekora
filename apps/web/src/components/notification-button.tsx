@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNotifications } from '../hooks/use-notifications';
+import { Button } from './ui/button';
+import { MailIcon } from 'lucide-react';
 
 // Dummy: Replace with your auth context/token logic
 function useAuthToken() {
@@ -17,19 +19,14 @@ export function NotificationButton() {
 
   return (
     <div style={{ position: 'relative' }}>
-      <button
+      <Button
         onClick={() => setOpen((v) => !v)}
-        style={{
-          position: 'relative',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-        aria-label="Notifications"
+        size="icon"
+        className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0"
+        variant="outline"
       >
-        <span role="img" aria-label="bell">
-          🔔
-        </span>
+        <MailIcon />
+        <span className="sr-only">Inbox</span>
         {unreadCount > 0 && (
           <span
             style={{
@@ -46,7 +43,8 @@ export function NotificationButton() {
             {unreadCount}
           </span>
         )}
-      </button>
+      </Button>
+
       {open && (
         <div
           style={{
