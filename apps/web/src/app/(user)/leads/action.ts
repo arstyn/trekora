@@ -6,6 +6,7 @@ import {
   ILeadUpdate,
   ILeadUpdateCreateDTO,
 } from '@repo/api/lead/lead-update.entity';
+import { IReminder } from '@repo/api/reminder/reminder.entity';
 
 export async function getLeads() {
   try {
@@ -84,6 +85,62 @@ export async function updateLeadUpdate(
   } catch (error: any) {
     const errorMessage =
       error.message ?? 'An error occurred while fetching lead updates.';
+    return { error: errorMessage };
+  }
+}
+
+// IReminder API
+export async function getReminders(leadId: string) {
+  try {
+    const reminders = await AxiosRequest.get<IReminder[]>(
+      `/reminder?entityType=lead&entityId=${leadId}`,
+    );
+    return { reminders };
+  } catch (error: any) {
+    const errorMessage =
+      error.message ?? 'An error occurred while fetching reminders.';
+    return { error: errorMessage, reminders: [] };
+  }
+}
+
+export async function createReminder(
+  data: Partial<IReminder> & { entityType: string; entityId: string },
+) {
+  console.log('🚀 ~ action.ts:109 ~ data:', data);
+  try {
+    const reminder = await AxiosRequest.post<typeof data, IReminder>(
+      '/reminder',
+      data,
+    );
+    return { reminder };
+  } catch (error: any) {
+    const errorMessage =
+      error.message ?? 'An error occurred while creating reminder.';
+    return { error: errorMessage };
+  }
+}
+
+export async function updateReminder(id: string, data: Partial<IReminder>) {
+  try {
+    const reminder = await AxiosRequest.put<Partial<IReminder>, IReminder>(
+      `/reminder/${id}`,
+      data,
+    );
+    return { reminder };
+  } catch (error: any) {
+    const errorMessage =
+      error.message ?? 'An error occurred while updating reminder.';
+    return { error: errorMessage };
+  }
+}
+
+export async function deleteReminder(id: string) {
+  try {
+    await AxiosRequest.delete(`/reminder/${id}`);
+    return { success: true };
+  } catch (error: any) {
+    const errorMessage =
+      error.message ?? 'An error occurred while deleting reminder.';
     return { error: errorMessage };
   }
 }
