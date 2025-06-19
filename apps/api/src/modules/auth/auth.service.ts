@@ -17,7 +17,7 @@ export class AuthService {
       { userId, organizationId },
       process.env.JWT_ACCESS_SECRET as string,
       {
-        expiresIn: '15m', // Access token expires in 15 minutes
+        expiresIn: process.env.JWT_ACCESS_SECRET_EXPIRATION ?? '15m', // Access token expires in 15 minutes
       },
     );
   }
@@ -27,7 +27,7 @@ export class AuthService {
       { userId, organizationId },
       process.env.JWT_REFRESH_SECRET as string,
       {
-        expiresIn: '7d', // Refresh token expires in 7 days
+        expiresIn: process.env.JWT_REFRESH_SECRET_EXPIRATION ?? '7d', // Refresh token expires in 7 days
       },
     );
   }
