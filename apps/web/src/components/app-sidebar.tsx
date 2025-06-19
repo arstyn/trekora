@@ -31,6 +31,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
+import { NotificationButton } from './notification-button';
 
 const data = {
   user: {
@@ -131,7 +132,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <NotificationButton />
+          <NavUser user={data.user} />
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

@@ -1,3 +1,5 @@
+import { Organization } from 'src/modules/organization/entity/organization.entity';
+import { User } from 'src/modules/user/entity/user.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -5,6 +7,8 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 
 export enum ReminderRepeat {
@@ -32,6 +36,24 @@ export class Reminder {
   @Column({ type: 'uuid' })
   @Index()
   entityId: string; // ID of the related entity
+
+  @Column({ type: 'uuid', name: 'created_by_id', nullable: true })
+  createdById: string;
+
+  @ManyToOne(() => User, (createdBy) => createdBy.id, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'created_by' })
+  createdBy: User;
+
+  @Column({ type: 'uuid', name: 'organization_id' })
+  organizationId: string;
+
+  @ManyToOne(() => Organization, (organization) => organization.id, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
 
   @Column({ type: 'text', nullable: true })
   note?: string;
