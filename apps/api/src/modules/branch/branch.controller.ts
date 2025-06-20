@@ -34,7 +34,7 @@ export class BranchController {
 
   @Get()
   async get(@Request() req: ApiRequestJWT): Promise<Branch[]> {
-    return this.branchService.findAll();
+    return this.branchService.findAll(req.user.organizationId);
   }
 
   @Put(':id')

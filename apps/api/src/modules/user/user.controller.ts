@@ -13,7 +13,7 @@ import { User } from './entity/user.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
 
 @UseGuards(AuthGuard)
-@Controller('user')
+@Controller('api/users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
