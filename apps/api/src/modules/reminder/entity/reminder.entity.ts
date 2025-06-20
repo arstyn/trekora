@@ -37,7 +37,7 @@ export class Reminder {
   @Index()
   entityId: string; // ID of the related entity
 
-  @Column({ type: 'uuid', name: 'created_by_id', nullable: true })
+  @Column({ type: 'uuid', name: 'created_by_id' })
   createdById: string;
 
   @ManyToOne(() => User, (createdBy) => createdBy.id, {

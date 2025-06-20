@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './entity/notification.entity';
-import { User } from '../user/entity/user.entity';
 import { NotificationGateway } from './notification.gateway';
 
 @Injectable()
@@ -13,23 +12,40 @@ export class NotificationService {
     private readonly notificationGateway: NotificationGateway,
   ) {}
 
-  async create(user: User, message: string): Promise<Notification> {
-    const notification = this.notificationRepository.create({ user, message });
+  async create(
+    userId: string,
+    message: string,
+    reminderId?: string,
+  ): Promise<Notification> {
+    // Prevent duplicate for non-repeating reminders
+    if (reminderId) {
+      const existing = await this.notificationRepository.findOne({
+        where: { userId, reminderId },
+      });
+      if (existing) return existing;
+    }
+    const notification = this.notificationRepository.create({
+      userId: userId,
+      message,
+      reminderId,
+    });
     const saved = await this.notificationRepository.save(notification);
     // Emit real-time notification
-    if (user && user.id) {
-      this.notificationGateway.sendNotificationToUser(user.id, saved);
+    if (userId) {
+      this.notificationGateway.sendNotificationToUser(userId, saved);
     }
     return saved;
   }
 
-  async findByUserId(userId: number): Promise<Notification[]> {
-    return this.notificationRepository
-      .createQueryBuilder('notification')
-      .leftJoin('notification.user', 'user')
-      .where('user.id = :userId', { userId })
-      .orderBy('notification.createdAt', 'DESC')
-      .getMany();
+  async findByUserId(userId: string): Promise<Notification[]> {
+    return this.notificationRepository.find({
+      where: {
+        userId,
+      },
+      order: {
+        createdAt: 'desc',
+      },
+    });
   }
 
   async markAsRead(id: string): Promise<void> {
@@ -38,5 +54,15 @@ export class NotificationService {
 
   async remove(id: string): Promise<void> {
     await this.notificationRepository.delete(id);
+  }
+
+  async getLastNotificationForReminder(
+    userId: string,
+    reminderId: string,
+  ): Promise<Notification | undefined> {
+    return this.notificationRepository.findOne({
+      where: { userId, reminderId },
+      order: { createdAt: 'DESC' },
+    });
   }
 }

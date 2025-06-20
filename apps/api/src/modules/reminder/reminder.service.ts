@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual } from 'typeorm';
-import { Reminder } from './entity/reminder.entity';
+import { LessThanOrEqual, Repository } from 'typeorm';
 import { NotificationService } from '../notification/notification.service';
-import { User } from '../user/entity/user.entity';
+import { Reminder } from './entity/reminder.entity';
 
 @Injectable()
 export class ReminderService {
@@ -47,18 +47,42 @@ export class ReminderService {
     const now = new Date();
     const dueReminders = await this.reminderRepository.find({
       where: { remindAt: LessThanOrEqual(now) },
-      relations: ['createdBy'],
     });
+
     for (const reminder of dueReminders) {
-      if (reminder.createdBy) {
-        // Create in-app notification
-        await this.notificationService.create(
-          reminder.createdBy as User,
-          `Reminder: ${reminder.note || reminder.type}`,
+      if (!reminder.createdById) continue;
+      // Use public method to get last notification
+      const existing =
+        await this.notificationService.getLastNotificationForReminder(
+          reminder.createdById,
+          reminder.id,
         );
-        // TODO: Send email notification here
+      if (reminder.repeat && reminder.repeat !== 'none') {
+        // For repeating reminders, allow if no notification or last notification is before this remindAt
+        if (!existing || existing.createdAt < reminder.remindAt) {
+          await this.notificationService.create(
+            reminder.createdById,
+            `Reminder: ${reminder.note || reminder.type}`,
+            reminder.id,
+          );
+        }
+      } else {
+        // For non-repeating, only create if not already notified
+        if (!existing) {
+          await this.notificationService.create(
+            reminder.createdById,
+            `Reminder: ${reminder.note || reminder.type}`,
+            reminder.id,
+          );
+        }
       }
+      // TODO: Send email notification here
       // TODO: Mark reminder as processed or handle repeat logic
     }
+  }
+
+  @Cron('*/1 * * * *') // every minute
+  async handleCron() {
+    await this.processDueReminders();
   }
 }

@@ -1,3 +1,5 @@
+import { getAccessToken } from '@/lib/auth.utils';
+import { AxiosRequest } from '@/lib/axios';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
@@ -11,58 +13,55 @@ export interface Notification {
   createdAt: string;
 }
 
-export function useNotifications(token: string | null) {
+export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const socketRef = useRef<Socket | null>(null);
 
   // Connect to WebSocket on mount
   useEffect(() => {
-    if (!token) return;
-    const socket = io(WS_URL, {
-      query: { token },
-      transports: ['websocket'],
-    });
-    socketRef.current = socket;
+    let socket: Socket | undefined;
+    const connectToSocket = async () => {
+      const token = await getAccessToken();
 
-    socket.on('notification', (notification: Notification) => {
-      setNotifications((prev) => [notification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-    });
+      if (!token) return;
+      const socket = io(WS_URL, {
+        query: { token },
+        transports: ['websocket'],
+      });
+      socketRef.current = socket;
+
+      socket.on('notification', (notification: Notification) => {
+        setNotifications((prev) => [notification, ...prev]);
+        setUnreadCount((prev) => prev + 1);
+      });
+    };
+
+    connectToSocket();
 
     return () => {
-      socket.disconnect();
+      if (socket) {
+        socket.disconnect();
+      }
     };
-  }, [token]);
+  }, []);
 
   // Fetch initial notifications from API
   useEffect(() => {
-    if (!token) return;
-    fetch('/api/notifications', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setNotifications(data);
-        setUnreadCount(data.filter((n: Notification) => !n.isRead).length);
-      });
-  }, [token]);
+    AxiosRequest.get<Notification[]>('/notification').then((data) => {
+      setNotifications(data);
+      setUnreadCount(data.filter((n: Notification) => !n.isRead).length);
+    });
+  }, []);
 
   // Mark notification as read
-  const markAsRead = useCallback(
-    async (id: string) => {
-      if (!token) return;
-      await fetch(`/api/notifications/${id}/read`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    },
-    [token],
-  );
+  const markAsRead = useCallback(async (id: string) => {
+    await AxiosRequest.patch(`/notification/${id}/read`, {});
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+  }, []);
 
   return { notifications, unreadCount, markAsRead };
 }

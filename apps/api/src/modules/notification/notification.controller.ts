@@ -10,17 +10,18 @@ import {
 import { Request } from 'express';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { NotificationService } from './notification.service';
+import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 
 @UseGuards(AuthGuard)
-@Controller('notifications')
+@Controller('api/notification')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Get()
-  async getMyNotifications(@Req() req: Request) {
-    // @ts-ignore
-    const userId = req.user.id;
-    return this.notificationService.findByUserId(userId);
+  async getMyNotifications(@Req() req: ApiRequestJWT) {
+    const userId = req.user.userId;
+
+    return await this.notificationService.findByUserId(userId);
   }
 
   @Patch(':id/read')

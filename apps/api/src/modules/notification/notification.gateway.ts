@@ -28,8 +28,8 @@ export class NotificationGateway
         secret: process.env.JWT_ACCESS_SECRET || 'your_access_token_secret',
       });
       // Join user to a room named by their userId
-      if (payload && payload.id) {
-        client.join(`user_${payload.id}`);
+      if (payload && payload.userId) {
+        client.join(`user_${payload.userId}`);
       } else {
         client.disconnect();
       }

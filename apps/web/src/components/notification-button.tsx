@@ -1,98 +1,85 @@
+'use client';
 import { useState } from 'react';
 import { useNotifications } from '../hooks/use-notifications';
 import { Button } from './ui/button';
 import { MailIcon } from 'lucide-react';
-
-// Dummy: Replace with your auth context/token logic
-function useAuthToken() {
-  // TODO: Replace with real auth token retrieval
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('token');
-  }
-  return null;
-}
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from './ui/dialog';
+import { Card, CardContent } from './ui/card';
+import { Badge } from './ui/badge';
+import { Separator } from './ui/separator';
 
 export function NotificationButton() {
-  const token = useAuthToken();
-  const { notifications, unreadCount, markAsRead } = useNotifications(token);
+  const { notifications, unreadCount, markAsRead } = useNotifications();
   const [open, setOpen] = useState(false);
 
   return (
-    <div style={{ position: 'relative' }}>
-      <Button
-        onClick={() => setOpen((v) => !v)}
-        size="icon"
-        className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0"
-        variant="outline"
-      >
-        <MailIcon />
-        <span className="sr-only">Inbox</span>
-        {unreadCount > 0 && (
-          <span
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              background: 'red',
-              color: 'white',
-              borderRadius: '50%',
-              padding: '2px 6px',
-              fontSize: '12px',
-            }}
-          >
-            {unreadCount}
-          </span>
-        )}
-      </Button>
-
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: '100%',
-            background: 'white',
-            border: '1px solid #ccc',
-            borderRadius: 4,
-            minWidth: 250,
-            zIndex: 100,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            maxHeight: 400,
-            overflowY: 'auto',
-          }}
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="icon"
+          className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0 relative"
+          variant="outline"
+          aria-label="Open notifications"
         >
-          <div
-            style={{
-              padding: 8,
-              borderBottom: '1px solid #eee',
-              fontWeight: 'bold',
-            }}
-          >
-            Notifications
-          </div>
-          {notifications.length === 0 && (
-            <div style={{ padding: 16, color: '#888' }}>No notifications</div>
-          )}
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              onClick={() => markAsRead(n.id)}
-              style={{
-                padding: 12,
-                background: n.isRead ? '#f9f9f9' : '#e6f7ff',
-                borderBottom: '1px solid #eee',
-                cursor: 'pointer',
-                fontWeight: n.isRead ? 'normal' : 'bold',
-              }}
+          <MailIcon />
+          <span className="sr-only">Inbox</span>
+          {unreadCount > 0 && (
+            <Badge
+              variant="destructive"
+              className="absolute -top-1 -right-1 px-2 py-0.5 text-xs rounded-full"
             >
-              {n.message}
-              <div style={{ fontSize: 10, color: '#888' }}>
-                {new Date(n.createdAt).toLocaleString()}
+              {unreadCount}
+            </Badge>
+          )}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="p-0 max-w-xs sm:max-w-md">
+        <Card className="shadow-none border-none bg-transparent p-0">
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>Notifications</DialogTitle>
+            <DialogDescription>
+              Stay up to date with your latest notifications.
+            </DialogDescription>
+          </DialogHeader>
+          <Separator className="my-0" />
+          <CardContent className="max-h-80 overflow-y-auto p-0">
+            {notifications.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                No notifications
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ) : (
+              <div className="flex flex-col divide-y">
+                {notifications.map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => markAsRead(n.id)}
+                    className={`w-full text-left px-6 py-4 bg-transparent hover:bg-accent transition-colors focus:outline-none ${n.isRead ? 'font-normal bg-muted' : 'font-semibold bg-primary/5'}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{n.message}</span>
+                      {!n.isRead && (
+                        <Badge variant="default" className="ml-2">
+                          New
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {new Date(n.createdAt).toLocaleString()}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
