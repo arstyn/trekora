@@ -175,7 +175,7 @@ export function LeadTable({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  className="cursor-pointer"
                   onClick={() => onLeadClick(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (

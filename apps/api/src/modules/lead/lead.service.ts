@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Lead } from './entity/lead.entity';
-import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 
 @Injectable()
 export class LeadService {
@@ -17,14 +16,18 @@ export class LeadService {
   ): Promise<Lead> {
     const lead = this.leadRepository.create({
       ...leadData,
+      createdById: user.userId,
       organizationId: user.organizationId,
     });
     return this.leadRepository.save(lead);
   }
 
-  async findAll(): Promise<Lead[]> {
+  async findAll(organizationId: string): Promise<Lead[]> {
     return this.leadRepository.find({
       order: { createdAt: 'DESC' },
+      where: {
+        organizationId,
+      },
     });
   }
 
