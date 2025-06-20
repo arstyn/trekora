@@ -2,6 +2,7 @@ import { getAccessToken } from '@/lib/auth.utils';
 import { AxiosRequest } from '@/lib/axios';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { toast } from 'sonner';
 
 // Replace with your backend API URL
 const WS_URL = process.env.NEXT_PUBLIC_API_WS_URL || 'http://localhost:3000';
@@ -34,6 +35,13 @@ export function useNotifications() {
       socket.on('notification', (notification: Notification) => {
         setNotifications((prev) => [notification, ...prev]);
         setUnreadCount((prev) => prev + 1);
+        toast(`New Notification:`, {
+          description: notification.message,
+          action: {
+            label: 'View',
+            onClick: () => console.log('test'),
+          },
+        });
       });
     };
 

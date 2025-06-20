@@ -88,7 +88,7 @@ export function CrmDashboard({ leadsData }: Props) {
         lead.id === leadId ? { ...lead, status: newStatus } : lead,
       );
       setLeads(updatedLeads);
-      filterLeads(searchQuery, statusFilter);
+      filterLeads(searchQuery, statusFilter, updatedLeads);
     }
   };
 

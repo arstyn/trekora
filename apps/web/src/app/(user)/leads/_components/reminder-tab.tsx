@@ -261,7 +261,7 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
           reminders.map((reminder) => (
             <div
               key={reminder.id}
-              className="pl-4 pr-2 pb-3 pt-2 border rounded-md space-y-2 bg-card flex items-center justify-between"
+              className="p-2 border rounded-md space-y-2 bg-card flex items-center justify-between"
             >
               <div>
                 <div className="text-xs text-muted-foreground">
