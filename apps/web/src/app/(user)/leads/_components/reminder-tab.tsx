@@ -27,7 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IReminder } from '@repo/api/reminder/reminder.entity';
 import { format } from 'date-fns';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, Trash } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -45,7 +45,6 @@ interface ReminderTabProps {
 
 // Zod schema for reminder form
 const reminderSchema = z.object({
-  type: z.string().min(1, 'Type is required'),
   remindAt: z.string().min(1, 'Remind At is required'),
   repeat: z.enum(['none', 'daily', 'weekly', 'monthly', 'yearly', 'custom']),
   note: z.string().optional(),
@@ -72,7 +71,6 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
   } = useForm<ReminderFormData>({
     resolver: zodResolver(reminderSchema),
     defaultValues: {
-      type: '',
       remindAt: '',
       repeat: 'none',
       note: '',
@@ -99,7 +97,6 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
     if (showForm) {
       if (editingReminder) {
         reset({
-          type: editingReminder.type || '',
           remindAt: editingReminder.remindAt
             ? editingReminder.remindAt.slice(0, 16)
             : '',
@@ -108,7 +105,7 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
           note: editingReminder.note || '',
         });
       } else {
-        reset({ type: '', remindAt: '', repeat: 'none', note: '' });
+        reset({ remindAt: '', repeat: 'none', note: '' });
       }
     }
   }, [showForm, editingReminder, reset]);
@@ -117,12 +114,11 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
     setIsLoading(true);
     let result;
     if (editingReminder) {
-      console.log('🚀 ~ reminder-tab.tsx:120 ~ onSubmit ~ data:', data);
       result = await updateReminder(editingReminder.id, data);
     } else {
-      console.log('🚀 ~ reminder-tab.tsx:123 ~ onSubmit ~ data:', data);
       result = await createReminder({
         ...data,
+        type: 'lead',
         entityType: 'lead',
         entityId: leadId,
       });
@@ -172,19 +168,6 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <FormControl>
-                      <Input {...field} autoFocus />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={control}
                 name="remindAt"
@@ -278,20 +261,9 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
           reminders.map((reminder) => (
             <div
               key={reminder.id}
-              className="pl-4 pr-2 pb-3 pt-1 border rounded-md space-y-2 bg-card flex items-center justify-between"
+              className="pl-4 pr-2 pb-3 pt-2 border rounded-md space-y-2 bg-card flex items-center justify-between"
             >
               <div>
-                <div className="font-medium flex items-center gap-2">
-                  {reminder.type}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleEdit(reminder)}
-                  >
-                    <Pencil />
-                  </Button>
-                </div>
                 <div className="text-xs text-muted-foreground">
                   {format(new Date(reminder.remindAt), 'PPpp')} | Repeat:{' '}
                   {reminder.repeat}
@@ -300,13 +272,24 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
                   <div className="text-sm mt-1">{reminder.note}</div>
                 )}
               </div>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => handleDelete(reminder.id)}
-              >
-                Delete
-              </Button>
+              <div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleDelete(reminder.id)}
+                >
+                  <Trash />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleEdit(reminder)}
+                >
+                  <Pencil />
+                </Button>
+              </div>
             </div>
           ))
         )}

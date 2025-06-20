@@ -30,9 +30,12 @@ export async function createLead(newLead: LeadFormData) {
   }
 }
 
-export async function updateLead(id: string, updateLead: LeadFormData) {
+export async function updateLead(
+  id: string,
+  updateLead: Partial<LeadFormData>,
+) {
   try {
-    const lead = await AxiosRequest.put<LeadFormData, ILead>(
+    const lead = await AxiosRequest.put<Partial<ILead>, ILead>(
       `/lead/${id}`,
       updateLead,
     );

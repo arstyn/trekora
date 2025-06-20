@@ -3,13 +3,15 @@
 import { Button } from '@/components/ui/button';
 import { ILead, ILeadStatus } from '@repo/api/lead/lead.entity';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { KanbanBoard } from './kanban-board';
 import { CreateLeadModal } from './lead-create-modal';
 import { LeadFilter } from './lead-filter';
 import { LeadTable } from './lead-table';
 import { ViewLeadDialog } from './lead-view-modal';
 import { ViewToggle } from './view-toggle';
+import { updateLead } from '../action';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Props {
   leadsData: ILead[];
@@ -24,6 +26,25 @@ export function CrmDashboard({ leadsData }: Props) {
   const [selectedLead, setSelectedLead] = useState<ILead | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isCreatingLead, setIsCreatingLead] = useState(false);
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const leadId = searchParams.get('lead');
+    if (leadId) {
+      const foundLead = leads.find((l) => l.id === leadId);
+      if (foundLead) {
+        setSelectedLead(foundLead);
+        setIsCreatingLead(false);
+        setIsViewModalOpen(true);
+      }
+    } else {
+      setIsViewModalOpen(false);
+      setSelectedLead(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, leads]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -58,24 +79,28 @@ export function CrmDashboard({ leadsData }: Props) {
     setFilteredLeads(filtered);
   };
 
-  const updateLeadStatus = (leadId: string, newStatus: ILeadStatus) => {
-    const updatedLeads = leads.map((lead) =>
-      lead.id === leadId ? { ...lead, status: newStatus } : lead,
-    );
-    setLeads(updatedLeads);
-    filterLeads(searchQuery, statusFilter);
+  const updateLeadStatus = async (leadId: string, newStatus: ILeadStatus) => {
+    const { lead: updatedLead, error } = await updateLead(leadId, {
+      status: newStatus,
+    });
+    if (updatedLead) {
+      const updatedLeads = leads.map((lead) =>
+        lead.id === leadId ? { ...lead, status: newStatus } : lead,
+      );
+      setLeads(updatedLeads);
+      filterLeads(searchQuery, statusFilter);
+    }
   };
 
   const handleLeadClick = (lead: ILead) => {
-    setSelectedLead(lead);
-    setIsCreatingLead(false);
-    setIsViewModalOpen(true);
+    router.push(`?lead=${lead.id}`);
   };
 
   const handleCreateLead = () => {
     setSelectedLead(null);
     setIsCreatingLead(true);
     setIsViewModalOpen(true);
+    router.push('?');
   };
 
   const handleSaveLead = (isCreating: boolean, leadData: ILead) => {
@@ -145,6 +170,10 @@ export function CrmDashboard({ leadsData }: Props) {
         open={isViewModalOpen}
         onOpenChange={(open) => {
           setIsViewModalOpen(open);
+          if (!open) {
+            router.push('?');
+            setSelectedLead(null);
+          }
         }}
         lead={selectedLead}
         onEdit={handleSaveLead}
