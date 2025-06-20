@@ -196,7 +196,7 @@ export function BranchTable({ Initialbranches }: Props) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center">
+                <TableCell colSpan={columns.length} className="text-center h-24">
                   No results.
                 </TableCell>
               </TableRow>

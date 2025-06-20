@@ -3,4 +3,5 @@ export class IBranchCreateDTO {
   location: string;
   organizationId?: string;
   isActive?: boolean;
+  managerId?: string;
 }

@@ -23,13 +23,11 @@ import { Dispatch, SetStateAction, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { createBranch } from '../action';
-import { Switch } from '@/components/ui/switch';
 import { IBranch } from '@repo/api/branch/branch.entity';
 
 export const branchCreateSchema = z.object({
   name: z.string().min(1, { message: 'Branch name is required' }),
   location: z.string().min(1, { message: 'Location is required' }),
-  isActive: z.boolean().optional(),
 });
 
 type AddBranchModalProps = {
@@ -55,7 +53,6 @@ export function AddBranchDialog({
     defaultValues: {
       name: '',
       location: '',
-      isActive: true,
     },
   });
 
@@ -66,7 +63,6 @@ export function AddBranchDialog({
       const newBranch = {
         name: data.name,
         location: data.location,
-        isActive: data.isActive ?? true,
       };
 
       const { branch, error } = await createBranch(newBranch);
@@ -123,26 +119,6 @@ export function AddBranchDialog({
                       <Input placeholder="washington dc" {...field} />
                     </FormControl>
                     <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Is Active</FormLabel>
-                      <FormDescription>
-                        Toggle to activate or deactivate this branch.
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
                   </FormItem>
                 )}
               />
