@@ -131,7 +131,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          
+          <NavUser user={data.user} />
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

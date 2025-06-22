@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { LeadForm } from './lead-form';
 import { updateLead } from '../action';
 import { LeadUpdates } from './lead-updates';
+import { ReminderTab } from './reminder-tab';
 
 type ViewLeadDialogProps = {
   open: boolean;
@@ -103,8 +104,6 @@ export function ViewLeadDialog({
                     'converted',
                   ];
                   const currentIndex = statusOrder.indexOf(lead.status);
-                  // const isActive = index === currentIndex;
-                  // const isCompleted = index < currentIndex;
                   const isUpcoming = index > currentIndex;
 
                   return (
@@ -126,6 +125,7 @@ export function ViewLeadDialog({
               <TabsList className="flex justify-center">
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="updates">Updates</TabsTrigger>
+                <TabsTrigger value="reminders">Reminders</TabsTrigger>
               </TabsList>
               <TabsContent value="chat">
                 <div className="p-4 border rounded-md">
@@ -137,6 +137,9 @@ export function ViewLeadDialog({
               </TabsContent>
               <TabsContent value="updates">
                 <LeadUpdates leadId={lead.id} />
+              </TabsContent>
+              <TabsContent value="reminders">
+                <ReminderTab leadId={lead.id} />
               </TabsContent>
             </Tabs>
 
