@@ -6,6 +6,7 @@ import { RoleService } from '../role/role.service';
 import { UserDepartments } from '../user-departments/entity/user-departments.entity';
 import { UserDepartmentsService } from '../user-departments/user-departments.service';
 import { Employee, EmployeeStatus } from './entity/employee.entity';
+import { IUserProfileDTO } from '../../../../../packages/api/src/user/dto/user-profile.dto'
 
 @Injectable()
 export class EmployeeService {
@@ -239,4 +240,33 @@ export class EmployeeService {
   async remove(id: string): Promise<void> {
     await this.employeeRepository.delete(id);
   }
+
+  async getProfile(userId: string): Promise<IUserProfileDTO | null> {
+  const employee = await this.employeeRepository.findOne({
+    where: { user: { id: userId } },
+    relations: [
+      'role',
+      'employeeDepartments',
+      'employeeDepartments.department',
+      'branch',
+    ],
+  });
+
+  if (!employee) return null;
+
+  const department =
+    employee.employeeDepartments && employee.employeeDepartments.length > 0
+      ? employee.employeeDepartments[0].department.name
+      : null;
+
+  return {
+    username: employee.name,
+    email: employee.email ?? '',
+    mobileNumber: employee.phoneNumber ?? '',
+    position: employee.role?.name ?? '',
+    department,
+    location: employee.branch?.name ?? null,
+  };
+}
+
 }

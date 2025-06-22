@@ -65,7 +65,7 @@ export function UserProfileSection() {
 
   useEffect(() => {
     const getUserData = async () => {
-      const response = await getUser('d03cdfda-5200-41b9-b90a-6a5222a6f4ea');
+      const response = await getUser('47c596b2-d250-4802-b6e9-eb6be63dcd80');
       console.log('Updated Profile Data:', response.user);
       if (response?.user) {
         setUser(response?.user);

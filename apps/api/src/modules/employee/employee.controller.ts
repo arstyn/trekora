@@ -15,6 +15,7 @@ import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { EmployeeService } from './employee.service';
 import { Employee } from './entity/employee.entity';
+import { IUserProfileDTO } from '../../../../../packages/api/src/user/dto/user-profile.dto';
 
 @UseGuards(AuthGuard)
 @Controller('api/employee')
@@ -64,5 +65,10 @@ export class EmployeeController {
   @Delete(':id')
   async remove(@Param('id') id: string): Promise<void> {
     return this.employeeService.remove(id);
+  }
+
+  @Get(':id/profile')
+  async profile(@Param('id') id: string): Promise<IUserProfileDTO> {
+    return this.employeeService.getProfile(id);
   }
 }
