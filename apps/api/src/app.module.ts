@@ -14,6 +14,8 @@ import { UserDepartmentsModule } from './modules/user-departments/user-departmen
 import { LeadModule } from './modules/lead/lead.module';
 import { BranchModule } from './modules/branch/branch.module';
 import { LeadUpdatesModule } from './modules/lead-updates/lead-updates.module';
+import { CustomerModule } from './modules/customer/customer.module';
+
 
 @Module({
   imports: [
@@ -29,6 +31,7 @@ import { LeadUpdatesModule } from './modules/lead-updates/lead-updates.module';
     LeadModule,
     BranchModule,
     LeadUpdatesModule,
+    CustomerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
