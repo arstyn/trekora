@@ -23,17 +23,6 @@ export function KanbanBoard({
     'converted',
   ];
 
-  const statusColors: Record<ILeadStatus, string> = {
-    new: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
-    contacted:
-      'bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800',
-    qualified:
-      'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800',
-    lost: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
-    converted:
-      'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800',
-  };
-
   const statusHeaderColors: Record<ILeadStatus, string> = {
     new: 'text-blue-700 dark:text-blue-400',
     contacted: 'text-purple-700 dark:text-purple-400',

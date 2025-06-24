@@ -15,11 +15,15 @@ import { LeadModule } from './modules/lead/lead.module';
 import { BranchModule } from './modules/branch/branch.module';
 import { LeadUpdatesModule } from './modules/lead-updates/lead-updates.module';
 import { CustomerModule } from './modules/customer/customer.module';
+import { ReminderModule } from './modules/reminder/reminder.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 
 @Module({
   imports: [
     TypeOrmModule.forRoot(typeOrmConfig),
+    ScheduleModule.forRoot(),
     UserModule,
     AuthModule,
     OrganizationModule,
@@ -32,6 +36,8 @@ import { CustomerModule } from './modules/customer/customer.module';
     BranchModule,
     LeadUpdatesModule,
     CustomerModule,
+    ReminderModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
