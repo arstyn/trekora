@@ -159,15 +159,15 @@ export default function GroupManagement({ groups, customers, onAdd, onUpdate, on
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate">{getGroupMemberNames(group.memberIds)}</TableCell>
                   <TableCell>{group.memberIds.length}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right relative">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="cursor-pointer">
+                          <MoreHorizontal className="h-4 w-4 cursor-pointer" />
                           <span className="sr-only">Open menu</span>
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="z-50" >
                         <DropdownMenuItem onClick={() => handleOpenEditForm(group)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit

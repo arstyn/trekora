@@ -24,7 +24,6 @@ export default function CustomerManagement() {
   const [isViewingItinerary, setIsViewingItinerary] = useState(false);
   const [activeTab, setActiveTab] = useState('customers');
 
-  // Load sample data
   useEffect(() => {
     const data = generateSampleData();
     setCustomers(data.customers);
@@ -51,10 +50,8 @@ export default function CustomerManagement() {
   };
 
   const handleDeleteCustomer = (customerId: string) => {
-    // Delete customer
-    setCustomers(customers.filter((c) => c.id !== customerId));
 
-    // Cancel all associated itineraries
+    setCustomers(customers.filter((c) => c.id !== customerId));
     setItineraries(
       itineraries.map((itinerary) =>
         itinerary.customerId === customerId
@@ -63,7 +60,6 @@ export default function CustomerManagement() {
       ),
     );
 
-    // Remove from all groups
     setGroups(
       groups.map((group) => ({
         ...group,
@@ -106,14 +102,14 @@ export default function CustomerManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 pt-6 space-y-6">
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Travel Agency CMS
+             Trekora
           </h1>
           <p className="text-muted-foreground">
-            Manage customers, itineraries, and group bookings
+            Your dream place to manage customers, itineraries, and groups.
           </p>
         </div>
         <div className="flex items-center space-x-2">
