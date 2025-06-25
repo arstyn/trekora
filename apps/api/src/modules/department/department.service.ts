@@ -39,4 +39,6 @@ export class DepartmentService {
   async remove(id: string): Promise<void> {
     await this.departmentRepository.delete(id);
   }
+  
 }
+
