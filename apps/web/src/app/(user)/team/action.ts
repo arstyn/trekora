@@ -82,3 +82,17 @@ export async function getDepartments() {
     return { error: errorMessage, departments: [] };
   }
 }
+
+export async function activateUser(id: string) {
+  try {
+    const employee = await AxiosRequest.post<{}, IEmployee>(
+      `/employee/${id}/activateUser`,
+      {},
+    );
+    return { employee };
+  } catch (error: any) {
+    const errorMessage =
+      error.message ?? 'An error occurred while activating the user.';
+    return { error: errorMessage };
+  }
+}

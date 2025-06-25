@@ -65,4 +65,10 @@ export class EmployeeController {
   async remove(@Param('id') id: string): Promise<void> {
     return this.employeeService.remove(id);
   }
+
+  // Terminate an employee by ID
+  @Post(':id/activateUser')
+  async activateUser(@Param('id') id: string): Promise<Employee> {
+    return this.employeeService.activateUser(id);
+  }
 }

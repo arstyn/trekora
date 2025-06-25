@@ -39,7 +39,7 @@ export class User {
   @Column({ nullable: true })
   phone?: string;
 
-  @Column()
+  @Column({ nullable: true })
   password: string;
 
   @ManyToOne(() => Role, { nullable: true, onDelete: 'SET NULL' })

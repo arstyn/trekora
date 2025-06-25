@@ -6,6 +6,7 @@ import { RoleService } from '../role/role.service';
 import { UserDepartments } from '../user-departments/entity/user-departments.entity';
 import { UserDepartmentsService } from '../user-departments/user-departments.service';
 import { Employee, EmployeeStatus } from './entity/employee.entity';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class EmployeeService {
@@ -15,6 +16,7 @@ export class EmployeeService {
     private readonly userDepartmentsService: UserDepartmentsService,
     private readonly roleService: RoleService,
     private readonly dataSource: DataSource,
+    private readonly userService: UserService,
   ) {}
 
   // Create a new employee
@@ -213,7 +215,7 @@ export class EmployeeService {
       await this.userDepartmentsService.removeByEmployeeId(
         id,
         queryRunner.manager,
-      ); 
+      );
 
       const terminatedEmployee = await queryRunner.manager.findOne(Employee, {
         where: { id },
@@ -232,6 +234,38 @@ export class EmployeeService {
       throw error;
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  async activateUser(id: string) {
+    try {
+      const employee = await this.findOne(id);
+
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+
+      const user = await this.userService.findOneWithEmail(employee.email);
+
+      if (user) {
+        throw Error('User Already Exists');
+      }
+
+      await this.userService.create({
+        email: employee.email,
+        name: employee.name,
+        phone: employee.phoneNumber,
+        organizationId: employee.organizationId,
+        roleId: employee.roleId,
+      });
+
+      return employee;
+    } catch (error) {
+      console.log(
+        '🚀 ~ employee.service.ts:264 ~ EmployeeService ~ activateUser ~ error:',
+        error,
+      );
+      throw error;
     }
   }
 

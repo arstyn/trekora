@@ -56,6 +56,9 @@ import { AddEmployeeModal } from './add-employee-modal';
 import { DeactivateDialog } from './deactivate-dialog';
 import { EditEmployeeDialog } from './edit-employee-dialog';
 import { ViewEmployeeDialog } from './view-employee-dialog';
+import { activateUser } from '../action';
+import { ActivateDialog } from './activate-modal';
+import { toast } from 'sonner';
 
 interface Props {
   initialEmployees: IEmployee[];
@@ -74,7 +77,11 @@ export function TeamTable({ initialEmployees, departments, roles }: Props) {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+  const [isActivateDialogOpen, setIsActivateDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(
+    null,
+  );
+  const [activateEmployee, setActivateEmployee] = useState<IEmployee | null>(
     null,
   );
 
@@ -218,6 +225,15 @@ export function TeamTable({ initialEmployees, departments, roles }: Props) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                className="text-green-600"
+                onClick={() => {
+                  setActivateEmployee(employee);
+                  setIsActivateDialogOpen(true);
+                }}
+              >
+                Activate
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 className="text-red-600"
                 onClick={() => handleDeactivateEmployee(employee)}
                 disabled={employee.status === 'terminated'}
@@ -283,6 +299,24 @@ export function TeamTable({ initialEmployees, departments, roles }: Props) {
   const handleDeactivateEmployee = (employee: IEmployee) => {
     setSelectedEmployee(employee);
     setIsDeactivateDialogOpen(true);
+  };
+
+  // Handle activating an employee
+  const handleActivateEmployee = async (activatedEmployee: IEmployee) => {
+    const { employee, error } = await activateUser(activatedEmployee.id);
+    console.log(
+      '🚀 ~ team-table.tsx:307 ~ handleActivateEmployee ~ error:',
+      error,
+    );
+    if (employee) {
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === employee.id ? { ...emp, ...employee } : emp,
+        ),
+      );
+    } else {
+      toast(error);
+    }
   };
 
   // Handle updating an employee
@@ -445,6 +479,20 @@ export function TeamTable({ initialEmployees, departments, roles }: Props) {
           onDeactivate={handleDeactivate}
         />
       )}
+
+      <ActivateDialog
+        open={isActivateDialogOpen}
+        onOpenChange={(open) => {
+          setIsActivateDialogOpen(open);
+          if (!open) setActivateEmployee(null);
+        }}
+        employee={activateEmployee}
+        onActivate={async (employee) => {
+          await handleActivateEmployee(employee);
+          setIsActivateDialogOpen(false);
+          setActivateEmployee(null);
+        }}
+      />
     </div>
   );
 }
