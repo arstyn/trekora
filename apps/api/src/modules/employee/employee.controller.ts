@@ -68,7 +68,7 @@ export class EmployeeController {
 
   // Terminate an employee by ID
   @Post(':id/activateUser')
-  async activateUser(@Param('id') id: string): Promise<Employee> {
+  async activateUser(@Param('id') id: string) {
     return this.employeeService.activateUser(id);
   }
 }

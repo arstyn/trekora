@@ -18,6 +18,8 @@ import { UserDepartmentsModule } from './modules/user-departments/user-departmen
 import { UserModule } from './modules/user/user.module';
 import { SeedModule } from './seed/seed.module';
 import { LeadModule } from './modules/lead/lead.module';
+import { UserInviteModule } from './modules/user-invite/user-invite.module';
+import { MailerModule } from './modules/mailer/mailer.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { LeadModule } from './modules/lead/lead.module';
     CustomerModule,
     ReminderModule,
     NotificationModule,
+    UserInviteModule,
+    MailerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
