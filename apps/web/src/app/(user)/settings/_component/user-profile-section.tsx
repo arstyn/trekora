@@ -25,50 +25,34 @@ import {
 import { toast } from 'sonner';
 import { getUser } from '../action';
 
-// interface UserProfile {
-//   id: string;
-//   name: string;
-//   email: string;
-//   phone: string;
-//   position: string;
-//   department: string;
-//   location: string;
-//   avatar: string;
-//   joinDate: string;
-// }
-
-interface UserProfileData {
-  id: string;
-  branchId?: string;
+type UserProfile = {
+  name: string;
   email: string;
-  phone: string;
-  password: string;
-}
-
-// const initialData = {
-//   id: '1',
-//   name: 'John Doe',
-//   email: 'john.doe@company.com',
-//   phone: '+1 (555) 123-4567',
-//   position: 'Branch Manager',
-//   department: 'Operations',
-//   location: 'New York Branch',
-//   avatar: '/placeholder.svg?height=100&width=100',
-//   joinDate: '2023-01-15',
-// };
+  phone?: string;
+  position?: string;
+  department?: string;
+  location?: string;
+};
 
 export function UserProfileSection() {
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // const [userProfile, setUserProfile] = useState<UserProfile>(initialData);
-  const [user, setUser] = useState<any>({});
+  const [user, setUser] = useState<UserProfile>({} as UserProfile);
 
   useEffect(() => {
     const getUserData = async () => {
-      const response = await getUser('d03cdfda-5200-41b9-b90a-6a5222a6f4ea');
-      console.log('Updated Profile Data:', response.user);
-      if (response?.user) {
-        setUser(response?.user);
+      const response = await getUser('0667f994-c1c2-441f-a6f2-2af73b536217');
+      const userData = response?.user;
+      if (userData) {
+        setUser({
+          name: userData?.name ?? '',
+          email: userData?.email ?? '',
+          phone: userData?.phoneNumber ?? '',
+          position: userData?.role?.name ?? '',
+          department:
+            userData?.employeeDepartments?.[0]?.department?.name ?? '',
+          location: userData?.organization?.name ?? '',
+        });
       }
     };
     getUserData();
@@ -78,8 +62,11 @@ export function UserProfileSection() {
     setIsLoading(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast('Profile Updated', {
+        description: 'Your profile has been updated successfully.',
+      });
     } catch (error) {
-      console.error('Failed to update profile. Please try again.', error);
+      console.error('Failed to update profile:', error);
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +81,7 @@ export function UserProfileSection() {
     if (!file) return;
 
     const avatarUrl = URL.createObjectURL(file);
-    setUser((prev: any) => ({ ...prev, avatar: avatarUrl }));
+    setUser((prev) => ({ ...prev, avatar: avatarUrl }));
 
     toast('Avatar Updated', {
       description: 'Your avatar has been updated successfully.',
@@ -116,11 +103,11 @@ export function UserProfileSection() {
         <div className="flex items-center gap-4">
           <div className="relative">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarImage src={user?.name} alt={user.name} />
               <AvatarFallback>
                 {user.name
                   ?.split(' ')
-                  ?.map((n: any) => n[0])
+                  ?.map((n) => n[0])
                   ?.join('')}
               </AvatarFallback>
             </Avatar>
@@ -143,49 +130,53 @@ export function UserProfileSection() {
           </div>
           <div className="space-y-1">
             <h3 className="text-lg font-semibold">{user.name}</h3>
-            <Badge variant="secondary">{user.position}</Badge>
-            <p className="text-sm text-muted-foreground">
-              Joined {new Date(user.joinDate).toLocaleDateString()}
-            </p>
+            <Badge variant="secondary">{user.position || 'Employee'}</Badge>
+            <p className="text-sm text-muted-foreground">Joined ghjkl</p>
           </div>
         </div>
+
         <div className="grid gap-4 md:grid-cols-2">
-          {[
-            ['Full Name', 'name'],
+          {(
             [
-              'Email',
-              'email',
-              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
-            ],
-            [
-              'Phone',
-              'phone',
-              <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
-            ],
-            [
-              'Position',
-              'position',
-              <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
-            ],
-            ['Department', 'department'],
-            [
-              'Location',
-              'location',
-              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
-            ],
-          ].map(([label, key, icon]) => (
-            <div key={key as string} className="space-y-2">
-              <Label htmlFor={key as string}>{label}</Label>
+              ['Full Name', 'name'],
+              [
+                'Email',
+                'email',
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
+              ],
+              [
+                'Phone',
+                'phone',
+                <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
+              ],
+              [
+                'Position',
+                'position',
+                <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
+              ],
+              ['Department', 'department'],
+              [
+                'Location',
+                'location',
+                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
+              ],
+            ] as const
+          ).map(([label, key, icon]) => (
+            <div key={key} className="space-y-2">
+              <Label htmlFor={key}>{label}</Label>
               <div className="relative">
                 {icon}
                 <Input
-                  id={key as string}
+                  id={key}
                   className={icon ? 'pl-10' : ''}
-                  value={user[key as keyof any] as string}
+                  value={user[key] ?? ''}
+                  disabled={['position', 'department', 'location'].includes(
+                    key,
+                  )}
                   onChange={(e) =>
-                    setUser((prev: any) => ({
+                    setUser((prev) => ({
                       ...prev,
-                      [key as string]: e.target.value,
+                      [key]: e.target.value,
                     }))
                   }
                 />
@@ -193,6 +184,7 @@ export function UserProfileSection() {
             </div>
           ))}
         </div>
+
         <Button
           onClick={handleProfileUpdate}
           disabled={isLoading}

@@ -1,6 +1,5 @@
 'use client';
 
-import StatusBadge from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -34,47 +33,39 @@ export function ViewBranchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] rounded-2xl shadow-xl p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            Branch Details
+          <DialogTitle className="text-xl font-semibold tracking-tight">
+            🏢 Branch Details
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-8">
-          <div className="max-h-[50vh] overflow-auto space-y-5">
-            <div className="grid grid-cols-2 gap-6 ">
-              <div className="space-y-3">
-                <Detail label="name" value={display(branch?.name)} />
-                <Detail label="location" value={display(branch?.location)} />
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Status
-                  </p>
-                  {branch?.isActive === true ? (
-                    <CheckCircle2Icon className="text-green-500 dark:text-green-400" />
-                  ) : (
-                    <LoaderIcon />
-                  )}
-                  {branch?.isActive === true ? "active" : "inactive"}
-                </div>
+        <div className="space-y-6 mt-4">
+          <div className="grid grid-cols-2 gap-6 border p-4 rounded-lg bg-muted/10">
+            <Detail label="Name" value={display(branch?.name)} />
+            <Detail label="Location" value={display(branch?.location)} />
+            <div className="col-span-2">
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Status
+              </p>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {branch?.isActive ? (
+                  <CheckCircle2Icon className="w-4 h-4 text-green-500" />
+                ) : (
+                  <LoaderIcon className="w-4 h-4 text-yellow-500 animate-spin" />
+                )}
+                <span className={branch?.isActive ? 'text-green-600' : 'text-yellow-600'}>
+                  {branch?.isActive ? 'Active' : 'Inactive'}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="pt-4 pr-4 flex justify-end gap-2 border-t">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="pt-4 border-t flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            {branch && (
-              <Button
-                onClick={() => {
-                  onClickEdit();
-                }}
-              >
-                Edit Branch
-              </Button>
-            )}
+            <Button onClick={onClickEdit}>Edit Branch</Button>
           </div>
         </div>
       </DialogContent>
@@ -84,9 +75,9 @@ export function ViewBranchDialog({
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="text-sm">{value}</p>
+    <div className="space-y-1">
+      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+      <p className="text-sm text-foreground">{value}</p>
     </div>
   );
 }
