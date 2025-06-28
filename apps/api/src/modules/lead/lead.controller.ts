@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
+import { LeadDto } from '@repo/api/lead/lead-create.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { Lead } from './entity/lead.entity';
 import { LeadService } from './lead.service';
@@ -22,7 +23,7 @@ export class LeadController {
   @Post()
   async create(
     @Request() req: ApiRequestJWT,
-    @Body() leadData: Partial<Lead>,
+    @Body() leadData: LeadDto,
   ): Promise<Lead> {
     return this.leadService.create(req.user, leadData);
   }

@@ -12,23 +12,11 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { LeadFormDTO, leadSchema } from '@repo/api/lead/lead-create.dto';
 import { ILead } from '@repo/api/lead/lead.entity';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { createLead, updateLead } from '../action';
-
-// Define Zod schema for validation
-const leadSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  company: z.string().optional(),
-  email: z.string().email('Invalid email address').optional(),
-  phone: z.string().optional(),
-  status: z.enum(['new', 'contacted', 'qualified', 'lost', 'converted']),
-  notes: z.string().optional(),
-});
-
-export type LeadFormData = z.infer<typeof leadSchema>;
 
 interface LeadFormProps {
   lead?: ILead;
@@ -46,7 +34,7 @@ export function LeadForm({ lead, isCreating, onSave, onClose }: LeadFormProps) {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<LeadFormData>({
+  } = useForm<LeadFormDTO>({
     resolver: zodResolver(leadSchema),
     defaultValues: {
       name: '',
@@ -73,7 +61,7 @@ export function LeadForm({ lead, isCreating, onSave, onClose }: LeadFormProps) {
     }
   }, [lead, isCreating, reset]);
 
-  const onSubmit = async (data: LeadFormData) => {
+  const onSubmit = async (data: LeadFormDTO) => {
     setLoading(true);
     if (isCreating) {
       const { lead: newLead, error } = await createLead(data);

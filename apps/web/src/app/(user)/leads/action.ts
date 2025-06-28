@@ -1,11 +1,11 @@
 'use server';
 import { AxiosRequest } from '@/lib/axios';
-import { ILead } from '@repo/api/lead/lead.entity';
-import { LeadFormData } from './_components/lead-form';
+import { LeadFormDTO } from '@repo/api/lead/lead-create.dto';
 import {
   ILeadUpdate,
   ILeadUpdateCreateDTO,
 } from '@repo/api/lead/lead-update.entity';
+import { ILead } from '@repo/api/lead/lead.entity';
 import { IReminder } from '@repo/api/reminder/reminder.entity';
 
 export async function getLeads() {
@@ -19,9 +19,9 @@ export async function getLeads() {
   }
 }
 
-export async function createLead(newLead: LeadFormData) {
+export async function createLead(newLead: LeadFormDTO) {
   try {
-    const lead = await AxiosRequest.post<LeadFormData, ILead>('/lead', newLead);
+    const lead = await AxiosRequest.post<LeadFormDTO, ILead>('/lead', newLead);
     return { lead };
   } catch (error: any) {
     const errorMessage =
@@ -30,10 +30,7 @@ export async function createLead(newLead: LeadFormData) {
   }
 }
 
-export async function updateLead(
-  id: string,
-  updateLead: Partial<LeadFormData>,
-) {
+export async function updateLead(id: string, updateLead: Partial<LeadFormDTO>) {
   try {
     const lead = await AxiosRequest.put<Partial<ILead>, ILead>(
       `/lead/${id}`,
@@ -109,7 +106,6 @@ export async function getReminders(leadId: string) {
 export async function createReminder(
   data: Partial<IReminder> & { entityType: string; entityId: string },
 ) {
-  console.log('🚀 ~ action.ts:109 ~ data:', data);
   try {
     const reminder = await AxiosRequest.post<typeof data, IReminder>(
       '/reminder',
