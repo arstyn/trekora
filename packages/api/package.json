@@ -34,7 +34,8 @@
     }
   },
   "dependencies": {
-    "@nestjs/mapped-types": "*"
+    "@nestjs/mapped-types": "*",
+    "@repo/validation": "*"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

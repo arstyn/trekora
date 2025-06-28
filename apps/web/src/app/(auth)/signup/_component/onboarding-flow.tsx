@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -9,9 +11,17 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -19,67 +29,85 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  User,
-  Building2,
-  Users,
-  CheckCircle,
-  ArrowRight,
   ArrowLeft,
-  Mail,
-  Lock,
-  Phone,
+  ArrowRight,
+  Building2,
+  CheckCircle,
   Globe,
-  UserPlus,
+  Lock,
+  Mail,
+  Phone,
   Sparkles,
+  User,
+  UserPlus,
+  Users,
 } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { useState } from 'react';
+import { useFieldArray, useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 type Step = 'signup' | 'organization' | 'team' | 'complete';
 
-interface FormData {
+const teamMemberSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  role: z.enum(['admin', 'member', 'viewer']),
+});
+
+// Combined schema for the entire form
+const onboardingSchema = z.object({
   // Personal info
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  phone: string;
+  firstName: z.string().min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  phone: z.string().optional(),
 
   // Organization info
-  orgName: string;
-  orgSize: string;
-  industry: string;
-  website: string;
-  description: string;
+  orgName: z.string().min(2, 'Organization name must be at least 2 characters'),
+  orgSize: z.string().min(1, 'Please select organization size'),
+  industry: z.string().min(1, 'Please select industry'),
+  website: z.string().url().optional().or(z.literal('')),
+  description: z.string().optional(),
 
   // Team info
-  teamMembers: Array<{ email: string; role: string }>;
+  teamMembers: z.array(teamMemberSchema),
 
   // Preferences
-  notifications: boolean;
-  newsletter: boolean;
-}
+  notifications: z.boolean(),
+  newsletter: z.boolean(),
+});
+
+type OnboardingFormData = z.infer<typeof onboardingSchema>;
 
 export default function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState<Step>('signup');
-  const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    phone: '',
-    orgName: '',
-    orgSize: '',
-    industry: '',
-    website: '',
-    description: '',
-    teamMembers: [],
-    notifications: true,
-    newsletter: false,
+
+  const form = useForm<OnboardingFormData>({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      phone: '',
+      orgName: '',
+      orgSize: '',
+      industry: '',
+      website: '',
+      description: '',
+      teamMembers: [],
+      notifications: true,
+      newsletter: false,
+    },
+    mode: 'onChange',
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'teamMembers',
   });
 
   const steps = [
@@ -92,38 +120,41 @@ export default function OnboardingFlow() {
   const currentStepIndex = steps.findIndex((step) => step.id === currentStep);
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
-  const updateFormData = (updates: Partial<FormData>) => {
-    setFormData((prev) => ({ ...prev, ...updates }));
-  };
-
   const addTeamMember = () => {
-    updateFormData({
-      teamMembers: [...formData.teamMembers, { email: '', role: 'member' }],
-    });
+    append({ email: '', role: 'member' });
   };
 
-  const updateTeamMember = (
-    index: number,
-    field: 'email' | 'role',
-    value: string,
-  ) => {
-    const updated = formData.teamMembers.map((member, i) =>
-      i === index ? { ...member, [field]: value } : member,
-    );
-    updateFormData({ teamMembers: updated });
-  };
-
-  const removeTeamMember = (index: number) => {
-    updateFormData({
-      teamMembers: formData.teamMembers.filter((_, i) => i !== index),
-    });
-  };
-
-  const nextStep = () => {
+  const nextStep = async () => {
     const stepOrder: Step[] = ['signup', 'organization', 'team', 'complete'];
     const currentIndex = stepOrder.indexOf(currentStep);
+
     if (currentIndex < stepOrder.length - 1) {
-      setCurrentStep(stepOrder[currentIndex + 1] as Step);
+      // Validate current step before proceeding
+      let isValid = false;
+
+      switch (currentStep) {
+        case 'signup':
+          isValid = await form.trigger([
+            'firstName',
+            'lastName',
+            'email',
+            'password',
+          ]);
+          break;
+        case 'organization':
+          isValid = await form.trigger(['orgName', 'orgSize', 'industry']);
+          break;
+        case 'team':
+          // Team step is optional, so always allow proceeding
+          isValid = true;
+          break;
+        default:
+          isValid = true;
+      }
+
+      if (isValid) {
+        setCurrentStep(stepOrder[currentIndex + 1] as Step);
+      }
     }
   };
 
@@ -133,6 +164,12 @@ export default function OnboardingFlow() {
     if (currentIndex > 0) {
       setCurrentStep(stepOrder[currentIndex - 1] as Step);
     }
+  };
+
+  const onSubmit = async (data: OnboardingFormData) => {
+    console.log('Form submitted:', data);
+    // Handle form submission here
+    // You can make API calls, redirect, etc.
   };
 
   const renderStepIndicator = () => (
@@ -182,70 +219,99 @@ export default function OnboardingFlow() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="firstName">First Name</Label>
-            <Input
-              id="firstName"
-              value={formData.firstName}
-              onChange={(e) => updateFormData({ firstName: e.target.value })}
-              placeholder="John"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lastName">Last Name</Label>
-            <Input
-              id="lastName"
-              value={formData.lastName}
-              onChange={(e) => updateFormData({ lastName: e.target.value })}
-              placeholder="Doe"
-            />
-          </div>
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>First Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="John" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Last Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Doe" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email Address</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="email"
-              type="email"
-              className="pl-10"
-              value={formData.email}
-              onChange={(e) => updateFormData({ email: e.target.value })}
-              placeholder="john@example.com"
-            />
-          </div>
-        </div>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email Address</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    className="pl-10"
+                    placeholder="john@example.com"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="password"
-              type="password"
-              className="pl-10"
-              value={formData.password}
-              onChange={(e) => updateFormData({ password: e.target.value })}
-              placeholder="••••••••"
-            />
-          </div>
-        </div>
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="password"
+                    className="pl-10"
+                    placeholder="••••••••"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="phone">Phone Number (Optional)</Label>
-          <div className="relative">
-            <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="phone"
-              type="tel"
-              className="pl-10"
-              value={formData.phone}
-              onChange={(e) => updateFormData({ phone: e.target.value })}
-              placeholder="+1 (555) 123-4567"
-            />
-          </div>
-        </div>
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone Number (Optional)</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="tel"
+                    className="pl-10"
+                    placeholder="+1 (555) 123-4567"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <Button onClick={nextStep} className="w-full">
           Continue <ArrowRight className="ml-2 h-4 w-4" />
@@ -263,84 +329,117 @@ export default function OnboardingFlow() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="orgName">Organization Name</Label>
-          <div className="relative">
-            <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="orgName"
-              className="pl-10"
-              value={formData.orgName}
-              onChange={(e) => updateFormData({ orgName: e.target.value })}
-              placeholder="Acme Corporation"
-            />
-          </div>
-        </div>
+        <FormField
+          control={form.control}
+          name="orgName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Organization Name</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-10"
+                    placeholder="Acme Corporation"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="orgSize">Organization Size</Label>
-          <Select
-            value={formData.orgSize}
-            onValueChange={(value) => updateFormData({ orgSize: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select size" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1-10">1-10 employees</SelectItem>
-              <SelectItem value="11-50">11-50 employees</SelectItem>
-              <SelectItem value="51-200">51-200 employees</SelectItem>
-              <SelectItem value="201-1000">201-1000 employees</SelectItem>
-              <SelectItem value="1000+">1000+ employees</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <FormField
+          control={form.control}
+          name="orgSize"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Organization Size</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select size" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="1-10">1-10 employees</SelectItem>
+                  <SelectItem value="11-50">11-50 employees</SelectItem>
+                  <SelectItem value="51-200">51-200 employees</SelectItem>
+                  <SelectItem value="201-1000">201-1000 employees</SelectItem>
+                  <SelectItem value="1000+">1000+ employees</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="industry">Industry</Label>
-          <Select
-            value={formData.industry}
-            onValueChange={(value) => updateFormData({ industry: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select industry" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="technology">Technology</SelectItem>
-              <SelectItem value="healthcare">Healthcare</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
-              <SelectItem value="education">Education</SelectItem>
-              <SelectItem value="retail">Retail</SelectItem>
-              <SelectItem value="manufacturing">Manufacturing</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <FormField
+          control={form.control}
+          name="industry"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Industry</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select industry" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="technology">Technology</SelectItem>
+                  <SelectItem value="healthcare">Healthcare</SelectItem>
+                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="education">Education</SelectItem>
+                  <SelectItem value="retail">Retail</SelectItem>
+                  <SelectItem value="manufacturing">Manufacturing</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="website">Website (Optional)</Label>
-          <div className="relative">
-            <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="website"
-              className="pl-10"
-              value={formData.website}
-              onChange={(e) => updateFormData({ website: e.target.value })}
-              placeholder="https://example.com"
-            />
-          </div>
-        </div>
+        <FormField
+          control={form.control}
+          name="website"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Website (Optional)</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-10"
+                    placeholder="https://example.com"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="description">Description (Optional)</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => updateFormData({ description: e.target.value })}
-            placeholder="Brief description of your organization..."
-            rows={3}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description (Optional)</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Brief description of your organization..."
+                  rows={3}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex gap-2">
           <Button
@@ -367,42 +466,59 @@ export default function OnboardingFlow() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {formData.teamMembers.length > 0 && (
+        {fields.length > 0 && (
           <div className="space-y-3">
-            {formData.teamMembers.map((member, index) => (
-              <div key={index} className="flex gap-2 items-end">
+            {fields.map((field, index) => (
+              <div key={field.id} className="flex gap-2 items-end">
                 <div className="flex-1 space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    value={member.email}
-                    onChange={(e) =>
-                      updateTeamMember(index, 'email', e.target.value)
-                    }
-                    placeholder="colleague@example.com"
+                  <FormField
+                    control={form.control}
+                    name={`teamMembers.${index}.email`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="colleague@example.com"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
                 <div className="w-32 space-y-2">
-                  <Label>Role</Label>
-                  <Select
-                    value={member.role}
-                    onValueChange={(value) =>
-                      updateTeamMember(index, 'role', value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="member">Member</SelectItem>
-                      <SelectItem value="viewer">Viewer</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormField
+                    control={form.control}
+                    name={`teamMembers.${index}.role`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="member">Member</SelectItem>
+                            <SelectItem value="viewer">Viewer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => removeTeamMember(index)}
+                  onClick={() => remove(index)}
                 >
                   Remove
                 </Button>
@@ -421,31 +537,45 @@ export default function OnboardingFlow() {
         </Button>
 
         <div className="space-y-3 pt-4 border-t">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="notifications"
-              checked={formData.notifications}
-              onCheckedChange={(checked) =>
-                updateFormData({ notifications: !!checked })
-              }
-            />
-            <Label htmlFor="notifications" className="text-sm">
-              Send me notifications about team activity
-            </Label>
-          </div>
+          <FormField
+            control={form.control}
+            name="notifications"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="text-sm">
+                    Send me notifications about team activity
+                  </FormLabel>
+                </div>
+              </FormItem>
+            )}
+          />
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="newsletter"
-              checked={formData.newsletter}
-              onCheckedChange={(checked) =>
-                updateFormData({ newsletter: !!checked })
-              }
-            />
-            <Label htmlFor="newsletter" className="text-sm">
-              Subscribe to product updates and tips
-            </Label>
-          </div>
+          <FormField
+            control={form.control}
+            name="newsletter"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="text-sm">
+                    Subscribe to product updates and tips
+                  </FormLabel>
+                </div>
+              </FormItem>
+            )}
+          />
         </div>
 
         <div className="flex gap-2">
@@ -464,67 +594,79 @@ export default function OnboardingFlow() {
     </Card>
   );
 
-  const renderCompleteStep = () => (
-    <Card className="mx-auto max-w-md w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
-      <CardHeader className="text-center">
-        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-          <CheckCircle className="w-8 h-8 text-primary" />
-        </div>
-        <CardTitle className="text-2xl">Welcome to the Platform!</CardTitle>
-        <CardDescription>
-          Your account and organization have been successfully created
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="bg-muted/30 rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarFallback>
-                {formData.firstName[0]}
-                {formData.lastName[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-medium">
-                {formData.firstName} {formData.lastName}
-              </p>
-              <p className="text-sm text-muted-foreground">{formData.email}</p>
+  const renderCompleteStep = () => {
+    const formData = form.getValues();
+
+    return (
+      <Card className="mx-auto max-w-md w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
+        <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle className="w-8 h-8 text-primary" />
+          </div>
+          <CardTitle className="text-2xl">Welcome to the Platform!</CardTitle>
+          <CardDescription>
+            Your account and organization have been successfully created
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarFallback>
+                  {formData.firstName[0]}
+                  {formData.lastName[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-medium">
+                  {formData.firstName} {formData.lastName}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formData.email}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 text-sm">
-            <Building2 className="w-4 h-4 text-muted-foreground" />
-            <span>{formData.orgName}</span>
-            <Badge variant="secondary">{formData.orgSize}</Badge>
-          </div>
-
-          {formData.teamMembers.length > 0 && (
             <div className="flex items-center gap-2 text-sm">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <span>{formData.teamMembers.length} team member(s) invited</span>
+              <Building2 className="w-4 h-4 text-muted-foreground" />
+              <span>{formData.orgName}</span>
+              <Badge variant="secondary">{formData.orgSize}</Badge>
             </div>
-          )}
-        </div>
 
-        <div className="space-y-2">
-          <h4 className="font-medium flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            What's next?
-          </h4>
-          <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Check your email for verification</li>
-            <li>• Explore your dashboard</li>
-            <li>• Set up your first project</li>
-            <li>• Invite more team members</li>
-          </ul>
-        </div>
+            {formData.teamMembers.length > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span>
+                  {formData.teamMembers.length} team member(s) invited
+                </span>
+              </div>
+            )}
+          </div>
 
-        <Button className="w-full" size="lg">
-          Go to Dashboard
-        </Button>
-      </CardContent>
-    </Card>
-  );
+          <div className="space-y-2">
+            <h4 className="font-medium flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              What's next?
+            </h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• Check your email for verification</li>
+              <li>• Explore your dashboard</li>
+              <li>• Set up your first project</li>
+              <li>• Invite more team members</li>
+            </ul>
+          </div>
+
+          <Button
+            onClick={() => form.handleSubmit(onSubmit)()}
+            className="w-full"
+            size="lg"
+          >
+            Go to Dashboard
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 flex items-center justify-center p-4">
@@ -541,10 +683,12 @@ export default function OnboardingFlow() {
       <div className="container mx-auto">
         {renderStepIndicator()}
 
-        {currentStep === 'signup' && renderSignupStep()}
-        {currentStep === 'organization' && renderOrganizationStep()}
-        {currentStep === 'team' && renderTeamStep()}
-        {currentStep === 'complete' && renderCompleteStep()}
+        <Form {...form}>
+          {currentStep === 'signup' && renderSignupStep()}
+          {currentStep === 'organization' && renderOrganizationStep()}
+          {currentStep === 'team' && renderTeamStep()}
+          {currentStep === 'complete' && renderCompleteStep()}
+        </Form>
       </div>
     </div>
   );
