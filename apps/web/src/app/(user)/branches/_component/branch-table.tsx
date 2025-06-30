@@ -38,6 +38,8 @@ import { deleteBranch } from '../action';
 import { EditBranchDialog } from './edit-branch';
 import StatusBadge from '@/components/status-badge';
 import { IEmployeeStatus } from '@repo/api/employee/employee.entity';
+import { ViewBranchDialog } from './branch-view-modal';
+import { DeleteBranchDialog } from './branch-dlete-modal';
 
 interface Props {
   Initialbranches: IBranch[];
@@ -49,7 +51,9 @@ export function BranchTable({ Initialbranches }: Props) {
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [branches, setBranches] = useState<any[]>(Initialbranches ?? []);
-  const [editId, setEditId] = useState<string>('');
+  const [branchId, setBranchId] = useState<string>('');
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const columns: ColumnDef<IBranch>[] = [
     {
@@ -73,7 +77,15 @@ export function BranchTable({ Initialbranches }: Props) {
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => <StatusBadge status={row.original.isActive === true ? IEmployeeStatus.ACTIVE : IEmployeeStatus.INACTIVE } />,
+      cell: ({ row }) => (
+        <StatusBadge
+          status={
+            row.original.isActive === true
+              ? IEmployeeStatus.ACTIVE
+              : IEmployeeStatus.INACTIVE
+          }
+        />
+      ),
     },
     {
       accessorKey: 'Actions',
@@ -90,12 +102,17 @@ export function BranchTable({ Initialbranches }: Props) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => console.log('View', branch)}>
+              <DropdownMenuItem
+                onClick={() => {
+                  setBranchId(branch?.id);
+                  setIsViewDialogOpen(true);
+                }}
+              >
                 View
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
-                  setEditId(branch?.id);
+                  setBranchId(branch?.id);
                   setIsEditModalOpen(true);
                 }}
               >
@@ -104,7 +121,8 @@ export function BranchTable({ Initialbranches }: Props) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
-                  handleDeleteBranch(branch?.id);
+                  setIsDeleteDialogOpen(true);
+                  setBranchId(branch?.id);
                 }}
                 className="text-red-600"
               >
@@ -117,10 +135,11 @@ export function BranchTable({ Initialbranches }: Props) {
     },
   ];
 
-  const handleDeleteBranch = async (branchID: string) => {
-    const response = await deleteBranch(branchID);
+  const handleDeleteBranch = async () => {
+    setIsDeleteDialogOpen(false);
+    const response = await deleteBranch(branchId);
     if (response.branch?.name) {
-      setBranches((prev) => prev.filter((branch) => branch.id !== branchID));
+      setBranches((prev) => prev.filter((branch) => branch.id !== branchId));
     }
   };
 
@@ -141,6 +160,11 @@ export function BranchTable({ Initialbranches }: Props) {
 
   const handleOpenAddBranchDialog = () => {
     setIsAddModalOpen(true);
+  };
+
+  const onClickEdit = () => {
+    setIsViewDialogOpen(false);
+    setIsEditModalOpen(true);
   };
 
   return (
@@ -196,7 +220,10 @@ export function BranchTable({ Initialbranches }: Props) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center h-24">
+                <TableCell
+                  colSpan={columns.length}
+                  className="text-center h-24"
+                >
                   No results.
                 </TableCell>
               </TableRow>
@@ -212,12 +239,25 @@ export function BranchTable({ Initialbranches }: Props) {
         onOpenChange={setIsAddModalOpen}
       />
 
+      <ViewBranchDialog
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+        branch={branches?.find((branch: any) => branch.id === branchId)}
+        onClickEdit={onClickEdit}
+      />
+
       <EditBranchDialog
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
-        branchData={branches.find((i) => i.id === editId)}
+        branchData={branches.find((i) => i.id === branchId)}
         branches={branches}
         setBranches={setBranches}
+      />
+
+      <DeleteBranchDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirmDelete={handleDeleteBranch}
       />
 
       <DataTableFooter table={table} />

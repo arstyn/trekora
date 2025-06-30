@@ -1,9 +1,10 @@
 import { AxiosRequest } from "@/lib/axios";
+import { IEmployee } from "@repo/api/employee/employee.entity";
 import { IUser } from "@repo/api/user/user.entity";
 
-export async function getUser(userID: string) {
+export async function getUser(emploeyeeID: string) {
   try {
-    const user = await AxiosRequest.get<IUser[]>(`/users/${userID}`);
+    const user = await AxiosRequest.get<any>(`/employee/${emploeyeeID}/profile`);
     return { user };
   } catch (error: any) {
     const errorMessage =

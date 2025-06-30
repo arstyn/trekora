@@ -236,6 +236,22 @@ export class EmployeeService {
     }
   }
 
+  async findProfile(id: string): Promise<Employee | null> {
+  return this.employeeRepository.findOne({
+    where: { id },
+    relations: {
+      role: true,
+      branch: true,
+      organization: true,
+      user: true,
+      employeeDepartments: {
+        department: true,
+      },
+    },
+  });
+}
+
+
   // Delete an employee by ID
   async remove(id: string): Promise<void> {
     await this.employeeRepository.delete(id);

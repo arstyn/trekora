@@ -46,6 +46,11 @@ export class EmployeeController {
     return this.employeeService.findOne(id);
   }
 
+  @Get(':id/profile')
+  async findProfile(@Param('id') id: string): Promise<Employee | null> {
+    return this.employeeService.findProfile(id);
+  }
+
   // Update an employee by ID
   @Put(':id')
   async update(
