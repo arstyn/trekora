@@ -45,10 +45,11 @@ export class BranchService {
     }
   }
 
-  async findAll(): Promise<Branch[]> {
+  async findAll(organizationId: string): Promise<Branch[]> {
     return this.branchRepository.find({
       relations: ['organization'],
       order: { createdAt: 'DESC' },
+      where: { organizationId }
     });
   }
 

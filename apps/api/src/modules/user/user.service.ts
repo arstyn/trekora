@@ -33,6 +33,8 @@ export class UserService {
     return await this.userRepository.findOne({ where: { id } });
   }
 
+
+
   // Update a user by ID
   async update(id: string, updateData: Partial<User>): Promise<User | null> {
     await this.userRepository.update(id, updateData);

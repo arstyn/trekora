@@ -7,7 +7,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  UpdateDateColumn, 
 } from 'typeorm';
 
 @Entity('branch')
@@ -40,5 +40,5 @@ export class Branch {
   isActive: boolean;
 
   @OneToMany(() => Employee, (employee) => employee.branch)
-  employees: Employee[];
+  managerId: string;
 }
