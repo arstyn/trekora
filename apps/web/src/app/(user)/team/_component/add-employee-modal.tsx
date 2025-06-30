@@ -115,7 +115,7 @@ export function AddEmployeeModal({
       email: '',
       departments: [],
       roleId: '',
-      status: 'active',
+      status: 'inactive',
       joinDate: new Date(),
       address: '',
       phoneNumber: '',
@@ -320,12 +320,6 @@ export function AddEmployeeModal({
                         defaultValue={field.value}
                         className="flex space-x-4"
                       >
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="active" />
-                          </FormControl>
-                          <FormLabel className="font-normal">Active</FormLabel>
-                        </FormItem>
                         <FormItem className="flex items-center space-x-2 space-y-0">
                           <FormControl>
                             <RadioGroupItem value="inactive" />

@@ -6,6 +6,9 @@ import { UserDepartmentsModule } from '../user-departments/user-departments.modu
 import { EmployeeController } from './employee.controller';
 import { EmployeeService } from './employee.service';
 import { Employee } from './entity/employee.entity';
+import { UserModule } from '../user/user.module';
+import { UserInviteModule } from '../user-invite/user-invite.module';
+import { MailerModule } from '../mailer/mailer.module';
 
 @Module({
   controllers: [EmployeeController],
@@ -15,6 +18,9 @@ import { Employee } from './entity/employee.entity';
     JwtModule.register({}),
     RoleModule,
     UserDepartmentsModule,
+    UserModule,
+    UserInviteModule,
+    MailerModule,
   ],
 })
 export class EmployeeModule {}

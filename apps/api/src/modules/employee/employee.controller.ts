@@ -76,4 +76,10 @@ export class EmployeeController {
   async profile(@Param('id') id: string): Promise<IUserProfileDTO> {
     return this.employeeService.getProfile(id);
   }
+
+  // Terminate an employee by ID
+  @Post(':id/activateUser')
+  async activateUser(@Param('id') id: string) {
+    return this.employeeService.activateUser(id);
+  }
 }

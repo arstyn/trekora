@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
 import { DataSource, Repository } from 'typeorm';
@@ -7,6 +7,9 @@ import { UserDepartments } from '../user-departments/entity/user-departments.ent
 import { UserDepartmentsService } from '../user-departments/user-departments.service';
 import { Employee, EmployeeStatus } from './entity/employee.entity';
 import { IUserProfileDTO } from '../../../../../packages/api/src/user/dto/user-profile.dto'
+import { UserService } from '../user/user.service';
+import { UserInviteService } from '../user-invite/user-invite.service';
+import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class EmployeeService {
@@ -16,6 +19,9 @@ export class EmployeeService {
     private readonly userDepartmentsService: UserDepartmentsService,
     private readonly roleService: RoleService,
     private readonly dataSource: DataSource,
+    private readonly userService: UserService,
+    private readonly userInviteService: UserInviteService,
+    private readonly mailerService: MailerService,
   ) {}
 
   // Create a new employee
@@ -80,9 +86,12 @@ export class EmployeeService {
       await queryRunner.commitTransaction();
 
       return updatedEmployee;
-    } catch (error) {
+    } catch (error: any) {
       await queryRunner.rollbackTransaction();
-      throw error;
+      throw new HttpException(
+        error.message ?? 'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     } finally {
       await queryRunner.release();
     }
@@ -184,9 +193,12 @@ export class EmployeeService {
       await queryRunner.commitTransaction();
 
       return updatedEmployee!;
-    } catch (error) {
+    } catch (error: any) {
       await queryRunner.rollbackTransaction();
-      throw error;
+      throw new HttpException(
+        error.message ?? 'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     } finally {
       await queryRunner.release();
     }
@@ -214,7 +226,7 @@ export class EmployeeService {
       await this.userDepartmentsService.removeByEmployeeId(
         id,
         queryRunner.manager,
-      ); 
+      );
 
       const terminatedEmployee = await queryRunner.manager.findOne(Employee, {
         where: { id },
@@ -228,9 +240,12 @@ export class EmployeeService {
       await queryRunner.commitTransaction();
 
       return terminatedEmployee;
-    } catch (error) {
+    } catch (error: any) {
       await queryRunner.rollbackTransaction();
-      throw error;
+      throw new HttpException(
+        error.message ?? 'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     } finally {
       await queryRunner.release();
     }
@@ -251,6 +266,66 @@ export class EmployeeService {
   });
 }
 
+  async activateUser(id: string) {
+    try {
+      const employee = await this.findOne(id);
+
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+
+      const user = await this.userService.findOneWithEmail(employee.email);
+      if (user) {
+        throw Error('User Already Exists');
+      }
+
+      // Create invite
+      const invite = await this.userInviteService.createInvite(employee);
+
+      // Send invite email (implement sendInviteEmail)
+      await this.sendInviteEmail(employee.email, invite.token);
+
+      return { message: 'Invite sent' };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message ?? 'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Placeholder for sending invite email
+  async sendInviteEmail(email: string, token: string) {
+    const inviteUrl = `${process.env.FRONTEND_URL}/activate-account/${token}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; background: #f4f4f7; padding: 40px 0;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+          <tr>
+            <td style="padding: 40px 40px 20px 40px; text-align: center;">
+              <h2 style="color: #333; margin-bottom: 16px;">You're Invited to Join Trekora!</h2>
+              <p style="color: #555; font-size: 16px; margin-bottom: 32px;">Click the button below to activate your account and get started.</p>
+              <a href="${inviteUrl}" style="display: inline-block; padding: 14px 32px; background: #4f46e5; color: #fff; border-radius: 6px; text-decoration: none; font-size: 18px; font-weight: bold; margin-bottom: 24px;">Activate Account</a>
+              <p style="color: #888; font-size: 13px; margin-top: 32px;">If the button doesn't work, copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; color: #4f46e5; font-size: 14px;">${inviteUrl}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 24px 40px 40px 40px; text-align: center; color: #aaa; font-size: 12px;">
+              &copy; ${new Date().getFullYear()} Trekora. All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'You are invited to join Trekora!',
+      text: `Activate your account: ${inviteUrl}`,
+      html,
+    });
+  }
 
   // Delete an employee by ID
   async remove(id: string): Promise<void> {
