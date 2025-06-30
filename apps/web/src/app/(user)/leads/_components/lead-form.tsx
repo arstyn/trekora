@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { LeadFormDTO, leadSchema } from '@repo/api/lead/lead-create.dto';
+import { LeadFormDTO, leadSchema } from '@repo/validation';
 import { ILead } from '@repo/api/lead/lead.entity';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
