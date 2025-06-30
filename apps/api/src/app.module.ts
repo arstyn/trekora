@@ -20,6 +20,7 @@ import { SeedModule } from './seed/seed.module';
 import { LeadModule } from './modules/lead/lead.module';
 import { UserInviteModule } from './modules/user-invite/user-invite.module';
 import { MailerModule } from './modules/mailer/mailer.module';
+import { GroupModule } from './modules/group/group.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { MailerModule } from './modules/mailer/mailer.module';
     NotificationModule,
     UserInviteModule,
     MailerModule,
+    GroupModule,
   ],
   controllers: [AppController],
   providers: [AppService],
