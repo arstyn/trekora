@@ -11,6 +11,7 @@ import { RoleService } from 'src/modules/role/role.service';
 import { roles } from './seeds/role.seed';
 import { DepartmentService } from 'src/modules/department/department.service';
 import { departments } from './seeds/department.seed';
+import { EmployeeService } from 'src/modules/employee/employee.service';
 
 @Injectable()
 export class SeedService {
@@ -23,6 +24,7 @@ export class SeedService {
     private readonly userService: UserService,
     private readonly roleService: RoleService,
     private readonly departmentService: DepartmentService,
+    private readonly employeeService: EmployeeService,
   ) {}
 
   async seed() {
@@ -109,6 +111,13 @@ export class SeedService {
         this.logger.error(`Admin role not found`);
         continue;
       }
+
+      await this.employeeService.create({
+        ...userDetails,
+        organizationId: organizationData.id,
+        roleId: role.id,
+        status: 'active',
+      });
 
       await this.userService.create({
         ...userDetails,

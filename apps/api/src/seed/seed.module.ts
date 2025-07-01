@@ -9,6 +9,7 @@ import { OrganizationModule } from 'src/modules/organization/organization.module
 import { RoleModule } from 'src/modules/role/role.module';
 import { DepartmentModule } from 'src/modules/department/department.module';
 import { BranchModule } from 'src/modules/branch/branch.module';
+import { EmployeeModule } from 'src/modules/employee/employee.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { BranchModule } from 'src/modules/branch/branch.module';
     BranchModule,
     RoleModule,
     DepartmentModule,
+    EmployeeModule,
   ],
   providers: [SeedService],
 })
