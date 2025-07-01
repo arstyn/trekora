@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { SignupFormDTO, onboardingSchema } from '@repo/validation';
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,45 +48,17 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
-import * as z from 'zod';
+import { signup } from '../action';
 
 type Step = 'signup' | 'organization' | 'team' | 'complete';
 
-const teamMemberSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  role: z.enum(['admin', 'member', 'viewer']),
-});
-
-// Combined schema for the entire form
-const onboardingSchema = z.object({
-  // Personal info
-  firstName: z.string().min(2, 'First name must be at least 2 characters'),
-  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  phone: z.string().optional(),
-
-  // Organization info
-  orgName: z.string().min(2, 'Organization name must be at least 2 characters'),
-  orgSize: z.string().min(1, 'Please select organization size'),
-  industry: z.string().min(1, 'Please select industry'),
-  website: z.string().url().optional().or(z.literal('')),
-  description: z.string().optional(),
-
-  // Team info
-  teamMembers: z.array(teamMemberSchema),
-
-  // Preferences
-  notifications: z.boolean(),
-  newsletter: z.boolean(),
-});
-
-type OnboardingFormData = z.infer<typeof onboardingSchema>;
-
 export default function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState<Step>('signup');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const form = useForm<OnboardingFormData>({
+  const form = useForm<SignupFormDTO>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       firstName: '',
@@ -166,10 +139,16 @@ export default function OnboardingFlow() {
     }
   };
 
-  const onSubmit = async (data: OnboardingFormData) => {
-    console.log('Form submitted:', data);
-    // Handle form submission here
-    // You can make API calls, redirect, etc.
+  const onSubmit = async (data: SignupFormDTO) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await signup(data);
+    } catch (error) {
+      setError('An error occurred during signup');
+      setIsLoading(false);
+    }
   };
 
   const renderStepIndicator = () => (

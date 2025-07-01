@@ -4,6 +4,7 @@ import { ILoginResponse } from '@repo/api/auth/dto/auth.types';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { UserService } from '../user/user.service';
+import { SignupFormDTO } from '@repo/validation';
 
 @Injectable()
 export class AuthService {
@@ -58,16 +59,14 @@ export class AuthService {
   }
 
   // Signup functionality
-  async signup(userData: {
-    email: string;
-    password: string;
-    phone?: string;
-  }): Promise<{
+  async signup(userData: SignupFormDTO): Promise<{
     message: string;
     userId: string;
     accessToken: string;
     refreshToken: string;
   }> {
+    console.log('🚀 ~ auth.service.ts:68 ~ AuthService ~ userData:', userData);
+    return null;
     const existingUser = await this.userService.findOneWithEmail(
       userData.email,
     );
