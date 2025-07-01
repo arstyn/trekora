@@ -17,7 +17,7 @@ export function Navigation() {
             <Link href="/" className="flex items-center space-x-2 group">
               <div className="relative">
                 <Plane className="h-8 w-8 transition-colors" />
-                <Sparkles className="h-3 w-3 text-blue-400 absolute -top-2 -right-2 animate-pulse" />
+                <Sparkles className="h-3 w-3 absolute -top-2 -right-2 animate-pulse" />
               </div>
               <span className="text-2xl font-bold">Trekora</span>
             </Link>
