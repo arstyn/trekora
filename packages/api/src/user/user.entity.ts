@@ -4,6 +4,7 @@ import { IOrganization } from '../organization/organization.entity';
 export class IUser {
   id: string;
   branchId?: string;
+  name: string;
   organizationId?: string;
   branch?: IBranch;
   organization?: IOrganization;

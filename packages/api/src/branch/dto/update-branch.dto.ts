@@ -18,4 +18,8 @@ export class IBranchUpdateDTO {
 
   @IsOptional()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  managerId?: string;
 }

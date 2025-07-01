@@ -6,6 +6,7 @@ import { RoleService } from '../role/role.service';
 import { UserDepartments } from '../user-departments/entity/user-departments.entity';
 import { UserDepartmentsService } from '../user-departments/user-departments.service';
 import { Employee, EmployeeStatus } from './entity/employee.entity';
+import { IUserProfileDTO } from '@repo/api/user/dto/user-profile.dto';
 import { UserService } from '../user/user.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { MailerService } from '../mailer/mailer.service';
@@ -250,6 +251,21 @@ export class EmployeeService {
     }
   }
 
+  async findProfile(id: string): Promise<Employee | null> {
+    return this.employeeRepository.findOne({
+      where: { id },
+      relations: {
+        role: true,
+        branch: true,
+        organization: true,
+        user: true,
+        employeeDepartments: {
+          department: true,
+        },
+      },
+    });
+  }
+
   async activateUser(id: string) {
     try {
       const employee = await this.findOne(id);
@@ -314,5 +330,33 @@ export class EmployeeService {
   // Delete an employee by ID
   async remove(id: string): Promise<void> {
     await this.employeeRepository.delete(id);
+  }
+
+  async getProfile(userId: string): Promise<IUserProfileDTO | null> {
+    const employee = await this.employeeRepository.findOne({
+      where: { user: { id: userId } },
+      relations: [
+        'role',
+        'employeeDepartments',
+        'employeeDepartments.department',
+        'branch',
+      ],
+    });
+
+    if (!employee) return null;
+
+    const department =
+      employee.employeeDepartments && employee.employeeDepartments.length > 0
+        ? employee.employeeDepartments[0].department.name
+        : null;
+
+    return {
+      username: employee.name,
+      email: employee.email ?? '',
+      mobileNumber: employee.phoneNumber ?? '',
+      position: employee.role?.name ?? '',
+      department,
+      location: employee.branch?.name ?? null,
+    };
   }
 }
