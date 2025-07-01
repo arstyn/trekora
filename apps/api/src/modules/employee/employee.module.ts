@@ -22,5 +22,6 @@ import { MailerModule } from '../mailer/mailer.module';
     UserInviteModule,
     MailerModule,
   ],
+  exports: [EmployeeService],
 })
 export class EmployeeModule {}
