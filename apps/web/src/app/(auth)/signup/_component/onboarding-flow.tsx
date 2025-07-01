@@ -189,7 +189,7 @@ export default function OnboardingFlow() {
   );
 
   const renderSignupStep = () => (
-    <Card className="mx-auto max-w-md w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
+    <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Create Your Account</CardTitle>
         <CardDescription>
@@ -300,7 +300,7 @@ export default function OnboardingFlow() {
   );
 
   const renderOrganizationStep = () => (
-    <Card className="mx-auto max-w-md w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
+    <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Setup Your Organization</CardTitle>
         <CardDescription>
@@ -337,7 +337,7 @@ export default function OnboardingFlow() {
               <FormLabel>Organization Size</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select size" />
                   </SelectTrigger>
                 </FormControl>
@@ -362,7 +362,7 @@ export default function OnboardingFlow() {
               <FormLabel>Industry</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
                 </FormControl>
@@ -437,7 +437,7 @@ export default function OnboardingFlow() {
   );
 
   const renderTeamStep = () => (
-    <Card className="mx-auto max-w-md w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
+    <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Invite Your Team</CardTitle>
         <CardDescription>
@@ -577,7 +577,7 @@ export default function OnboardingFlow() {
     const formData = form.getValues();
 
     return (
-      <Card className="mx-auto max-w-md w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
+      <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
         <CardHeader className="text-center">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <CheckCircle className="w-8 h-8 text-primary" />
