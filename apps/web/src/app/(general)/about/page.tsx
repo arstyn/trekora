@@ -31,9 +31,9 @@ export default function About() {
   ];
 
   return (
-    <div className="pt-16 relative min-h-screen w-full ">
+    <div className="relative min-h-screen w-full ">
       {/* Hero Section */}
-      <section className="py-20 z-10">
+      <section className="py-20 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl font-bold sm:text-5xl">About Trekora</h1>
@@ -47,7 +47,7 @@ export default function About() {
       </section>
 
       {/* Story Section */}
-      <section className="py-20 z-10">
+      <section className="py-20 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:grid lg:grid-cols-2 lg:gap-12 items-center">
             <div>
@@ -85,7 +85,7 @@ export default function About() {
       </section>
 
       {/* Mission & Vision */}
-      <section className="py-20 z-10">
+      <section className="py-20 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <Card className="border-0 shadow-lg">
@@ -115,7 +115,7 @@ export default function About() {
       </section>
 
       {/* Values */}
-      <section className="py-20  z-10">
+      <section className="py-20  z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold sm:text-4xl">Our Values</h2>
@@ -140,23 +140,23 @@ export default function About() {
       </section>
 
       {/* Decorative shapes and animated background elements moved to the end to be behind content */}
-      {/* <div className="absolute z-0 top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-3xl" />
-      <div className="absolute z-0 bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 blur-3xl" />
-      <div className="absolute z-0 top-1/3 right-1/4 w-40 h-40 rounded-full bg-pink-500/10 dark:bg-pink-500/20 blur-2xl" />
-      <div className="absolute inset-0 overflow-hidden z-0">
+      <div className="absolute z-10 top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-3xl" />
+      <div className="absolute z-10 bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 blur-3xl" />
+      <div className="absolute z-10 top-1/3 right-1/4 w-40 h-40 rounded-full bg-pink-500/10 dark:bg-pink-500/20 blur-2xl" />
+      <div className="absolute inset-0 overflow-hidden z-10">
         <div
-          className="absolute -top-4 left-1/4 w-1 h-1 rounded-full bg-purple-400/40 shadow-lg shadow-purple-400/20"
+          className="absolute z-10 -top-4 left-1/4 w-1 h-1 rounded-full bg-purple-400/40 shadow-lg shadow-purple-400/20"
           style={{ boxShadow: '0 0 40px 20px rgba(168, 85, 247, 0.15)' }}
         />
         <div
-          className="absolute top-1/3 right-1/3 w-1 h-1 rounded-full bg-cyan-400/40 shadow-lg shadow-cyan-400/20"
+          className="absolute z-10 top-1/3 right-1/3 w-1 h-1 rounded-full bg-cyan-400/40 shadow-lg shadow-cyan-400/20"
           style={{ boxShadow: '0 0 40px 20px rgba(34, 211, 238, 0.15)' }}
         />
         <div
-          className="absolute bottom-1/4 left-1/3 w-1 h-1 rounded-full bg-pink-400/40 shadow-lg shadow-pink-400/20"
+          className="absolute z-10 bottom-1/4 left-1/3 w-1 h-1 rounded-full bg-pink-400/40 shadow-lg shadow-pink-400/20"
           style={{ boxShadow: '0 0 40px 20px rgba(244, 114, 182, 0.15)' }}
         />
-      </div> */}
+      </div>
     </div>
   );
 }

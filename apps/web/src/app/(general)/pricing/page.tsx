@@ -76,14 +76,40 @@ export default function Pricing() {
   ];
 
   return (
-    <div className="pt-16">
+    <div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 overflow-hidden">
+      {/* Decorative shapes */}
+      <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-3xl" />
+      <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 blur-3xl" />
+      <div className="absolute top-1/3 right-1/4 w-40 h-40 rounded-full bg-pink-500/10 dark:bg-pink-500/20 blur-2xl" />
+
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div
+          className="absolute -top-4 left-1/4 w-1 h-1 rounded-full bg-purple-400/40 shadow-lg shadow-purple-400/20"
+          style={{ boxShadow: '0 0 40px 20px rgba(168, 85, 247, 0.15)' }}
+        />
+        <div
+          className="absolute top-1/3 right-1/3 w-1 h-1 rounded-full bg-cyan-400/40 shadow-lg shadow-cyan-400/20"
+          style={{ boxShadow: '0 0 40px 20px rgba(34, 211, 238, 0.15)' }}
+        />
+        <div
+          className="absolute bottom-1/4 left-1/3 w-1 h-1 rounded-full bg-pink-400/40 shadow-lg shadow-pink-400/20"
+          style={{ boxShadow: '0 0 40px 20px rgba(244, 114, 182, 0.15)' }}
+        />
+      </div>
+
+      {/* Geometric shapes */}
+      <div className="absolute top-20 right-20 w-20 h-20 border border-purple-500/20 dark:border-purple-500/30 rounded-lg rotate-12" />
+      <div className="absolute bottom-32 left-20 w-16 h-16 border border-cyan-500/20 dark:border-cyan-500/30 rounded-full" />
+      <div className="absolute top-1/2 left-1/4 w-12 h-12 border border-pink-500/20 dark:border-pink-500/30 rotate-45" />
+
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 to-indigo-50 py-20">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">
+          <h1 className="text-4xl font-bold sm:text-5xl">
             Simple, Transparent Pricing
           </h1>
-          <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="mt-6 text-xl max-w-3xl mx-auto">
             Choose the perfect plan for your travel business. All plans include
             our core features with no hidden fees or setup costs.
           </p>
@@ -97,11 +123,11 @@ export default function Pricing() {
             {plans.map((plan, index) => (
               <Card
                 key={index}
-                className={`relative ${plan.popular ? 'border-blue-500 border-2 shadow-xl' : 'border-gray-200 shadow-lg'}`}
+                className={`relative ${plan.popular ? 'border-primary border-2 shadow-xl' : 'border-secondary shadow-lg'}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-medium">
+                    <span className="bg-primary text-secondary px-4 py-2 rounded-full text-sm font-medium">
                       Most Popular
                     </span>
                   </div>
@@ -111,12 +137,8 @@ export default function Pricing() {
                     {plan.name}
                   </CardTitle>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900">
-                      {plan.price}
-                    </span>
-                    {plan.period && (
-                      <span className="text-gray-600 ml-2">{plan.period}</span>
-                    )}
+                    <span className="text-4xl font-bold">{plan.price}</span>
+                    {plan.period && <span className="ml-2">{plan.period}</span>}
                   </div>
                   <CardDescription className="mt-4 text-base">
                     {plan.description}
@@ -126,21 +148,18 @@ export default function Pricing() {
                   <ul className="space-y-3 mb-8">
                     {plan.features.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-center">
-                        <Check className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
+                        <Check className="h-5 w-5 text-primary mr-3 flex-shrink-0" />
+                        <span className="">{feature}</span>
                       </li>
                     ))}
                     {plan.notIncluded.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-center">
-                        <X className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                        <span className="text-gray-400">{feature}</span>
+                        <X className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
+                        <span className="text-muted-foreground">{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    className={`w-full ${plan.popular ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-900 hover:bg-gray-800'}`}
-                    size="lg"
-                  >
+                  <Button className={`w-full`} size="lg">
                     {plan.name === 'Enterprise'
                       ? 'Contact Sales'
                       : 'Start Free Trial'}
@@ -153,46 +172,44 @@ export default function Pricing() {
       </section>
 
       {/* FAQ Section */}
-      <section className="bg-gray-50 py-20">
+      <section className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">
-              Frequently Asked Questions
-            </h2>
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
           </div>
           <div className="space-y-8">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold mb-2">
                 Can I change my plan at any time?
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Yes, you can upgrade or downgrade your plan at any time. Changes
                 will be reflected in your next billing cycle.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold mb-2">
                 Is there a free trial available?
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Yes, we offer a 14-day free trial for all plans. No credit card
                 required to get started.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold mb-2">
                 What payment methods do you accept?
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 We accept all major credit cards, PayPal, and bank transfers for
                 annual plans.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold mb-2">
                 Do you offer discounts for annual billing?
               </h3>
-              <p className="text-gray-600">
+              <p className="">
                 Yes, we offer a 20% discount when you choose annual billing for
                 any plan.
               </p>

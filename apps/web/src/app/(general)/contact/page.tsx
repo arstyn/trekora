@@ -6,14 +6,33 @@ import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 export default function Contact() {
   return (
-    <div className="pt-16">
+    <div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 overflow-hidden">
+      {/* Decorative shapes */}
+      <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-3xl" />
+      <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 blur-3xl" />
+      <div className="absolute top-1/3 right-1/4 w-40 h-40 rounded-full bg-pink-500/10 dark:bg-pink-500/20 blur-2xl" />
+
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div
+          className="absolute -top-4 left-1/4 w-1 h-1 rounded-full bg-purple-400/40 shadow-lg shadow-purple-400/20"
+          style={{ boxShadow: '0 0 40px 20px rgba(168, 85, 247, 0.15)' }}
+        />
+        <div
+          className="absolute top-1/3 right-1/3 w-1 h-1 rounded-full bg-cyan-400/40 shadow-lg shadow-cyan-400/20"
+          style={{ boxShadow: '0 0 40px 20px rgba(34, 211, 238, 0.15)' }}
+        />
+        <div
+          className="absolute bottom-1/4 left-1/3 w-1 h-1 rounded-full bg-pink-400/40 shadow-lg shadow-pink-400/20"
+          style={{ boxShadow: '0 0 40px 20px rgba(244, 114, 182, 0.15)' }}
+        />
+      </div>
+
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 to-indigo-50 py-20">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">
-            Get in Touch
-          </h1>
-          <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-4xl font-bold sm:text-5xl">Get in Touch</h1>
+          <p className="mt-6 text-xl text-muted-foreground max-w-3xl mx-auto">
             Ready to transform your travel business? We'd love to hear from you.
             Get in touch and let's discuss how Trekora can help you grow.
           </p>
@@ -34,7 +53,7 @@ export default function Contact() {
                   <div>
                     <label
                       htmlFor="firstName"
-                      className="block text-sm font-medium text-gray-700 mb-2"
+                      className="block text-sm font-medium text-muted-foreground mb-2"
                     >
                       First Name
                     </label>
@@ -43,7 +62,7 @@ export default function Contact() {
                   <div>
                     <label
                       htmlFor="lastName"
-                      className="block text-sm font-medium text-gray-700 mb-2"
+                      className="block text-sm font-medium text-muted-foreground mb-2"
                     >
                       Last Name
                     </label>
@@ -53,7 +72,7 @@ export default function Contact() {
                 <div>
                   <label
                     htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 mb-2"
+                    className="block text-sm font-medium text-muted-foreground mb-2"
                   >
                     Email
                   </label>
@@ -66,7 +85,7 @@ export default function Contact() {
                 <div>
                   <label
                     htmlFor="company"
-                    className="block text-sm font-medium text-gray-700 mb-2"
+                    className="block text-sm font-medium text-muted-foreground mb-2"
                   >
                     Company
                   </label>
@@ -75,7 +94,7 @@ export default function Contact() {
                 <div>
                   <label
                     htmlFor="message"
-                    className="block text-sm font-medium text-gray-700 mb-2"
+                    className="block text-sm font-medium text-muted-foreground mb-2"
                   >
                     Message
                   </label>
@@ -85,10 +104,7 @@ export default function Contact() {
                     placeholder="Tell us about your travel business and how we can help..."
                   />
                 </div>
-                <Button
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                  size="lg"
-                >
+                <Button className="w-full cursor-pointer" size="lg">
                   Send Message
                 </Button>
               </CardContent>
@@ -97,10 +113,8 @@ export default function Contact() {
             {/* Contact Information */}
             <div className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  Contact Information
-                </h2>
-                <p className="text-gray-600 mb-8">
+                <h2 className="text-2xl font-bold mb-6">Contact Information</h2>
+                <p className="text-muted-foreground mb-8">
                   We're here to help you succeed. Reach out to us through any of
                   the following channels.
                 </p>
@@ -108,12 +122,12 @@ export default function Contact() {
 
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <MapPin className="h-6 w-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MapPin className="h-6 w-6 text-secondary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Address</h3>
-                    <p className="text-gray-600">
+                    <h3 className="font-semibold">Address</h3>
+                    <p className="text-muted-foreground">
                       123 Business District
                       <br />
                       San Francisco, CA 94105
@@ -124,34 +138,32 @@ export default function Contact() {
                 </div>
 
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Phone className="h-6 w-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Phone className="h-6 w-6 text-secondary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Phone</h3>
-                    <p className="text-gray-600">+1 (555) 123-4567</p>
+                    <h3 className="font-semibold">Phone</h3>
+                    <p className="text-muted-foreground">+1 (555) 123-4567</p>
                   </div>
                 </div>
 
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Mail className="h-6 w-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Mail className="h-6 w-6 text-secondary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Email</h3>
-                    <p className="text-gray-600">hello@trekora.com</p>
+                    <h3 className="font-semibold">Email</h3>
+                    <p className="text-muted-foreground">hello@trekora.com</p>
                   </div>
                 </div>
 
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Clock className="h-6 w-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Clock className="h-6 w-6 text-secondary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">
-                      Business Hours
-                    </h3>
-                    <p className="text-gray-600">
+                    <h3 className="font-semibold">Business Hours</h3>
+                    <p className="text-muted-foreground">
                       Monday - Friday: 9:00 AM - 6:00 PM PST
                       <br />
                       Saturday - Sunday: Closed
@@ -160,19 +172,16 @@ export default function Contact() {
                 </div>
               </div>
 
-              <Card className="border-emerald-200 bg-emerald-50">
+              <Card className="border-primary bg-primary">
                 <CardContent className="p-6">
-                  <h3 className="font-semibold text-blue-900 mb-2">
+                  <h3 className="font-semibold text-secondary mb-2">
                     Need immediate assistance?
                   </h3>
-                  <p className="text-blue-700 mb-4">
+                  <p className="text-secondary mb-4">
                     For urgent technical support or sales inquiries, you can
                     reach us 24/7.
                   </p>
-                  <Button
-                    variant="outline"
-                    className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent"
-                  >
+                  <Button variant="secondary" className="cursor-pointer">
                     Emergency Support
                   </Button>
                 </CardContent>

@@ -648,7 +648,7 @@ export default function OnboardingFlow() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 flex items-center justify-center p-4">
+    <div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 flex items-center justify-center py-10">
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>

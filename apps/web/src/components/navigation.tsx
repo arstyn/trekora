@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Menu, X, Plane, Sparkles } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <nav className="bg-background/80 backdrop-blur-md shadow-sm border-b sticky top-0 z-50">
@@ -27,35 +29,35 @@ export function Navigation() {
             <div className="ml-10 flex items-baseline space-x-8">
               <Link
                 href="/"
-                className="text-foreground px-3 py-2 text-sm font-medium transition-colors relative group"
+                className={`text-sm font-medium transition-colors relative group px-3 py-2 ${pathname === '/' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
               >
                 Home
                 <span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
               </Link>
               <Link
                 href="/about"
-                className="text-muted-foreground px-3 py-2 text-sm font-medium transition-colors relative group"
+                className={`text-sm font-medium transition-colors relative group px-3 py-2 ${pathname === '/about' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
               >
                 About
                 <span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
               </Link>
               <Link
                 href="/pricing"
-                className="text-muted-foreground px-3 py-2 text-sm font-medium transition-colors relative group"
+                className={`text-sm font-medium transition-colors relative group px-3 py-2 ${pathname === '/pricing' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
               >
                 Pricing
                 <span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
               </Link>
               <Link
                 href="/team"
-                className="text-muted-foreground px-3 py-2 text-sm font-medium transition-colors relative group"
+                className={`text-sm font-medium transition-colors relative group px-3 py-2 ${pathname === '/team' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
               >
                 Team
                 <span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
               </Link>
               <Link
                 href="/contact"
-                className="text-muted-foreground px-3 py-2 text-sm font-medium transition-colors relative group"
+                className={`text-sm font-medium transition-colors relative group px-3 py-2 ${pathname === '/contact' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
               >
                 Contact
                 <span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
@@ -66,10 +68,18 @@ export function Navigation() {
           <div className="hidden md:block">
             <div className="ml-4 flex items-center space-x-4">
               <ThemeToggle />
-              <Button variant="ghost" className="cursor-pointer">
-                Sign In
-              </Button>
-              <Button className="cursor-pointer">Get Started</Button>
+              <Link
+                href="/login"
+                className="cursor-pointer text-sm font-semibold px-4 py-2 rounded-md hover:bg-accent dark:hover:bg-accent/50"
+              >
+                Log In
+              </Link>
+              <Link
+                href="/signup"
+                className="cursor-pointer text-sm font-semibold px-4 py-2 rounded-md bg-primary text-secondary"
+              >
+                Get Started
+              </Link>
             </div>
           </div>
 
@@ -94,31 +104,31 @@ export function Navigation() {
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-background/95 backdrop-blur-md border-t">
             <Link
               href="/"
-              className="block px-3 py-2 text-base font-medium text-foreground"
+              className={`block px-3 py-2 text-base font-medium ${pathname === '/' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
             >
               Home
             </Link>
             <Link
               href="/about"
-              className="block px-3 py-2 text-base font-medium text-muted-foreground"
+              className={`block px-3 py-2 text-base font-medium ${pathname === '/about' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
             >
               About
             </Link>
             <Link
               href="/pricing"
-              className="block px-3 py-2 text-base font-medium text-muted-foreground"
+              className={`block px-3 py-2 text-base font-medium ${pathname === '/pricing' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
             >
               Pricing
             </Link>
             <Link
               href="/team"
-              className="block px-3 py-2 text-base font-medium text-muted-foreground"
+              className={`block px-3 py-2 text-base font-medium ${pathname === '/team' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
             >
               Team
             </Link>
             <Link
               href="/contact"
-              className="block px-3 py-2 text-base font-medium text-muted-foreground"
+              className={`block px-3 py-2 text-base font-medium ${pathname === '/contact' ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
             >
               Contact
             </Link>
