@@ -1,15 +1,15 @@
-import { Organization } from 'src/modules/organization/entity/organization.entity';
-import { User } from 'src/modules/user/entity/user.entity';
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
   Index,
-  ManyToOne,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
+import { Organization } from './organization.entity';
+import { User } from './user.entity';
 
 export enum ReminderRepeat {
   NONE = 'none',
@@ -22,18 +22,18 @@ export enum ReminderRepeat {
 
 @Entity('reminder')
 export class Reminder {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ type: 'varchar', length: 50, name: 'type' })
   type: string; // e.g., 'email', 'call', 'meeting', etc.
 
   // Polymorphic relation fields
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ type: 'varchar', length: 50, name: 'entity_type' })
   @Index()
   entityType: string; // e.g., 'lead', 'customer', etc.
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', name: 'entity_id' })
   @Index()
   entityId: string; // ID of the related entity
 
@@ -43,7 +43,7 @@ export class Reminder {
   @ManyToOne(() => User, (createdBy) => createdBy.id, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'created_by' })
+  @JoinColumn({ name: 'created_by_id' })
   createdBy: User;
 
   @Column({ type: 'uuid', name: 'organization_id' })
@@ -55,25 +55,26 @@ export class Reminder {
   @JoinColumn({ name: 'organization_id' })
   organization: Organization;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'note' })
   note?: string;
 
-  @Column({ type: 'timestamp', nullable: false })
+  @Column({ type: 'timestamp', nullable: false, name: 'remind_at' })
   remindAt: Date;
 
   @Column({
     type: 'enum',
     enum: ReminderRepeat,
     default: ReminderRepeat.NONE,
+    name: 'repeat',
   })
   repeat: ReminderRepeat;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'jsonb', nullable: true, name: 'repeat_options' })
   repeatOptions?: Record<string, any>; // For custom repeat patterns
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

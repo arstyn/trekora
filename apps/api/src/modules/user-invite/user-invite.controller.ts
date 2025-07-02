@@ -1,12 +1,11 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Query,
-  Body,
   HttpException,
   HttpStatus,
   Param,
+  Post,
 } from '@nestjs/common';
 import { UserInviteService } from './user-invite.service';
 

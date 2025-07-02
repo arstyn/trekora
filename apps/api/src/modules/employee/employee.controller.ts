@@ -14,7 +14,7 @@ import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { EmployeeService } from './employee.service';
-import { Employee } from './entity/employee.entity';
+import { Employee } from 'src/database/entity/employee.entity';
 
 @UseGuards(AuthGuard)
 @Controller('api/employee')

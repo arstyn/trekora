@@ -1,16 +1,16 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
+  Controller,
+  Delete,
+  Get,
   Param,
   Patch,
-  Delete,
+  Post,
   UseGuards,
 } from '@nestjs/common';
-import { UserDepartmentsService } from './user-departments.service';
-import { UserDepartments } from './entity/user-departments.entity';
+import { UserDepartments } from 'src/database/entity/user-departments.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { UserDepartmentsService } from './user-departments.service';
 
 @UseGuards(AuthGuard)
 @Controller('api/user-departments')

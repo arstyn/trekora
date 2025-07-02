@@ -1,52 +1,51 @@
-import { Branch } from 'src/modules/branch/entity/branch.entity';
-import { Organization } from 'src/modules/organization/entity/organization.entity';
-import { Role } from 'src/modules/role/entity/role.entity';
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
+import { Organization } from './organization.entity';
+import { Role } from './role.entity';
 
 @Entity('user')
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true, name: 'name' })
   name: string;
 
-  // @Column('uuid', { nullable: true, name: 'branchId' })
+  // @Column('uuid', { nullable: true, name: 'branch_id' })
   // branchId?: string;
 
-  @Column('uuid', { nullable: true, name: 'organizationId' })
+  @Column('uuid', { nullable: true, name: 'organization_id' })
   organizationId?: string;
 
   // @ManyToOne(() => Branch, { nullable: true, onDelete: 'SET NULL' })
-  // @JoinColumn({ name: 'branchId' })
+  // @JoinColumn({ name: 'branch_id' })
   // branch?: Branch;
 
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'organizationId' })
+  @JoinColumn({ name: 'organization_id' })
   organization?: Organization;
 
-  @Column({ unique: true })
+  @Column({ unique: true, name: 'email' })
   email: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'phone' })
   phone?: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'password' })
   password: string;
 
   @ManyToOne(() => Role, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'roleId' })
+  @JoinColumn({ name: 'role_id' })
   role?: Role;
 
-  @Column('uuid', { nullable: true })
+  @Column('uuid', { nullable: true, name: 'role_id' })
   roleId?: string;
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })

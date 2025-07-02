@@ -1,6 +1,12 @@
-import { IsEmail,IsEnum,IsNotEmpty,IsOptional,IsString } from "class-validator";
-import { CustomerStatus } from "../entity/customer.entity";
-import { CreateLeadUpdateDto } from "src/modules/lead-updates/dto/create-lead-update.dto";
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+import { CustomerStatus } from '../../../database/entity/customer.entity';
+import { CreateLeadUpdateDto } from 'src/modules/lead-updates/dto/create-lead-update.dto';
 export class CreateCustomerDto {
   @IsNotEmpty()
   @IsString()

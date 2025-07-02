@@ -9,8 +9,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { DepartmentService } from './department.service';
-import { Department } from './entity/department.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { Department } from 'src/database/entity/department.entity';
 
 @UseGuards(AuthGuard)
 @Controller('api/department')

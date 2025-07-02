@@ -1,5 +1,3 @@
-import { Lead } from 'src/modules/lead/entity/lead.entity';
-import { User } from 'src/modules/user/entity/user.entity';
 import {
   Column,
   CreateDateColumn,
@@ -9,13 +7,15 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Lead } from './lead.entity';
+import { User } from './user.entity';
 
-@Entity()
+@Entity('lead_update')
 export class LeadUpdate {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', name: 'text' })
   text: string;
 
   @Column({ type: 'uuid', name: 'lead_id' })
@@ -36,15 +36,15 @@ export class LeadUpdate {
   @JoinColumn({ name: 'created_by_id' })
   createdBy: User;
 
-  @Column({ type: 'varchar', length: 50, default: 'note' })
+  @Column({ type: 'varchar', length: 50, default: 'note', name: 'type' })
   type: 'note' | 'status_change' | 'email' | 'call' | 'meeting';
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'jsonb', nullable: true, name: 'metadata' })
   metadata: Record<string, any>;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Reminder } from 'src/database/entity/reminder.entity';
 import { LessThanOrEqual, Repository } from 'typeorm';
 import { NotificationService } from '../notification/notification.service';
-import { Reminder } from './entity/reminder.entity';
 
 @Injectable()
 export class ReminderService {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Lead } from 'src/database/entity/lead.entity';
 import { Repository } from 'typeorm';
-import { Lead } from './entity/lead.entity';
 
 @Injectable()
 export class LeadService {

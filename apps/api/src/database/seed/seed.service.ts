@@ -29,7 +29,7 @@ export class SeedService {
 
   async seed() {
     this.logger.log('Deleting existing data...');
-    await this.deleteAllTable();
+    // await this.deleteAllTable();
     this.logger.log('Data deletion completed');
     this.logger.log('Seeding started...');
     await this.seedRoles();
