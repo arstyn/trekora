@@ -1,18 +1,18 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
-  Put,
+  Controller,
   Delete,
-  UseGuards,
+  Get,
+  Param,
+  Post,
+  Put,
   Req,
+  UseGuards,
 } from '@nestjs/common';
-import { ReminderService } from './reminder.service';
-import { Reminder } from './entity/reminder.entity';
-import { AuthGuard } from '../auth/guard/auth.guard';
 import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
+import { Reminder } from 'src/database/entity/reminder.entity';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { ReminderService } from './reminder.service';
 
 @UseGuards(AuthGuard)
 @Controller('api/reminder')

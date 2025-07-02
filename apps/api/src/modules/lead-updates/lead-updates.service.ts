@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { LeadUpdate } from 'src/database/entity/lead-update.entity';
 import { Repository } from 'typeorm';
-import { LeadUpdate } from './entity/lead-update.entity';
+import { UserService } from '../user/user.service';
 import { CreateLeadUpdateDto } from './dto/create-lead-update.dto';
 import { UpdateLeadUpdateDto } from './dto/update-lead-update.dto';
-import { UserService } from '../user/user.service';
 
 @Injectable()
 export class LeadUpdatesService {

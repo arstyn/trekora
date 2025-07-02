@@ -1,15 +1,15 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Put,
-  Delete,
-  Param,
-  Body,
   UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { User } from './entity/user.entity';
+import { User } from 'src/database/entity/user.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
 
 @UseGuards(AuthGuard)

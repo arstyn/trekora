@@ -8,9 +8,9 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { OrganizationService } from './organization.service';
-import { Organization } from './entity/organization.entity';
+import { Organization } from 'src/database/entity/organization.entity';
 import { AuthGuard } from 'src/modules/auth/guard/auth.guard';
+import { OrganizationService } from './organization.service';
 
 @UseGuards(AuthGuard)
 @Controller('api/organization')

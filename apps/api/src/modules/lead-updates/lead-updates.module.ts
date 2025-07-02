@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LeadUpdatesService } from './lead-updates.service';
 import { LeadUpdatesController } from './lead-updates.controller';
-import { LeadUpdate } from './entity/lead-update.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from '../user/user.module';
+import { LeadUpdate } from 'src/database/entity/lead-update.entity';
 
 @Module({
   imports: [

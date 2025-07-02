@@ -12,8 +12,8 @@ import {
 import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 import { LeadDto } from '@repo/api/lead/lead-create.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { Lead } from './entity/lead.entity';
 import { LeadService } from './lead.service';
+import { Lead } from 'src/database/entity/lead.entity';
 
 @UseGuards(AuthGuard)
 @Controller('api/lead')

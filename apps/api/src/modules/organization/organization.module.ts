@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Organization } from 'src/database/entity/organization.entity';
 import { OrganizationController } from './organization.controller';
 import { OrganizationService } from './organization.service';
-import { Organization } from './entity/organization.entity';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Organization]), JwtModule.register({})],

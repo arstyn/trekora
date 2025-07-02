@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Department } from 'src/database/entity/department.entity';
 import { Repository } from 'typeorm';
-import { Department } from './entity/department.entity';
 
 @Injectable()
 export class DepartmentService {
@@ -39,6 +39,4 @@ export class DepartmentService {
   async remove(id: string): Promise<void> {
     await this.departmentRepository.delete(id);
   }
-  
 }
-
