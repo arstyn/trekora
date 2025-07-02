@@ -1,6 +1,7 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import * as dotenv from 'dotenv';
 import { CustomTypeORMLogger } from './typeorm.logger';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 
 dotenv.config();
 
@@ -11,7 +12,9 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_NAME || 'trekora',
-  entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: process.env.DB_SYNCHRONIZE === 'true' || true, // Use environment variable for synchronize
+  entities: [path.join(__dirname, '../**/*.entity{.ts,.js}')],
+  migrations: [path.join(__dirname, '../migrations/*.{ts,js}')],
+  migrationsRun: true,
+  synchronize: false,
   logger: new CustomTypeORMLogger(),
 };
