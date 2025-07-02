@@ -59,7 +59,7 @@ const formSchema = z.object({
     required_error: 'Join date is required',
   }),
   address: z.string().optional(),
-  phoneNumber: z.string().optional(),
+  phone: z.string().optional(),
   dateOfBirth: z.date({
     required_error: 'Date of birth is required',
   }),
@@ -75,7 +75,7 @@ const formSchema = z.object({
         relation: z
           .string()
           .min(2, { message: 'Relation must be at least 2 characters' }),
-        phoneNumber: z.string(),
+        phone: z.string(),
       }),
     )
     .optional(),
@@ -118,7 +118,7 @@ export function AddEmployeeModal({
       status: 'inactive',
       joinDate: new Date(),
       address: '',
-      phoneNumber: '',
+      phone: '',
       dateOfBirth: new Date(),
       gender: undefined,
       nationality: '',
@@ -142,7 +142,7 @@ export function AddEmployeeModal({
         joinDate: format(data.joinDate, 'yyyy-MM-dd'),
         avatar: '/placeholder.svg?height=40&width=40',
         address: data.address,
-        phoneNumber: data.phoneNumber,
+        phone: data.phone,
         dateOfBirth: format(data.dateOfBirth, 'yyyy-MM-dd'),
         gender: data.gender,
         nationality: data.nationality,
@@ -408,7 +408,7 @@ export function AddEmployeeModal({
               />
               <FormField
                 control={form.control}
-                name="phoneNumber"
+                name="phone"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
@@ -562,11 +562,11 @@ export function AddEmployeeModal({
                               />
                               <Input
                                 placeholder="Phone Number"
-                                value={contact.phoneNumber}
+                                value={contact.phone}
                                 onChange={(e) => {
                                   const updated = [...(field.value ?? [])];
                                   if (updated[idx]) {
-                                    updated[idx].phoneNumber = e.target.value;
+                                    updated[idx].phone = e.target.value;
                                     field.onChange(updated);
                                   }
                                 }}

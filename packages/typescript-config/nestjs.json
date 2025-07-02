@@ -15,6 +15,8 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "strictNullChecks": false,
-    "strictBindCallApply": false
+    "strictBindCallApply": false,
+    "useDefineForClassFields": false,
+    "strictPropertyInitialization": false
   }
 }

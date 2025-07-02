@@ -1,4 +1,4 @@
-import { Department } from '../../entity/department.entity';
+import { Department } from '../entity/department.entity';
 
 // Example seed data
 export const departments: Partial<Department>[] = [

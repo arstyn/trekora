@@ -50,7 +50,7 @@ import { updateEmployee } from '../action';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   address: z.string().optional(),
-  phoneNumber: z.string().optional(),
+  phone: z.string().optional(),
   email: z.string().email({ message: 'Please enter a valid email address' }),
   dateOfBirth: z.date().optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
@@ -103,7 +103,7 @@ export function EditEmployeeDialog({
       ? {
           name: employee.name,
           address: employee.address ?? '',
-          phoneNumber: employee.phoneNumber ?? '',
+          phone: employee.phone ?? '',
           email: employee.email ?? '',
           dateOfBirth: employee.dateOfBirth
             ? new Date(employee.dateOfBirth)
@@ -123,7 +123,7 @@ export function EditEmployeeDialog({
       : {
           name: '',
           address: '',
-          phoneNumber: '',
+          phone: '',
           email: '',
           dateOfBirth: undefined,
           gender: undefined,
@@ -157,7 +157,7 @@ export function EditEmployeeDialog({
         joinDate: format(data.joinDate, 'yyyy-MM-dd'),
         avatar: '/placeholder.svg?height=40&width=40',
         address: data.address,
-        phoneNumber: data.phoneNumber,
+        phone: data.phone,
         dateOfBirth: data.dateOfBirth
           ? format(data.dateOfBirth, 'yyyy-MM-dd')
           : undefined,
@@ -249,7 +249,7 @@ export function EditEmployeeDialog({
 
               <FormField
                 control={form.control}
-                name="phoneNumber"
+                name="phone"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
