@@ -253,7 +253,7 @@ export class EmployeeService {
 
   async findProfile(id: string): Promise<Employee | null> {
     return this.employeeRepository.findOne({
-      where: { id },
+      where: { userId: id },
       relations: {
         role: true,
         branch: true,

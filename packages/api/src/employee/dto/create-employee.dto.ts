@@ -1,4 +1,5 @@
 export class IEmployeeCreateDTO {
+  userId?: string;
   name: string;
   email?: string;
   departments?: string[];
