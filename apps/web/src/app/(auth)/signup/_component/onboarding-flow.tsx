@@ -144,9 +144,17 @@ export default function OnboardingFlow() {
     setError(null);
 
     try {
-      await signup(data);
-    } catch (error) {
-      setError('An error occurred during signup');
+      const result = await signup(data);
+      if (result?.error) {
+        setError(result.error);
+        setIsLoading(false);
+        return;
+      }
+    } catch (err: any) {
+      if (err?.message === 'NEXT_REDIRECT') {
+        return;
+      }
+      setError('An unexpected error occurred');
       setIsLoading(false);
     }
   };
@@ -635,12 +643,26 @@ export default function OnboardingFlow() {
             </ul>
           </div>
 
+          {error && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+              {error}
+            </div>
+          )}
+
           <Button
             onClick={() => form.handleSubmit(onSubmit)()}
             className="w-full"
             size="lg"
+            disabled={isLoading}
           >
-            Go to Dashboard
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <span className="animate-spin">◌</span>
+                Setting up your account...
+              </div>
+            ) : (
+              'Go to Dashboard'
+            )}
           </Button>
         </CardContent>
       </Card>

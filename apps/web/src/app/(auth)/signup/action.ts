@@ -8,23 +8,45 @@ import { JWTPayload } from 'jose';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-export async function signup(formData: SignupFormDTO) {
+export async function signup(formData: SignupFormDTO): Promise<{ error?: string }> {
   let session: JWTPayload | null;
 
   try {
-    const { accessToken, refreshToken } = await AxiosRequest.post<
-      SignupFormDTO,
-      ILoginResponse
-    >('/auth/signup', formData);
+    const response = await AxiosRequest.post<SignupFormDTO, ILoginResponse>(
+      '/auth/signup',
+      formData
+    );
 
-    cookies().set('accessToken', accessToken, { httpOnly: true });
-    cookies().set('x', refreshToken, { httpOnly: true });
+    if (!response?.accessToken || !response?.refreshToken) {
+      return { error: 'Invalid response from server' };
+    }
+
+    cookies().set('accessToken', response.accessToken, { 
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+    
+    cookies().set('x', response.refreshToken, { 
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
     session = await getSession();
-  } catch (error) {
-    throw Error(error as string);
+
+    if (!session) {
+      return { error: 'Failed to create session' };
+    }
+
+  } catch (error: any) {
+    console.error('Signup error:', error);
+    return { 
+      error: error?.response?.data?.message || error?.message || 'An error occurred during signup'
+    };
   }
 
-  if (session) {
-    redirect('/dashboard');
-  }
+  redirect('/dashboard');
 }

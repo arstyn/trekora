@@ -16,7 +16,7 @@
     "migration:generate": "npm run typeorm -- -d apps/api/data-source.ts migration:generate",
     "migration:run": "npm run typeorm -- -d apps/api/data-source.ts migration:run",
     "migration:revert": "npm run typeorm -- -d apps/api/data-source.ts migration:revert",
-    "seed": "cross-env TS_NODE_PROJECT=apps/api/tsconfig.json ts-node apps/api/src/database/seed.ts"
+    "seed": "cross-env NODE_ENV=development TS_NODE_PROJECT=apps/api/tsconfig.json ts-node -r dotenv/config apps/api/src/database/seeds/seed.ts dotenv_config_path=apps/api/.env"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
