@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { UserModule } from '../user/user.module';
-import { UserInvite } from './entity/user-invite.entity';
 import { UserInviteController } from './user-invite.controller';
 import { UserInviteService } from './user-invite.service';
 

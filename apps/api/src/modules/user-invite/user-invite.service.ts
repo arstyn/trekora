@@ -1,15 +1,15 @@
 import {
-  Injectable,
-  Inject,
   forwardRef,
   HttpException,
   HttpStatus,
+  Inject,
+  Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { UserInvite } from './entity/user-invite.entity';
-import { Employee } from '../employee/entity/employee.entity';
 import * as crypto from 'crypto';
+import { Employee } from 'src/database/entity/employee.entity';
+import { UserInvite } from 'src/database/entity/user-invite.entity';
+import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 
 @Injectable()
@@ -58,7 +58,7 @@ export class UserInviteService {
     await this.userService.create({
       email: invite.email,
       name: invite.employee.name,
-      phone: invite.employee.phoneNumber,
+      phone: invite.employee.phone,
       organizationId: invite.employee.organizationId,
       roleId: invite.employee.roleId,
       password,

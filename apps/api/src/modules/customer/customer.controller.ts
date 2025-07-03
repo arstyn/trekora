@@ -1,13 +1,22 @@
-import { Body, Controller, Post, Get, Put, Delete, UseGuards, Param } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Get,
+  Put,
+  Delete,
+  UseGuards,
+  Param,
+} from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer';
-import { Customer } from './entity/customer.entity';
+import { Customer } from '../../database/entity/customer.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
 
 @UseGuards(AuthGuard)
 @Controller('api/customers')
 export class CustomerController {
-  constructor(private readonly customerService: CustomerService) { }
+  constructor(private readonly customerService: CustomerService) {}
 
   //Creating Customers
   @Post()
@@ -29,16 +38,15 @@ export class CustomerController {
   //Updating data
   @Put(':id')
   async update(
-    @Param('id')id:number,
-    @Body()updatedData:Partial<Customer>,
-
-  ):Promise<Customer>{
-    return this.customerService.update(id,updatedData);
+    @Param('id') id: number,
+    @Body() updatedData: Partial<Customer>,
+  ): Promise<Customer> {
+    return this.customerService.update(id, updatedData);
   }
   //Delete Customer
   @Delete('id')
-  async delet(@Param('id')id:number):Promise<void>{
+  async delet(@Param('id') id: number): Promise<void> {
     return this.customerService.delete(id);
   }
-/*Basic Crud operation Till here*/
+  /*Basic Crud operation Till here*/
 }

@@ -90,6 +90,22 @@ If any changes required in .env update it.
 
 ---
 
+## Database Configuration
+
+To create all the tables and schemas run this:
+
+```bash
+npm run migration:run
+```
+
+We have database seeding option, so to run the application locally you can use the seeding module, which will seed the db with a lot dummy data. Checkout the seed module in the backend [./apps/api/src/database/seeds] to view the data.
+
+### Run the below command in root itself from now on (Latest update)
+
+```bash
+npm run seed
+```
+
 ## Scripts to run the application
 
 No need for multiple terminals for backend & frontend.
@@ -104,16 +120,6 @@ npm run build
 
 # Start all apps in production mode
 npm run start
-```
-
-## Additional | Database Seeding
-
-We have database seeding option, so to run the application locally you can use the seeding module, which will seed the db with a lot dummy data. Checkout the seed module in the backend [./apps/api/src/seed/seeds] to view the data.
-
-### Run the below command after opening the terminal inside backend folder [./apps/api]
-
-```bash
-npm run seed
 ```
 
 ---

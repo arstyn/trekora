@@ -1,16 +1,16 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Put,
-  Delete,
-  Param,
-  Body,
   UseGuards,
 } from '@nestjs/common';
-import { RoleService } from './role.service';
-import { Role } from './entity/role.entity';
+import { Role } from 'src/database/entity/role.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { RoleService } from './role.service';
 
 @UseGuards(AuthGuard)
 @Controller('api/role')

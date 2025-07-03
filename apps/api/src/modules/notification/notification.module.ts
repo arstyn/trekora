@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { NotificationController } from './notification.controller';
-import { NotificationService } from './notification.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Notification } from './entity/notification.entity';
 import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Notification } from 'src/database/entity/notification.entity';
+import { NotificationController } from './notification.controller';
 import { NotificationGateway } from './notification.gateway';
+import { NotificationService } from './notification.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Notification]), JwtModule.register({})],

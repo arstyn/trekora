@@ -3,13 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
 import { DataSource, Repository } from 'typeorm';
 import { RoleService } from '../role/role.service';
-import { UserDepartments } from '../user-departments/entity/user-departments.entity';
 import { UserDepartmentsService } from '../user-departments/user-departments.service';
-import { Employee, EmployeeStatus } from './entity/employee.entity';
 import { IUserProfileDTO } from '@repo/api/user/dto/user-profile.dto';
 import { UserService } from '../user/user.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { MailerService } from '../mailer/mailer.service';
+import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
+import { UserDepartments } from 'src/database/entity/user-departments.entity';
 
 @Injectable()
 export class EmployeeService {
@@ -353,7 +353,7 @@ export class EmployeeService {
     return {
       username: employee.name,
       email: employee.email ?? '',
-      mobileNumber: employee.phoneNumber ?? '',
+      mobileNumber: employee.phone ?? '',
       position: employee.role?.name ?? '',
       department,
       location: employee.branch?.name ?? null,

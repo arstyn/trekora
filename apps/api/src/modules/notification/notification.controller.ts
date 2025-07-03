@@ -7,10 +7,9 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { NotificationService } from './notification.service';
-import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 
 @UseGuards(AuthGuard)
 @Controller('api/notification')

@@ -9,7 +9,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { Branch } from './entity/branch.entity';
+import { Branch } from '../../database/entity/branch.entity';
 import { IBranchCreateDTO } from '@repo/api/branch/dto/create-branch.dto';
 import { IBranchUpdateDTO } from '@repo/api/branch/dto/update-branch.dto';
 import { BranchService } from './branch.service';

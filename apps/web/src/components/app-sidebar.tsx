@@ -66,8 +66,8 @@ const data = {
       icon: BarChartIcon,
     },
     {
-      title: 'Team',
-      url: '/team',
+      title: 'Teams',
+      url: '/teams',
       icon: UsersIcon,
     },
   ],
@@ -132,7 +132,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          
           <NavUser user={data.user} />
         </div>
       </SidebarFooter>

@@ -26,6 +26,7 @@ export async function login(formData: LoginFormValues) {
     cookies().set('x', refreshToken, { httpOnly: true });
     session = await getSession();
   } catch (error) {
+    console.log('🚀 ~ action.ts:29 ~ login ~ error:', error);
     throw Error(error as string);
   }
 

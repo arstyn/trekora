@@ -2,8 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IBranchCreateDTO } from '@repo/api/branch/dto/create-branch.dto';
 import { DataSource, Repository } from 'typeorm';
-import { Branch } from './entity/branch.entity';
 import { IBranchUpdateDTO } from '@repo/api/branch/dto/update-branch.dto';
+import { Branch } from 'src/database/entity/branch.entity';
 
 @Injectable()
 export class BranchService {
@@ -49,7 +49,7 @@ export class BranchService {
     return this.branchRepository.find({
       relations: ['organization'],
       order: { createdAt: 'DESC' },
-      where: { organizationId }
+      where: { organizationId },
     });
   }
 

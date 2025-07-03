@@ -1,9 +1,18 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { GroupService } from './group.service';
 import { CreateGroupDto } from './dto/create-group';
 import { UpdateGroupDto } from './dto/update-group';
-import { Group } from './entity/group.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { Group } from 'src/database/entity/group.entity';
 
 @UseGuards(AuthGuard)
 @Controller('api/groups')
