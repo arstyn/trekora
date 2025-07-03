@@ -493,8 +493,9 @@ export default function OnboardingFlow() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="member">Member</SelectItem>
-                            <SelectItem value="viewer">Viewer</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
+                            <SelectItem value="employee">Employee</SelectItem>
+                            <SelectItem value="user">User</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
