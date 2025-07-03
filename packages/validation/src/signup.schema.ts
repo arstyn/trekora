@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const teamMemberSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  role: z.enum(['admin', 'member', 'viewer']),
+  role: z.enum(['admin', 'manager', 'employee', "user"]),
 });
 
 // Combined schema for the entire form

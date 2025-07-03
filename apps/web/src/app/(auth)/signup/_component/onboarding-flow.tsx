@@ -56,7 +56,6 @@ export default function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState<Step>('signup');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<SignupFormDTO>({
     resolver: zodResolver(onboardingSchema),
@@ -94,7 +93,7 @@ export default function OnboardingFlow() {
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   const addTeamMember = () => {
-    append({ email: '', role: 'member' });
+    append({ email: '', role: 'employee' });
   };
 
   const nextStep = async () => {
