@@ -56,7 +56,6 @@ export default function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState<Step>('signup');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<SignupFormDTO>({
     resolver: zodResolver(onboardingSchema),
@@ -94,7 +93,7 @@ export default function OnboardingFlow() {
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   const addTeamMember = () => {
-    append({ email: '', role: 'member' });
+    append({ email: '', role: 'employee' });
   };
 
   const nextStep = async () => {
@@ -144,9 +143,17 @@ export default function OnboardingFlow() {
     setError(null);
 
     try {
-      await signup(data);
-    } catch (error) {
-      setError('An error occurred during signup');
+      const result = await signup(data);
+      if (result?.error) {
+        setError(result.error);
+        setIsLoading(false);
+        return;
+      }
+    } catch (err: any) {
+      if (err?.message === 'NEXT_REDIRECT') {
+        return;
+      }
+      setError('An unexpected error occurred');
       setIsLoading(false);
     }
   };
@@ -485,8 +492,9 @@ export default function OnboardingFlow() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="member">Member</SelectItem>
-                            <SelectItem value="viewer">Viewer</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
+                            <SelectItem value="employee">Employee</SelectItem>
+                            <SelectItem value="user">User</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -635,12 +643,26 @@ export default function OnboardingFlow() {
             </ul>
           </div>
 
+          {error && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+              {error}
+            </div>
+          )}
+
           <Button
             onClick={() => form.handleSubmit(onSubmit)()}
             className="w-full"
             size="lg"
+            disabled={isLoading}
           >
-            Go to Dashboard
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <span className="animate-spin">◌</span>
+                Setting up your account...
+              </div>
+            ) : (
+              'Go to Dashboard'
+            )}
           </Button>
         </CardContent>
       </Card>

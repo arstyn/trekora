@@ -5,12 +5,20 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { UserService } from '../user/user.service';
 import { SignupFormDTO } from '@repo/validation';
+import { OrganizationService } from '../organization/organization.service';
+import { UserInviteService } from '../user-invite/user-invite.service';
+import { RoleService } from '../role/role.service';
+import { EmployeeService } from '../employee/employee.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly organizationService: OrganizationService,
+    private readonly userInviteService: UserInviteService,
+    private readonly roleService: RoleService,
+    private readonly employeeService: EmployeeService,
   ) {}
 
   private generateAccessToken(userId: string, organizationId: string): string {
@@ -65,29 +73,69 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
   }> {
-    console.log('🚀 ~ auth.service.ts:68 ~ AuthService ~ userData:', userData);
-    return null;
-    const existingUser = await this.userService.findOneWithEmail(
-      userData.email,
-    );
+    const existingUser = await this.userService.findOneWithEmail(userData.email);
     if (existingUser) {
       throw new UnauthorizedException('Email already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const newUser = await this.userService.create({
-      ...userData,
-      password: hashedPassword,
+    const organization = await this.organizationService.create({
+      name: userData.orgName,
+      size: userData.orgSize,
+      industry: userData.industry,
+      domain: userData.website || null,
+      description: userData.description || null,
     });
 
-    const accessToken = this.generateAccessToken(
-      newUser.id,
-      newUser.organizationId,
-    );
-    const refreshToken = this.generateRefreshToken(
-      newUser.id,
-      newUser.organizationId,
-    );
+    const adminRole = await this.roleService.findByName('admin');
+    if (!adminRole) {
+      throw new Error('Admin role not found');
+    }
+
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const newUser = await this.userService.create({
+      name: `${userData.firstName} ${userData.lastName}`,
+      email: userData.email,
+      password: hashedPassword,
+      phone: userData.phone || null,
+      organizationId: organization.id,
+      roleId: adminRole.id, 
+      notificationsEnabled: userData.notifications,
+      newsletterSubscribed: userData.newsletter,
+    });
+
+    await this.employeeService.create({
+      name: `${userData.firstName} ${userData.lastName}`,
+      email: userData.email,
+      phoneNumber: userData.phone || null,
+      organizationId: organization.id,
+      roleId: adminRole.id,
+      status: 'active',
+      joinDate: new Date().toISOString(),
+    });
+
+    if (userData.teamMembers && userData.teamMembers.length > 0) {
+      await Promise.all(
+        userData.teamMembers.map(async (member) => {
+          const role = await this.roleService.findByName(member.role);
+          if (!role) {
+            throw new Error(`Role ${member.role} not found`);
+          }
+          const employee = await this.employeeService.create({
+            name: member.email.split('@')[0],
+            email: member.email,
+            organizationId: organization.id,
+            roleId: role.id,
+            status: 'inactive',
+            joinDate: new Date().toISOString(),
+          });
+          const invite = await this.userInviteService.createInvite(employee);
+          await this.employeeService.sendInviteEmail(employee.email, invite.token);
+        }),
+      );
+    }
+
+    const accessToken = this.generateAccessToken(newUser.id, organization.id);
+    const refreshToken = this.generateRefreshToken(newUser.id, organization.id);
 
     return {
       message: 'User registered successfully',
