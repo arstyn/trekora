@@ -29,7 +29,6 @@ import * as path from 'path';
     ConfigModule.forRoot({
       envFilePath: path.join(
         process.cwd(),
-        `.env.${process.env.NODE_ENV?.toString().trim() || 'dev'}`,
         '.env'
       ),
       load: [configuration],
