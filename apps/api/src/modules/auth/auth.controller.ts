@@ -36,4 +36,9 @@ export class AuthController {
   async activateUser(@Param('id') id: string) {
     return this.authService.activateUser(id);
   }
+
+  @Post('resend-activation')
+  async resendActivation(@Body('email') email: string) {
+    return this.authService.resendActivation(email);
+  }
 }

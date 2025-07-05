@@ -219,4 +219,32 @@ export class AuthService {
       );
     }
   }
+
+  async resendActivation(email: string) {
+    const employee = await this.employeeService.findOneWithEmail(email);
+    console.log(
+      '🚀 ~ auth.service.ts:225 ~ AuthService ~ resendActivation ~ employee:',
+      employee,
+    );
+    if (!employee) {
+      throw new HttpException(
+        'If your email is registered and not yet activated, a new activation link has been sent.',
+        HttpStatus.OK,
+      );
+    }
+    if (employee.status === 'active') {
+      throw new HttpException(
+        'Account is already activated.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    // Generate a new invite token
+    const invite = await this.userInviteService.createInvite(employee);
+    await this.employeeService.sendInviteEmail(employee.email, invite.token);
+    return {
+      success: true,
+      message:
+        'If your email is registered and not yet activated, a new activation link has been sent.',
+    };
+  }
 }
