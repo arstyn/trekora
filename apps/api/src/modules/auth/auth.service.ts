@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ILoginResponse } from '@repo/api/auth/dto/auth.types';
 import * as bcrypt from 'bcrypt';
@@ -73,7 +78,9 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
   }> {
-    const existingUser = await this.userService.findOneWithEmail(userData.email);
+    const existingUser = await this.userService.findOneWithEmail(
+      userData.email,
+    );
     if (existingUser) {
       throw new UnauthorizedException('Email already exists');
     }
@@ -98,7 +105,7 @@ export class AuthService {
       password: hashedPassword,
       phone: userData.phone || null,
       organizationId: organization.id,
-      roleId: adminRole.id, 
+      roleId: adminRole.id,
       notificationsEnabled: userData.notifications,
       newsletterSubscribed: userData.newsletter,
     });
@@ -129,7 +136,10 @@ export class AuthService {
             joinDate: new Date().toISOString(),
           });
           const invite = await this.userInviteService.createInvite(employee);
-          await this.employeeService.sendInviteEmail(employee.email, invite.token);
+          await this.employeeService.sendInviteEmail(
+            employee.email,
+            invite.token,
+          );
         }),
       );
     }
@@ -182,5 +192,31 @@ export class AuthService {
     if (!passwordMatch) return null;
 
     return user; // Return user details if valid
+  }
+
+  async activateUser(id: string) {
+    try {
+      const invite = await this.userInviteService.verifyToken(id);
+
+      if (!invite) {
+        throw new HttpException(
+          'This activation link has expired. Please request a new one.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      await this.userInviteService.acceptInvite(id);
+
+      return {
+        success: true,
+        message: 'Your account has been successfully activated!',
+        status: 'success',
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message ?? 'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

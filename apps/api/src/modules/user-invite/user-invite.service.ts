@@ -11,6 +11,7 @@ import { Employee } from 'src/database/entity/employee.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserInviteService {
@@ -43,7 +44,7 @@ export class UserInviteService {
     return invite;
   }
 
-  async acceptInvite(token: string, password: string): Promise<any> {
+  async acceptInvite(token: string, password?: string): Promise<any> {
     const invite = await this.inviteRepository.findOne({
       where: { token },
       relations: ['employee'],
@@ -54,6 +55,9 @@ export class UserInviteService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
     // Create user account
     await this.userService.create({
       email: invite.email,
@@ -61,10 +65,10 @@ export class UserInviteService {
       phone: invite.employee.phone,
       organizationId: invite.employee.organizationId,
       roleId: invite.employee.roleId,
-      password,
+      password: hashedPassword,
     });
     invite.used = true;
     await this.inviteRepository.save(invite);
-    return { message: 'Account activated' };
+    return { message: 'Account activated', success: true };
   }
 }
