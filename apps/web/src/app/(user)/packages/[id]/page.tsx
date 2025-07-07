@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -10,19 +9,19 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
-  ArrowLeft,
+  Calendar,
+  CheckCircle,
+  Clock,
+  DollarSign,
   Edit,
   MapPin,
-  Calendar,
   Users,
-  DollarSign,
-  CheckCircle,
   XCircle,
-  Clock,
 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { useState } from 'react';
 
 // Mock data for viewing
 const mockPackageData = {

@@ -1,46 +1,37 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AuthModule } from './modules/auth/auth.module';
-import { BranchModule } from './modules/branch/branch.module';
-import { DepartmentModule } from './modules/department/department.module';
-import { EmployeeModule } from './modules/employee/employee.module';
-import { LeadUpdatesModule } from './modules/lead-updates/lead-updates.module';
-import { CustomerModule } from './modules/customer/customer.module';
-import { ReminderModule } from './modules/reminder/reminder.module';
-import { NotificationModule } from './modules/notification/notification.module';
-import { OrganizationModule } from './modules/organization/organization.module';
-import { RoleModule } from './modules/role/role.module';
-import { UserDepartmentsModule } from './modules/user-departments/user-departments.module';
-import { UserModule } from './modules/user/user.module';
-import { LeadModule } from './modules/lead/lead.module';
-import { UserInviteModule } from './modules/user-invite/user-invite.module';
-import { MailerModule } from './modules/mailer/mailer.module';
-import { GroupModule } from './modules/group/group.module';
-import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
-import * as path from 'path';
+import { AuthModule } from './modules/auth/auth.module';
+import { BranchModule } from './modules/branch/branch.module';
+import { CustomerModule } from './modules/customer/customer.module';
+import { DepartmentModule } from './modules/department/department.module';
+import { EmployeeModule } from './modules/employee/employee.module';
+import { GroupModule } from './modules/group/group.module';
+import { LeadUpdatesModule } from './modules/lead-updates/lead-updates.module';
+import { LeadModule } from './modules/lead/lead.module';
+import { MailerModule } from './modules/mailer/mailer.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { OrganizationModule } from './modules/organization/organization.module';
+import { PackageModule } from './modules/package/package.module';
+import { ReminderModule } from './modules/reminder/reminder.module';
+import { RoleModule } from './modules/role/role.module';
+import { UserDepartmentsModule } from './modules/user-departments/user-departments.module';
+import { UserInviteModule } from './modules/user-invite/user-invite.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: path.join(
-        process.cwd(),
-        '.env'
-      ),
+      envFilePath: path.join(process.cwd(), '.env'),
       load: [configuration],
       isGlobal: true,
     }),
     DatabaseModule,
-    // TypeOrmModule.forRootAsync({
-    //   useFactory: async () => ({
-    //     ...dataSource.options,
-    //     autoLoadEntities: true,
-    //   }),
-    // }),
     ScheduleModule.forRoot(),
     UserModule,
     AuthModule,
@@ -58,6 +49,7 @@ import * as path from 'path';
     UserInviteModule,
     MailerModule,
     GroupModule,
+    PackageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
