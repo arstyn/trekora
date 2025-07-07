@@ -15,6 +15,7 @@ export async function middleware(request: NextRequest) {
     '/team',
     '/resend-activation',
     '/activate-user',
+    '/placeholder.svg',
   ];
   const isPublicPath = publicPaths.includes(path);
 
