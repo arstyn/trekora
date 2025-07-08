@@ -5,6 +5,7 @@ import { ThemeSection } from "./_component/theme-section"
 import { NotificationSection } from "./_component/notification-section"
 import { SecuritySection } from "./_component/security-section"
 import { AccountActionsSection } from "./_component/account-actions-section"
+import { getDepartments, getRoles } from "../teams/action"
 
 interface UserProfile {
   id: string
@@ -18,11 +19,13 @@ interface UserProfile {
   joinDate: string
 }
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+   const { departments, error: depError } = await getDepartments();
+    const { roles, error: roleError } = await getRoles();
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
-        <UserProfileSection />
+        <UserProfileSection departments={departments} roles={roles} />
         <ThemeSection />
         <NotificationSection />
         <AccountActionsSection />

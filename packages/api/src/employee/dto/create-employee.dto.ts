@@ -8,7 +8,7 @@ export class IEmployeeCreateDTO {
   joinDate?: string;
   avatar?: string;
   address?: string;
-  phoneNumber?: string;
+  phone?: string;
   dateOfBirth?: string;
   gender?: string;
   nationality?: string;
@@ -16,7 +16,7 @@ export class IEmployeeCreateDTO {
   organizationId?: string;
   emergencyContactName?: {
     name: string;
-    phoneNumber: string;
+    phone: string;
     relation: string;
   }[];
   // branchId?: string;

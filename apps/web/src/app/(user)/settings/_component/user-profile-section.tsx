@@ -24,6 +24,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUser, updateUser } from '../action';
+import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
+import { IDepartment } from '@repo/api/department/department.entity';
+import { IRole } from '@repo/api/auth/dto/role.types';
 
 export type UserProfile = {
   id?: string;
@@ -36,29 +39,33 @@ export type UserProfile = {
   avatar?: string;
 };
 
-export function UserProfileSection() {
+interface Props {
+  departments: IDepartment[];
+  roles: IRole[];
+}
+
+export function UserProfileSection({ departments, roles }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<UserProfile>({} as UserProfile);
+  const [role, setRole] = useState<String>('');
 
   useEffect(() => {
     const getUserData = async () => {
       const response = await getUser();
-      console.log("-------------response of get user", response.user)
       const data = response?.user;
 
       if (data?.id) {
+        setRole(data?.role?.name);
         const transformed: UserProfile = {
           id: data.id,
           name: data.name,
           email: data.email || data.user?.email || '',
-          phone: data.phoneNumber || data.user?.phone || '',
+          phone: data.phone || data.user?.phone || '',
           position: data.role?.name || '',
           department: data.employeeDepartments?.[0]?.department?.name || '',
           location: data.address || '',
         };
-
-        console.log('Transformed User Profile:', transformed);
         setUser(transformed);
       }
     };
@@ -67,10 +74,19 @@ export function UserProfileSection() {
   }, []);
 
   const handleProfileUpdate = async () => {
-    console.log('------------------------------user.id>', user.id);
-    if(user.id) {
-      const response = await updateUser(user.id, user);
-      console.log('------------------------------response>', response);
+    if (user.id) {
+      const payload: any = {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.location,
+      };
+
+      const response = await updateUser(user.id, payload);
+      toast('Employee Details Updated', {
+        description: 'Your details has been updated successfully.',
+      });
+      setUser({ ...user, ...response });
     }
   };
 
@@ -139,7 +155,6 @@ export function UserProfileSection() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input
@@ -183,14 +198,18 @@ export function UserProfileSection() {
                 id="position"
                 className="pl-10"
                 value={user.position ?? ''}
-                disabled
+                disabled={role?.toLowerCase() === 'admin' ? false : true}
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="department">Department</Label>
-            <Input id="department" value={user.department ?? ''} disabled />
+            <Input
+              id="department"
+              value={user.department ?? ''}
+              disabled={role?.toLowerCase() === 'admin' ? false : true}
+            />
           </div>
 
           <div className="space-y-2">
@@ -207,14 +226,16 @@ export function UserProfileSection() {
           </div>
         </div>
 
-        <Button
-          onClick={handleProfileUpdate}
-          disabled={isLoading}
-          className="w-full md:w-auto"
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {isLoading ? 'Updating...' : 'Update Profile'}
-        </Button>
+        <div className="flex justify-end w-full items-center">
+          <Button
+            onClick={handleProfileUpdate}
+            disabled={isLoading}
+            className="w-full md:w-auto"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isLoading ? 'Updating...' : 'Update Profile'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

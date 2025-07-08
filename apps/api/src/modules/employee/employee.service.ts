@@ -10,6 +10,7 @@ import { UserInviteService } from '../user-invite/user-invite.service';
 import { MailerService } from '../mailer/mailer.service';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
 import { UserDepartments } from 'src/database/entity/user-departments.entity';
+import { User } from 'src/database/entity/user.entity';
 
 @Injectable()
 export class EmployeeService {
@@ -137,6 +138,16 @@ export class EmployeeService {
     await queryRunner.startTransaction();
 
     try {
+      // 🔍 Find the employee first to get the linked userId
+      const existingEmployee = await queryRunner.manager.findOne(Employee, {
+        where: { id },
+        relations: ['user'], // ensure user is loaded
+      });
+
+      if (!existingEmployee) {
+        throw new Error('Employee not found');
+      }
+
       if (roleId) {
         const role = await this.roleService.findOne(roleId);
         if (!role) {
@@ -144,7 +155,6 @@ export class EmployeeService {
         }
       }
 
-      // Prepare update object
       const updateObj: any = {
         ...rest,
         roleId,
@@ -155,27 +165,41 @@ export class EmployeeService {
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
       };
 
-      // Remove undefined fields to avoid overwriting with undefined
       Object.keys(updateObj).forEach(
         (key) => updateObj[key] === undefined && delete updateObj[key],
       );
 
+      // 🔄 Update the Employee
       await queryRunner.manager.update(Employee, id, updateObj);
 
-      // Update departments if provided
+      // 🔄 Update the User with common fields
+      if (existingEmployee.user?.id) {
+        const userUpdate: Partial<User> = {
+          name: rest.name,
+          phone: rest.phone,
+          email: rest.email,
+        };
+
+        Object.keys(userUpdate).forEach(
+          (key) => userUpdate[key] === undefined && delete userUpdate[key],
+        );
+
+        await queryRunner.manager.update(
+          User,
+          existingEmployee.user.id,
+          userUpdate,
+        );
+      }
+
+      // 🔄 Update departments
       if (departments) {
-        // Remove existing departments
         await this.userDepartmentsService.removeByEmployeeId(
           id,
           queryRunner.manager,
         );
-        // Add new departments
         for (const departmentId of departments) {
           await this.userDepartmentsService.create(
-            {
-              departmentId,
-              employeeId: id,
-            },
+            { departmentId, employeeId: id },
             queryRunner.manager,
           );
         }
@@ -187,11 +211,11 @@ export class EmployeeService {
           'role',
           'employeeDepartments',
           'employeeDepartments.department',
+          'user',
         ],
       });
 
       await queryRunner.commitTransaction();
-
       return updatedEmployee!;
     } catch (error: any) {
       await queryRunner.rollbackTransaction();
