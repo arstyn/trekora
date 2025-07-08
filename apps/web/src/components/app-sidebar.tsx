@@ -1,22 +1,5 @@
 'use client';
 
-import {
-  ArrowUpCircleIcon,
-  BarChartIcon,
-  ClipboardListIcon,
-  DatabaseIcon,
-  FileIcon,
-  FolderIcon,
-  HelpCircleIcon,
-  LayoutDashboardIcon,
-  ListIcon,
-  SearchIcon,
-  SettingsIcon,
-  Split,
-  UsersIcon,
-} from 'lucide-react';
-import * as React from 'react';
-
 import { NavDocuments } from '@/components/nav-documents';
 import { NavMain } from '@/components/nav-main';
 import { NavSecondary } from '@/components/nav-secondary';
@@ -30,6 +13,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import {
+  ArrowUpCircleIcon,
+  Banknote,
+  BookUser,
+  FileChartColumnIncreasing,
+  FolderIcon,
+  HelpCircleIcon,
+  LayoutDashboardIcon,
+  ListIcon,
+  SettingsIcon,
+  Split,
+  Tickets,
+  UsersIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 
 const data = {
@@ -50,42 +47,41 @@ const data = {
       icon: Split,
     },
     {
+      title: 'Teams',
+      url: '/teams',
+      icon: UsersIcon,
+    },
+    {
       title: 'Packages',
-      url: '#',
+      url: '/packages',
       icon: FolderIcon,
     },
-
     {
       title: 'Batches',
       url: '#',
       icon: ListIcon,
-    },
-    {
-      title: 'Customers',
-      url: '/customers',
-      icon: BarChartIcon,
-    },
-    {
-      title: 'Teams',
-      url: '/teams',
-      icon: UsersIcon,
     },
   ],
   documents: [
     {
       name: 'Leads',
       url: '/leads',
-      icon: DatabaseIcon,
+      icon: FileChartColumnIncreasing,
     },
     {
-      name: 'Reports',
-      url: '#',
-      icon: ClipboardListIcon,
+      name: 'Customers',
+      url: '/customers',
+      icon: BookUser,
     },
     {
-      name: 'Word Assistant',
-      url: '#',
-      icon: FileIcon,
+      name: 'Booking',
+      url: '/booking',
+      icon: Tickets,
+    },
+    {
+      name: 'Payments',
+      url: '/payments',
+      icon: Banknote,
     },
   ],
   navSecondary: [
@@ -98,11 +94,6 @@ const data = {
       title: 'Get Help',
       url: '#',
       icon: HelpCircleIcon,
-    },
-    {
-      title: 'Search',
-      url: '#',
-      icon: SearchIcon,
     },
   ],
 };

@@ -56,4 +56,10 @@ export class User {
 
   @Column({ default: true, name: 'is_active' })
   isActive: boolean;
+
+  @Column({ default: false, name: 'notifications_enabled' })
+  notificationsEnabled: boolean;
+
+  @Column({ default: false, name: 'newsletter_subscribed' })
+  newsletterSubscribed: boolean;
 }

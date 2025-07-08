@@ -117,8 +117,10 @@ export class EmployeeService {
   async findOne(id: string): Promise<Employee | null> {
     return this.employeeRepository.findOne({ where: { id } });
   }
-
-  // Update an employee by ID
+  // Get a single employee by ID
+  async findOneWithEmail(email: string): Promise<Employee | null> {
+    return this.employeeRepository.findOne({ where: { email } });
+  }
 
   // Update an employee by ID
   async update(id: string, updateData: IEmployeeCreateDTO): Promise<Employee> {

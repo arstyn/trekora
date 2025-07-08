@@ -1,7 +1,5 @@
 import { AxiosRequest } from "@/lib/axios";
-import { IEmployee } from "@repo/api/employee/employee.entity";
 import { IUser } from "@repo/api/user/user.entity";
-import { UserProfile } from "./_component/user-profile-section";
 import { IEmployeeCreateDTO } from "@repo/api/employee/dto/create-employee.dto";
 
 export async function getUser() {
@@ -25,6 +23,19 @@ export async function updateUser(id: string, updatedUser: IEmployeeCreateDTO) {
   } catch (error: any) {
     const errorMessage =
       error.message ?? 'An error occurred while updating user details.';
+    return { error: errorMessage };
+  }
+}
+
+export async function logout() {
+  try {
+    const response = await AxiosRequest.post('/auth/logout', {});
+    return response;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ??
+      error.message ??
+      'An error occurred while logging out.';
     return { error: errorMessage };
   }
 }

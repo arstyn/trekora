@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Param, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ILoginDto } from '@repo/api/auth/dto/auth.types';
 import { SignupFormDTO } from '@repo/validation';
@@ -30,5 +30,15 @@ export class AuthController {
   @Post('refresh-token')
   async refreshAccessToken(@Body() body: { refreshToken: string }) {
     return await this.authService.refreshAccessToken(body.refreshToken);
+  }
+
+  @Post('activate-user/:id')
+  async activateUser(@Param('id') id: string) {
+    return this.authService.activateUser(id);
+  }
+
+  @Post('resend-activation')
+  async resendActivation(@Body('email') email: string) {
+    return this.authService.resendActivation(email);
   }
 }

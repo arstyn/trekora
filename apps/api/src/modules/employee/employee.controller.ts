@@ -72,7 +72,7 @@ export class EmployeeController {
     return this.employeeService.remove(id);
   }
 
-  // Terminate an employee by ID
+  // Activate an employee by ID
   @Post(':id/activateUser')
   async activateUser(@Param('id') id: string) {
     return this.employeeService.activateUser(id);

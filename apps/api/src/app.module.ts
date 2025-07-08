@@ -19,16 +19,28 @@ import { LeadModule } from './modules/lead/lead.module';
 import { UserInviteModule } from './modules/user-invite/user-invite.module';
 import { MailerModule } from './modules/mailer/mailer.module';
 import { GroupModule } from './modules/group/group.module';
-import dataSource from 'data-source';
+import { ConfigModule } from '@nestjs/config';
+import configuration from './config/configuration';
+import { DatabaseModule } from './database/database.module';
+import * as path from 'path';
 
 @Module({
   imports: [
-    TypeOrmModule.forRootAsync({
-      useFactory: async () => ({
-        ...dataSource.options,
-        autoLoadEntities: true,
-      }),
+    ConfigModule.forRoot({
+      envFilePath: path.join(
+        process.cwd(),
+        '.env'
+      ),
+      load: [configuration],
+      isGlobal: true,
     }),
+    DatabaseModule,
+    // TypeOrmModule.forRootAsync({
+    //   useFactory: async () => ({
+    //     ...dataSource.options,
+    //     autoLoadEntities: true,
+    //   }),
+    // }),
     ScheduleModule.forRoot(),
     UserModule,
     AuthModule,

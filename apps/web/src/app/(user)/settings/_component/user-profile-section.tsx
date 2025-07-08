@@ -24,9 +24,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUser, updateUser } from '../action';
-import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
-import { IDepartment } from '@repo/api/department/department.entity';
-import { IRole } from '@repo/api/auth/dto/role.types';
 
 export type UserProfile = {
   id?: string;
@@ -39,12 +36,7 @@ export type UserProfile = {
   avatar?: string;
 };
 
-interface Props {
-  departments: IDepartment[];
-  roles: IRole[];
-}
-
-export function UserProfileSection({ departments, roles }: Props) {
+export function UserProfileSection() {
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<UserProfile>({} as UserProfile);
