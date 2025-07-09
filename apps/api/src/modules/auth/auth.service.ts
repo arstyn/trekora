@@ -178,9 +178,9 @@ export class AuthService {
   }
 
   // Logout functionality
-  logout(): { message: string } {
+  logout(): {success: boolean,  message: string } {
     // Clear session or token (not implemented here)
-    return { message: 'Logout successful' };
+    return { success: true, message: 'Logout successful' };
   }
 
   // Validate user functionality
