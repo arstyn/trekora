@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 import { LogOut, Download, Key } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { logout } from "../action"
 
 export function AccountActionsSection() {
   const [isLoading, setIsLoading] = useState(false)
@@ -13,14 +14,14 @@ export function AccountActionsSection() {
   const handleLogout = async () => {
     setIsLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      toast("Logged Out", {
-        description: "You have been successfully logged out.",
-      })
-
-      // Redirect to login page
-      // router.push('/login');
+     const response = await logout()
+     if(response) {
+       toast("Logged Out", {
+         description: "You have been successfully logged out.",
+       })
+     }
+     
+    
     } catch (error) {
       toast("Error", {
         description: "Failed to logout. Please try again.",

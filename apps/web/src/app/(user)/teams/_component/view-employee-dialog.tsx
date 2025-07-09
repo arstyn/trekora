@@ -55,7 +55,6 @@ export function ViewEmployeeDialog({
         </DialogHeader>
 
         <div className="space-y-8">
-          {/* Employee header with avatar */}
           <div className="flex items-center border-b pb-4">
             <Avatar className="h-16 w-16">
               <AvatarImage
@@ -77,10 +76,9 @@ export function ViewEmployeeDialog({
             </div>
           </div>
 
-          {/* Employee details */}
           <div className="max-h-[50vh] overflow-auto space-y-5">
             <div className="grid grid-cols-2 gap-6 ">
-              {/* Left column */}
+
               <div className="space-y-3">
                 <Detail label="Employee ID" value={employee.id} />
                 <Detail label="Branch" value={display(employee.branch?.name)} />
@@ -90,14 +88,14 @@ export function ViewEmployeeDialog({
                   value={display(employee.organization?.name)}
                 />
                 <Detail label="Email" value={display(employee.email)} />
-                <Detail label="Phone" value={display(employee.phoneNumber)} />
+                <Detail label="Phone" value={display(employee.phone)} />
                 <Detail
                   label="Marital Status"
                   value={display(employee.maritalStatus)}
                 />
                 <Detail label="Address" value={display(employee.address)} />
               </div>
-              {/* Right column */}
+
               <div className="space-y-3">
                 <Detail label="Date of Birth" value={display(formattedDOB)} />
                 <Detail label="Gender" value={display(employee.gender)} />
@@ -130,7 +128,6 @@ export function ViewEmployeeDialog({
               </div>
             </div>
 
-            {/* Departments (if any) */}
             {employee.employeeDepartments &&
               employee.employeeDepartments.length > 0 && (
                 <div>
@@ -167,7 +164,6 @@ export function ViewEmployeeDialog({
   );
 }
 
-// Helper component for details
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
@@ -177,7 +173,6 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-// Helper function to calculate employment duration
 function calculateDuration(joinDate: Date): string {
   const start = new Date(joinDate);
   const now = new Date();
