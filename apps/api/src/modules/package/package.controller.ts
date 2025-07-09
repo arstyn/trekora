@@ -8,15 +8,14 @@ import {
   Delete,
 } from '@nestjs/common';
 import { PackageService } from './package.service';
-import { CreatePackageDto } from './dto/create-package.dto';
-import { UpdatePackageDto } from './dto/update-package.dto';
+import { PackageFormData } from '@repo/validation';
 
 @Controller('packages')
 export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 
   @Post()
-  create(@Body() createPackageDto: CreatePackageDto) {
+  create(@Body() createPackageDto: PackageFormData) {
     return this.packageService.create(createPackageDto);
   }
 
@@ -31,7 +30,7 @@ export class PackageController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePackageDto: UpdatePackageDto) {
+  update(@Param('id') id: string, @Body() updatePackageDto: PackageFormData) {
     return this.packageService.update(id, updatePackageDto);
   }
 
