@@ -23,44 +23,62 @@ import {
   Building,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getUser } from '../action';
+import { getUser, updateUser } from '../action';
 
-type UserProfile = {
+export type UserProfile = {
+  id?: string;
   name: string;
   email: string;
   phone?: string;
   position?: string;
   department?: string;
   location?: string;
+  avatar?: string;
 };
 
 export function UserProfileSection() {
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<UserProfile>({} as UserProfile);
+  const [role, setRole] = useState<String>('');
 
   useEffect(() => {
     const getUserData = async () => {
-      const response = await getUser('47c596b2-d250-4802-b6e9-eb6be63dcd80');
-      console.log('Updated Profile Data:', response.user);
-      if (response?.user) {
-        setUser(response?.user);
+      const response = await getUser();
+      const data = response?.user;
+
+      if (data?.id) {
+        setRole(data?.role?.name);
+        const transformed: UserProfile = {
+          id: data.id,
+          name: data.name,
+          email: data.email || data.user?.email || '',
+          phone: data.phone || data.user?.phone || '',
+          position: data.role?.name || '',
+          department: data.employeeDepartments?.[0]?.department?.name || '',
+          location: data.address || '',
+        };
+        setUser(transformed);
       }
     };
+
     getUserData();
   }, []);
 
   const handleProfileUpdate = async () => {
-    setIsLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast('Profile Updated', {
-        description: 'Your profile has been updated successfully.',
+    if (user.id) {
+      const payload: any = {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.location,
+      };
+
+      const response = await updateUser(user.id, payload);
+      toast('Employee Details Updated', {
+        description: 'Your details has been updated successfully.',
       });
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-    } finally {
-      setIsLoading(false);
+      setUser({ ...user, ...response });
     }
   };
 
@@ -95,12 +113,13 @@ export function UserProfileSection() {
         <div className="flex items-center gap-4">
           <div className="relative">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={user?.name} alt={user.name} />
+              <AvatarImage src={user.avatar} alt={user.name} />
               <AvatarFallback>
                 {user.name
                   ?.split(' ')
                   ?.map((n) => n[0])
-                  ?.join('')}
+                  ?.join('')
+                  ?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <Button
@@ -123,68 +142,92 @@ export function UserProfileSection() {
           <div className="space-y-1">
             <h3 className="text-lg font-semibold">{user.name}</h3>
             <Badge variant="secondary">{user.position || 'Employee'}</Badge>
-            <p className="text-sm text-muted-foreground">Joined ghjkl</p>
+            <p className="text-sm text-muted-foreground">Joined</p>
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {(
-            [
-              ['Full Name', 'name'],
-              [
-                'Email',
-                'email',
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
-              ],
-              [
-                'Phone',
-                'phone',
-                <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
-              ],
-              [
-                'Position',
-                'position',
-                <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
-              ],
-              ['Department', 'department'],
-              [
-                'Location',
-                'location',
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />,
-              ],
-            ] as const
-          ).map(([label, key, icon]) => (
-            <div key={key} className="space-y-2">
-              <Label htmlFor={key}>{label}</Label>
-              <div className="relative">
-                {icon}
-                <Input
-                  id={key}
-                  className={icon ? 'pl-10' : ''}
-                  value={user[key] ?? ''}
-                  disabled={['position', 'department', 'location'].includes(
-                    key,
-                  )}
-                  onChange={(e) =>
-                    setUser((prev) => ({
-                      ...prev,
-                      [key]: e.target.value,
-                    }))
-                  }
-                />
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="name">Full Name</Label>
+            <Input
+              id="name"
+              value={user.name ?? ''}
+              onChange={(e) => setUser({ ...user, name: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="email"
+                className="pl-10"
+                value={user.email ?? ''}
+                onChange={(e) => setUser({ ...user, email: e.target.value })}
+              />
             </div>
-          ))}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="phone"
+                className="pl-10"
+                value={user.phone ?? ''}
+                onChange={(e) => setUser({ ...user, phone: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="position">Position</Label>
+            <div className="relative">
+              <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="position"
+                className="pl-10"
+                value={user.position ?? ''}
+                disabled={role?.toLowerCase() === 'admin' ? false : true}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="department">Department</Label>
+            <Input
+              id="department"
+              value={user.department ?? ''}
+              disabled={role?.toLowerCase() === 'admin' ? false : true}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="location"
+                className="pl-10"
+                value={user.location ?? ''}
+                onChange={(e) => setUser({ ...user, location: e.target.value })}
+              />
+            </div>
+          </div>
         </div>
 
-        <Button
-          onClick={handleProfileUpdate}
-          disabled={isLoading}
-          className="w-full md:w-auto"
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {isLoading ? 'Updating...' : 'Update Profile'}
-        </Button>
+        <div className="flex justify-end w-full items-center">
+          <Button
+            onClick={handleProfileUpdate}
+            disabled={isLoading}
+            className="w-full md:w-auto"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isLoading ? 'Updating...' : 'Update Profile'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

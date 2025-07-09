@@ -30,6 +30,7 @@ export class EmployeeController {
     return this.employeeService.create({
       ...employeeData,
       organizationId: req.user.organizationId,
+      userId: req.user.userId
     });
   }
 
@@ -38,16 +39,16 @@ export class EmployeeController {
   async findAll(@Request() req: ApiRequestJWT): Promise<Employee[]> {
     return this.employeeService.findAll(req.user.organizationId);
   }
+  
+  @Get('profile')
+  async findProfile(@Request() req: ApiRequestJWT): Promise<Employee | null> {
+    return this.employeeService.findProfile(req.user.userId);
+  }
 
   // Get a single employee by ID
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Employee | null> {
     return this.employeeService.findOne(id);
-  }
-
-  @Get(':id/profile')
-  async findProfile(@Param('id') id: string): Promise<Employee | null> {
-    return this.employeeService.findProfile(id);
   }
 
   // Update an employee by ID
