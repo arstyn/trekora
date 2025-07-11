@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PackageService } from './package.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Package } from '../../database/entity/package.entity';
+import { Package } from '../../database/entity/package-related/package.entity';
 import { Repository } from 'typeorm';
 
 const mockPackage = {

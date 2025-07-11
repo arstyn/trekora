@@ -6,30 +6,33 @@ export class ItineraryDay {
   @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;
 
-  @Column()
+  @Column({ nullable: true })
   day: number;
 
-  @Column()
+  @Column({ nullable: true })
   title: string;
 
-  @Column('text')
+  @Column('text', { nullable: true })
   description: string;
 
-  @Column('simple-array')
+  @Column('simple-array', { nullable: true })
   activities: string[];
 
-  @Column('simple-array')
+  @Column('simple-array', { nullable: true })
   meals: string[];
 
-  @Column()
+  @Column({ nullable: true })
   accommodation: string;
 
-  @Column('simple-array')
+  @Column('simple-array', { nullable: true })
   images: string[];
 
-  @Column()
+  @Column({ nullable: true })
   packageId: string;
 
-  @ManyToOne(() => Package, (pkg) => pkg.itinerary, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Package, (pkg) => pkg.itinerary, {
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
   package: Package;
 }

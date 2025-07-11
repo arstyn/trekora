@@ -6,17 +6,25 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { PackageService } from './package.service';
 import { PackageFormData } from '@repo/validation';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { ApiRequestJWT } from '@repo/api/auth/dto/api-request-jwt.types';
 
-@Controller('packages')
+@UseGuards(AuthGuard)
+@Controller('api/packages')
 export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 
   @Post()
-  create(@Body() createPackageDto: PackageFormData) {
-    return this.packageService.create(createPackageDto);
+  create(
+    @Request() req: ApiRequestJWT,
+    @Body() createPackageDto: PackageFormData,
+  ) {
+    return this.packageService.create(req.user, createPackageDto);
   }
 
   @Get()

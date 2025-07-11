@@ -6,10 +6,10 @@ export class DocumentRequirement {
   @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;
 
-  @Column()
+  @Column({ nullable: true })
   name: string;
 
-  @Column('text')
+  @Column('text', { nullable: true })
   description: string;
 
   @Column({ default: true })
@@ -21,11 +21,12 @@ export class DocumentRequirement {
   })
   applicableFor: string;
 
-  @Column()
+  @Column({ nullable: true })
   packageId: string;
 
   @ManyToOne(() => Package, (pkg) => pkg.documentRequirements, {
     onDelete: 'CASCADE',
+    nullable: true,
   })
   package: Package;
 }

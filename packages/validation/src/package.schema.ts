@@ -1,122 +1,132 @@
 import { z } from 'zod';
 
 export const paymentMilestoneSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Milestone name is required'),
-  percentage: z.number().min(0).max(100),
-  description: z.string(),
-  dueDate: z.enum([
-    'booking',
-    '30_days_before',
-    '2_weeks_before',
-    '1_week_before',
-    'departure',
-  ]),
+  name: z.string().optional(),
+  percentage: z.number().min(0).max(100).optional(),
+  description: z.string().optional(),
+  dueDate: z
+    .enum([
+      'booking',
+      '30_days_before',
+      '2_weeks_before',
+      '1_week_before',
+      'departure',
+    ])
+    .optional(),
 });
 
 export const cancellationTierSchema = z.object({
-  id: z.string(),
-  timeframe: z.string().min(1, 'Timeframe is required'),
-  percentage: z.number().min(0).max(100),
-  description: z.string(),
+  timeframe: z.string().optional(),
+  percentage: z.number().min(0).max(100).optional(),
+  description: z.string().optional(),
 });
 
 export const mealsBreakdownSchema = z.object({
-  breakfast: z.array(z.string()),
-  lunch: z.array(z.string()),
-  dinner: z.array(z.string()),
+  breakfast: z.array(z.string()).optional(),
+  lunch: z.array(z.string()).optional(),
+  dinner: z.array(z.string()).optional(),
 });
 
 export const transportationSchema = z.object({
-  toDestination: z.object({
-    mode: z.string(),
-    details: z.string(),
-    included: z.boolean(),
-  }),
-  fromDestination: z.object({
-    mode: z.string(),
-    details: z.string(),
-    included: z.boolean(),
-  }),
-  duringTrip: z.object({
-    mode: z.string(),
-    details: z.string(),
-    included: z.boolean(),
-  }),
+  toDestination: z
+    .object({
+      mode: z.string().optional(),
+      details: z.string().optional(),
+      included: z.boolean().optional(),
+    })
+    .optional(),
+  fromDestination: z
+    .object({
+      mode: z.string().optional(),
+      details: z.string().optional(),
+      included: z.boolean().optional(),
+    })
+    .optional(),
+  duringTrip: z
+    .object({
+      mode: z.string().optional(),
+      details: z.string().optional(),
+      included: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export const itineraryDaySchema = z.object({
-  day: z.number(),
-  title: z.string().min(1, 'Day title is required'),
-  description: z.string(),
-  activities: z.array(z.string()),
-  meals: z.array(z.string()),
-  accommodation: z.string(),
-  images: z.array(z.string()),
+  day: z.number().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  activities: z.array(z.string()).optional(),
+  meals: z.array(z.string()).optional(),
+  accommodation: z.string().optional(),
+  images: z.array(z.string()).optional(),
 });
 
 export const documentRequirementSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Document name is required'),
-  description: z.string(),
-  mandatory: z.boolean(),
-  applicableFor: z.enum(['adults', 'children', 'all']),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  mandatory: z.boolean().optional(),
+  applicableFor: z.enum(['adults', 'children', 'all']).optional(),
 });
 
 export const checklistItemSchema = z.object({
-  id: z.string(),
-  task: z.string().min(1, 'Task is required'),
-  description: z.string(),
-  category: z.enum(['documents', 'booking', 'preparation', 'communication']),
-  dueDate: z.string(),
-  completed: z.boolean(),
+  task: z.string().optional(),
+  description: z.string().optional(),
+  category: z
+    .enum(['documents', 'booking', 'preparation', 'communication'])
+    .optional(),
+  dueDate: z.string().optional(),
+  completed: z.boolean().optional(),
 });
 
 export const packageLocationSchema = z.object({
-  type: z.enum(['international', 'local']),
-  country: z.string().min(1, 'Country is required'),
+  type: z.enum(['international', 'local']).optional(),
+  country: z.string().optional(),
   state: z.string().optional(),
 });
 
 export const packageFormSchema = z.object({
-  name: z.string().min(1, 'Package name is required'),
-  destination: z.string().min(1, 'Destination is required'),
-  duration: z.string().min(1, 'Duration is required'),
-  price: z.number().min(1, 'Price is required'),
-  description: z.string().min(1, 'Description is required'),
-  maxGuests: z.number().min(1, 'Max guests is required'),
-  startDate: z.string().min(1, 'Start date is required'),
-  endDate: z.string().min(1, 'End date is required'),
-  difficulty: z.enum(['easy', 'moderate', 'challenging', 'extreme']),
-  category: z.enum([
-    'adventure',
-    'cultural',
-    'relaxation',
-    'wildlife',
-    'luxury',
-    'budget',
-  ]),
-  inclusions: z.array(z.string()),
-  exclusions: z.array(z.string()),
-  status: z.enum(['draft', 'published']),
+  name: z.string().optional(),
+  destination: z.string().optional(),
+  duration: z.string().optional(),
+  price: z.number().optional(),
+  description: z.string().optional(),
+  maxGuests: z.number().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  difficulty: z.enum(['easy', 'moderate', 'challenging', 'extreme']).optional(),
+  category: z
+    .enum([
+      'adventure',
+      'cultural',
+      'relaxation',
+      'wildlife',
+      'luxury',
+      'budget',
+    ])
+    .optional(),
+  status: z.enum(['draft', 'published']).optional(),
   thumbnail: z.string().optional(),
-  itinerary: z.array(itineraryDaySchema),
+  inclusions: z.array(z.string()).optional(),
+  exclusions: z.array(z.string()).optional(),
+  itinerary: z.array(itineraryDaySchema).optional(),
   paymentStructure: z
     .array(paymentMilestoneSchema)
+    .optional()
     .refine(
       (milestones) =>
-        milestones.reduce((sum, m) => sum + m.percentage, 0) === 100,
+        !milestones ||
+        milestones.reduce((sum, m) => sum + (m.percentage ?? 0), 0) === 100,
       {
         message: 'Payment structure must total exactly 100%',
       },
     ),
-  cancellationStructure: z.array(cancellationTierSchema),
-  mealsBreakdown: mealsBreakdownSchema,
-  transportation: transportationSchema,
-  documentRequirements: z.array(documentRequirementSchema),
-  preTripChecklist: z.array(checklistItemSchema),
-  packageLocation: packageLocationSchema,
-  cancellationPolicy: z.array(z.string()),
+  cancellationStructure: z.array(cancellationTierSchema).optional(),
+  mealsBreakdown: mealsBreakdownSchema.optional(),
+  transportation: transportationSchema.optional(),
+  documentRequirements: z.array(documentRequirementSchema).optional(),
+  preTripChecklist: z.array(checklistItemSchema).optional(),
+  packageLocation: packageLocationSchema.optional(),
+  cancellationPolicy: z.array(z.string()).optional(),
 });
 
 export type PackageFormData = z.infer<typeof packageFormSchema>;
