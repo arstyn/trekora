@@ -28,8 +28,8 @@ export class PackageController {
   }
 
   @Get()
-  findAll() {
-    return this.packageService.findAll();
+  findAll(@Request() req: ApiRequestJWT) {
+    return this.packageService.findAll(req.user.organizationId);
   }
 
   @Get(':id')

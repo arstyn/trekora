@@ -204,8 +204,12 @@ export class PackageService {
     }
   }
 
-  async findAll(): Promise<Package[]> {
-    return this.packageRepository.find();
+  async findAll(organizationId: string): Promise<Package[]> {
+    return this.packageRepository.find({
+      where: {
+        organizationId,
+      },
+    });
   }
 
   async findOne(id: string): Promise<Package> {

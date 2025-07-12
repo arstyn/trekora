@@ -1,5 +1,25 @@
 import { z } from 'zod';
 
+export interface IPackages {
+  id: string;
+  name?: string;
+  destination?: string;
+  duration?: string;
+  price?: string;
+  description?: string;
+  maxGuests?: number;
+  startDate?: Date;
+  endDate?: Date;
+  difficulty?: 'easy' | 'moderate' | 'challenging' | 'extreme';
+  category?: 'documents' | 'booking' | 'preparation' | 'communication';
+  status?: 'draft' | 'published';
+  thumbnail?: string;
+  createdById: string;
+  organizationId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export const paymentMilestoneSchema = z.object({
   name: z.string().optional(),
   percentage: z.number().min(0).max(100).optional(),
