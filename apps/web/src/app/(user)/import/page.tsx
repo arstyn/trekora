@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { ImportUploader } from './_components/import-uploader';
 import { ImportHistory } from './_components/import-history';
-import { ImportTemplates } from './_components/import-templates';
+import { CustomTemplateBuilder } from './_components/custom-template-builder';
 
 interface ImportTemplate {
   entityType: string;
@@ -83,7 +83,7 @@ export default function ImportPage() {
           </TabsTrigger>
           <TabsTrigger value="templates" className="flex items-center gap-2">
             <Download className="w-4 h-4" />
-            Templates
+            Custom Templates
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center gap-2">
             <FileSpreadsheet className="w-4 h-4" />
@@ -146,7 +146,7 @@ export default function ImportPage() {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
-          <ImportTemplates templates={importTemplates} />
+          <CustomTemplateBuilder />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-6">

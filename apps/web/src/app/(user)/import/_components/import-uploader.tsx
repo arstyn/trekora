@@ -39,6 +39,8 @@ export function ImportUploader({ onImportComplete }: ImportUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [entityType, setEntityType] = useState<'customer' | 'lead' | 'employee'>('customer');
   const [updateExisting, setUpdateExisting] = useState(false);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [showColumnMapping, setShowColumnMapping] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -90,6 +92,9 @@ export function ImportUploader({ onImportComplete }: ImportUploaderProps) {
       formData.append('file', selectedFile);
       formData.append('entityType', entityType);
       formData.append('updateExisting', updateExisting.toString());
+      if (Object.keys(columnMapping).length > 0) {
+        formData.append('columnMapping', JSON.stringify(columnMapping));
+      }
 
       // Simulate progress
       const progressInterval = setInterval(() => {

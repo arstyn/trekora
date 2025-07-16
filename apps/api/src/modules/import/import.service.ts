@@ -22,6 +22,22 @@ export interface ImportOptions {
   organizationId: string;
   userId: string;
   updateExisting?: boolean;
+  columnMapping?: Record<string, string>; // Maps Excel column names to entity fields
+}
+
+export interface ColumnMapping {
+  excelColumn: string;
+  entityField: string;
+  required: boolean;
+  dataType: 'string' | 'email' | 'phone' | 'date' | 'number' | 'boolean';
+  description?: string;
+}
+
+export interface EntitySchema {
+  entityType: string;
+  name: string;
+  description: string;
+  availableFields: ColumnMapping[];
 }
 
 @Injectable()
@@ -61,7 +77,7 @@ export class ImportService {
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        const rowData = this.mapRowToObject(headers, row);
+        const rowData = this.mapRowToObject(headers, row, options.columnMapping);
         
         try {
           switch (options.entityType) {
@@ -106,13 +122,17 @@ export class ImportService {
     }
   }
 
-  private mapRowToObject(headers: string[], row: any[]): Record<string, any> {
+  private mapRowToObject(headers: string[], row: any[], columnMapping?: Record<string, string>): Record<string, any> {
     const obj: Record<string, any> = {};
+    
     headers.forEach((header, index) => {
       if (header && row[index] !== undefined) {
-        obj[header.trim().toLowerCase()] = row[index];
+        const cleanHeader = header.trim();
+        const entityField = columnMapping?.[cleanHeader] || cleanHeader.toLowerCase();
+        obj[entityField] = row[index];
       }
     });
+    
     return obj;
   }
 
@@ -232,31 +252,110 @@ export class ImportService {
     }
   }
 
-  async getImportTemplate(entityType: string): Promise<any> {
-    const templates = {
-      customer: {
-        headers: ['Name', 'Email', 'Phone', 'Address', 'Status', 'Notes'],
-        sampleData: [
-          ['John Doe', 'john@example.com', '+1234567890', '123 Main St', 'active', 'VIP customer'],
-          ['Jane Smith', 'jane@example.com', '+0987654321', '456 Oak Ave', 'pending', 'New customer'],
+  async getEntitySchemas(): Promise<EntitySchema[]> {
+    return [
+      {
+        entityType: 'customer',
+        name: 'Customer',
+        description: 'Import customer data with customizable field mapping',
+        availableFields: [
+          { excelColumn: 'Name', entityField: 'name', required: true, dataType: 'string', description: 'Customer full name' },
+          { excelColumn: 'Email', entityField: 'email', required: true, dataType: 'email', description: 'Customer email address' },
+          { excelColumn: 'Phone', entityField: 'phone', required: true, dataType: 'phone', description: 'Customer phone number' },
+          { excelColumn: 'Address', entityField: 'address', required: false, dataType: 'string', description: 'Customer address' },
+          { excelColumn: 'Status', entityField: 'status', required: false, dataType: 'string', description: 'Customer status (active, inactive, pending)' },
+          { excelColumn: 'Notes', entityField: 'notes', required: false, dataType: 'string', description: 'Additional notes about the customer' },
         ],
       },
-      lead: {
-        headers: ['Name', 'Email', 'Phone', 'Company', 'Status', 'Notes'],
-        sampleData: [
-          ['John Doe', 'john@example.com', '+1234567890', 'ABC Corp', 'new', 'Interested in package'],
-          ['Jane Smith', 'jane@example.com', '+0987654321', 'XYZ Inc', 'contacted', 'Follow up needed'],
+      {
+        entityType: 'lead',
+        name: 'Lead',
+        description: 'Import lead data with customizable field mapping',
+        availableFields: [
+          { excelColumn: 'Name', entityField: 'name', required: true, dataType: 'string', description: 'Lead full name' },
+          { excelColumn: 'Email', entityField: 'email', required: false, dataType: 'email', description: 'Lead email address' },
+          { excelColumn: 'Phone', entityField: 'phone', required: false, dataType: 'phone', description: 'Lead phone number' },
+          { excelColumn: 'Company', entityField: 'company', required: false, dataType: 'string', description: 'Company name' },
+          { excelColumn: 'Status', entityField: 'status', required: false, dataType: 'string', description: 'Lead status (new, contacted, qualified, lost, converted)' },
+          { excelColumn: 'Notes', entityField: 'notes', required: false, dataType: 'string', description: 'Additional notes about the lead' },
         ],
       },
-      employee: {
-        headers: ['Name', 'Email', 'Phone', 'Role', 'Address', 'Gender', 'Nationality', 'Join Date'],
-        sampleData: [
-          ['John Doe', 'john@example.com', '+1234567890', 'manager', '123 Main St', 'male', 'US', '2024-01-01'],
-          ['Jane Smith', 'jane@example.com', '+0987654321', 'employee', '456 Oak Ave', 'female', 'UK', '2024-02-01'],
+      {
+        entityType: 'employee',
+        name: 'Employee',
+        description: 'Import employee data with customizable field mapping',
+        availableFields: [
+          { excelColumn: 'Name', entityField: 'name', required: true, dataType: 'string', description: 'Employee full name' },
+          { excelColumn: 'Email', entityField: 'email', required: true, dataType: 'email', description: 'Employee email address' },
+          { excelColumn: 'Phone', entityField: 'phone', required: false, dataType: 'phone', description: 'Employee phone number' },
+          { excelColumn: 'Role', entityField: 'role', required: false, dataType: 'string', description: 'Employee role (admin, manager, employee, user)' },
+          { excelColumn: 'Address', entityField: 'address', required: false, dataType: 'string', description: 'Employee address' },
+          { excelColumn: 'Gender', entityField: 'gender', required: false, dataType: 'string', description: 'Employee gender' },
+          { excelColumn: 'Nationality', entityField: 'nationality', required: false, dataType: 'string', description: 'Employee nationality' },
+          { excelColumn: 'Join Date', entityField: 'joinDate', required: false, dataType: 'date', description: 'Employee join date (YYYY-MM-DD)' },
+          { excelColumn: 'Date of Birth', entityField: 'dateOfBirth', required: false, dataType: 'date', description: 'Employee date of birth (YYYY-MM-DD)' },
+          { excelColumn: 'Status', entityField: 'status', required: false, dataType: 'string', description: 'Employee status (active, inactive, suspended, terminated)' },
         ],
       },
-    };
+    ];
+  }
 
-    return templates[entityType] || null;
+  async generateCustomTemplate(entityType: string, columnMapping: Record<string, string>): Promise<any> {
+    const schemas = await this.getEntitySchemas();
+    const schema = schemas.find(s => s.entityType === entityType);
+    
+    if (!schema) {
+      throw new BadRequestException(`Entity type ${entityType} not found`);
+    }
+
+    // Create headers based on the column mapping
+    const headers = Object.keys(columnMapping);
+    
+    // Generate sample data
+    const sampleData = [
+      ['John Doe', 'john@example.com', '+1234567890', '123 Main St', 'active', 'VIP customer'],
+      ['Jane Smith', 'jane@example.com', '+0987654321', '456 Oak Ave', 'pending', 'New customer'],
+    ];
+
+    return {
+      headers,
+      sampleData,
+      entityType,
+      columnMapping,
+      schema,
+    };
+  }
+
+  async validateColumnMapping(entityType: string, columnMapping: Record<string, string>): Promise<{ valid: boolean; errors: string[] }> {
+    const schemas = await this.getEntitySchemas();
+    const schema = schemas.find(s => s.entityType === entityType);
+    
+    if (!schema) {
+      return { valid: false, errors: [`Entity type ${entityType} not found`] };
+    }
+
+    const errors: string[] = [];
+    const requiredFields = schema.availableFields.filter(field => field.required);
+    
+    // Check if all required fields are mapped
+    for (const field of requiredFields) {
+      const isMapped = Object.values(columnMapping).includes(field.entityField);
+      if (!isMapped) {
+        errors.push(`Required field '${field.entityField}' is not mapped`);
+      }
+    }
+
+    // Check if mapped fields exist in schema
+    for (const [excelColumn, entityField] of Object.entries(columnMapping)) {
+      const fieldExists = schema.availableFields.some(field => field.entityField === entityField);
+      if (!fieldExists) {
+        errors.push(`Field '${entityField}' is not valid for entity type '${entityType}'`);
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
   }
 } 

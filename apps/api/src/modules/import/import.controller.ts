@@ -20,6 +20,7 @@ import * as XLSX from 'xlsx';
 interface ImportRequestDto {
   entityType: 'customer' | 'lead' | 'employee';
   updateExisting?: boolean;
+  columnMapping?: Record<string, string>;
 }
 
 @Controller('api/import')
@@ -47,6 +48,7 @@ export class ImportController {
       organizationId: req.user.organizationId,
       userId: req.user.userId,
       updateExisting: importRequest.updateExisting || false,
+      columnMapping: importRequest.columnMapping,
     };
 
     return await this.importService.processExcelFile(file.path, options);
@@ -57,7 +59,7 @@ export class ImportController {
     @Param('entityType') entityType: string,
     @Res() res: Response,
   ): Promise<void> {
-    const template = await this.importService.getImportTemplate(entityType);
+    const template = await this.importService.generateCustomTemplate(entityType, {});
     
     if (!template) {
       throw new BadRequestException(`Template not found for entity type: ${entityType}`);
@@ -84,29 +86,50 @@ export class ImportController {
     res.send(buffer);
   }
 
-  @Get('templates')
-  async getAvailableTemplates(): Promise<any> {
+  @Get('schemas')
+  async getEntitySchemas(): Promise<any> {
+    const schemas = await this.importService.getEntitySchemas();
+    return { schemas };
+  }
+
+  @Post('template/generate')
+  async generateCustomTemplate(
+    @Body() body: { entityType: string; columnMapping: Record<string, string> },
+  ): Promise<any> {
+    const { entityType, columnMapping } = body;
+    
+    // Validate the column mapping
+    const validation = await this.importService.validateColumnMapping(entityType, columnMapping);
+    if (!validation.valid) {
+      throw new BadRequestException(`Invalid column mapping: ${validation.errors.join(', ')}`);
+    }
+
+    const template = await this.importService.generateCustomTemplate(entityType, columnMapping);
+    
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      template.headers,
+      ...template.sampleData,
+    ]);
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
+
+    // Generate buffer
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
     return {
-      templates: [
-        {
-          entityType: 'customer',
-          name: 'Customer Import',
-          description: 'Import customer data with fields: Name, Email, Phone, Address, Status, Notes',
-          requiredFields: ['Name', 'Email', 'Phone'],
-        },
-        {
-          entityType: 'lead',
-          name: 'Lead Import',
-          description: 'Import lead data with fields: Name, Email, Phone, Company, Status, Notes',
-          requiredFields: ['Name'],
-        },
-        {
-          entityType: 'employee',
-          name: 'Employee Import',
-          description: 'Import employee data with fields: Name, Email, Phone, Role, Address, Gender, Nationality, Join Date',
-          requiredFields: ['Name', 'Email'],
-        },
-      ],
+      template,
+      buffer: buffer.toString('base64'),
     };
+  }
+
+  @Post('template/validate')
+  async validateColumnMapping(
+    @Body() body: { entityType: string; columnMapping: Record<string, string> },
+  ): Promise<any> {
+    const { entityType, columnMapping } = body;
+    return await this.importService.validateColumnMapping(entityType, columnMapping);
   }
 } 
