@@ -113,7 +113,7 @@ export class AuthService {
     await this.employeeService.create({
       name: `${userData.firstName} ${userData.lastName}`,
       email: userData.email,
-      phoneNumber: userData.phone || null,
+      phone: userData.phone || null,
       organizationId: organization.id,
       roleId: adminRole.id,
       status: 'active',

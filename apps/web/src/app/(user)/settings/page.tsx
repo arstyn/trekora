@@ -1,22 +1,9 @@
 "use client"
-import { Settings } from "lucide-react"
+
 import { UserProfileSection } from "./_component/user-profile-section"
 import { ThemeSection } from "./_component/theme-section"
 import { NotificationSection } from "./_component/notification-section"
-import { SecuritySection } from "./_component/security-section"
 import { AccountActionsSection } from "./_component/account-actions-section"
-
-interface UserProfile {
-  id: string
-  name: string
-  email: string
-  phone: string
-  position: string
-  department: string
-  location: string
-  avatar: string
-  joinDate: string
-}
 
 export default function SettingsPage() {
   return (
