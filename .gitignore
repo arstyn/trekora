@@ -24,6 +24,9 @@ playwright-report/
 # Turbo
 .turbo
 
+# Cursor
+.cursor
+
 # Vercel
 .vercel
 
@@ -61,4 +64,4 @@ pnpm-debug.log*
 .DS_Store
 *.pem
 
-.vscode
+.vscodeapps/api/uploads/

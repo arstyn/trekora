@@ -19,6 +19,7 @@ import { LeadModule } from './modules/lead/lead.module';
 import { UserInviteModule } from './modules/user-invite/user-invite.module';
 import { MailerModule } from './modules/mailer/mailer.module';
 import { GroupModule } from './modules/group/group.module';
+import { ImportModule } from './modules/import/import.module';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
@@ -58,6 +59,7 @@ import * as path from 'path';
     UserInviteModule,
     MailerModule,
     GroupModule,
+    ImportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

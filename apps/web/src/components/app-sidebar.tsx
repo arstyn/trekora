@@ -26,6 +26,7 @@ import {
   Split,
   Tickets,
   UsersIcon,
+  Upload,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -55,6 +56,11 @@ const data = {
       title: 'Packages',
       url: '/packages',
       icon: FolderIcon,
+    },
+    {
+      title: 'Import',
+      url: '/import',
+      icon: Upload,
     },
     {
       title: 'Batches',
