@@ -1,6 +1,10 @@
-import { AxiosRequest } from "@/lib/axios";
-import { IUser } from "@repo/api/user/user.entity";
-import { IEmployeeCreateDTO } from "@repo/api/employee/dto/create-employee.dto";
+'use server';
+
+import { AxiosRequest } from '@/lib/axios';
+import { IUser } from '@repo/api/user/user.entity';
+import { IEmployeeCreateDTO } from '@repo/api/employee/dto/create-employee.dto';
+import { cookies } from 'next/headers';
+import { useRouter } from 'next/router';
 
 export async function getUser() {
   try {
@@ -29,7 +33,17 @@ export async function updateUser(id: string, updatedUser: IEmployeeCreateDTO) {
 
 export async function logout() {
   try {
-    const response = await AxiosRequest.post('/auth/logout', {});
+    const response = await AxiosRequest.post<
+      {},
+      { success: boolean; message: string }
+    >('/auth/logout', {});
+
+    if (response?.success) {
+      const cookieStore = cookies();
+      cookieStore.delete('accessToken');
+      cookieStore.delete('x');
+    }
+
     return response;
   } catch (error: any) {
     const errorMessage =

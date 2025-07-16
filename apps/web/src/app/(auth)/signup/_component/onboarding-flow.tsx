@@ -649,7 +649,7 @@ export default function OnboardingFlow() {
             </div>
           )}
 
-          <Button
+          {/* <Button
             onClick={() => form.handleSubmit(onSubmit)()}
             className="w-full"
             size="lg"
@@ -663,7 +663,7 @@ export default function OnboardingFlow() {
             ) : (
               'Go to Dashboard'
             )}
-          </Button>
+          </Button> */}
         </CardContent>
       </Card>
     );
@@ -671,9 +671,9 @@ export default function OnboardingFlow() {
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 flex items-center justify-center py-10">
-      <div className="absolute top-4 right-4 z-50">
+      {/* <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
-      </div>
+      </div> */}
       {/* Decorative elements */}
       <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-3xl" />
       <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 blur-3xl" />

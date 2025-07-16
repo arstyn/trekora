@@ -1,47 +1,69 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "sonner"
-import { LogOut, Download, Key } from "lucide-react"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { logout } from "../action"
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { toast } from 'sonner';
+import { LogOut, Download, Key } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { logout } from '../action';
+import { useRouter } from 'next/navigation';
 
 export function AccountActionsSection() {
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-     const response = await logout()
-     if(response) {
-       toast("Logged Out", {
-         description: "You have been successfully logged out.",
-       })
-     }
-     
-    
+      const response = await logout();
+
+      if ('success' in response && response.success) {
+        router.push('/login');
+        toast('Logged Out', {
+          description: 'You have been successfully logged out.',
+        });
+      } else {
+        toast('Error', {
+          description: 'Logout failed. Please try again.',
+        });
+      }
     } catch (error) {
-      toast("Error", {
-        description: "Failed to logout. Please try again.",
-      })
+      toast('Error', {
+        description: 'Failed to logout. Please try again.',
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleChangePassword = () => {
-    toast("Change Password", {
-      description: "Password change functionality would be implemented here.",
-    })
-  }
+    toast('Change Password', {
+      description: 'Password change functionality would be implemented here.',
+    });
+  };
 
   const handleDownloadData = () => {
-    toast("Download Data", {
-      description: "Data download functionality would be implemented here.",
-    })
-  }
+    toast('Download Data', {
+      description: 'Data download functionality would be implemented here.',
+    });
+  };
 
   return (
     <Card className="md:col-span-2">
@@ -51,11 +73,19 @@ export function AccountActionsSection() {
       </CardHeader>
       <CardContent>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button variant="outline" className="flex-1" onClick={handleChangePassword}>
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleChangePassword}
+          >
             <Key className="h-4 w-4 mr-2" />
             Change Password
           </Button>
-          <Button variant="outline" className="flex-1" onClick={handleDownloadData}>
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleDownloadData}
+          >
             <Download className="h-4 w-4 mr-2" />
             Download Data
           </Button>
@@ -68,15 +98,18 @@ export function AccountActionsSection() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  Are you sure you want to logout?
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  You will be signed out of your account and redirected to the login page.
+                  You will be signed out of your account and redirected to the
+                  login page.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleLogout} disabled={isLoading}>
-                  {isLoading ? "Logging out..." : "Logout"}
+                  {isLoading ? 'Logging out...' : 'Logout'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -84,5 +117,5 @@ export function AccountActionsSection() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
