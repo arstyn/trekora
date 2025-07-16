@@ -115,6 +115,7 @@ export class AuthService {
       email: userData.email,
       phone: userData.phone || null,
       organizationId: organization.id,
+      userId: newUser.id,
       roleId: adminRole.id,
       status: 'active',
       joinDate: new Date().toISOString(),
@@ -178,9 +179,9 @@ export class AuthService {
   }
 
   // Logout functionality
-  logout(): { message: string } {
+  logout(): { success: boolean; message: string } {
     // Clear session or token (not implemented here)
-    return { message: 'Logout successful' };
+    return { success: true, message: 'Logout successful' };
   }
 
   // Validate user functionality
@@ -246,5 +247,36 @@ export class AuthService {
       message:
         'If your email is registered and not yet activated, a new activation link has been sent.',
     };
+  }
+
+  async updatePassword(
+    email: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const user = await this.userService.findOneWithEmail(email);
+
+    if (!user) {
+      throw new HttpException(
+        'User not found',
+        HttpStatus.OK,
+      );
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedNewPassword;
+
+    await this.userService.update(user.id, user);
+
+    return { message: 'Password updated successfully' };
   }
 }

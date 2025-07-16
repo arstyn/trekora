@@ -6,6 +6,8 @@ import { Department } from '../entity/department.entity';
 import { roles } from './role.seed';
 import { departments } from './department.seed';
 import configuration from '../../config/configuration';
+import { notificationTypes } from './notification-type.seed';
+import { NotificationType } from '../entity/notification-type.entity';
 
 config();
 
@@ -31,6 +33,7 @@ async function seed() {
 
     const roleRepository = AppDataSource.getRepository(Role);
     const departmentRepository = AppDataSource.getRepository(Department);
+    const notificationTypeRepository = AppDataSource.getRepository(NotificationType)
 
     console.log('Seeding roles...');
     for (const roleData of roles) {
@@ -59,6 +62,21 @@ async function seed() {
         console.log(`Created department: ${departmentData.name}`);
       } else {
         console.log(`Department ${departmentData.name} already exists`);
+      }
+    }
+
+    console.log('Seeding notification types...');
+    for (const notification_type of notificationTypes) {
+      const existingNotificationType = await notificationTypeRepository.findOne({
+        where: { title: notification_type.title },
+      });
+
+      if (!existingNotificationType) {
+        const notificationType = notificationTypeRepository.create(notification_type);
+        await notificationTypeRepository.save(notificationType);
+        console.log(`Created notification type: ${notification_type.title}`);
+      } else {
+        console.log(`Notification type ${notification_type.title} already exists`);
       }
     }
 
