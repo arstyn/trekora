@@ -37,6 +37,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Save, Eye, Upload, X } from 'lucide-react';
 import { PackageFormData, packageFormSchema } from '@repo/validation';
 import { toast } from 'sonner';
+import { getPackage } from './action';
 
 interface PackageFormProps {
   isEditing?: boolean;
@@ -72,21 +73,18 @@ const defaultValues: PackageFormData = {
   ],
   paymentStructure: [
     {
-      id: '1',
       name: 'Booking Advance',
       percentage: 10,
       description: 'Initial booking amount',
       dueDate: 'booking',
     },
     {
-      id: '2',
       name: 'Confirmation',
       percentage: 40,
       description: 'Confirmation payment',
       dueDate: '30_days_before',
     },
     {
-      id: '3',
       name: 'Pre-departure',
       percentage: 50,
       description: 'Final payment',
@@ -95,25 +93,21 @@ const defaultValues: PackageFormData = {
   ],
   cancellationStructure: [
     {
-      id: '1',
       timeframe: '30+ days before',
       percentage: 10,
       description: 'Minimal cancellation fee',
     },
     {
-      id: '2',
       timeframe: '15-29 days before',
       percentage: 25,
       description: 'Standard cancellation fee',
     },
     {
-      id: '3',
       timeframe: '7-14 days before',
       percentage: 50,
       description: 'High cancellation fee',
     },
     {
-      id: '4',
       timeframe: 'Less than 7 days',
       percentage: 100,
       description: 'No refund',
@@ -136,14 +130,12 @@ const defaultValues: PackageFormData = {
   },
   documentRequirements: [
     {
-      id: '1',
       name: 'Valid Passport',
       description: 'Passport valid for at least 6 months',
       mandatory: true,
       applicableFor: 'all',
     },
     {
-      id: '2',
       name: 'Visa',
       description: 'Tourist visa for destination country',
       mandatory: true,
@@ -152,7 +144,6 @@ const defaultValues: PackageFormData = {
   ],
   preTripChecklist: [
     {
-      id: '1',
       task: 'Collect all documents',
       description: 'Verify all required documents are collected',
       category: 'documents',
@@ -160,7 +151,6 @@ const defaultValues: PackageFormData = {
       completed: false,
     },
     {
-      id: '2',
       task: 'Confirm bookings',
       description: 'Confirm all hotel and transport bookings',
       category: 'booking',
@@ -236,28 +226,22 @@ export function PackageForm({
   });
 
   // Load package data if editing
-  // useEffect(() => {
-  //   if (isEditing && packageId) {
-  //     const loadPackage = () => {
-  //       try {
-  //         const savedPackages = localStorage.getItem('travel-packages');
-  //         if (savedPackages) {
-  //           const packages = JSON.parse(savedPackages);
-  //           const packageData = packages.find(
-  //             (pkg: any) => pkg.id === packageId,
-  //           );
-  //           if (packageData) {
-  //             form.reset(packageData);
-  //             setThumbnail(packageData.thumbnail || '');
-  //           }
-  //         }
-  //       } catch (error) {
-  //         toast('Failed to load package data',);
-  //       }
-  //     };
-  //     loadPackage();
-  //   }
-  // }, [isEditing, packageId, form, toast]);
+  useEffect(() => {
+    if (isEditing && packageId) {
+      const loadPackage = async () => {
+        try {
+          const { packageData } = await getPackage(packageId);
+          if (packageData) {
+            form.reset(packageData);
+            setThumbnail(packageData.thumbnail || '');
+          }
+        } catch (error) {
+          toast('Failed to load package data');
+        }
+      };
+      loadPackage();
+    }
+  }, [isEditing, packageId, form, toast]);
 
   const handleThumbnailUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -284,10 +268,11 @@ export function PackageForm({
       reader.onload = (e) => {
         const result = e.target?.result as string;
         const currentImages = form.getValues(`itinerary.${dayIndex}.images`);
-        form.setValue(`itinerary.${dayIndex}.images`, [
-          ...currentImages,
-          result,
-        ]);
+        if (currentImages)
+          form.setValue(`itinerary.${dayIndex}.images`, [
+            ...currentImages,
+            result,
+          ]);
       };
       reader.readAsDataURL(file);
     }
@@ -295,7 +280,7 @@ export function PackageForm({
 
   const removeDayImage = (dayIndex: number, imageIndex: number) => {
     const currentImages = form.getValues(`itinerary.${dayIndex}.images`);
-    const newImages = currentImages.filter((_, i) => i !== imageIndex);
+    const newImages = currentImages?.filter((_, i) => i !== imageIndex);
     form.setValue(`itinerary.${dayIndex}.images`, newImages);
   };
 
@@ -303,57 +288,71 @@ export function PackageForm({
     const currentActivities = form.getValues(
       `itinerary.${dayIndex}.activities`,
     );
-    form.setValue(`itinerary.${dayIndex}.activities`, [
-      ...currentActivities,
-      '',
-    ]);
+    if (currentActivities)
+      form.setValue(`itinerary.${dayIndex}.activities`, [
+        ...currentActivities,
+        '',
+      ]);
   };
 
   const removeActivity = (dayIndex: number, activityIndex: number) => {
     const currentActivities = form.getValues(
       `itinerary.${dayIndex}.activities`,
     );
-    const newActivities = currentActivities.filter(
-      (_, i) => i !== activityIndex,
-    );
-    form.setValue(`itinerary.${dayIndex}.activities`, newActivities);
+    if (currentActivities) {
+      const newActivities = currentActivities.filter(
+        (_, i) => i !== activityIndex,
+      );
+      form.setValue(`itinerary.${dayIndex}.activities`, newActivities);
+    }
   };
 
   const addInclusion = () => {
     if (newInclusion.trim()) {
       const currentInclusions = form.getValues('inclusions');
-      form.setValue('inclusions', [...currentInclusions, newInclusion.trim()]);
+      if (currentInclusions)
+        form.setValue('inclusions', [
+          ...currentInclusions,
+          newInclusion.trim(),
+        ]);
       setNewInclusion('');
     }
   };
 
   const removeInclusion = (index: number) => {
     const currentInclusions = form.getValues('inclusions');
-    form.setValue(
-      'inclusions',
-      currentInclusions.filter((_, i) => i !== index),
-    );
+    if (currentInclusions)
+      form.setValue(
+        'inclusions',
+        currentInclusions.filter((_, i) => i !== index),
+      );
   };
 
   const addExclusion = () => {
     if (newExclusion.trim()) {
       const currentExclusions = form.getValues('exclusions');
-      form.setValue('exclusions', [...currentExclusions, newExclusion.trim()]);
+      if (currentExclusions)
+        form.setValue('exclusions', [
+          ...currentExclusions,
+          newExclusion.trim(),
+        ]);
       setNewExclusion('');
     }
   };
 
   const removeExclusion = (index: number) => {
     const currentExclusions = form.getValues('exclusions');
-    form.setValue(
-      'exclusions',
-      currentExclusions.filter((_, i) => i !== index),
-    );
+    if (currentExclusions)
+      form.setValue(
+        'exclusions',
+        currentExclusions.filter((_, i) => i !== index),
+      );
   };
 
   const addMealItem = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
     const currentMeals = form.getValues(`mealsBreakdown.${mealType}`);
-    form.setValue(`mealsBreakdown.${mealType}`, [...currentMeals, '']);
+    if (currentMeals)
+      form.setValue(`mealsBreakdown.${mealType}`, [...currentMeals, '']);
   };
 
   const removeMealItem = (
@@ -361,18 +360,18 @@ export function PackageForm({
     index: number,
   ) => {
     const currentMeals = form.getValues(`mealsBreakdown.${mealType}`);
-    form.setValue(
-      `mealsBreakdown.${mealType}`,
-      currentMeals.filter((_, i) => i !== index),
-    );
+    if (currentMeals)
+      form.setValue(
+        `mealsBreakdown.${mealType}`,
+        currentMeals.filter((_, i) => i !== index),
+      );
   };
 
   const addDocumentsToChecklist = () => {
     const documentRequirements = form.getValues('documentRequirements');
     const currentChecklist = form.getValues('preTripChecklist');
 
-    const documentTasks = documentRequirements.map((doc) => ({
-      id: `doc-${doc.id}-${Date.now()}`,
+    const documentTasks = documentRequirements?.map((doc) => ({
       task: `Collect ${doc.name}`,
       description: doc.description,
       category: 'documents' as const,
@@ -380,20 +379,25 @@ export function PackageForm({
       completed: false,
     }));
 
-    form.setValue('preTripChecklist', [...currentChecklist, ...documentTasks]);
+    if (currentChecklist && documentTasks)
+      form.setValue('preTripChecklist', [
+        ...currentChecklist,
+        ...documentTasks,
+      ]);
   };
 
   const addCancellationPolicy = () => {
     const current = form.getValues('cancellationPolicy');
-    form.setValue('cancellationPolicy', [...current, '']);
+    if (current) form.setValue('cancellationPolicy', [...current, '']);
   };
 
   const removeCancellationPolicy = (index: number) => {
     const current = form.getValues('cancellationPolicy');
-    form.setValue(
-      'cancellationPolicy',
-      current.filter((_, i) => i !== index),
-    );
+    if (current)
+      form.setValue(
+        'cancellationPolicy',
+        current.filter((_, i) => i !== index),
+      );
   };
 
   const onSubmit = async (
@@ -433,9 +437,12 @@ export function PackageForm({
   };
 
   const getTotalPaymentPercentage = () => {
-    return form
-      .watch('paymentStructure')
-      .reduce((total, milestone) => total + milestone.percentage, 0);
+    const paymentStructure = form.watch('paymentStructure') || [];
+    return paymentStructure.reduce(
+      (total: number, milestone: { percentage?: number }) =>
+        total + (milestone?.percentage ?? 0),
+      0,
+    );
   };
 
   const indianStates = [
@@ -492,7 +499,8 @@ export function PackageForm({
                     <div className="flex items-center gap-4">
                       <div className="relative">
                         <Image
-                          src={thumbnail || '/placeholder.svg'}
+                          // src={thumbnail || '/placeholder.svg'}
+                          src={'/placeholder.svg'}
                           alt="Package thumbnail"
                           width={200}
                           height={150}
@@ -896,8 +904,8 @@ export function PackageForm({
                                     </FormItem>
                                   )}
                                 />
-                                {form.watch(`itinerary.${dayIndex}.activities`)
-                                  ?.length > 1 && (
+                                {(form.watch(`itinerary.${dayIndex}.activities`)
+                                  ?.length ?? 0) > 1 && (
                                   <Button
                                     type="button"
                                     variant="ghost"
@@ -982,7 +990,6 @@ export function PackageForm({
                         type="button"
                         onClick={() =>
                           appendPayment({
-                            id: Date.now().toString(),
                             name: '',
                             percentage: 0,
                             description: '',
@@ -1146,7 +1153,6 @@ export function PackageForm({
                         type="button"
                         onClick={() =>
                           appendCancellation({
-                            id: Date.now().toString(),
                             timeframe: '',
                             percentage: 0,
                             description: '',
@@ -1275,16 +1281,17 @@ export function PackageForm({
                             </FormItem>
                           )}
                         />
-                        {form.watch('cancellationPolicy')?.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeCancellationPolicy(index)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
+                        {form.watch('cancellationPolicy') &&
+                          form.watch('cancellationPolicy')!.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeCancellationPolicy(index)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                       </div>
                     ))}
                   </CardContent>
@@ -1337,18 +1344,20 @@ export function PackageForm({
                                     )}
                                   />
                                   {form.watch(`mealsBreakdown.${mealType}`)
-                                    ?.length > 1 && (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        removeMealItem(mealType, index)
-                                      }
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  )}
+                                    ?.length &&
+                                    form.watch(`mealsBreakdown.${mealType}`)!
+                                      .length > 1 && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          removeMealItem(mealType, index)
+                                        }
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    )}
                                 </div>
                               ))}
                           </div>
@@ -1680,7 +1689,6 @@ export function PackageForm({
                         type="button"
                         onClick={() =>
                           appendDocument({
-                            id: Date.now().toString(),
                             name: '',
                             description: '',
                             mandatory: true,
@@ -1881,7 +1889,6 @@ export function PackageForm({
                           type="button"
                           onClick={() =>
                             appendChecklist({
-                              id: Date.now().toString(),
                               task: '',
                               description: '',
                               category: 'preparation',

@@ -14,6 +14,7 @@ export interface IPackages {
   category?: 'documents' | 'booking' | 'preparation' | 'communication';
   status?: 'draft' | 'published';
   thumbnail?: string;
+  preTripChecklist?: [];
   createdById: string;
   organizationId: string;
   createdAt: Date;
