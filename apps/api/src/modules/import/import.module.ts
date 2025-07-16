@@ -9,6 +9,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Lead } from 'src/database/entity/lead.entity';
 import { Employee } from 'src/database/entity/employee.entity';
+import { ImportTemplate } from 'src/database/entity/import-template.entity';
 import { Role } from 'src/database/entity/role.entity';
 import { JwtModule } from '@nestjs/jwt';
 
@@ -34,7 +35,7 @@ import { JwtModule } from '@nestjs/jwt';
         fileSize: 10 * 1024 * 1024, // 10MB limit
       },
     }),
-    TypeOrmModule.forFeature([Customer, Lead, Employee, Role]),
+    TypeOrmModule.forFeature([Customer, Lead, Employee, ImportTemplate, Role]),
     JwtModule.register({}),
   ],
   controllers: [ImportController],

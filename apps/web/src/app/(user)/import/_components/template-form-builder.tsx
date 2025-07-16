@@ -73,7 +73,7 @@ interface CustomColumn {
   order: number;
 }
 
-export function CustomTemplateBuilder() {
+export function TemplateFormBuilder() {
   const [schemas, setSchemas] = useState<EntitySchema[]>([]);
   const [selectedEntityType, setSelectedEntityType] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -98,7 +98,7 @@ export function CustomTemplateBuilder() {
     setIsLoading(true);
     try {
       const response = await AxiosRequest.get('/import/schemas');
-      setSchemas((response as any)?.schemas || []);
+      setSchemas(response.schemas);
     } catch (error: any) {
       console.error('Failed to load schemas:', error);
       toast.error('Failed to load entity schemas');
@@ -110,7 +110,7 @@ export function CustomTemplateBuilder() {
   const loadTemplates = async () => {
     try {
       const response = await AxiosRequest.get('/import/templates');
-      setTemplates((response as any)?.templates || []);
+      setTemplates(response.templates || []);
     } catch (error: any) {
       console.error('Failed to load templates:', error);
     }
@@ -242,7 +242,7 @@ export function CustomTemplateBuilder() {
         responseType: 'blob'
       });
       
-      const url = window.URL.createObjectURL(new Blob([response as any]));
+      const url = window.URL.createObjectURL(new Blob([response]));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `template-${templateId}.xlsx`);
@@ -312,9 +312,9 @@ export function CustomTemplateBuilder() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight mb-2">Custom Template Builder</h2>
+          <h2 className="text-2xl font-bold tracking-tight mb-2">Template Form Builder</h2>
           <p className="text-muted-foreground">
-            Create and manage custom Excel templates with field mapping and validation
+            Create and manage custom import templates with field configuration, validation rules, and column mapping.
           </p>
         </div>
         <Button onClick={createNewTemplate} className="flex items-center gap-2">

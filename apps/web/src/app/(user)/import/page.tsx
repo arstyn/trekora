@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { ImportUploader } from './_components/import-uploader';
 import { ImportHistory } from './_components/import-history';
-import { CustomTemplateBuilder } from './_components/custom-template-builder';
+import { TemplateFormBuilder } from './_components/template-form-builder';
 
 interface ImportTemplate {
   entityType: string;
@@ -146,7 +146,7 @@ export default function ImportPage() {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
-          <CustomTemplateBuilder />
+          <TemplateFormBuilder />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-6">

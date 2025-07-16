@@ -2,6 +2,8 @@ import {
   Controller,
   Post,
   Get,
+  Put,
+  Delete,
   UseInterceptors,
   UploadedFile,
   Body,
@@ -131,5 +133,64 @@ export class ImportController {
   ): Promise<any> {
     const { entityType, columnMapping } = body;
     return await this.importService.validateColumnMapping(entityType, columnMapping);
+  }
+
+  // Template Management Endpoints
+  @Get('templates')
+  async getTemplates(@Req() req: any): Promise<any> {
+    const templates = await this.importService.getTemplates(req.user.organizationId);
+    return { templates };
+  }
+
+  @Post('templates')
+  async createTemplate(
+    @Body() templateData: any,
+    @Req() req: any,
+  ): Promise<any> {
+    const template = await this.importService.createTemplate({
+      ...templateData,
+      organizationId: req.user.organizationId,
+      createdBy: req.user.userId,
+    });
+    return { template };
+  }
+
+  @Get('templates/:id')
+  async getTemplateById(@Param('id') id: string, @Req() req: any): Promise<any> {
+    const template = await this.importService.getTemplateById(id, req.user.organizationId);
+    return { template };
+  }
+
+  @Put('templates/:id')
+  async updateTemplate(
+    @Param('id') id: string,
+    @Body() templateData: any,
+    @Req() req: any,
+  ): Promise<any> {
+    const template = await this.importService.updateTemplate(id, {
+      ...templateData,
+      organizationId: req.user.organizationId,
+    });
+    return { template };
+  }
+
+  @Delete('templates/:id')
+  async deleteTemplate(@Param('id') id: string, @Req() req: any): Promise<any> {
+    await this.importService.deleteTemplate(id, req.user.organizationId);
+    return { message: 'Template deleted successfully' };
+  }
+
+  @Get('templates/:id/download')
+  async downloadTemplate(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ): Promise<void> {
+    const template = await this.importService.getTemplateById(id, req.user.organizationId);
+    const excelBuffer = await this.importService.generateTemplateExcel(template);
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${template.name}_template.xlsx"`);
+    res.send(excelBuffer);
   }
 } 

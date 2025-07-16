@@ -4,6 +4,7 @@ import { readFileSync, unlinkSync } from 'fs';
 import { Customer } from '../../database/entity/customer.entity';
 import { Lead } from '../../database/entity/lead.entity';
 import { Employee } from '../../database/entity/employee.entity';
+import { ImportTemplate } from '../../database/entity/import-template.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../../database/entity/role.entity';
@@ -51,6 +52,8 @@ export class ImportService {
     private readonly leadRepository: Repository<Lead>,
     @InjectRepository(Employee)
     private readonly employeeRepository: Repository<Employee>,
+    @InjectRepository(ImportTemplate)
+    private readonly importTemplateRepository: Repository<ImportTemplate>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
   ) {}
@@ -357,5 +360,60 @@ export class ImportService {
       valid: errors.length === 0,
       errors,
     };
+  }
+
+  // Template Management Methods
+  async getTemplates(organizationId: string): Promise<any[]> {
+    return await this.importTemplateRepository.find({
+      where: { organizationId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async createTemplate(templateData: any): Promise<any> {
+    const template = this.importTemplateRepository.create(templateData);
+    return await this.importTemplateRepository.save(template);
+  }
+
+  async getTemplateById(id: string, organizationId: string): Promise<any> {
+    const template = await this.importTemplateRepository.findOne({
+      where: { id, organizationId },
+    });
+    
+    if (!template) {
+      throw new BadRequestException(`Template with id ${id} not found`);
+    }
+    
+    return template;
+  }
+
+  async updateTemplate(id: string, templateData: any): Promise<any> {
+    const template = await this.getTemplateById(id, templateData.organizationId);
+    Object.assign(template, templateData);
+    return await this.importTemplateRepository.save(template);
+  }
+
+  async deleteTemplate(id: string, organizationId: string): Promise<void> {
+    const template = await this.getTemplateById(id, organizationId);
+    await this.importTemplateRepository.remove(template);
+  }
+
+  async generateTemplateExcel(template: any): Promise<Buffer> {
+    // Generate Excel file based on template configuration
+    const headers = template.columns
+      .filter((col: any) => col.isVisible)
+      .sort((a: any, b: any) => a.order - b.order)
+      .map((col: any) => col.excelColumnName);
+
+    const sampleData = [
+      ['John Doe', 'john@example.com', '+1234567890', '123 Main St', 'active', 'VIP customer'],
+      ['Jane Smith', 'jane@example.com', '+0987654321', '456 Oak Ave', 'pending', 'New customer'],
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
+
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
   }
 } 
