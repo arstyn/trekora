@@ -4,6 +4,7 @@ import { readFileSync, unlinkSync } from 'fs';
 import { Customer } from '../../database/entity/customer.entity';
 import { Lead } from '../../database/entity/lead.entity';
 import { Employee } from '../../database/entity/employee.entity';
+import { Branch } from '../../database/entity/branch.entity';
 import { ImportTemplate } from '../../database/entity/import-template.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,7 +20,7 @@ export interface ImportResult {
 }
 
 export interface ImportOptions {
-  entityType: 'customer' | 'lead' | 'employee';
+  entityType: 'customer' | 'lead' | 'employee' | 'branch';
   organizationId: string;
   userId: string;
   updateExisting?: boolean;
@@ -52,6 +53,8 @@ export class ImportService {
     private readonly leadRepository: Repository<Lead>,
     @InjectRepository(Employee)
     private readonly employeeRepository: Repository<Employee>,
+    @InjectRepository(Branch)
+    private readonly branchRepository: Repository<Branch>,
     @InjectRepository(ImportTemplate)
     private readonly importTemplateRepository: Repository<ImportTemplate>,
     @InjectRepository(Role)
@@ -92,6 +95,9 @@ export class ImportService {
               break;
             case 'employee':
               await this.importEmployee(rowData, options);
+              break;
+            case 'branch':
+              await this.importBranch(rowData, options);
               break;
             default:
               throw new BadRequestException(`Unsupported entity type: ${options.entityType}`);
@@ -247,6 +253,35 @@ export class ImportService {
     }
   }
 
+  private async importBranch(data: Record<string, any>, options: ImportOptions): Promise<void> {
+    const requiredFields = ['name', 'location'];
+    this.validateRequiredFields(data, requiredFields);
+
+    const existingBranch = await this.branchRepository.findOne({
+      where: { 
+        name: data.name,
+        organizationId: options.organizationId,
+      },
+    });
+
+    if (existingBranch && !options.updateExisting) {
+      throw new Error(`Branch with name ${data.name} already exists`);
+    }
+
+    const branchData = {
+      name: data.name,
+      location: data.location,
+      isActive: data.isActive !== undefined ? data.isActive : true,
+      organizationId: options.organizationId,
+    };
+
+    if (existingBranch && options.updateExisting) {
+      await this.branchRepository.update(existingBranch.id, branchData);
+    } else {
+      await this.branchRepository.save(branchData);
+    }
+  }
+
   private validateRequiredFields(data: Record<string, any>, requiredFields: string[]): void {
     for (const field of requiredFields) {
       if (!data[field] || data[field].toString().trim() === '') {
@@ -298,6 +333,16 @@ export class ImportService {
           { excelColumn: 'Join Date', entityField: 'joinDate', required: false, dataType: 'date', description: 'Employee join date (YYYY-MM-DD)' },
           { excelColumn: 'Date of Birth', entityField: 'dateOfBirth', required: false, dataType: 'date', description: 'Employee date of birth (YYYY-MM-DD)' },
           { excelColumn: 'Status', entityField: 'status', required: false, dataType: 'string', description: 'Employee status (active, inactive, suspended, terminated)' },
+        ],
+      },
+      {
+        entityType: 'branch',
+        name: 'Branch',
+        description: 'Import branch data with customizable field mapping',
+        availableFields: [
+          { excelColumn: 'Name', entityField: 'name', required: true, dataType: 'string', description: 'Branch name' },
+          { excelColumn: 'Location', entityField: 'location', required: true, dataType: 'string', description: 'Branch location/address' },
+          { excelColumn: 'Is Active', entityField: 'isActive', required: false, dataType: 'boolean', description: 'Branch active status (true/false)' },
         ],
       },
     ];
