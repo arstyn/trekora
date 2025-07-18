@@ -1,12 +1,12 @@
 'use server';
 import { AxiosRequest } from '@/lib/axios';
-import { LeadFormDTO } from '@repo/api/lead/lead-create.dto';
 import {
   ILeadUpdate,
   ILeadUpdateCreateDTO,
 } from '@repo/api/lead/lead-update.entity';
 import { ILead } from '@repo/api/lead/lead.entity';
 import { IReminder } from '@repo/api/reminder/reminder.entity';
+import { LeadFormDTO } from '@repo/validation';
 
 export async function getLeads() {
   try {
