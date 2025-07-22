@@ -8,6 +8,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/authContext";
 import { AxiosRequest } from "@/lib/axios";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/lib/constants/auth.constants";
 import type { ILoginDto, ILoginResponse } from "@/types/auth.types";
@@ -27,6 +28,7 @@ export const LoginSchema = z.object({
 export type LoginFormValues = z.infer<typeof LoginSchema>;
 
 export default function LoginForm() {
+	const { refresh } = useAuth();
 	const navigate = useNavigate();
 
 	const [error, setError] = useState<string | null>(null);
@@ -52,8 +54,8 @@ export default function LoginForm() {
 			>("/auth/login", values);
 			localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
 			localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-
-			navigate("/dashboard");
+			refresh();
+			navigate("/");
 		} catch (error: unknown) {
 			if (error instanceof Error) {
 				setError(error.message);

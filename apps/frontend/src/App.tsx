@@ -47,7 +47,7 @@ function AuthenticatedApp() {
 				<SidebarInset>
 					<SiteHeader />
 					<Routes>
-						<Route path="/dashboard" element={<Dashboard />} />
+						<Route path="/" element={<Dashboard />} />
 						<Route path="/leads" element={<Leads />} />
 						<Route path="/packages" element={<Packages />} />
 						<Route path="/packages/create" element={<CreatePackagePage />} />

@@ -14,16 +14,32 @@ import { RoleService } from '../role/role.service';
 import { EmployeeService } from '../employee/employee.service';
 import { SignupFormDTO } from 'src/dto/signup.schema';
 import { ILoginResponse } from 'src/dto/auth.types';
+import { InjectRepository } from '@nestjs/typeorm';
+import { User } from 'src/database/entity/user.entity';
+import { Organization } from 'src/database/entity/organization.entity';
+import { DataSource, Repository } from 'typeorm';
+import { Role } from 'src/database/entity/role.entity';
+import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
+import { UserInvite } from 'src/database/entity/user-invite.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Organization)
+    private readonly organizationRepository: Repository<Organization>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
+    @InjectRepository(Employee)
+    private readonly employeeRepository: Repository<Employee>,
+    @InjectRepository(UserInvite)
+    private readonly userInviteRepository: Repository<UserInvite>,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
-    private readonly organizationService: OrganizationService,
     private readonly userInviteService: UserInviteService,
-    private readonly roleService: RoleService,
     private readonly employeeService: EmployeeService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private generateAccessToken(userId: string, organizationId: string): string {
@@ -78,87 +94,150 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
   }> {
-    const existingUser = await this.userService.findOneWithEmail(
-      userData.email,
-    );
-    if (existingUser) {
-      throw new UnauthorizedException('Email already exists');
-    }
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const organization = await this.organizationService.create({
-      name: userData.orgName,
-      size: userData.orgSize,
-      industry: userData.industry,
-      domain: userData.website,
-      description: userData.description,
-    });
+    try {
+      console.log('Starting signup process for:', userData.email);
 
-    const adminRole = await this.roleService.findByName('admin');
-    if (!adminRole) {
-      throw new Error('Admin role not found');
-    }
+      // Check if user already exists
+      const existingUser = await queryRunner.manager.findOne(User, {
+        where: { email: userData?.email },
+      });
+      if (existingUser) {
+        throw new UnauthorizedException('Email already exists');
+      }
 
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const newUser = await this.userService.create({
-      name: `${userData.firstName} ${userData.lastName}`,
-      email: userData.email,
-      password: hashedPassword,
-      phone: userData.phone,
-      organizationId: organization.id,
-      roleId: adminRole.id,
-      notificationsEnabled: userData.notifications,
-      newsletterSubscribed: userData.newsletter,
-    });
+      // Create organization
+      const organization = queryRunner.manager.create(Organization, {
+        name: userData.orgName,
+        size: userData.orgSize,
+        industry: userData.industry,
+        domain: userData.website,
+        description: userData.description,
+      });
 
-    await this.employeeService.create({
-      name: `${userData.firstName} ${userData.lastName}`,
-      email: userData.email,
-      phone: userData.phone,
-      organizationId: organization.id,
-      userId: newUser.id,
-      roleId: adminRole.id,
-      status: 'active',
-      joinDate: new Date().toISOString(),
-    });
+      const savedOrganization = await queryRunner.manager.save(organization);
+      console.log('Organization created:', savedOrganization.id);
 
-    if (userData.teamMembers && userData.teamMembers.length > 0) {
-      await Promise.all(
-        userData.teamMembers.map(async (member) => {
-          const role = await this.roleService.findByName(member.role);
-          if (!role) {
-            throw new Error(`Role ${member.role} not found`);
-          }
-          const employee = await this.employeeService.create({
-            name: member.email.split('@')[0],
-            email: member.email,
-            organizationId: organization.id,
-            roleId: role.id,
-            status: 'inactive',
-            joinDate: new Date().toISOString(),
-          });
-          if (!employee) {
-            throw new Error(`Failed to create employee for ${member.email}`);
-          }
-          const invite = await this.userInviteService.createInvite(employee);
-          if (employee.email) {
-            await this.employeeService.sendInviteEmail(
-              employee.email,
-              invite.token,
+      // Find admin role
+      const adminRole = await queryRunner.manager.findOne(Role, {
+        where: { name: 'admin' },
+      });
+      if (!adminRole) {
+        throw new Error('Admin role not found in database');
+      }
+
+      // Create user
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const newUser = queryRunner.manager.create(User, {
+        name: `${userData.firstName} ${userData.lastName}`,
+        email: userData.email,
+        password: hashedPassword,
+        phone: userData.phone,
+        organizationId: savedOrganization.id,
+        roleId: adminRole.id,
+        notificationsEnabled: userData.notifications,
+        newsletterSubscribed: userData.newsletter,
+      });
+
+      const savedUser = await queryRunner.manager.save(newUser);
+      console.log('User created:', savedUser.id);
+
+      // Create employee
+      const employee = queryRunner.manager.create(Employee, {
+        name: `${userData.firstName} ${userData.lastName}`,
+        email: userData.email,
+        phone: userData.phone,
+        organizationId: savedOrganization.id,
+        userId: savedUser.id,
+        roleId: adminRole.id,
+        status: EmployeeStatus.ACTIVE,
+        joinDate: new Date().toISOString(),
+      });
+
+      const savedEmployee = await queryRunner.manager.save(employee);
+      console.log('Employee created:', savedEmployee.id);
+
+      // Process team members if any
+      if (userData.teamMembers && userData.teamMembers.length > 0) {
+        console.log('Processing team members:', userData.teamMembers.length);
+
+        for (const member of userData.teamMembers) {
+          try {
+            const role = await queryRunner.manager.findOne(Role, {
+              where: { name: member.role },
+            });
+            if (!role) {
+              console.warn(`Role ${member.role} not found, skipping member`);
+              continue;
+            }
+
+            const teamEmployee = queryRunner.manager.create(Employee, {
+              name: member.email.split('@')[0],
+              email: member.email,
+              organizationId: savedOrganization.id,
+              roleId: role.id,
+              status: EmployeeStatus.INACTIVE,
+              joinDate: new Date().toISOString(),
+            });
+
+            const savedTeamEmployee =
+              await queryRunner.manager.save(teamEmployee);
+
+            const invite = queryRunner.manager.create(UserInvite, {
+              ...savedTeamEmployee,
+            });
+
+            const savedInvite = await queryRunner.manager.save(invite);
+
+            // Send invite email
+            if (teamEmployee.email)
+              await this.employeeService.sendInviteEmail(
+                teamEmployee.email,
+                savedInvite.token,
+              );
+
+            console.log('Team member processed:', member.email);
+          } catch (memberError) {
+            console.error(
+              'Error processing team member:',
+              member.email,
+              memberError,
             );
+            // Continue processing other members instead of failing completely
           }
-        }),
+        }
+      }
+
+      // Generate tokens
+      const accessToken = this.generateAccessToken(
+        savedUser.id,
+        savedOrganization.id,
       );
+      const refreshToken = this.generateRefreshToken(
+        savedUser.id,
+        savedOrganization.id,
+      );
+
+      // CRITICAL: Commit the transaction
+      await queryRunner.commitTransaction();
+      console.log('Transaction committed successfully');
+
+      return {
+        message: 'User registered successfully',
+        userId: savedUser.id,
+        accessToken,
+        refreshToken,
+      };
+    } catch (error) {
+      console.error('Signup error:', error);
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    const accessToken = this.generateAccessToken(newUser.id, organization.id);
-    const refreshToken = this.generateRefreshToken(newUser.id, organization.id);
-
-    return {
-      message: 'User registered successfully',
-      userId: newUser.id,
-      accessToken,
-      refreshToken,
-    };
   }
 
   // Login functionality

@@ -26,77 +26,93 @@ import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
 import { NavUser } from "./nav-user";
-
-const data = {
-	user: {
-		name: "shadcn",
-		email: "m@example.com",
-		avatar: "/avatars/shadcn.jpg",
-	},
-	navMain: [
-		{
-			title: "Dashboard",
-			url: "/dashboard",
-			icon: LayoutDashboardIcon,
-		},
-		{
-			title: "Branches",
-			url: "/branches",
-			icon: Split,
-		},
-		{
-			title: "Teams",
-			url: "/teams",
-			icon: UsersIcon,
-		},
-		{
-			title: "Packages",
-			url: "/packages",
-			icon: FolderIcon,
-		},
-		{
-			title: "Batches",
-			url: "#",
-			icon: ListIcon,
-		},
-	],
-	documents: [
-		{
-			name: "Leads",
-			url: "/leads",
-			icon: FileChartColumnIncreasing,
-		},
-		{
-			name: "Customers",
-			url: "/customers",
-			icon: BookUser,
-		},
-		{
-			name: "Booking",
-			url: "/booking",
-			icon: Tickets,
-		},
-		{
-			name: "Payments",
-			url: "/payments",
-			icon: Banknote,
-		},
-	],
-	navSecondary: [
-		{
-			title: "Settings",
-			url: "/settings",
-			icon: SettingsIcon,
-		},
-		{
-			title: "Get Help",
-			url: "#",
-			icon: HelpCircleIcon,
-		},
-	],
-};
+import { useEffect, useState } from "react";
+import { AxiosRequest } from "@/lib/axios";
+import type { IEmployee } from "@/types/employee.types";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+	const [userData, setUserData] = useState<IEmployee>();
+
+	useEffect(() => {
+		const getProfile = async () => {
+			const res = await AxiosRequest.get<IEmployee>(`/employee/profile`);
+			if (res) {
+				setUserData(res);
+			}
+		};
+
+		getProfile();
+	}, []);
+
+	const data = {
+		user: {
+			name: userData?.name ?? "shadcn",
+			email: userData?.email ?? "m@example.com",
+			avatar: userData?.avatar ?? "/avatars/shadcn.jpg",
+		},
+		navMain: [
+			{
+				title: "Dashboard",
+				url: "/",
+				icon: LayoutDashboardIcon,
+			},
+			{
+				title: "Branches",
+				url: "/branches",
+				icon: Split,
+			},
+			{
+				title: "Teams",
+				url: "/teams",
+				icon: UsersIcon,
+			},
+			{
+				title: "Packages",
+				url: "/packages",
+				icon: FolderIcon,
+			},
+			{
+				title: "Batches",
+				url: "#",
+				icon: ListIcon,
+			},
+		],
+		documents: [
+			{
+				name: "Leads",
+				url: "/leads",
+				icon: FileChartColumnIncreasing,
+			},
+			{
+				name: "Customers",
+				url: "/customers",
+				icon: BookUser,
+			},
+			{
+				name: "Booking",
+				url: "/booking",
+				icon: Tickets,
+			},
+			{
+				name: "Payments",
+				url: "/payments",
+				icon: Banknote,
+			},
+		],
+		navSecondary: [
+			{
+				title: "Settings",
+				url: "/settings",
+				icon: SettingsIcon,
+			},
+			{
+				title: "Get Help",
+				url: "#",
+				icon: HelpCircleIcon,
+			},
+		],
+	};
+
 	return (
 		<Sidebar collapsible="offcanvas" {...props}>
 			<SidebarHeader>
