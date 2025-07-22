@@ -141,6 +141,7 @@ export default function OnboardingFlow() {
   const onSubmit = async (data: SignupFormDTO) => {
     setIsLoading(true);
     setError(null);
+    nextStep();
 
     try {
       const result = await signup(data);
@@ -573,7 +574,10 @@ export default function OnboardingFlow() {
           >
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
-          <Button onClick={nextStep} className="flex-1">
+          <Button
+            onClick={() => form.handleSubmit(onSubmit)()}
+            className="flex-1"
+          >
             Complete Setup <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
