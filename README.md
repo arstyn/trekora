@@ -98,6 +98,12 @@ To create all the tables and schemas run this:
 npm run migration:run
 ```
 
+## Migration File Creation Command
+
+```bash
+npx typeorm migration:create ./apps/api/src/database/migrations/FileName
+```
+
 We have database seeding option, so to run the application locally you can use the seeding module, which will seed the db with a lot dummy data. Checkout the seed module in the backend [./apps/api/src/database/seeds] to view the data.
 
 ### Run the below command in root itself from now on (Latest update)
