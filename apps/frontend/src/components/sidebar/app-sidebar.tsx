@@ -73,7 +73,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			},
 			{
 				title: "Batches",
-				url: "#",
+				url: "/batches",
 				icon: ListIcon,
 			},
 		],
@@ -90,7 +90,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			},
 			{
 				name: "Booking",
-				url: "/booking",
+				url: "/bookings",
 				icon: Tickets,
 			},
 			{

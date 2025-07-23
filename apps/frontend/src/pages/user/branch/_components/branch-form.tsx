@@ -44,8 +44,6 @@ export function BranchForm({ branch, isCreating, onSave, onClose }: BranchFormPr
 
 	const onSubmit = async (data: BranchFormDTO) => {
 		setLoading(true);
-		console.log("🚀 ~ branch-form.tsx:66 ~ onSubmit ~ branch:", branch);
-		console.log("🚀 ~ branch-form.tsx:66 ~ onSubmit ~ isCreating:", isCreating);
 
 		if (isCreating) {
 			try {
