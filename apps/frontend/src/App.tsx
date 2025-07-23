@@ -25,6 +25,7 @@ import { Route, Routes } from "react-router-dom";
 import CustomerManagement from "./pages/user/customers/customer";
 import SettingsPage from "./pages/user/settings/page";
 import { TeamsPage } from "./pages/user/teams/teams-table";
+import { BranchPage } from "./pages/user/branch/branch-page";
 
 function Home() {
 	return (
@@ -56,6 +57,7 @@ function AuthenticatedApp() {
 						<Route path="/customers" element={<CustomerManagement />} />
 						<Route path="/settings" element={<SettingsPage />} />
 						<Route path="/teams" element={<TeamsPage />} />
+						<Route path="/branches" element={<BranchPage />} />
 					</Routes>
 				</SidebarInset>
 			</SidebarProvider>
