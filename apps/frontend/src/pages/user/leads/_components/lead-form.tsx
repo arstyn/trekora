@@ -9,7 +9,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { ILead } from "@/types/lead/lead.entity";
 import { leadSchema, type LeadFormDTO } from "@/types/lead/lead.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -63,12 +63,9 @@ export function LeadForm({ lead, isCreating, onSave, onClose }: LeadFormProps) {
 		setLoading(true);
 		if (isCreating) {
 			try {
-				const newLead = await AxiosRequest.post<LeadFormDTO, ILead>(
-					"/lead",
-					data
-				);
+				const res = await axiosInstance.post<ILead>("/lead", data);
 
-				onSave(isCreating, newLead);
+				onSave(isCreating, res.data);
 				if (onClose) {
 					onClose(false);
 				}
@@ -81,12 +78,9 @@ export function LeadForm({ lead, isCreating, onSave, onClose }: LeadFormProps) {
 			}
 		} else if (lead) {
 			try {
-				const updatedLead = await AxiosRequest.put<Partial<ILead>, ILead>(
-					`/lead/${lead.id}`,
-					data
-				);
-				if (updatedLead) {
-					onSave(isCreating, { ...lead, ...updatedLead });
+				const res = await axiosInstance.put<ILead>(`/lead/${lead.id}`, data);
+				if (res) {
+					onSave(isCreating, { ...lead, ...res.data });
 					if (onClose) {
 						onClose(false);
 					}

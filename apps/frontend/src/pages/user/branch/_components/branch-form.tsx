@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import { branchSchema, type BranchFormDTO, type IBranch } from "@/types/branch.type";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
@@ -47,12 +47,9 @@ export function BranchForm({ branch, isCreating, onSave, onClose }: BranchFormPr
 
 		if (isCreating) {
 			try {
-				const newBranch = await AxiosRequest.post<BranchFormDTO, IBranch>(
-					"/branches",
-					data
-				);
+				const res = await axiosInstance.post<IBranch>("/branches", data);
 
-				onSave(isCreating, newBranch);
+				onSave(isCreating, res.data);
 				if (onClose) {
 					onClose(false);
 				}
@@ -65,7 +62,7 @@ export function BranchForm({ branch, isCreating, onSave, onClose }: BranchFormPr
 			}
 		} else if (branch) {
 			try {
-				const updatedBranch = await AxiosRequest.put<Partial<IBranch>, IBranch>(
+				const updatedBranch = await axiosInstance.put<Partial<IBranch>, IBranch>(
 					`/branches/${branch.id}`,
 					data
 				);

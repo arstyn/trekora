@@ -27,9 +27,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { IDepartment } from "@/types/department.type";
-import type { IEmployee, IEmployeeCreateDTO } from "@/types/employee.types";
+import type { IEmployee } from "@/types/employee.types";
 import type { IRole } from "@/types/role.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -160,11 +160,11 @@ export function EditEmployeeDialog({
 			};
 
 			try {
-				const employeeData = await AxiosRequest.put<
-					IEmployeeCreateDTO,
-					IEmployee
-				>(`/employee/${employee.id}`, updatedEmployee);
-				onUpdateEmployee(employee.id, employeeData);
+				const res = await axiosInstance.put<IEmployee>(
+					`/employee/${employee.id}`,
+					updatedEmployee
+				);
+				onUpdateEmployee(employee.id, res.data);
 				form.reset();
 				onOpenChange(false);
 			} catch (error) {

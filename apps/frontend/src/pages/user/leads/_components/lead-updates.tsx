@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { AxiosRequest } from "@/lib/axios";
-import type { ILeadUpdate, ILeadUpdateCreateDTO } from "@/types/lead/lead-update.entity";
+import axiosInstance from "@/lib/axios";
+import type { ILeadUpdate } from "@/types/lead/lead-update.entity";
 import { format } from "date-fns";
 import { Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -26,17 +26,14 @@ export function LeadUpdates({ leadId }: LeadUpdatesProps) {
 		setIsLoading(true);
 
 		try {
-			const leadUpdate = await AxiosRequest.post<ILeadUpdateCreateDTO, ILeadUpdate>(
-				"/lead-updates",
-				{
-					text: newUpdate,
-					leadId,
-					type: "note",
-				}
-			);
+			const res = await axiosInstance.post<ILeadUpdate>("/lead-updates", {
+				text: newUpdate,
+				leadId,
+				type: "note",
+			});
 
-			if (leadUpdate) {
-				setUpdates([leadUpdate, ...updates]);
+			if (res.data) {
+				setUpdates([res.data, ...updates]);
 				setNewUpdate("");
 				setShowForm(false);
 			}
@@ -57,16 +54,16 @@ export function LeadUpdates({ leadId }: LeadUpdatesProps) {
 		setIsLoading(true);
 
 		try {
-			const leadUpdate = await AxiosRequest.patch<{ text: string }, ILeadUpdate>(
+			const res = await axiosInstance.patch<ILeadUpdate>(
 				`/lead-updates/${leadId}`,
 				{
 					text: editText,
 				}
 			);
-			if (leadUpdate) {
+			if (res.data) {
 				setUpdates(
 					updates.map((update) =>
-						update.id === editingUpdate.id ? leadUpdate : update
+						update.id === editingUpdate.id ? res.data : update
 					)
 				);
 				setEditingUpdate(null);
@@ -87,12 +84,12 @@ export function LeadUpdates({ leadId }: LeadUpdatesProps) {
 	useEffect(() => {
 		const fetchUpdates = async () => {
 			try {
-				const leadUpdates = await AxiosRequest.get<ILeadUpdate[]>(
+				const res = await axiosInstance.get<ILeadUpdate[]>(
 					`/lead-updates/lead/${leadId}`
 				);
 
-				if (leadUpdates) {
-					setUpdates(leadUpdates);
+				if (res) {
+					setUpdates(res.data);
 				}
 			} catch (error: unknown) {
 				if (error instanceof Error) {

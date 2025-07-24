@@ -1,5 +1,5 @@
 import { getAccessToken } from "@/lib/auth-utils";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import { BACKEND_API } from "@/lib/constants/url.constants";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
@@ -54,15 +54,15 @@ export function useNotifications() {
 
 	// Fetch initial notifications from API
 	useEffect(() => {
-		AxiosRequest.get<Notification[]>("/notification").then((data) => {
-			setNotifications(data);
-			setUnreadCount(data.filter((n: Notification) => !n.isRead).length);
+		axiosInstance.get<Notification[]>("/notification").then((data) => {
+			setNotifications(data.data);
+			setUnreadCount(data.data.filter((n: Notification) => !n.isRead).length);
 		});
 	}, []);
 
 	// Mark notification as read
 	const markAsRead = useCallback(async (id: string) => {
-		await AxiosRequest.patch(`/notification/${id}/read`, {});
+		await axiosInstance.patch(`/notification/${id}/read`, {});
 		setNotifications((prev) =>
 			prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
 		);

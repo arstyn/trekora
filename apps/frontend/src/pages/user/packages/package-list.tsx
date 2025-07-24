@@ -7,7 +7,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { IPackages } from "@/types/package.schema";
 import { Calendar, IndianRupee, MapPin, Plus, Users } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -20,8 +20,8 @@ export default function Packages() {
 	useEffect(() => {
 		const getPackages = async () => {
 			try {
-				const packages = await AxiosRequest.get<IPackages[]>("/packages");
-				setPackages(packages);
+				const res = await axiosInstance.get<IPackages[]>("/packages");
+				setPackages(res.data);
 			} catch (error) {
 				if (error instanceof Error) {
 					setError(error.message);

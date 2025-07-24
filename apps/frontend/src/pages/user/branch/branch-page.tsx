@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { IBranch } from "@/types/branch.type";
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -25,9 +25,9 @@ export function BranchPage() {
 	useEffect(() => {
 		const getBranch = async () => {
 			try {
-				const branchesData = await AxiosRequest.get<IBranch[]>("/branches");
-				setBranch(branchesData);
-				setFilteredBranch(branchesData);
+				const res = await axiosInstance.get<IBranch[]>("/branches");
+				setBranch(res.data);
+				setFilteredBranch(res.data);
 			} catch (error: unknown) {
 				if (error instanceof Error) {
 					toast.error(error.message);

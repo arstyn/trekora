@@ -1,7 +1,7 @@
 // utils/auth-client.ts
-import { jwtDecode } from "jwt-decode";
-import { AxiosRequest } from "./axios";
 import type { IRefreshResponseDto } from "@/types/auth.types";
+import { jwtDecode } from "jwt-decode";
+import axiosInstance from "./axios";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "./constants/auth.constants";
 
 export const refreshToken = async () => {
@@ -9,7 +9,7 @@ export const refreshToken = async () => {
 	if (!refreshToken) return null;
 
 	try {
-		const { accessToken } = await AxiosRequest.post<
+		const { accessToken } = await axiosInstance.post<
 			{ refreshToken: string },
 			{ accessToken: string }
 		>("/auth/refresh-token", { refreshToken });
@@ -61,7 +61,7 @@ export const getNewAccessToken = async () => {
 		const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 		if (!refreshToken) return null;
 
-		const { accessToken } = await AxiosRequest.post<
+		const { accessToken } = await axiosInstance.post<
 			{ refreshToken: string },
 			IRefreshResponseDto
 		>("/auth/refresh-token", { refreshToken });

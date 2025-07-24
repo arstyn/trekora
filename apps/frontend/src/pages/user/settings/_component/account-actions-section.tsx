@@ -17,7 +17,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import { Download, Key, LogOut } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -30,12 +30,12 @@ export function AccountActionsSection() {
 	const handleLogout = async () => {
 		setIsLoading(true);
 		try {
-			const response = await AxiosRequest.post<
-				object,
-				{ success: boolean; message: string }
-			>("/auth/logout", {});
+			const response = await axiosInstance.post<{
+				success: boolean;
+				message: string;
+			}>("/auth/logout");
 
-			if ("success" in response && response.success) {
+			if ("success" in response && response.data.success) {
 				navigate("/");
 				localStorage.removeItem("accessToken");
 				localStorage.removeItem("refreshToken");
