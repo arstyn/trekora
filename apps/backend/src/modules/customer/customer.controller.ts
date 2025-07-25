@@ -33,19 +33,19 @@ export class CustomerController {
   //Getting Single Data
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Customer | null> {
-    return this.customerService.findOne(+id); // +id converts string to number
+    return this.customerService.findOne(id); // +id converts string to number
   }
   //Updating data
   @Put(':id')
   async update(
-    @Param('id') id: number,
+    @Param('id') id: string,
     @Body() updatedData: Partial<Customer>,
   ): Promise<Customer | null> {
     return this.customerService.update(id, updatedData);
   }
   //Delete Customer
   @Delete(':id')
-  async delete(@Param('id') id: number): Promise<void> {
+  async delete(@Param('id') id: string): Promise<void> {
     return this.customerService.delete(id);
   }
   /*Basic Crud operation Till here*/

@@ -244,7 +244,7 @@ export function PackageForm({
 			};
 			loadPackage();
 		}
-	}, [isEditing, packageId, form, toast]);
+	}, [isEditing, packageId, form]);
 
 	const handleThumbnailUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];

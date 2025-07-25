@@ -242,6 +242,14 @@ export class AuthService {
 
   // Login functionality
   async login(email: string, password: string): Promise<ILoginResponse> {
+    console.log(
+      '🚀 ~ auth.service.ts:245 ~ AuthService ~ login ~ password:',
+      password,
+    );
+    console.log(
+      '🚀 ~ auth.service.ts:245 ~ AuthService ~ login ~ email:',
+      email,
+    );
     const user = await this.userService.findOneWithEmail(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 

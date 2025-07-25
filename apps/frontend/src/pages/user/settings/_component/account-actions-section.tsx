@@ -35,7 +35,7 @@ export function AccountActionsSection() {
 				message: string;
 			}>("/auth/logout");
 
-			if ("success" in response && response.data.success) {
+			if (response.data.success) {
 				navigate("/");
 				localStorage.removeItem("accessToken");
 				localStorage.removeItem("refreshToken");

@@ -8,8 +8,8 @@ export enum CustomerStatus {
 
 @Entity('customer')
 export class Customer {
-  @PrimaryGeneratedColumn({ name: 'id' })
-  id: number;
+  @PrimaryGeneratedColumn('uuid', { name: 'id' })
+  id: string;
 
   @Column({ name: 'name' })
   name: string;

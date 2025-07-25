@@ -80,9 +80,8 @@ export class PackageService {
       if (cancellationPolicy) {
         for (const policy of cancellationPolicy) {
           const entity = this.cancellationPolicyRepository.create({
-            policy,
+            text: policy,
             packageId: savedPackage.id,
-            package: savedPackage,
           });
           await queryRunner.manager.save(entity);
         }
@@ -93,7 +92,6 @@ export class PackageService {
           const entity = this.cancellationTierRepository.create({
             ...tier,
             packageId: savedPackage.id,
-            package: savedPackage,
           });
           await queryRunner.manager.save(entity);
         }
@@ -104,7 +102,6 @@ export class PackageService {
           const entity = this.documentRequirementRepository.create({
             ...doc,
             packageId: savedPackage.id,
-            package: savedPackage,
           });
           await queryRunner.manager.save(entity);
         }
@@ -115,7 +112,6 @@ export class PackageService {
           const entity = this.inclusionRepository.create({
             item,
             packageId: savedPackage.id,
-            package: savedPackage,
           });
           await queryRunner.manager.save(entity);
         }
@@ -126,7 +122,6 @@ export class PackageService {
           const entity = this.exclusionRepository.create({
             item,
             packageId: savedPackage.id,
-            package: savedPackage,
           });
           await queryRunner.manager.save(entity);
         }
@@ -137,7 +132,6 @@ export class PackageService {
           const entity = this.itineraryDayRepository.create({
             ...day,
             packageId: savedPackage.id,
-            package: savedPackage,
           });
           await queryRunner.manager.save(entity);
         }
@@ -148,7 +142,6 @@ export class PackageService {
           const entity = this.checklistItemRepository.create({
             ...item,
             packageId: savedPackage.id,
-            package: savedPackage,
           });
           await queryRunner.manager.save(entity);
         }
@@ -159,7 +152,6 @@ export class PackageService {
           const entity = this.paymentMilestoneRepository.create({
             ...milestone,
             packageId: savedPackage.id,
-            package: savedPackage,
           });
           await queryRunner.manager.save(entity);
         }
@@ -169,7 +161,6 @@ export class PackageService {
         const entity = this.mealsBreakdownRepository.create({
           ...mealsBreakdown,
           packageId: savedPackage.id,
-          package: savedPackage,
         });
         await queryRunner.manager.save(entity);
       }
@@ -178,18 +169,14 @@ export class PackageService {
         const entity = this.packageLocationRepository.create({
           ...packageLocation,
           packageId: savedPackage.id,
-          package: savedPackage,
         });
         await queryRunner.manager.save(entity);
       }
 
       if (transportation) {
         const entity = this.transportationRepository.create({
-          toDestination: transportation.toDestination ?? null,
-          fromDestination: transportation.fromDestination ?? null,
-          duringTrip: transportation.duringTrip ?? null,
+          ...transportation,
           packageId: savedPackage.id,
-          package: savedPackage,
         } as Transportation);
         await queryRunner.manager.save(entity);
       }

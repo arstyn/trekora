@@ -7,7 +7,7 @@ export class CancellationPolicy {
   id: string;
 
   @Column('text', { nullable: true })
-  policy: string;
+  text: string;
 
   @Column({ type: 'uuid', nullable: true })
   packageId: string;

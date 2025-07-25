@@ -18,17 +18,17 @@ export class CustomerService {
   async findAll(): Promise<Customer[]> {
     return this.customerRepository.find();
   }
-  async findOne(id: number): Promise<Customer | null> {
+  async findOne(id: string): Promise<Customer | null> {
     return this.customerRepository.findOne({ where: { id } });
   }
   async update(
-    id: number,
+    id: string,
     updateData: Partial<Customer>,
   ): Promise<Customer | null> {
     await this.customerRepository.update(id, updateData);
     return this.findOne(id);
   }
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     await this.customerRepository.delete(id);
   }
 }
