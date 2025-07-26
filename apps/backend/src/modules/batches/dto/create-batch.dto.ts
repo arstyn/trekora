@@ -1,5 +1,5 @@
 // create-batch.dto.ts
-import { IsUUID, IsDateString, IsInt, IsString } from 'class-validator';
+import { IsArray, IsDateString, IsInt, IsUUID } from 'class-validator';
 
 export class CreateBatchDto {
   @IsDateString()
@@ -11,12 +11,9 @@ export class CreateBatchDto {
   @IsInt()
   totalSeats: number;
 
-  @IsInt()
-  bookedSeats: number;
-
-  @IsString()
-  status: string;
-
   @IsUUID()
   packageId: string;
+
+  @IsArray()
+  coordinators: string[];
 }

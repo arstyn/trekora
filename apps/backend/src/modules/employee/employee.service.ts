@@ -49,7 +49,7 @@ export class EmployeeService {
         }
       }
 
-      const employee = this.employeeRepository.create({
+      const employeeData = this.employeeRepository.create({
         ...rest,
         status:
           EmployeeStatus[status.toUpperCase() as keyof typeof EmployeeStatus],
@@ -58,7 +58,7 @@ export class EmployeeService {
         roleId,
       });
 
-      await queryRunner.manager.save(employee);
+      const employee = await queryRunner.manager.save(employeeData);
 
       const userDepartments: UserDepartments[] = [];
 
@@ -67,7 +67,7 @@ export class EmployeeService {
           const department = await this.userDepartmentsService.create(
             {
               departmentId,
-              employeeId: employee[0].id,
+              employeeId: employee.id,
             },
             queryRunner.manager, // pass manager for transactional consistency
           );
@@ -76,7 +76,7 @@ export class EmployeeService {
       }
 
       const updatedEmployee = await queryRunner.manager.findOne(Employee, {
-        where: { id: employee[0].id },
+        where: { id: employee.id },
         relations: [
           'role',
           'employeeDepartments',

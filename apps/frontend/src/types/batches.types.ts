@@ -1,3 +1,4 @@
+import type { IEmployee } from "./employee.types";
 import type { IPackages } from "./package.schema";
 
 export interface IBatches {
@@ -9,4 +10,5 @@ export interface IBatches {
 	status: string;
 	packageId: string;
 	package?: IPackages;
+	coordinators?: IEmployee[];
 }

@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,11 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+	HoverCard,
+	HoverCardContent,
+	HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import {
 	Table,
@@ -18,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import axiosInstance from "@/lib/axios";
 import type { IBatches } from "@/types/batches.types";
+import { format } from "date-fns";
 import { Calendar, Edit, Eye, MoreHorizontal, Search, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -46,7 +53,7 @@ export function BatchList({ status }: BatchListProps) {
 		};
 
 		getBranch();
-	}, []);
+	}, [status]);
 
 	const filteredBatches = batches.filter((batch) =>
 		batch.package?.name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -117,17 +124,60 @@ export function BatchList({ status }: BatchListProps) {
 									</div>
 								</TableCell>
 								<TableCell>
-									<div className="space-y-1">
-										{/* {batch.coordinators.map(
-											(coordinator: string, index: number) => (
-												<div
-													key={index}
-													className="text-sm text-muted-foreground"
-												>
-													{coordinator}
-												</div>
+									<div className="*:data-[slot=avatar]:ring-background flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:grayscale">
+										{batch.coordinators?.map(
+											(coordinator, index: number) => (
+												<HoverCard key={index}>
+													<HoverCardTrigger asChild>
+														<Avatar>
+															<AvatarImage
+																src={coordinator.avatar}
+															/>
+															<AvatarFallback>
+																{coordinator.name.slice(
+																	0,
+																	2
+																)}
+															</AvatarFallback>
+														</Avatar>
+													</HoverCardTrigger>
+													<HoverCardContent className="w-80">
+														<div className="flex gap-4">
+															<Avatar>
+																<AvatarImage
+																	src={
+																		coordinator.avatar
+																	}
+																/>
+																<AvatarFallback>
+																	{coordinator.name.slice(
+																		0,
+																		2
+																	)}
+																</AvatarFallback>
+															</Avatar>
+															<div className="space-y-1">
+																<h4 className="text-sm font-semibold">
+																	{coordinator.name}
+																</h4>
+																<p className="text-sm">
+																	{coordinator.email}
+																</p>
+																<div className="text-muted-foreground text-xs">
+																	{coordinator.joinDate &&
+																		`Joined ${format(
+																			new Date(
+																				coordinator.joinDate
+																			),
+																			"PPP"
+																		)}`}
+																</div>
+															</div>
+														</div>
+													</HoverCardContent>
+												</HoverCard>
 											)
-										)} */}
+										)}
 									</div>
 								</TableCell>
 								<TableCell>{getStatusBadge(batch.status)}</TableCell>

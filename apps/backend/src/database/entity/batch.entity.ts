@@ -26,7 +26,7 @@ export class Batch {
   @Column({ name: 'total_seats' })
   totalSeats: number;
 
-  @Column({ name: 'booked_seats' })
+  @Column({ name: 'booked_seats', nullable: true, default: 0 })
   bookedSeats: number;
 
   @Column()

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Batch } from 'src/database/entity/batch.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Employee } from 'src/database/entity/employee.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
 
@@ -16,13 +16,21 @@ export class BatchesService {
   ) {}
 
   async create(data: CreateBatchDto, organizationId: string): Promise<Batch> {
-    const { packageId, ...rest } = data;
+    const { packageId, coordinators, ...rest } = data;
+
+    const coordinatorsData = await this.empRepo.findBy({
+      id: In(coordinators),
+    });
 
     const batch = this.batchRepo.create({
       ...rest,
       package: { id: packageId },
       organizationId,
+      coordinators: coordinatorsData,
+      bookedSeats: 0,
+      status: 'upcoming',
     });
+
     return this.batchRepo.save(batch);
   }
 
@@ -35,7 +43,7 @@ export class BatchesService {
     }
     return this.batchRepo.find({
       where: query,
-      relations: ['package'],
+      relations: ['package', 'coordinators'],
     });
   }
 
@@ -46,8 +54,21 @@ export class BatchesService {
   }
 
   async update(id: string, data: UpdateBatchDto): Promise<Batch> {
+    const { coordinators, ...rest } = data;
+
+    let coordinatorsData: Employee[] = [];
+
+    if (coordinators) {
+      coordinatorsData = await this.empRepo.findBy({
+        id: In(coordinators),
+      });
+    }
+
     await this.findOne(id); // check existence
-    await this.batchRepo.update(id, data);
+    await this.batchRepo.update(id, {
+      ...rest,
+      coordinators: coordinatorsData,
+    });
     return this.findOne(id);
   }
 
@@ -84,5 +105,14 @@ export class BatchesService {
     const batch = await this.findOne(batchId);
     batch.passengers = batch.passengers.filter((p) => p.id !== customerId);
     return this.batchRepo.save(batch);
+  }
+
+  async getFastFillingBatches(): Promise<Batch[]> {
+    return this.batchRepo
+      .createQueryBuilder('batch')
+      .where('(batch.booked_seats::float / batch.total_seats) >= 0.8')
+      .orWhere('(batch.total_seats - batch.booked_seats) <= 5')
+      .orderBy('batch.start_date', 'ASC')
+      .getMany();
   }
 }

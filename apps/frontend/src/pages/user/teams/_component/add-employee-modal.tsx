@@ -300,7 +300,7 @@ export function AddEmployeeModal({
 													defaultValue={field.value}
 												>
 													<FormControl>
-														<SelectTrigger className="capitalize">
+														<SelectTrigger className="capitalize w-full">
 															<SelectValue placeholder="Select role" />
 														</SelectTrigger>
 													</FormControl>

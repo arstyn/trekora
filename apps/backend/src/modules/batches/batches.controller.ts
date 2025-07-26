@@ -31,6 +31,11 @@ export class BatchesController {
     return this.batchService.findAll(req.user.organizationId, status);
   }
 
+  @Get('fast-filling')
+  getFastFillingBatches() {
+    return this.batchService.getFastFillingBatches();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.batchService.findOne(id);

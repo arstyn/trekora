@@ -191,11 +191,15 @@ export class PackageService {
     }
   }
 
-  async findAll(organizationId: string): Promise<Package[]> {
+  async findAll(organizationId: string, status?: string): Promise<Package[]> {
+    let query: { organizationId: string; status?: string } = {
+      organizationId,
+    };
+    if (status) {
+      query.status = status;
+    }
     return this.packageRepository.find({
-      where: {
-        organizationId,
-      },
+      where: query,
     });
   }
 
