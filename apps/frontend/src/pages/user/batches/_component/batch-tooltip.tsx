@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Calendar, MapPin, DollarSign } from "lucide-react";
 import { createPortal } from "react-dom";
+import type { IBatches } from "@/types/batches.types";
 
 interface BatchTooltipProps {
-	batch: any;
+	batch: IBatches;
 	position: { x: number; y: number };
 	onClose: () => void;
 }
@@ -68,7 +69,7 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 			<Card className="shadow-lg border-2">
 				<CardHeader className="pb-3">
 					<div className="flex items-center justify-between">
-						<CardTitle className="text-lg">{batch.packageName}</CardTitle>
+						<CardTitle className="text-lg">{batch.package?.name}</CardTitle>
 						{getStatusBadge(batch.status)}
 					</div>
 				</CardHeader>
@@ -98,7 +99,7 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 						<DollarSign className="w-4 h-4 text-muted-foreground" />
 						<div className="text-sm">
 							<span className="font-medium">Price: </span>
-							{batch.price}
+							{batch.package?.price}
 						</div>
 					</div>
 
@@ -108,7 +109,7 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 						<div className="text-sm">
 							<span className="font-medium">Destinations: </span>
 							<div className="flex flex-wrap gap-1 mt-1">
-								{batch.destinations.map((dest: string, index: number) => (
+								{/* {batch.package?.destinations.map((dest: string, index: number) => (
 									<Badge
 										key={index}
 										variant="outline"
@@ -116,7 +117,7 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 									>
 										{dest}
 									</Badge>
-								))}
+								))} */}
 							</div>
 						</div>
 					</div>
@@ -125,16 +126,14 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 					<div className="text-sm">
 						<span className="font-medium">Coordinators: </span>
 						<div className="mt-1 space-y-1">
-							{batch.coordinators.map(
-								(coordinator: string, index: number) => (
-									<div
-										key={index}
-										className="text-xs text-muted-foreground"
-									>
-										• {coordinator}
-									</div>
-								)
-							)}
+							{batch.coordinators?.map((coordinator, index: number) => (
+								<div
+									key={index}
+									className="text-xs text-muted-foreground"
+								>
+									• {coordinator.name}
+								</div>
+							))}
 						</div>
 					</div>
 

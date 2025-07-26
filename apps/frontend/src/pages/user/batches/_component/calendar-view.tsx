@@ -1,90 +1,19 @@
-import type React from "react";
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import axiosInstance from "@/lib/axios";
 import { cn } from "@/lib/utils";
+import type { IBatches } from "@/types/batches.types";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { BatchTooltip } from "./batch-tooltip";
 
-// Mock batch data with calendar information
-const mockBatches = [
-	{
-		id: "1",
-		packageName: "Himalayan Adventure",
-		startDate: "2024-01-15",
-		endDate: "2024-01-25",
-		totalSeats: 20,
-		bookedSeats: 18,
-		status: "active",
-		coordinators: ["John Doe (Tour Guide)", "Mike Smith (Driver)"],
-		destinations: ["Kathmandu", "Pokhara", "Annapurna Base Camp"],
-		price: "$1,200",
-	},
-	{
-		id: "2",
-		packageName: "Beach Paradise",
-		startDate: "2024-01-20",
-		endDate: "2024-01-27",
-		totalSeats: 15,
-		bookedSeats: 12,
-		status: "active",
-		coordinators: ["Sarah Wilson (Tour Guide)"],
-		destinations: ["Goa", "Kerala", "Mumbai"],
-		price: "$800",
-	},
-	{
-		id: "3",
-		packageName: "Cultural Heritage Tour",
-		startDate: "2024-02-15",
-		endDate: "2024-02-22",
-		totalSeats: 25,
-		bookedSeats: 19,
-		status: "upcoming",
-		coordinators: ["David Brown (Tour Guide)", "Lisa Johnson (Driver)"],
-		destinations: ["Delhi", "Agra", "Jaipur"],
-		price: "$950",
-	},
-	{
-		id: "4",
-		packageName: "Mountain Trek",
-		startDate: "2024-02-20",
-		endDate: "2024-02-28",
-		totalSeats: 12,
-		bookedSeats: 8,
-		status: "upcoming",
-		coordinators: ["Tom Wilson (Tour Guide)"],
-		destinations: ["Manali", "Rohtang Pass", "Solang Valley"],
-		price: "$1,100",
-	},
-	{
-		id: "5",
-		packageName: "City Explorer",
-		startDate: "2024-01-05",
-		endDate: "2024-01-10",
-		totalSeats: 18,
-		bookedSeats: 18,
-		status: "completed",
-		coordinators: ["Anna Davis (Tour Guide)", "Chris Lee (Driver)"],
-		destinations: ["New York", "Boston", "Philadelphia"],
-		price: "$750",
-	},
-	{
-		id: "6",
-		packageName: "Desert Safari",
-		startDate: "2024-03-10",
-		endDate: "2024-03-17",
-		totalSeats: 16,
-		bookedSeats: 10,
-		status: "upcoming",
-		coordinators: ["Ahmed Khan (Tour Guide)", "Raj Patel (Driver)"],
-		destinations: ["Jaisalmer", "Jodhpur", "Bikaner"],
-		price: "$900",
-	},
-];
-
 export function CalendarView() {
+	const [batches, setBatches] = useState<IBatches[]>([]);
+
 	const [currentDate, setCurrentDate] = useState(new Date());
-	const [hoveredBatch, setHoveredBatch] = useState<any>(null);
+	const [hoveredBatch, setHoveredBatch] = useState<IBatches | null>(null);
 	const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
 	const currentMonth = currentDate.getMonth();
@@ -95,6 +24,23 @@ export function CalendarView() {
 	const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
 	const firstDayWeekday = firstDayOfMonth.getDay();
 	const daysInMonth = lastDayOfMonth.getDate();
+
+	useEffect(() => {
+		const getBranch = async () => {
+			try {
+				const res = await axiosInstance.get(`/batches`);
+				setBatches(res.data);
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					toast.error(error.message);
+				} else {
+					toast.error("Failed to load batches");
+				}
+			}
+		};
+
+		getBranch();
+	}, []);
 
 	// Generate calendar days
 	const calendarDays = [];
@@ -126,7 +72,7 @@ export function CalendarView() {
 			2,
 			"0"
 		)}-${String(day).padStart(2, "0")}`;
-		return mockBatches.filter((batch) => {
+		return batches.filter((batch) => {
 			const startDate = new Date(batch.startDate);
 			const endDate = new Date(batch.endDate);
 			const currentDateObj = new Date(dateStr);
@@ -147,7 +93,7 @@ export function CalendarView() {
 		}
 	};
 
-	const handleBatchHover = (batch: any, event: React.MouseEvent) => {
+	const handleBatchHover = (batch: IBatches, event: React.MouseEvent) => {
 		setHoveredBatch(batch);
 		setTooltipPosition({ x: event.clientX, y: event.clientY });
 	};
@@ -221,7 +167,7 @@ export function CalendarView() {
 
 						{/* Calendar days */}
 						{calendarDays.map((day, index) => {
-							const batches = day ? getBatchesForDate(day) : [];
+							const batchesArr = day ? getBatchesForDate(day) : [];
 							const isToday =
 								day &&
 								new Date().getDate() === day &&
@@ -248,7 +194,7 @@ export function CalendarView() {
 												{day}
 											</div>
 											<div className="space-y-1">
-												{batches.slice(0, 3).map((batch) => (
+												{batchesArr.slice(0, 3).map((batch) => (
 													<div
 														key={batch.id}
 														className={cn(
@@ -266,7 +212,7 @@ export function CalendarView() {
 															})
 														}
 													>
-														{batch.packageName}
+														{batch.package?.name}
 													</div>
 												))}
 												{batches.length > 3 && (
