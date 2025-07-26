@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -18,17 +17,10 @@ import {
   UserCheck, 
   Building2,
   Plus,
-  X,
-  CheckCircle,
-  AlertCircle,
-  Info,
   Loader2,
   Settings,
   Save,
-  Trash2,
-  Copy,
-  Eye,
-  EyeOff
+  Trash2
 } from 'lucide-react';
 import { AxiosRequest } from '@/lib/axios';
 import { toast } from 'sonner';
@@ -98,9 +90,12 @@ export function CustomTemplateBuilder() {
     setIsLoading(true);
     try {
       const response = await AxiosRequest.get('/import/schemas');
-      setSchemas((response as any)?.schemas || []);
+      console.log('🔄 API Response for schemas:', response);
+      const schemasData = (response as any)?.schemas || [];
+      console.log('📋 Loaded schemas:', schemasData);
+      setSchemas(schemasData);
     } catch (error: any) {
-      console.error('Failed to load schemas:', error);
+      console.error('❌ Failed to load schemas:', error);
       toast.error('Failed to load entity schemas');
     } finally {
       setIsLoading(false);
@@ -129,18 +124,20 @@ export function CustomTemplateBuilder() {
     }
   };
 
-  const getSelectedSchema = () => {
-    return schemas.find(schema => schema.entityType === selectedEntityType);
-  };
-
   const handleEntityTypeChange = (entityType: string) => {
+    console.log('handleEntityTypeChange called with:', entityType);
     setSelectedEntityType(entityType);
+    const newSchema = schemas.find(schema => schema.entityType === entityType);
+    console.log('Schemas:', schemas);
+    console.log('New Schema:', newSchema);
+    console.log('Available Fields:', newSchema?.availableFields);
+    
     setFormData(prev => ({
       ...prev,
       entityType,
-      columns: getSelectedSchema()?.availableFields.map((field, index) => ({
+      columns: newSchema?.availableFields.map((field, index) => ({
         id: `col-${index}`,
-        excelColumnName: field.entityField,
+        excelColumnName: field.excelColumn,
         entityField: field.entityField,
         isRequired: field.required,
         dataType: field.dataType,
@@ -426,7 +423,7 @@ export function CustomTemplateBuilder() {
                                   <SelectValue placeholder="Select field" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {getSelectedSchema()?.availableFields.map((field) => (
+                                  {schemas.find(schema => schema.entityType === formData.entityType)?.availableFields.map((field) => (
                                     <SelectItem key={field.entityField} value={field.entityField}>
                                       {field.entityField}
                                     </SelectItem>
