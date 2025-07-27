@@ -55,7 +55,7 @@ function AuthenticatedApp() {
 					<Route path="/batches/edit/:id" element={<EditBatchPage />} />
 					<Route path="/bookings" element={<BookingsPage />} />
 					<Route path="/bookings/:id" element={<BookingDetailsPage />} />
-					<Route path="/bookings/edit/:id" element={<EditBookingPage />} />
+					<Route path="/bookings/:id/edit" element={<EditBookingPage />} />
 					<Route path="/payments" element={<PaymentsPage />} />
 					<Route path="/payments/:id" element={<PaymentDetailsPage />} />
 					<Route path="/payments/edit/:id" element={<EditPaymentPage />} />
