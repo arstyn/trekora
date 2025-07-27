@@ -26,6 +26,7 @@ import { UserInviteModule } from './modules/user-invite/user-invite.module';
 import { UserModule } from './modules/user/user.module';
 import { BatchesModule } from './modules/batches/batches.module';
 import { BookingModule } from './modules/booking/booking.module';
+import { ImportModule } from './modules/import/import.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { BookingModule } from './modules/booking/booking.module';
     FileManagerModule,
     BatchesModule,
     BookingModule,
+    ImportModule
   ],
   controllers: [AppController],
   providers: [AppService],
