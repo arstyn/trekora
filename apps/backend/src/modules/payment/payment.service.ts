@@ -361,8 +361,8 @@ export class PaymentService {
 
     // Update booking amounts
     const booking = payment.booking;
-    const newAdvancePaid = booking.advancePaid + payment.amount;
-    const newBalanceAmount = booking.totalAmount - newAdvancePaid;
+    const newAdvancePaid = parseFloat(booking.advancePaid.toString()) + parseFloat(payment.amount.toString());
+    const newBalanceAmount = parseFloat(booking.totalAmount.toString()) - newAdvancePaid;
 
     await Promise.all([
       this.paymentRepository.update(id, { status: PaymentStatus.COMPLETED }),
