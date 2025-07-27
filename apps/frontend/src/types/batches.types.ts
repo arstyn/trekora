@@ -11,4 +11,5 @@ export interface IBatches {
 	packageId: string;
 	package?: IPackages;
 	coordinators?: IEmployee[];
+	fillRate?: number;
 }

@@ -107,12 +107,78 @@ export class BatchesService {
     return this.batchRepo.save(batch);
   }
 
-  async getFastFillingBatches(): Promise<Batch[]> {
-    return this.batchRepo
+  async getFastFillingBatches(organizationId: string): Promise<Batch[]> {
+    const batches = await this.batchRepo
       .createQueryBuilder('batch')
-      .where('(batch.booked_seats::float / batch.total_seats) >= 0.8')
-      .orWhere('(batch.total_seats - batch.booked_seats) <= 5')
-      .orderBy('batch.start_date', 'ASC')
+      .leftJoinAndSelect('batch.package', 'package')
+      .where('batch.organization_id = :organization_id', {
+        organization_id: organizationId,
+      })
+      .andWhere(
+        '(batch.booked_seats::float / NULLIF(batch.total_seats, 0)) >= 0.8 OR (batch.total_seats - batch.booked_seats) <= 5',
+      )
+      .orderBy('batch.startDate', 'ASC')
       .getMany();
+
+    // Optional: Add fillRate to each result (computed on the fly)
+    return batches.map((batch) => ({
+      ...batch,
+      fillRate:
+        batch.totalSeats > 0
+          ? parseFloat(
+              ((batch.bookedSeats / batch.totalSeats) * 100).toFixed(2),
+            )
+          : null,
+    }));
+  }
+
+  async getBatchDashboardStats(organizationId: string): Promise<{
+    activeBatches: number;
+    upcomingBatches: number;
+    availableSeats: number;
+    fastFilling: number;
+  }> {
+    const now = new Date();
+
+    const batches = await this.batchRepo.find({
+      where: { organization: { id: organizationId } },
+    });
+
+    let activeBatches = 0;
+    let upcomingBatches = 0;
+    let availableSeats = 0;
+    let fastFilling = 0;
+
+    for (const batch of batches) {
+      const start = new Date(batch.startDate);
+      const end = new Date(batch.endDate);
+
+      // Active: today is between start and end
+      if (start <= now && now <= end) {
+        activeBatches++;
+      }
+
+      // Upcoming: starts in the future
+      if (start > now) {
+        upcomingBatches++;
+        availableSeats += (batch.totalSeats ?? 0) - (batch.bookedSeats ?? 0);
+      }
+
+      // Fast Filling: booked ≥ 80% or only 5 seats left
+      if (
+        batch.totalSeats &&
+        (batch.bookedSeats / batch.totalSeats >= 0.8 ||
+          batch.totalSeats - batch.bookedSeats <= 5)
+      ) {
+        fastFilling++;
+      }
+    }
+
+    return {
+      activeBatches,
+      upcomingBatches,
+      availableSeats,
+      fastFilling,
+    };
   }
 }

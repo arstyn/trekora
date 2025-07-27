@@ -32,8 +32,13 @@ export class BatchesController {
   }
 
   @Get('fast-filling')
-  getFastFillingBatches() {
-    return this.batchService.getFastFillingBatches();
+  getFastFillingBatches(@Request() req: ApiRequestJWT) {
+    return this.batchService.getFastFillingBatches(req.user.organizationId);
+  }
+
+  @Get('stats')
+  getStatBatches(@Request() req: ApiRequestJWT) {
+    return this.batchService.getBatchDashboardStats(req.user.organizationId);
   }
 
   @Get(':id')

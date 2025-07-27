@@ -4,11 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, Calendar, Plus, TrendingUp, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { BatchList } from "./_component/batch-list";
 import { CreateBatchDialog } from "./_component/create-batch-dialog";
 import { CalendarView } from "./_component/calendar-view";
+import type { IBatches } from "@/types/batches.types";
+import axiosInstance from "@/lib/axios";
+import { toast } from "sonner";
 
 // Mock data
 const dashboardStats = {
@@ -18,35 +21,26 @@ const dashboardStats = {
 	fastFillingBatches: 3,
 };
 
-const fastFillingBatches = [
-	{
-		id: "1",
-		packageName: "Himalayan Adventure",
-		startDate: "2024-02-15",
-		totalSeats: 20,
-		bookedSeats: 18,
-		fillRate: 90,
-	},
-	{
-		id: "2",
-		packageName: "Beach Paradise",
-		startDate: "2024-02-20",
-		totalSeats: 15,
-		bookedSeats: 12,
-		fillRate: 80,
-	},
-	{
-		id: "3",
-		packageName: "Cultural Heritage Tour",
-		startDate: "2024-02-25",
-		totalSeats: 25,
-		bookedSeats: 19,
-		fillRate: 76,
-	},
-];
-
 export default function BatchesPage() {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
+	const [fastFillingBatches, setFastFillingBatches] = useState<IBatches[]>([]);
+
+	useEffect(() => {
+		const getBranch = async () => {
+			try {
+				const res = await axiosInstance.get(`/batches/fast-filling`);
+				setFastFillingBatches(res.data);
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					toast.error(error.message);
+				} else {
+					toast.error("Failed to load batches");
+				}
+			}
+		};
+
+		getBranch();
+	}, []);
 
 	return (
 		<div className="container mx-auto p-6 space-y-6">
@@ -145,17 +139,19 @@ export default function BatchesPage() {
 								<div className="flex-1">
 									<div className="flex items-center gap-2 mb-2">
 										<h3 className="font-semibold">
-											{batch.packageName}
+											{batch.package?.name}
 										</h3>
-										<Badge
-											variant={
-												batch.fillRate >= 90
-													? "destructive"
-													: "secondary"
-											}
-										>
-											{batch.fillRate}% Full
-										</Badge>
+										{batch.fillRate && (
+											<Badge
+												variant={
+													batch.fillRate >= 90
+														? "destructive"
+														: "secondary"
+												}
+											>
+												{batch.fillRate}% Full
+											</Badge>
+										)}
 									</div>
 									<p className="text-sm text-muted-foreground mb-2">
 										Starts:{" "}
