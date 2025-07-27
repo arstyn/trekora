@@ -6,6 +6,7 @@ import { Lead } from '../../database/entity/lead.entity';
 import { Employee } from '../../database/entity/employee.entity';
 import { Branch } from '../../database/entity/branch.entity';
 import { ImportTemplate } from '../../database/entity/import-template.entity';
+import { ImportHistory } from '../../database/entity/import-history.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../../database/entity/role.entity';
@@ -57,6 +58,8 @@ export class ImportService {
     private readonly branchRepository: Repository<Branch>,
     @InjectRepository(ImportTemplate)
     private readonly importTemplateRepository: Repository<ImportTemplate>,
+    @InjectRepository(ImportHistory)
+    private readonly importHistoryRepository: Repository<ImportHistory>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
   ) {}
@@ -117,7 +120,7 @@ export class ImportService {
         this.logger.warn(`Failed to delete uploaded file: ${filePath}`);
       }
 
-      return {
+      const result = {
         success: failedRows === 0,
         totalRows: rows.length,
         importedRows,
@@ -125,6 +128,27 @@ export class ImportService {
         errors,
         message: `Successfully imported ${importedRows} out of ${rows.length} rows`,
       };
+
+      // Save import result to history
+      try {
+        const historyRecord = {
+          success: result.success,
+          totalRows: result.totalRows,
+          importedRows: result.importedRows,
+          failedRows: result.failedRows,
+          errors: result.errors,
+          message: result.message,
+          entityType: options.entityType,
+          fileName: filePath.split('/').pop() || 'unknown',
+          organizationId: options.organizationId,
+          createdBy: options.userId,
+        };
+        await this.importHistoryRepository.save(historyRecord);
+      } catch (error) {
+        this.logger.error('Failed to save import history:', error);
+      }
+
+      return result;
     } catch (error) {
       this.logger.error('Error processing Excel file:', error);
       throw new BadRequestException(`Failed to process Excel file: ${(error as any)?.message}`);
@@ -441,20 +465,78 @@ export class ImportService {
   }
 
   async generateTemplateExcel(template: any): Promise<Buffer> {
-    const headers = template.columns
+    console.log("🔄 Template:", template);
+    
+    // Filter and sort columns
+    const sortedColumns = template.columns
       .filter((col: any) => col.isVisible)
-      .sort((a: any, b: any) => a.order - b.order)
-      .map((col: any) => col.excelColumnName);
+      .sort((a: any, b: any) => a.order - b.order);
+    
+    console.log("🔄 Sorted Columns:", sortedColumns);
+    
+    // Extract headers as strings
+    const headers = sortedColumns.map((col: any) => {
+      const header = col.excelColumnName;
+      console.log("🔄 Column header:", header, typeof header);
+      return String(header); // Ensure it's a string
+    });
+    
+    console.log("🔄 Final headers:", headers);
 
-    const sampleData = [
-      ['John Doe', 'john@example.com', '+1234567890', '123 Main St', 'active', 'VIP customer'],
-      ['Jane Smith', 'jane@example.com', '+0987654321', '456 Oak Ave', 'pending', 'New customer'],
-    ];
+    // Generate sample data that matches the number of columns
+    const sampleDataRow1: string[] = [];
+    const sampleDataRow2: string[] = [];
+    
+    for (let i = 0; i < headers.length; i++) {
+      const column = sortedColumns[i];
+      switch (column.entityField) {
+        case 'name':
+          sampleDataRow1.push('John Doe');
+          sampleDataRow2.push('Jane Smith');
+          break;
+        case 'email':
+          sampleDataRow1.push('john@example.com');
+          sampleDataRow2.push('jane@example.com');
+          break;
+        case 'phone':
+          sampleDataRow1.push('+1234567890');
+          sampleDataRow2.push('+0987654321');
+          break;
+        case 'address':
+          sampleDataRow1.push('123 Main St');
+          sampleDataRow2.push('456 Oak Ave');
+          break;
+        case 'status':
+          sampleDataRow1.push('active');
+          sampleDataRow2.push('active');
+          break;
+        case 'notes':
+          sampleDataRow1.push('VIP customer');
+          sampleDataRow2.push('New customer');
+          break;
+        default:
+          sampleDataRow1.push('Sample data');
+          sampleDataRow2.push('Sample data');
+      }
+    }
+
+    const sampleData = [sampleDataRow1, sampleDataRow2];
+    
+    console.log("🔄 Sample data:", sampleData);
 
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
 
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  }
+
+  async getImportHistory(organizationId: string): Promise<ImportHistory[]> {
+    const history = await this.importHistoryRepository.find({
+      where: { organizationId },
+      order: { createdAt: 'DESC' },
+      relations: ['creator'],
+    });
+    return history;
   }
 } 

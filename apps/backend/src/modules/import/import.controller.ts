@@ -193,4 +193,10 @@ export class ImportController {
     res.setHeader('Content-Disposition', `attachment; filename="${template.name}_template.xlsx"`);
     res.send(excelBuffer);
   }
+
+  @Get('history')
+  async getImportHistory(@Req() req: any): Promise<any> {
+    const history = await this.importService.getImportHistory(req.user.organizationId);
+    return { history };
+  }
 } 
