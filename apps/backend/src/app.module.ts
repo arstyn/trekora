@@ -25,6 +25,7 @@ import { UserDepartmentsModule } from './modules/user-departments/user-departmen
 import { UserInviteModule } from './modules/user-invite/user-invite.module';
 import { UserModule } from './modules/user/user.module';
 import { BatchesModule } from './modules/batches/batches.module';
+import { BookingModule } from './modules/booking/booking.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { BatchesModule } from './modules/batches/batches.module';
     PackageModule,
     FileManagerModule,
     BatchesModule,
+    BookingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
