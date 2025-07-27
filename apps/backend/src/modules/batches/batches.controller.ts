@@ -36,6 +36,16 @@ export class BatchesController {
     return this.batchService.getFastFillingBatches();
   }
 
+  @Get('by-package/:packageId')
+  findByPackage(@Param('packageId') packageId: string) {
+    return this.batchService.findByPackage(packageId);
+  }
+
+  @Get('available/:packageId')
+  getAvailableBatches(@Param('packageId') packageId: string) {
+    return this.batchService.getAvailableBatches(packageId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.batchService.findOne(id);

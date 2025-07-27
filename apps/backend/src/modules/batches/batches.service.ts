@@ -115,4 +115,26 @@ export class BatchesService {
       .orderBy('batch.start_date', 'ASC')
       .getMany();
   }
+
+  async findByPackage(packageId: string): Promise<Batch[]> {
+    return this.batchRepo.find({
+      where: { 
+        packageId,
+        status: 'upcoming'
+      },
+      relations: ['package'],
+      order: { startDate: 'ASC' }
+    });
+  }
+
+  async getAvailableBatches(packageId: string): Promise<Batch[]> {
+    return this.batchRepo
+      .createQueryBuilder('batch')
+      .where('batch.packageId = :packageId', { packageId })
+      .andWhere('batch.status = :status', { status: 'upcoming' })
+      .andWhere('batch.start_date > :currentDate', { currentDate: new Date() })
+      .andWhere('batch.booked_seats < batch.total_seats')
+      .orderBy('batch.start_date', 'ASC')
+      .getMany();
+  }
 }

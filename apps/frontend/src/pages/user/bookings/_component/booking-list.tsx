@@ -21,108 +21,61 @@ import {
 	DollarSign,
 	Edit,
 	Eye,
+	Loader2,
 	MoreHorizontal,
 	Search,
 	Users,
+	AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
+import BookingService from "@/services/booking.service";
+import type { IBookingListItem, BookingStatus } from "@/types/booking.types";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface BookingListProps {
 	status: "all" | "pending" | "confirmed" | "cancelled" | "completed";
 }
 
-// Mock data
-const mockBookings = {
-	all: [
-		{
-			id: "BK001",
-			customerName: "John Smith",
-			customerEmail: "john.smith@email.com",
-			customerPhone: "+1-234-567-8900",
-			packageName: "Himalayan Adventure",
-			batchId: "1",
-			batchStartDate: "2024-02-15",
-			passengers: 2,
-			totalAmount: 2400,
-			advancePaid: 1200,
-			balanceAmount: 1200,
-			status: "confirmed",
-			bookingDate: "2024-01-20",
-			paymentMethod: "Bank Transfer",
-		},
-		{
-			id: "BK002",
-			customerName: "Sarah Johnson",
-			customerEmail: "sarah.johnson@email.com",
-			customerPhone: "+1-234-567-8901",
-			packageName: "Beach Paradise",
-			batchId: "2",
-			batchStartDate: "2024-02-20",
-			passengers: 4,
-			totalAmount: 3200,
-			advancePaid: 800,
-			balanceAmount: 2400,
-			status: "pending",
-			bookingDate: "2024-01-21",
-			paymentMethod: "Credit Card",
-		},
-		{
-			id: "BK003",
-			customerName: "Mike Wilson",
-			customerEmail: "mike.wilson@email.com",
-			customerPhone: "+1-234-567-8902",
-			packageName: "Cultural Heritage Tour",
-			batchId: "3",
-			batchStartDate: "2024-02-25",
-			passengers: 1,
-			totalAmount: 950,
-			advancePaid: 950,
-			balanceAmount: 0,
-			status: "confirmed",
-			bookingDate: "2024-01-22",
-			paymentMethod: "Bank Transfer",
-		},
-		{
-			id: "BK004",
-			customerName: "Emily Davis",
-			customerEmail: "emily.davis@email.com",
-			customerPhone: "+1-234-567-8903",
-			packageName: "Mountain Trek",
-			batchId: "4",
-			batchStartDate: "2024-03-01",
-			passengers: 2,
-			totalAmount: 2200,
-			advancePaid: 0,
-			balanceAmount: 2200,
-			status: "cancelled",
-			bookingDate: "2024-01-23",
-			paymentMethod: "Credit Card",
-		},
-	],
-	pending: [],
-	confirmed: [],
-	cancelled: [],
-	completed: [],
-};
-
 export function BookingList({ status }: BookingListProps) {
 	const [searchTerm, setSearchTerm] = useState("");
+	const [bookings, setBookings] = useState<IBookingListItem[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 
-	// Filter bookings based on status
-	let bookings = mockBookings.all;
-	if (status !== "all") {
-		bookings = mockBookings.all.filter((booking) => booking.status === status);
-	}
+	// Fetch bookings on component mount and when status changes
+	useEffect(() => {
+		fetchBookings();
+	}, [status]);
+
+	const fetchBookings = async () => {
+		try {
+			setLoading(true);
+			setError(null);
+			
+			const data = await BookingService.getAllBookings({
+				status: status as BookingStatus | 'all',
+				limit: 100, // You can implement pagination later
+				offset: 0,
+			});
+			
+			setBookings(data);
+		} catch (err) {
+			console.error('Error fetching bookings:', err);
+			setError('Failed to load bookings. Please try again.');
+		} finally {
+			setLoading(false);
+		}
+	};
 
 	const filteredBookings = bookings.filter(
 		(booking) =>
 			booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			booking.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			booking.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			booking.packageName.toLowerCase().includes(searchTerm.toLowerCase())
 	);
 
-	const getStatusBadge = (status: string) => {
+	const getStatusBadge = (status: BookingStatus) => {
 		switch (status) {
 			case "confirmed":
 				return <Badge className="bg-green-100 text-green-800">Confirmed</Badge>;
@@ -138,14 +91,55 @@ export function BookingList({ status }: BookingListProps) {
 	};
 
 	const getPaymentStatus = (advancePaid: number, totalAmount: number) => {
-		if (advancePaid === 0) {
-			return <Badge variant="destructive">No Payment</Badge>;
-		} else if (advancePaid < totalAmount) {
-			return <Badge variant="secondary">Partial Payment</Badge>;
-		} else {
-			return <Badge className="bg-green-100 text-green-800">Fully Paid</Badge>;
+		const paymentStatus = BookingService.getPaymentStatus(advancePaid, totalAmount);
+		
+		switch (paymentStatus) {
+			case 'none':
+				return <Badge variant="destructive">No Payment</Badge>;
+			case 'partial':
+				return <Badge variant="secondary">Partial Payment</Badge>;
+			case 'full':
+				return <Badge className="bg-green-100 text-green-800">Fully Paid</Badge>;
+			default:
+				return <Badge variant="secondary">Unknown</Badge>;
 		}
 	};
+
+	if (loading) {
+		return (
+			<Card>
+				<CardContent className="flex items-center justify-center py-8">
+					<div className="flex items-center gap-2">
+						<Loader2 className="h-4 w-4 animate-spin" />
+						<span>Loading bookings...</span>
+					</div>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	if (error) {
+		return (
+			<Card>
+				<CardContent className="py-8">
+					<Alert variant="destructive">
+						<AlertCircle className="h-4 w-4" />
+						<AlertDescription>
+							{error}
+							<Button 
+								variant="outline" 
+								size="sm" 
+								className="ml-4" 
+								onClick={fetchBookings}
+							>
+								Try Again
+							</Button>
+						</AlertDescription>
+					</Alert>
+				</CardContent>
+			</Card>
+		);
+	}
 
 	return (
 		<Card>
@@ -164,6 +158,18 @@ export function BookingList({ status }: BookingListProps) {
 								className="pl-8 w-64"
 							/>
 						</div>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={fetchBookings}
+							disabled={loading}
+						>
+							{loading ? (
+								<Loader2 className="h-4 w-4 animate-spin" />
+							) : (
+								"Refresh"
+							)}
+						</Button>
 					</div>
 				</div>
 			</CardHeader>
@@ -171,7 +177,7 @@ export function BookingList({ status }: BookingListProps) {
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Booking ID</TableHead>
+							<TableHead>Booking Number</TableHead>
 							<TableHead>Customer</TableHead>
 							<TableHead>Package</TableHead>
 							<TableHead>Batch Date</TableHead>
@@ -185,7 +191,7 @@ export function BookingList({ status }: BookingListProps) {
 						{filteredBookings.map((booking) => (
 							<TableRow key={booking.id}>
 								<TableCell className="font-medium">
-									{booking.id}
+									{BookingService.formatBookingNumber(booking.bookingNumber)}
 								</TableCell>
 								<TableCell>
 									<div>
@@ -201,27 +207,23 @@ export function BookingList({ status }: BookingListProps) {
 								<TableCell>
 									<div className="flex items-center gap-1 text-sm">
 										<Calendar className="w-4 h-4" />
-										{new Date(
-											booking.batchStartDate
-										).toLocaleDateString()}
+										{new Date(booking.batchStartDate).toLocaleDateString()}
 									</div>
 								</TableCell>
 								<TableCell>
 									<div className="flex items-center gap-1">
 										<Users className="w-4 h-4" />
-										{booking.passengers}
+										{booking.numberOfPassengers}
 									</div>
 								</TableCell>
 								<TableCell>
 									<div className="space-y-1">
 										<div className="flex items-center gap-1 text-sm">
-											<DollarSign className="w-3 h-3" />$
-											{booking.advancePaid}/${booking.totalAmount}
+											<DollarSign className="w-3 h-3" />
+											{BookingService.formatCurrency(booking.advancePaid)}/
+											{BookingService.formatCurrency(booking.totalAmount)}
 										</div>
-										{getPaymentStatus(
-											booking.advancePaid,
-											booking.totalAmount
-										)}
+										{getPaymentStatus(booking.advancePaid, booking.totalAmount)}
 									</div>
 								</TableCell>
 								<TableCell>{getStatusBadge(booking.status)}</TableCell>
@@ -261,9 +263,12 @@ export function BookingList({ status }: BookingListProps) {
 						))}
 					</TableBody>
 				</Table>
-				{filteredBookings.length === 0 && (
+				{filteredBookings.length === 0 && !loading && (
 					<div className="text-center py-8 text-muted-foreground">
-						No {status === "all" ? "" : status} bookings found.
+						{searchTerm ? 
+							`No bookings found matching "${searchTerm}".` : 
+							`No ${status === "all" ? "" : status} bookings found.`
+						}
 					</div>
 				)}
 			</CardContent>
