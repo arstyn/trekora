@@ -1,13 +1,6 @@
 import { IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, Max, IsDateString, IsBoolean } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { PaymentMethod, PaymentStatus } from 'src/database/entity/booking-payment.entity';
-
-export enum PaymentType {
-  ADVANCE = 'advance',
-  BALANCE = 'balance',
-  PARTIAL = 'partial',
-  REFUND = 'refund',
-}
+import { PaymentMethod, PaymentStatus, PaymentType } from 'src/database/entity/booking-payment.entity';
 
 export class CreatePaymentDto {
   @IsUUID()
@@ -184,6 +177,8 @@ export class PaymentStatsDto {
   failedAmount: number;
   refundedPayments: number;
   refundedAmount: number;
+  archivedPayments: number;
+  archivedAmount: number;
 }
 
 export class OverduePaymentDto {

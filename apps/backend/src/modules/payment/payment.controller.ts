@@ -123,6 +123,14 @@ export class PaymentController {
     return this.paymentService.markAsFailed(id, req.user.organizationId);
   }
 
+  @Patch(':id/archive')
+  markAsArchived(
+    @Param('id') id: string,
+    @Request() req: ApiRequestJWT,
+  ): Promise<PaymentResponseDto> {
+    return this.paymentService.markAsArchived(id, req.user.organizationId);
+  }
+
   @Post(':id/upload-receipt')
   @UseInterceptors(
     FileInterceptor('file', {

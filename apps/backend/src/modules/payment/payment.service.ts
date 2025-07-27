@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder, Like, Between } from 'typeorm';
-import { BookingPayment, PaymentStatus } from 'src/database/entity/booking-payment.entity';
+import { Repository } from 'typeorm';
+import { BookingPayment, PaymentStatus, PaymentType } from 'src/database/entity/booking-payment.entity';
 import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
 import { 
   CreatePaymentDto, 
@@ -11,7 +11,6 @@ import {
   OverduePaymentDto, 
   PaymentResponseDto, 
   PaymentListResponseDto,
-  PaymentType,
   BookingSearchDto,
   BookingForPaymentDto
 } from 'src/dto/payment.dto';
@@ -100,19 +99,17 @@ export class PaymentService {
       }
     }
 
-    // Create payment with paymentType stored in paymentDetails
+    // Create payment with paymentType in dedicated column
     const payment = this.paymentRepository.create({
       amount: createPaymentDto.amount,
+      paymentType: createPaymentDto.paymentType,
       paymentMethod: createPaymentDto.paymentMethod,
       paymentReference: createPaymentDto.paymentReference,
       transactionId: createPaymentDto.transactionId,
       paymentDate: createPaymentDto.paymentDate,
       notes: createPaymentDto.notes,
       receiptFilePath: createPaymentDto.receiptFilePath,
-      paymentDetails: {
-        ...createPaymentDto.paymentDetails,
-        paymentType: createPaymentDto.paymentType,
-      },
+      paymentDetails: createPaymentDto.paymentDetails,
       bookingId: createPaymentDto.bookingId,
       recordedById: userId,
       status: PaymentStatus.PENDING,
@@ -166,7 +163,7 @@ export class PaymentService {
     }
 
     if (paymentType) {
-      query.andWhere('payment.paymentDetails->>\'paymentType\' = :paymentType', { paymentType });
+      query.andWhere('payment.paymentType = :paymentType', { paymentType });
     }
 
     if (paymentMethod) {
@@ -287,6 +284,7 @@ export class PaymentService {
       completedResult,
       failedResult,
       refundedResult,
+      archivedResult,
     ] = await Promise.all([
       query.select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
       query.clone().andWhere('payment.status = :status', { status: PaymentStatus.PENDING })
@@ -296,6 +294,8 @@ export class PaymentService {
       query.clone().andWhere('payment.status = :status', { status: PaymentStatus.FAILED })
            .select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
       query.clone().andWhere('payment.status = :status', { status: PaymentStatus.REFUNDED })
+           .select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
+      query.clone().andWhere('payment.status = :status', { status: PaymentStatus.ARCHIVED })
            .select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
     ]);
 
@@ -310,6 +310,8 @@ export class PaymentService {
       failedAmount: parseFloat(failedResult.sum) || 0,
       refundedPayments: parseInt(refundedResult.count) || 0,
       refundedAmount: parseFloat(refundedResult.sum) || 0,
+      archivedPayments: parseInt(archivedResult.count) || 0,
+      archivedAmount: parseFloat(archivedResult.sum) || 0,
     };
   }
 
@@ -387,11 +389,29 @@ export class PaymentService {
     return this.findOne(id, organizationId);
   }
 
+  async markAsArchived(id: string, organizationId: string): Promise<PaymentResponseDto> {
+    const payment = await this.paymentRepository.findOne({
+      where: { id },
+      relations: ['booking'],
+    });
+
+    if (!payment || payment.booking.organizationId !== organizationId) {
+      throw new NotFoundException('Payment not found or access denied');
+    }
+
+    if (payment.status === PaymentStatus.PENDING) {
+      throw new BadRequestException('Cannot archive pending payments. Complete or fail them first.');
+    }
+
+    await this.paymentRepository.update(id, { status: PaymentStatus.ARCHIVED });
+    return this.findOne(id, organizationId);
+  }
+
   private transformToResponseDto(payment: BookingPayment): PaymentResponseDto {
     return {
       id: payment.id,
       amount: payment.amount,
-      paymentType: payment.paymentDetails?.paymentType || PaymentType.ADVANCE,
+      paymentType: payment.paymentType,
       paymentMethod: payment.paymentMethod,
       status: payment.status,
       paymentReference: payment.paymentReference,
