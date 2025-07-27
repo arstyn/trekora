@@ -7,6 +7,7 @@ import {
   Delete,
   UseGuards,
   Param,
+  Query,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from '../../dto/create-customer';
@@ -30,6 +31,11 @@ export class CustomerController {
     return this.customerService.findAll();
   }
 
+  @Get('search')
+  async search(@Query('q') query: string): Promise<Customer[]> {
+    return this.customerService.search(query || '');
+  }
+
   //Getting Single Data
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Customer | null> {
@@ -48,5 +54,4 @@ export class CustomerController {
   async delete(@Param('id') id: string): Promise<void> {
     return this.customerService.delete(id);
   }
-  /*Basic Crud operation Till here*/
 }

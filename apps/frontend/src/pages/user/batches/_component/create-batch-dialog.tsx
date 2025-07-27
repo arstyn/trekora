@@ -239,7 +239,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
 							<Label>Add Coordinators</Label>
 							<Select
 								onValueChange={(value) => {
-									const selected = employees.find(
+									const selected = employees?.find(
 										(e) => e.id === value
 									);
 									if (
@@ -262,7 +262,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
 									<SelectValue placeholder="Select employee to add" />
 								</SelectTrigger>
 								<SelectContent>
-									{employees.map((emp) => (
+									{employees?.map((emp) => (
 										<SelectItem key={emp.id} value={emp.id}>
 											{emp.name} ({emp.role.name})
 										</SelectItem>

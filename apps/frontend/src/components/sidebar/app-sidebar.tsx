@@ -12,6 +12,7 @@ import {
 	Banknote,
 	BookUser,
 	FileChartColumnIncreasing,
+	FileSpreadsheet,
 	FolderIcon,
 	HelpCircleIcon,
 	LayoutDashboardIcon,
@@ -75,6 +76,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				title: "Batches",
 				url: "/batches",
 				icon: ListIcon,
+			},
+			{
+				title: "Excel Import",
+				url: "/import",
+				icon: FileSpreadsheet,
 			},
 		],
 		documents: [
