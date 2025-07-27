@@ -9,6 +9,7 @@ import { Package } from 'src/database/entity/package-related/package.entity';
 import { Batch } from 'src/database/entity/batch.entity';
 import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { BookingService } from './booking.service';
       Package,
       Batch,
     ]),
+    JwtModule.register({}),
   ],
   controllers: [BookingController],
   providers: [BookingService],
