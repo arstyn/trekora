@@ -46,6 +46,7 @@ export class BookingPayment {
     type: 'enum',
     enum: PaymentType,
     default: PaymentType.ADVANCE,
+    name: 'payment_type',
   })
   paymentType: PaymentType;
 
