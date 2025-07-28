@@ -51,6 +51,10 @@ export class FileManagerService {
     return this.fileManagerRepository.findOne({ where: { id } });
   }
 
+  findWithRelatedId(id: string) {
+    return this.fileManagerRepository.find({ where: { relatedId: id } });
+  }
+
   update(id: string, data: Partial<FileManager>) {
     return this.fileManagerRepository.update(id, data);
   }
