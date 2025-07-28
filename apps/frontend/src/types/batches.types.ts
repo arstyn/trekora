@@ -12,7 +12,7 @@ export interface IBatches {
 	packageId: string;
 	package?: IPackages;
 	coordinators?: IEmployee[];
-	passengers: IBookingPassenger[];
+	passengers?: IBookingPassenger[];
 	fillRate?: number;
 }
 

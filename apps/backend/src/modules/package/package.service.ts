@@ -235,4 +235,12 @@ export class PackageService {
   async remove(id: string): Promise<void> {
     await this.packageRepository.delete(id);
   }
+
+  async getPackageChecklist(id: string) {
+    return await this.checklistItemRepository.find({
+      where: {
+        packageId: id,
+      },
+    });
+  }
 }

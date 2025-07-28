@@ -10,14 +10,15 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Calendar, Edit, Mail, Phone, Users } from "lucide-react";
+import axiosInstance from "@/lib/axios";
+import type { IBatches } from "@/types/batches.types";
+import type { ICheckList } from "@/types/checklist.types";
+import { Calendar, Edit, Mail, Phone, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { CoordinatorModal } from "./_component/coordinator-modal";
 import { PassengerModal } from "./_component/passenger-modal";
-import type { IBatches } from "@/types/batches.types";
-import axiosInstance from "@/lib/axios";
-import { toast } from "sonner";
 
 export default function BatchDetailsPage() {
 	const { id } = useParams<{ id: string }>();
@@ -25,12 +26,13 @@ export default function BatchDetailsPage() {
 	const [batch, setBatch] = useState<IBatches>();
 	const [selectedPassenger, setSelectedPassenger] = useState<any>(null);
 	const [selectedCoordinator, setSelectedCoordinator] = useState<any>(null);
+	const [packageCheckList, setPackageCheckList] = useState<ICheckList[]>();
 
 	useEffect(() => {
 		const getBranch = async () => {
 			try {
-				const res = await axiosInstance.get<IBatches>(`/batches/${id}`);
-				setBatch(res.data);
+				const batchData = await axiosInstance.get<IBatches>(`/batches/${id}`);
+				setBatch(batchData.data);
 			} catch (error: unknown) {
 				if (error instanceof Error) {
 					toast.error(error.message);
@@ -42,6 +44,29 @@ export default function BatchDetailsPage() {
 
 		getBranch();
 	}, [id]);
+
+	useEffect(() => {
+		const getChecklist = async () => {
+			if (!batch) {
+				return;
+			}
+			try {
+				const checkListData = await axiosInstance.get<ICheckList[]>(
+					`/packages/${batch.packageId}/checklist`
+				);
+
+				setPackageCheckList(checkListData.data);
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					toast.error(error.message);
+				} else {
+					toast.error("Failed to load batches");
+				}
+			}
+		};
+
+		getChecklist();
+	}, [batch]);
 
 	const getStatusBadge = (status: string) => {
 		switch (status) {
@@ -221,7 +246,7 @@ export default function BatchDetailsPage() {
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					{/* <Table>
+					<Table>
 						<TableHeader>
 							<TableRow>
 								<TableHead>Name</TableHead>
@@ -233,13 +258,11 @@ export default function BatchDetailsPage() {
 						</TableHeader>
 						<TableBody>
 							{batch &&
-								batch.passengers.map((passenger) => {
-									const completedItems = Object.values(
-										passenger.checklist
-									).filter(Boolean).length;
-									const totalItems = Object.keys(
-										passenger.checklist
-									).length;
+								batch.passengers?.map((passenger) => {
+									const completedItems = 0;
+									const totalItems = packageCheckList
+										? packageCheckList.length
+										: 0;
 
 									return (
 										<TableRow
@@ -250,7 +273,7 @@ export default function BatchDetailsPage() {
 											}
 										>
 											<TableCell className="font-medium">
-												{passenger.name}
+												{passenger.fullName}
 											</TableCell>
 											<TableCell>
 												<div className="space-y-1">
@@ -283,7 +306,7 @@ export default function BatchDetailsPage() {
 									);
 								})}
 						</TableBody>
-					</Table> */}
+					</Table>
 				</CardContent>
 			</Card>
 
@@ -292,6 +315,7 @@ export default function BatchDetailsPage() {
 				passenger={selectedPassenger}
 				open={!!selectedPassenger}
 				onOpenChange={(open) => !open && setSelectedPassenger(null)}
+				packageCheckList={packageCheckList}
 			/>
 
 			<CoordinatorModal
