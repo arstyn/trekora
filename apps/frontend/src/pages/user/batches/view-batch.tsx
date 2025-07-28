@@ -11,86 +11,37 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { ArrowLeft, Calendar, Edit, Mail, Phone, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { CoordinatorModal } from "./_component/coordinator-modal";
 import { PassengerModal } from "./_component/passenger-modal";
-
-// Mock data
-const batchData = {
-	id: "1",
-	packageName: "Himalayan Adventure",
-	startDate: "2024-01-15",
-	endDate: "2024-01-25",
-	totalSeats: 20,
-	bookedSeats: 18,
-	status: "active",
-	packageDetails: {
-		description:
-			"Experience the breathtaking beauty of the Himalayas with our comprehensive adventure package.",
-		destinations: ["Kathmandu", "Pokhara", "Annapurna Base Camp"],
-		inclusions: ["Accommodation", "Meals", "Transportation", "Guide"],
-		price: "$1,200",
-	},
-	coordinators: [
-		{
-			id: "c1",
-			name: "John Doe",
-			type: "Tour Guide",
-			phone: "+1-234-567-8900",
-			email: "john.doe@example.com",
-			experience: "5 years",
-			specialization: "Mountain Trekking",
-		},
-		{
-			id: "c2",
-			name: "Mike Smith",
-			type: "Driver",
-			phone: "+1-234-567-8901",
-			email: "mike.smith@example.com",
-			experience: "8 years",
-			specialization: "Mountain Roads",
-		},
-	],
-	passengers: [
-		{
-			id: "p1",
-			name: "Alice Johnson",
-			email: "alice@example.com",
-			phone: "+1-234-567-8902",
-			age: 28,
-			emergencyContact: "Bob Johnson (+1-234-567-8903)",
-			checklist: {
-				passport: true,
-				visa: false,
-				insurance: true,
-				medicalClearance: false,
-				equipment: true,
-			},
-		},
-		{
-			id: "p2",
-			name: "David Wilson",
-			email: "david@example.com",
-			phone: "+1-234-567-8904",
-			age: 35,
-			emergencyContact: "Sarah Wilson (+1-234-567-8905)",
-			checklist: {
-				passport: true,
-				visa: true,
-				insurance: true,
-				medicalClearance: true,
-				equipment: false,
-			},
-		},
-	],
-};
+import type { IBatches } from "@/types/batches.types";
+import axiosInstance from "@/lib/axios";
+import { toast } from "sonner";
 
 export default function BatchDetailsPage() {
 	const { id } = useParams<{ id: string }>();
 
+	const [batch, setBatch] = useState<IBatches>();
 	const [selectedPassenger, setSelectedPassenger] = useState<any>(null);
 	const [selectedCoordinator, setSelectedCoordinator] = useState<any>(null);
+
+	useEffect(() => {
+		const getBranch = async () => {
+			try {
+				const res = await axiosInstance.get<IBatches>(`/batches/${id}`);
+				setBatch(res.data);
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					toast.error(error.message);
+				} else {
+					toast.error("Failed to load batches");
+				}
+			}
+		};
+
+		getBranch();
+	}, [id]);
 
 	const getStatusBadge = (status: string) => {
 		switch (status) {
@@ -109,19 +60,13 @@ export default function BatchDetailsPage() {
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-4">
-					<NavLink to="/batches">
-						<Button variant="outline" size="sm">
-							<ArrowLeft className="w-4 h-4 mr-2" />
-							Back to Batches
-						</Button>
-					</NavLink>
 					<div>
-						<h1 className="text-3xl font-bold">{batchData.packageName}</h1>
+						<h1 className="text-3xl font-bold">{batch?.package?.name}</h1>
 						<p className="text-muted-foreground">Batch Details</p>
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
-					{getStatusBadge(batchData.status)}
+					{batch && getStatusBadge(batch.status)}
 					<NavLink to={`/batches/${id}/edit`}>
 						<Button>
 							<Edit className="w-4 h-4 mr-2" />
@@ -146,9 +91,10 @@ export default function BatchDetailsPage() {
 										Start Date
 									</p>
 									<p className="font-medium">
-										{new Date(
-											batchData.startDate
-										).toLocaleDateString()}
+										{batch &&
+											new Date(
+												batch.startDate
+											).toLocaleDateString()}
 									</p>
 								</div>
 							</div>
@@ -159,7 +105,8 @@ export default function BatchDetailsPage() {
 										End Date
 									</p>
 									<p className="font-medium">
-										{new Date(batchData.endDate).toLocaleDateString()}
+										{batch &&
+											new Date(batch.endDate).toLocaleDateString()}
 									</p>
 								</div>
 							</div>
@@ -169,8 +116,8 @@ export default function BatchDetailsPage() {
 							<div>
 								<p className="text-sm text-muted-foreground">Capacity</p>
 								<p className="font-medium">
-									{batchData.bookedSeats}/{batchData.totalSeats}{" "}
-									passengers
+									{batch && batch.bookedSeats}/
+									{batch && batch.totalSeats} passengers
 								</p>
 							</div>
 						</div>
@@ -188,7 +135,7 @@ export default function BatchDetailsPage() {
 								Description
 							</p>
 							<p className="text-sm">
-								{batchData.packageDetails.description}
+								{batch && batch.package?.description}
 							</p>
 						</div>
 						<Separator />
@@ -197,20 +144,16 @@ export default function BatchDetailsPage() {
 								Destinations
 							</p>
 							<div className="flex flex-wrap gap-1">
-								{batchData.packageDetails.destinations.map(
-									(dest, index) => (
-										<Badge key={index} variant="outline">
-											{dest}
-										</Badge>
-									)
-								)}
+								<Badge variant="outline">
+									{batch && batch.package?.destination}
+								</Badge>
 							</div>
 						</div>
 						<Separator />
 						<div>
 							<p className="text-sm text-muted-foreground mb-2">Price</p>
 							<p className="text-lg font-bold">
-								{batchData.packageDetails.price}
+								{batch && batch.package?.price}
 							</p>
 						</div>
 					</CardContent>
@@ -233,35 +176,38 @@ export default function BatchDetailsPage() {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{batchData.coordinators.map((coordinator) => (
-								<TableRow
-									key={coordinator.id}
-									className="cursor-pointer hover:bg-muted/50"
-									onClick={() => setSelectedCoordinator(coordinator)}
-								>
-									<TableCell className="font-medium">
-										{coordinator.name}
-									</TableCell>
-									<TableCell>
-										<Badge variant="outline">
-											{coordinator.type}
-										</Badge>
-									</TableCell>
-									<TableCell>
-										<div className="space-y-1">
-											<div className="flex items-center gap-1 text-sm">
-												<Phone className="w-3 h-3" />
-												{coordinator.phone}
+							{batch &&
+								batch.coordinators?.map((coordinator) => (
+									<TableRow
+										key={coordinator.id}
+										className="cursor-pointer hover:bg-muted/50"
+										onClick={() =>
+											setSelectedCoordinator(coordinator)
+										}
+									>
+										<TableCell className="font-medium">
+											{coordinator.name}
+										</TableCell>
+										<TableCell>
+											<Badge variant="outline">
+												{coordinator.role.name}
+											</Badge>
+										</TableCell>
+										<TableCell>
+											<div className="space-y-1">
+												<div className="flex items-center gap-1 text-sm">
+													<Phone className="w-3 h-3" />
+													{coordinator.phone}
+												</div>
+												<div className="flex items-center gap-1 text-sm">
+													<Mail className="w-3 h-3" />
+													{coordinator.email}
+												</div>
 											</div>
-											<div className="flex items-center gap-1 text-sm">
-												<Mail className="w-3 h-3" />
-												{coordinator.email}
-											</div>
-										</div>
-									</TableCell>
-									<TableCell>{coordinator.experience}</TableCell>
-								</TableRow>
-							))}
+										</TableCell>
+										<TableCell>coordinator.experience</TableCell>
+									</TableRow>
+								))}
 						</TableBody>
 					</Table>
 				</CardContent>
@@ -270,10 +216,12 @@ export default function BatchDetailsPage() {
 			{/* Passengers */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Passengers ({batchData.passengers.length})</CardTitle>
+					<CardTitle>
+						Passengers ({batch && batch.passengers?.length})
+					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<Table>
+					{/* <Table>
 						<TableHeader>
 							<TableRow>
 								<TableHead>Name</TableHead>
@@ -284,55 +232,58 @@ export default function BatchDetailsPage() {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{batchData.passengers.map((passenger) => {
-								const completedItems = Object.values(
-									passenger.checklist
-								).filter(Boolean).length;
-								const totalItems = Object.keys(
-									passenger.checklist
-								).length;
+							{batch &&
+								batch.passengers.map((passenger) => {
+									const completedItems = Object.values(
+										passenger.checklist
+									).filter(Boolean).length;
+									const totalItems = Object.keys(
+										passenger.checklist
+									).length;
 
-								return (
-									<TableRow
-										key={passenger.id}
-										className="cursor-pointer hover:bg-muted/50"
-										onClick={() => setSelectedPassenger(passenger)}
-									>
-										<TableCell className="font-medium">
-											{passenger.name}
-										</TableCell>
-										<TableCell>
-											<div className="space-y-1">
-												<div className="flex items-center gap-1 text-sm">
-													<Phone className="w-3 h-3" />
-													{passenger.phone}
+									return (
+										<TableRow
+											key={passenger.id}
+											className="cursor-pointer hover:bg-muted/50"
+											onClick={() =>
+												setSelectedPassenger(passenger)
+											}
+										>
+											<TableCell className="font-medium">
+												{passenger.name}
+											</TableCell>
+											<TableCell>
+												<div className="space-y-1">
+													<div className="flex items-center gap-1 text-sm">
+														<Phone className="w-3 h-3" />
+														{passenger.phone}
+													</div>
+													<div className="flex items-center gap-1 text-sm">
+														<Mail className="w-3 h-3" />
+														{passenger.email}
+													</div>
 												</div>
-												<div className="flex items-center gap-1 text-sm">
-													<Mail className="w-3 h-3" />
-													{passenger.email}
-												</div>
-											</div>
-										</TableCell>
-										<TableCell>{passenger.age}</TableCell>
-										<TableCell className="text-sm">
-											{passenger.emergencyContact}
-										</TableCell>
-										<TableCell>
-											<Badge
-												variant={
-													completedItems === totalItems
-														? "default"
-														: "secondary"
-												}
-											>
-												{completedItems}/{totalItems} Complete
-											</Badge>
-										</TableCell>
-									</TableRow>
-								);
-							})}
+											</TableCell>
+											<TableCell>{passenger.age}</TableCell>
+											<TableCell className="text-sm">
+												{passenger.emergencyContact}
+											</TableCell>
+											<TableCell>
+												<Badge
+													variant={
+														completedItems === totalItems
+															? "default"
+															: "secondary"
+													}
+												>
+													{completedItems}/{totalItems} Complete
+												</Badge>
+											</TableCell>
+										</TableRow>
+									);
+								})}
 						</TableBody>
-					</Table>
+					</Table> */}
 				</CardContent>
 			</Card>
 

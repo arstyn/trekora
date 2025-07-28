@@ -3,33 +3,31 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import axiosInstance from "@/lib/axios";
+import type { IBatches, IBatchStats } from "@/types/batches.types";
 import { AlertTriangle, Calendar, Plus, TrendingUp, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { BatchList } from "./_component/batch-list";
-import { CreateBatchDialog } from "./_component/create-batch-dialog";
-import { CalendarView } from "./_component/calendar-view";
-import type { IBatches } from "@/types/batches.types";
-import axiosInstance from "@/lib/axios";
 import { toast } from "sonner";
-
-// Mock data
-const dashboardStats = {
-	totalActiveBatches: 12,
-	totalUpcomingBatches: 8,
-	totalSeatsLeft: 156,
-	fastFillingBatches: 3,
-};
+import { BatchList } from "./_component/batch-list";
+import { CalendarView } from "./_component/calendar-view";
+import { CreateBatchDialog } from "./_component/create-batch-dialog";
 
 export default function BatchesPage() {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [fastFillingBatches, setFastFillingBatches] = useState<IBatches[]>([]);
+	const [dashboardStats, setDashboardStats] = useState<IBatchStats>();
 
 	useEffect(() => {
-		const getBranch = async () => {
+		const getBatches = async () => {
 			try {
-				const res = await axiosInstance.get(`/batches/fast-filling`);
-				setFastFillingBatches(res.data);
+				const [fastFilling, stats] = await Promise.all([
+					axiosInstance.get<IBatches[]>(`/batches/fast-filling`),
+					axiosInstance.get<IBatchStats>(`/batches/stats`),
+				]);
+
+				setFastFillingBatches(fastFilling.data);
+				setDashboardStats(stats.data);
 			} catch (error: unknown) {
 				if (error instanceof Error) {
 					toast.error(error.message);
@@ -39,7 +37,7 @@ export default function BatchesPage() {
 			}
 		};
 
-		getBranch();
+		getBatches();
 	}, []);
 
 	return (
@@ -68,7 +66,7 @@ export default function BatchesPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{dashboardStats.totalActiveBatches}
+							{dashboardStats && dashboardStats.activeBatches}
 						</div>
 						<p className="text-xs text-muted-foreground">Currently running</p>
 					</CardContent>
@@ -83,7 +81,7 @@ export default function BatchesPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{dashboardStats.totalUpcomingBatches}
+							{dashboardStats && dashboardStats.upcomingBatches}
 						</div>
 						<p className="text-xs text-muted-foreground">Starting soon</p>
 					</CardContent>
@@ -98,7 +96,7 @@ export default function BatchesPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{dashboardStats.totalSeatsLeft}
+							{dashboardStats && dashboardStats.availableSeats}
 						</div>
 						<p className="text-xs text-muted-foreground">
 							Across all upcoming batches
@@ -115,7 +113,7 @@ export default function BatchesPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{dashboardStats.fastFillingBatches}
+							{dashboardStats && dashboardStats.fastFilling}
 						</div>
 						<p className="text-xs text-muted-foreground">
 							{">"} 75% capacity

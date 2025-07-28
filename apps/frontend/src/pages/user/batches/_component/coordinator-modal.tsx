@@ -1,10 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { IEmployee } from "@/types/employee.types";
 import { Award, Mail, MapPin, Phone, User } from "lucide-react";
 
 interface CoordinatorModalProps {
-	coordinator: any;
+	coordinator: IEmployee;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
@@ -31,7 +32,7 @@ export function CoordinatorModal({
 					<div className="space-y-4">
 						<div className="flex items-center justify-between">
 							<h3 className="font-semibold">Role</h3>
-							<Badge variant="outline">{coordinator.type}</Badge>
+							<Badge variant="outline">{coordinator.role.name}</Badge>
 						</div>
 
 						<div className="grid grid-cols-1 gap-3">
@@ -57,9 +58,7 @@ export function CoordinatorModal({
 									<p className="text-sm text-muted-foreground">
 										Experience
 									</p>
-									<p className="font-medium">
-										{coordinator.experience}
-									</p>
+									<p className="font-medium">coordinator.experience</p>
 								</div>
 							</div>
 
@@ -70,7 +69,7 @@ export function CoordinatorModal({
 										Specialization
 									</p>
 									<p className="font-medium">
-										{coordinator.specialization}
+										coordinator.specialization
 									</p>
 								</div>
 							</div>
@@ -81,8 +80,8 @@ export function CoordinatorModal({
 					<div className="p-4 bg-muted/50 rounded-lg">
 						<h4 className="font-medium mb-2">Additional Information</h4>
 						<p className="text-sm text-muted-foreground">
-							Experienced {coordinator.type.toLowerCase()} with expertise in{" "}
-							{coordinator.specialization.toLowerCase()}. Available for
+							Experienced coordinator.type.toLowerCase() with expertise in{" "}
+							coordinator.specialization.toLowerCase(). Available for
 							emergency contact during the tour duration.
 						</p>
 					</div>

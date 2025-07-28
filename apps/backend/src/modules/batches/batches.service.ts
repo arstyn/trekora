@@ -48,7 +48,10 @@ export class BatchesService {
   }
 
   async findOne(id: string): Promise<Batch> {
-    const batch = await this.batchRepo.findOne({ where: { id } });
+    const batch = await this.batchRepo.findOne({
+      where: { id },
+      relations: ['package', 'coordinators', 'coordinators.role'],
+    });
     if (!batch) throw new NotFoundException('Batch not found');
     return batch;
   }
@@ -184,12 +187,12 @@ export class BatchesService {
 
   async findByPackage(packageId: string): Promise<Batch[]> {
     return this.batchRepo.find({
-      where: { 
+      where: {
         packageId,
-        status: 'upcoming'
+        status: 'upcoming',
       },
       relations: ['package'],
-      order: { startDate: 'ASC' }
+      order: { startDate: 'ASC' },
     });
   }
 
