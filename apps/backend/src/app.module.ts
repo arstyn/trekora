@@ -24,6 +24,7 @@ import { RoleModule } from './modules/role/role.module';
 import { UserDepartmentsModule } from './modules/user-departments/user-departments.module';
 import { UserInviteModule } from './modules/user-invite/user-invite.module';
 import { UserModule } from './modules/user/user.module';
+import { UserNotificationModule } from './modules/user-notification/user-notification.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { UserModule } from './modules/user/user.module';
     GroupModule,
     PackageModule,
     FileManagerModule,
+    UserNotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
