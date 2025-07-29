@@ -8,7 +8,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
 import { AlertCircle } from "lucide-react";
 import { useState } from "react";
@@ -29,13 +29,12 @@ export function DeactivateDialog({
 	const [error, setError] = useState<string | null>(null);
 
 	const handleDeactivate = async () => {
-		const deletedEmployee = await AxiosRequest.patch<object, IEmployee>(
-			`/employee/${employee.id}/terminate`,
-			{}
+		const res = await axiosInstance.patch<IEmployee>(
+			`/employee/${employee.id}/terminate`
 		);
 
-		if (deletedEmployee) {
-			onDeactivate(deletedEmployee);
+		if (res) {
+			onDeactivate(res.data);
 
 			onOpenChange(false);
 		} else {

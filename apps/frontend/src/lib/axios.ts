@@ -1,115 +1,35 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import axios, { AxiosError, type AxiosInstance, type AxiosResponse } from "axios";
-import { getAccessToken } from "./auth-utils";
-import { BACKEND_API } from "./constants/url.constants";
+// src/lib/axios.ts
+import axios, { type AxiosInstance } from "axios";
 
-// Create an Axios instance
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+
 const axiosInstance: AxiosInstance = axios.create({
-	baseURL: `${BACKEND_API}/api`, // Replace with your base URL
-	timeout: 5000, // Set a timeout limit
+	baseURL: BASE_URL,
+	timeout: 10000,
 	headers: {
 		"Content-Type": "application/json",
-		Accept: "application/json",
 	},
 });
 
-axiosInstance.interceptors.request.use(async (config) => {
-	const accessToken = await getAccessToken();
-	if (accessToken) {
-		config.headers.Authorization = `Bearer ${accessToken}`;
-	}
-	return config;
-});
+// Optional: Add interceptors for request/response
+axiosInstance.interceptors.request.use(
+	(config) => {
+		// For example, add access token if available
+		const token = localStorage.getItem("accessToken");
+		if (token) {
+			config.headers.Authorization = `Bearer ${token}`;
+		}
+		return config;
+	},
+	(error) => Promise.reject(error)
+);
 
 axiosInstance.interceptors.response.use(
-	(response: AxiosResponse) => response,
-	(error: AxiosError) => {
-		if (error.response && error.response.data) {
-			return Promise.reject(error.response.data);
-		}
-		return Promise.reject(error.message);
+	(response) => response,
+	(error) => {
+		// Handle 401, 403 etc.
+		return Promise.reject(error);
 	}
 );
 
-class AxiosRequestClass {
-	get = async <RESPONSE>(url: string, params?: any): Promise<RESPONSE> => {
-		try {
-			const { data } = await axiosInstance.get(url, params);
-			return data;
-		} catch (error: any) {
-			if (error.response?.data || error?.message || error?.error) {
-				throw new Error(error.response?.data || error?.message || error?.error);
-			} else {
-				throw new Error("An unexpected error occurred");
-			}
-		}
-	};
-
-	patch = async <BODY, RESPONSE>(
-		url: string,
-		body: BODY,
-		config?: any
-	): Promise<RESPONSE> => {
-		try {
-			const { data } = await axiosInstance.patch(url, body, config);
-			return data;
-		} catch (error: any) {
-			if (error) {
-				throw new Error(error.response?.data || error?.message || error?.error);
-			} else {
-				throw new Error("An unexpected error occurred");
-			}
-		}
-	};
-
-	put = async <BODY, RESPONSE>(
-		url: string,
-		body: BODY,
-		config?: any
-	): Promise<RESPONSE> => {
-		try {
-			const { data } = await axiosInstance.put(url, body, config);
-			return data;
-		} catch (error: any) {
-			if (error) {
-				throw new Error(error.response?.data || error?.message || error?.error);
-			} else {
-				throw new Error("An unexpected error occurred");
-			}
-		}
-	};
-
-	post = async <BODY, RESPONSE>(
-		url: string,
-		body: BODY,
-		config?: any // allow passing custom config, e.g., headers
-	): Promise<RESPONSE> => {
-		try {
-			const response = await axiosInstance.post(url, body, config);
-			return response.data;
-		} catch (error: any) {
-			if (error) {
-				throw new Error(error.response?.data || error?.message || error?.error);
-			} else {
-				throw new Error("An unexpected error occurred");
-			}
-		}
-	};
-
-	delete = async <RESPONSE>(url: string): Promise<RESPONSE> => {
-		try {
-			const { data } = await axiosInstance.delete(url);
-
-			return data;
-		} catch (error: any) {
-			if (error) {
-				throw new Error(error.response?.data || error?.message || error?.error);
-			} else {
-				throw new Error("An unexpected error occurred");
-			}
-		}
-	};
-}
-const AxiosRequest = new AxiosRequestClass();
-
-export { AxiosRequest };
+export default axiosInstance;

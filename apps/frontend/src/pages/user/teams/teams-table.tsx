@@ -26,7 +26,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { IDepartment } from "@/types/department.type";
 import type { IEmployee } from "@/types/employee.types";
 import {
@@ -76,8 +76,8 @@ export function TeamsPage() {
 
 	const getEmployees = async () => {
 		try {
-			const employeesData = await AxiosRequest.get<IEmployee[]>("/employee");
-			setEmployees(employeesData);
+			const res = await axiosInstance.get<IEmployee[]>("/employee");
+			setEmployees(res.data);
 		} catch (error) {
 			if (error instanceof Error) {
 				toast.error(error.message);
@@ -88,8 +88,8 @@ export function TeamsPage() {
 	};
 	const getDepartments = async () => {
 		try {
-			const departmentsData = await AxiosRequest.get<IDepartment[]>("/department");
-			setDepartments(departmentsData);
+			const res = await axiosInstance.get<IDepartment[]>("/department");
+			setDepartments(res.data);
 		} catch (error) {
 			if (error instanceof Error) {
 				toast.error(error.message);
@@ -100,8 +100,8 @@ export function TeamsPage() {
 	};
 	const getRoles = async () => {
 		try {
-			const rolesData = await AxiosRequest.get<IRole[]>("/role");
-			setRoles(rolesData);
+			const res = await axiosInstance.get<IRole[]>("/role");
+			setRoles(res.data);
 		} catch (error) {
 			if (error instanceof Error) {
 				toast.error(error.message);
@@ -338,7 +338,7 @@ export function TeamsPage() {
 	// Handle activating an employee
 	const handleActivateEmployee = async (activatedEmployee: IEmployee) => {
 		try {
-			const employee = await AxiosRequest.post<object, IEmployee>(
+			const employee = await axiosInstance.post<object, IEmployee>(
 				`/employee/${activatedEmployee.id}/activateUser`,
 				{}
 			);

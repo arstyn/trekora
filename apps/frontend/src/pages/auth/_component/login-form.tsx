@@ -9,9 +9,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/authContext";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/lib/constants/auth.constants";
-import type { ILoginDto, ILoginResponse } from "@/types/auth.types";
+import type { ILoginResponse } from "@/types/auth.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeClosed } from "lucide-react";
 import { useState } from "react";
@@ -48,12 +48,9 @@ export default function LoginForm() {
 		setError(null);
 
 		try {
-			const { accessToken, refreshToken } = await AxiosRequest.post<
-				ILoginDto,
-				ILoginResponse
-			>("/auth/login", values);
-			localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-			localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+			const res = await axiosInstance.post<ILoginResponse>("/auth/login", values);
+			localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken);
+			localStorage.setItem(REFRESH_TOKEN_KEY, res.data.refreshToken);
 			refresh();
 			navigate("/");
 		} catch (error: unknown) {

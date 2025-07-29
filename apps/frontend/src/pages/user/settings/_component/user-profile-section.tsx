@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { IUser } from "@/types/user.types";
 import { Building, Camera, Mail, MapPin, Phone, Save, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -36,24 +36,21 @@ export function UserProfileSection() {
 	useEffect(() => {
 		const getUserData = async () => {
 			try {
-				const user = await AxiosRequest.get<IUser>(`/employee/profile`);
+				const user = await axiosInstance.get(`/employee/profile`);
 
-				console.log(
-					"🚀 ~ user-profile-section.tsx:42 ~ getUserData ~ user:",
-					user
-				);
 				setRole("admin");
-				// setRole(user.role?.name);
-				// const transformed: UserProfile = {
-				// 	id: data.id,
-				// 	name: data.name,
-				// 	email: data.email || data.user?.email || "",
-				// 	phone: data.phone || data.user?.phone || "",
-				// 	position: data.role?.name || "",
-				// 	department: data.employeeDepartments?.[0]?.department?.name || "",
-				// 	location: data.address || "",
-				// };
-				// setUser(transformed);
+				setRole(user.data.role?.name);
+				const transformed: UserProfile = {
+					id: user.data.id,
+					name: user.data.name,
+					email: user.data.email || user.data.user?.email || "",
+					phone: user.data.phone || user.data.user?.phone || "",
+					position: user.data.role?.name || "",
+					department:
+						user.data.employeeDepartments?.[0]?.department?.name || "",
+					location: user.data.address || "",
+				};
+				setUser(transformed);
 			} catch (error) {
 				if (error instanceof Error) {
 					toast.error(error.message);
@@ -77,7 +74,7 @@ export function UserProfileSection() {
 			};
 
 			try {
-				const userData = await AxiosRequest.put<typeof payload, IUser>(
+				const userData = await axiosInstance.put<typeof payload, IUser>(
 					`/employee/${user.id}`,
 					payload
 				);

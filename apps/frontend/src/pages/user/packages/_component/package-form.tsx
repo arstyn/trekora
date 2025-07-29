@@ -26,7 +26,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import { packageFormSchema, type PackageFormData } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, Plus, Save, Trash2, Upload, X } from "lucide-react";
@@ -227,12 +227,12 @@ export function PackageForm({
 		if (isEditing && packageId) {
 			const loadPackage = async () => {
 				try {
-					const packageData = await AxiosRequest.get<PackageFormData>(
+					const res = await axiosInstance.get<PackageFormData>(
 						`/packages/${packageId}`
 					);
-					if (packageData) {
-						form.reset(packageData);
-						setThumbnail(packageData.thumbnail || "");
+					if (res) {
+						form.reset(res.data);
+						setThumbnail(res.data.thumbnail || "");
 					}
 				} catch (error) {
 					if (error instanceof Error) {
@@ -244,7 +244,7 @@ export function PackageForm({
 			};
 			loadPackage();
 		}
-	}, [isEditing, packageId, form, toast]);
+	}, [isEditing, packageId, form]);
 
 	const handleThumbnailUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
@@ -801,7 +801,11 @@ export function PackageForm({
 																			image ||
 																			"/placeholder.svg"
 																		}
-																		alt={`Day ${dayIndex + 1} image ${imageIndex + 1}`}
+																		alt={`Day ${
+																			dayIndex + 1
+																		} image ${
+																			imageIndex + 1
+																		}`}
 																		width={150}
 																		height={100}
 																		className="rounded-lg object-cover border"
@@ -921,7 +925,9 @@ export function PackageForm({
 																			<FormItem className="flex-1">
 																				<FormControl>
 																					<Input
-																						placeholder="e.g., Visit Tanah Lot Temple"
+																						placeholder={
+																							activity
+																						}
 																						{...field}
 																					/>
 																				</FormControl>
@@ -983,15 +989,15 @@ export function PackageForm({
 																										...(field.value ||
 																											[]),
 																										meal,
-																									]
+																								  ]
 																								: field.value?.filter(
 																										(
 																											value
 																										) =>
 																											value !==
 																											meal
-																									) ||
-																									[];
+																								  ) ||
+																								  [];
 																						field.onChange(
 																							updatedMeals
 																						);
@@ -1364,7 +1370,9 @@ export function PackageForm({
 															<FormItem className="flex-1">
 																<FormControl>
 																	<Input
-																		placeholder="Enter policy point..."
+																		placeholder={
+																			policy
+																		}
 																		{...field}
 																	/>
 																</FormControl>

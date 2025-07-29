@@ -12,26 +12,32 @@ export class Transportation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('json', { nullable: true })
-  toDestination: {
-    mode: string;
-    details: string;
-    included: boolean;
-  };
+  @Column({ type: 'varchar', nullable: true })
+  toMode: string;
 
-  @Column('json', { nullable: true })
-  fromDestination: {
-    mode: string;
-    details: string;
-    included: boolean;
-  };
+  @Column({ type: 'varchar', nullable: true })
+  toDetails: string;
 
-  @Column('json', { nullable: true })
-  duringTrip: {
-    mode: string;
-    details: string;
-    included: boolean;
-  };
+  @Column({ type: 'boolean', default: false })
+  toIncluded: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  fromMode: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  fromDetails: string;
+
+  @Column({ type: 'boolean', default: false })
+  fromIncluded: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  duringMode: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  duringDetails: string;
+
+  @Column({ type: 'boolean', default: false })
+  duringIncluded: boolean;
 
   @Column({ type: 'uuid', nullable: true })
   packageId: string;

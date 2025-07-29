@@ -7,7 +7,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { PackageFormData } from "@/types/package.schema";
 import {
 	Calendar,
@@ -30,10 +30,8 @@ export default function ViewPackagePage() {
 	useEffect(() => {
 		const getPackage = async () => {
 			try {
-				const packageData = await AxiosRequest.get<PackageFormData>(
-					`/packages/${id}`
-				);
-				setPackageData(packageData);
+				const res = await axiosInstance.get<PackageFormData>(`/packages/${id}`);
+				setPackageData(res.data);
 			} catch (error) {
 				if (error instanceof Error) {
 					toast.error(error.message);

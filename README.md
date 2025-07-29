@@ -6,14 +6,14 @@
 
 ## Table of Contents
 
-- [About](#about)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Installation](#installation)
-- [Environment Variables](#environment-variables)
-- [Scripts](#scripts)
-- [Project Structure](#project-structure)
-- [License](#license)
+-   [About](#about)
+-   [Features](#features)
+-   [Tech Stack](#tech-stack)
+-   [Installation](#installation)
+-   [Environment Variables](#environment-variables)
+-   [Scripts](#scripts)
+-   [Project Structure](#project-structure)
+-   [License](#license)
 
 ---
 
@@ -21,11 +21,11 @@
 
 **Tekora** is a **multi-tenant SaaS platform** designed for travel companies to manage:
 
-- Package creation
-- Traveler bookings
-- Finance tracking
-- Operational workflows
-- Customer engagement
+-   Package creation
+-   Traveler bookings
+-   Finance tracking
+-   Operational workflows
+-   Customer engagement
 
 Fully customizable per company, the platform is scalable, secure, and ready for real-time collaboration across departments.
 
@@ -33,29 +33,29 @@ Fully customizable per company, the platform is scalable, secure, and ready for 
 
 ## Features
 
-- **Package Management**: Create and manage travel packages (flight, train, vehicle, etc.).
-- **Sales Workflow**: Enquiry → Lead → Confirmation → Payment → Reservation.
-- **Finance Management**: Track payments, refunds, invoices.
-- **Traveler Management**: Customer badges (Silver, Gold, Platinum), loyalty tracking, referral programs.
-- **Operations Management**: Ticketing, food, accommodation, visa management.
-- **Departmental Collaboration**: Sales, Product, Operations, Accounts, Marketing, HR.
-- **Branch Management**: Multi-branch support.
-- **Reports**: Export data as PDF, Excel, or CSV.
-- **Notifications**: WhatsApp (Primary), Email, and SMS alerts.
-- **Real-time Dashboards**: Live updates for all activities.
-- **Cancellation and Refunds**: Controlled and transparent refund workflow.
+-   **Package Management**: Create and manage travel packages (flight, train, vehicle, etc.).
+-   **Sales Workflow**: Enquiry → Lead → Confirmation → Payment → Reservation.
+-   **Finance Management**: Track payments, refunds, invoices.
+-   **Traveler Management**: Customer badges (Silver, Gold, Platinum), loyalty tracking, referral programs.
+-   **Operations Management**: Ticketing, food, accommodation, visa management.
+-   **Departmental Collaboration**: Sales, Product, Operations, Accounts, Marketing, HR.
+-   **Branch Management**: Multi-branch support.
+-   **Reports**: Export data as PDF, Excel, or CSV.
+-   **Notifications**: WhatsApp (Primary), Email, and SMS alerts.
+-   **Real-time Dashboards**: Live updates for all activities.
+-   **Cancellation and Refunds**: Controlled and transparent refund workflow.
 
 ---
 
 ## Tech Stack
 
-- **Monorepo Tooling**: [Turborepo](https://turbo.build/)
-- **Frontend**: [Next.js](https://nextjs.org/)
-- **Backend**: [Nest.js](https://nestjs.com/)
-- **Database**: [PostgreSQL (AWS RDS)](https://aws.amazon.com/rds/)
-- **ORM**: [Drizzle](https://orm.drizzle.team/) or [TypeORM](https://typeorm.io/)
-- **Hosting**: AWS EC2
-- **Notifications**: WhatsApp, Email, SMS
+-   **Monorepo Tooling**: [Turborepo](https://turbo.build/)
+-   **Frontend**: [Next.js](https://nextjs.org/)
+-   **Backend**: [Nest.js](https://nestjs.com/)
+-   **Database**: [PostgreSQL (AWS RDS)](https://aws.amazon.com/rds/)
+-   **ORM**: [Drizzle](https://orm.drizzle.team/) or [TypeORM](https://typeorm.io/)
+-   **Hosting**: AWS EC2
+-   **Notifications**: WhatsApp, Email, SMS
 
 ---
 
@@ -101,7 +101,7 @@ npm run migration:run
 ## Migration File Creation Command
 
 ```bash
-npx typeorm migration:create ./apps/api/src/database/migrations/FileName
+npx typeorm migration:create ./src/database/migrations/fileName
 ```
 
 We have database seeding option, so to run the application locally you can use the seeding module, which will seed the db with a lot dummy data. Checkout the seed module in the backend [./apps/api/src/database/seeds] to view the data.

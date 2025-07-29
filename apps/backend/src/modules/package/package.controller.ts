@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { PackageService } from './package.service';
 import { AuthGuard } from '../auth/guard/auth.guard';
@@ -28,8 +29,13 @@ export class PackageController {
   }
 
   @Get()
-  findAll(@Request() req: ApiRequestJWT) {
-    return this.packageService.findAll(req.user.organizationId);
+  findAll(@Request() req: ApiRequestJWT, @Query('status') status?: string) {
+    return this.packageService.findAll(req.user.organizationId, status);
+  }
+
+  @Get(':id/checklist')
+  getPackageChecklist(@Param('id') id: string) {
+    return this.packageService.getPackageChecklist(id);
   }
 
   @Get(':id')

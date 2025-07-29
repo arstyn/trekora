@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { ILead, ILeadStatus } from "@/types/lead/lead.entity";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -37,15 +37,12 @@ export function ViewLeadDialog({
 
 	const updateLeadStatus = async (status: ILeadStatus) => {
 		try {
-			const updatedLead = await AxiosRequest.put<Partial<ILead>, ILead>(
-				`/lead/${lead.id}`,
-				{
-					name: lead.name,
-					status: status,
-				}
-			);
-			if (updatedLead) {
-				onEdit(false, { ...lead, ...updatedLead });
+			const res = await axiosInstance.put<ILead>(`/lead/${lead.id}`, {
+				name: lead.name,
+				status: status,
+			});
+			if (res) {
+				onEdit(false, { ...lead, ...res.data });
 			}
 		} catch (error) {
 			if (error instanceof Error) {
@@ -115,7 +112,9 @@ export function ViewLeadDialog({
 										<Button
 											key={status}
 											className="rounded-none flex-1 cursor-pointer"
-											variant={`${isUpcoming ? "ghost" : "default"}`}
+											variant={`${
+												isUpcoming ? "ghost" : "default"
+											}`}
 											onClick={() =>
 												updateLeadStatus(status as ILeadStatus)
 											}

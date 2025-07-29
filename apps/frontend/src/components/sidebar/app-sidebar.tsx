@@ -12,6 +12,7 @@ import {
 	Banknote,
 	BookUser,
 	FileChartColumnIncreasing,
+	FileSpreadsheet,
 	FolderIcon,
 	HelpCircleIcon,
 	LayoutDashboardIcon,
@@ -27,17 +28,17 @@ import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
 import { NavUser } from "./nav-user";
 import { useEffect, useState } from "react";
-import { AxiosRequest } from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
+import axiosInstance from "@/lib/axios";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const [userData, setUserData] = useState<IEmployee>();
 
 	useEffect(() => {
 		const getProfile = async () => {
-			const res = await AxiosRequest.get<IEmployee>(`/employee/profile`);
+			const res = await axiosInstance.get<IEmployee>(`/employee/profile`);
 			if (res) {
-				setUserData(res);
+				setUserData(res.data);
 			}
 		};
 
@@ -73,8 +74,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			},
 			{
 				title: "Batches",
-				url: "#",
+				url: "/batches",
 				icon: ListIcon,
+			},
+			{
+				title: "Excel Import",
+				url: "/import",
+				icon: FileSpreadsheet,
 			},
 		],
 		documents: [
@@ -90,7 +96,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			},
 			{
 				name: "Booking",
-				url: "/booking",
+				url: "/bookings",
 				icon: Tickets,
 			},
 			{

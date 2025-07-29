@@ -26,9 +26,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { IDepartment } from "@/types/department.type";
-import type { IEmployee, IEmployeeCreateDTO } from "@/types/employee.types";
+import type { IEmployee } from "@/types/employee.types";
 import type { IRole } from "@/types/role.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Table } from "@tanstack/react-table";
@@ -143,11 +143,8 @@ export function AddEmployeeModal({
 		};
 
 		try {
-			const employee = await AxiosRequest.post<IEmployeeCreateDTO, IEmployee>(
-				"/employee",
-				newEmployee
-			);
-			setEmployees([employee, ...employees]);
+			const res = await axiosInstance.post<IEmployee>("/employee", newEmployee);
+			setEmployees([res.data, ...employees]);
 			table.setPageIndex(0);
 			table.resetColumnFilters();
 			form.reset();
@@ -303,7 +300,7 @@ export function AddEmployeeModal({
 													defaultValue={field.value}
 												>
 													<FormControl>
-														<SelectTrigger className="capitalize">
+														<SelectTrigger className="capitalize w-full">
 															<SelectValue placeholder="Select role" />
 														</SelectTrigger>
 													</FormControl>

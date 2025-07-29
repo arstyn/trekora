@@ -1,9 +1,4 @@
 import { Footer } from "@/components/footer";
-import { CTA } from "@/components/home/cta";
-import { Features } from "@/components/home/features";
-import { Hero } from "@/components/home/hero";
-import { Stats } from "@/components/home/stats";
-import { Testimonials } from "@/components/home/testimonials";
 import { Navigation } from "@/components/navigation";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -22,44 +17,53 @@ import EditPackagePage from "@/pages/user/packages/edit-package";
 import Packages from "@/pages/user/packages/package-list";
 import ViewPackagePage from "@/pages/user/packages/view-package";
 import { Route, Routes } from "react-router-dom";
+import { Home } from "./pages/general/home";
+import BatchesPage from "./pages/user/batches/batches-pages";
+import EditBatchPage from "./pages/user/batches/edit-batch";
+import BatchDetailsPage from "./pages/user/batches/view-batch";
+import BookingsPage from "./pages/user/bookings/bookings.page";
+import EditBookingPage from "./pages/user/bookings/edit-booking.page";
+import BookingDetailsPage from "./pages/user/bookings/view-booking.page";
+import { BranchPage } from "./pages/user/branch/branch-page";
 import CustomerManagement from "./pages/user/customers/customer";
+import EditPaymentPage from "./pages/user/payments/edit-payment.page";
+import PaymentsPage from "./pages/user/payments/payments.page";
+import PaymentDetailsPage from "./pages/user/payments/view-payment.page";
 import SettingsPage from "./pages/user/settings/page";
+import ImportPage from "./pages/user/import/page";
 import { TeamsPage } from "./pages/user/teams/teams-table";
-
-function Home() {
-	return (
-		<main>
-			<Hero />
-			<Stats />
-			<Features />
-			<Testimonials />
-			<CTA />
-		</main>
-	);
-}
 
 function AuthenticatedApp() {
 	// Add your dashboard and other protected routes here
 	return (
-		<>
-			<SidebarProvider>
-				<AppSidebar variant="inset" />
-				<SidebarInset>
-					<SiteHeader />
-					<Routes>
-						<Route path="/" element={<Dashboard />} />
-						<Route path="/leads" element={<Leads />} />
-						<Route path="/packages" element={<Packages />} />
-						<Route path="/packages/create" element={<CreatePackagePage />} />
-						<Route path="/packages/edit/:id" element={<EditPackagePage />} />
-						<Route path="/packages/:id" element={<ViewPackagePage />} />
-						<Route path="/customers" element={<CustomerManagement />} />
-						<Route path="/settings" element={<SettingsPage />} />
-						<Route path="/teams" element={<TeamsPage />} />
-					</Routes>
-				</SidebarInset>
-			</SidebarProvider>
-		</>
+		<SidebarProvider>
+			<AppSidebar variant="inset" />
+			<SidebarInset>
+				<SiteHeader />
+				<Routes>
+					<Route path="/" element={<Dashboard />} />
+					<Route path="/leads" element={<Leads />} />
+					<Route path="/packages" element={<Packages />} />
+					<Route path="/packages/create" element={<CreatePackagePage />} />
+					<Route path="/packages/edit/:id" element={<EditPackagePage />} />
+					<Route path="/packages/:id" element={<ViewPackagePage />} />
+					<Route path="/customers" element={<CustomerManagement />} />
+					<Route path="/settings" element={<SettingsPage />} />
+					<Route path="/teams" element={<TeamsPage />} />
+					<Route path="/branches" element={<BranchPage />} />
+					<Route path="/batches" element={<BatchesPage />} />
+					<Route path="/batches/:id" element={<BatchDetailsPage />} />
+					<Route path="/batches/edit/:id" element={<EditBatchPage />} />
+					<Route path="/bookings" element={<BookingsPage />} />
+					<Route path="/bookings/:id" element={<BookingDetailsPage />} />
+					<Route path="/bookings/:id/edit" element={<EditBookingPage />} />
+					<Route path="/payments" element={<PaymentsPage />} />
+					<Route path="/payments/:id" element={<PaymentDetailsPage />} />
+					<Route path="/payments/edit/:id" element={<EditPaymentPage />} />
+					<Route path="/import" element={<ImportPage />} />
+				</Routes>
+			</SidebarInset>
+		</SidebarProvider>
 	);
 }
 

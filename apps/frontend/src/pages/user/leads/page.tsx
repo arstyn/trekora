@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { ILead, ILeadStatus } from "@/types/lead/lead.entity";
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -29,9 +29,9 @@ export function Leads() {
 	useEffect(() => {
 		const getLeads = async () => {
 			try {
-				const leadsData = await AxiosRequest.get<ILead[]>("/lead");
-				setLeads(leadsData);
-				setFilteredLeads(leadsData);
+				const res = await axiosInstance.get<ILead[]>("/lead");
+				setLeads(res.data);
+				setFilteredLeads(res.data);
 			} catch (error: unknown) {
 				if (error instanceof Error) {
 					toast.error(error.message);
@@ -96,7 +96,7 @@ export function Leads() {
 
 	const updateLeadStatus = async (leadId: string, newStatus: ILeadStatus) => {
 		try {
-			const updatedLead = await AxiosRequest.put<Partial<ILead>, ILead>(
+			const updatedLead = await axiosInstance.put<Partial<ILead>, ILead>(
 				`/lead/${leadId}`,
 				{
 					status: newStatus,

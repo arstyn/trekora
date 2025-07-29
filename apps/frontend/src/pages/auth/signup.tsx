@@ -27,7 +27,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { ILoginResponse } from "@/types/auth.types";
 import { onboardingSchema, type SignupFormDTO } from "@/types/signup.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -141,7 +141,7 @@ export default function Signup() {
 		setError(null);
 
 		try {
-			const response = await AxiosRequest.post<SignupFormDTO, ILoginResponse>(
+			const response = await axiosInstance.post<SignupFormDTO, ILoginResponse>(
 				"/auth/signup",
 				data
 			);
@@ -176,15 +176,17 @@ export default function Signup() {
 					isActive
 						? "bg-primary border-primary text-primary-foreground"
 						: isCompleted
-							? "bg-primary border-primary text-primary-foreground"
-							: "bg-background border-muted-foreground/30 text-muted-foreground"
+						? "bg-primary border-primary text-primary-foreground"
+						: "bg-background border-muted-foreground/30 text-muted-foreground"
 				}
               `}
 							>
 								<StepIcon className="w-5 h-5" />
 							</div>
 							<span
-								className={`text-sm mt-2 font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}
+								className={`text-sm mt-2 font-medium ${
+									isActive ? "text-primary" : "text-muted-foreground"
+								}`}
 							>
 								{step.title}
 							</span>

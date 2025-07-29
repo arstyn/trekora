@@ -17,7 +17,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AxiosRequest } from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import type { IReminder, IReminderDTO } from "@/types/reminder.entity";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -62,12 +62,12 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
 		const fetchReminders = async () => {
 			setIsLoading(true);
 			try {
-				const reminders = await AxiosRequest.get<IReminder[]>(
+				const res = await axiosInstance.get<IReminder[]>(
 					`/reminder?entityType=lead&entityId=${leadId}`
 				);
 
-				if (reminders) {
-					setReminders(reminders);
+				if (res) {
+					setReminders(res.data);
 				}
 			} catch (error) {
 				if (error instanceof Error) {
@@ -106,12 +106,12 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
 		try {
 			let result: IReminder;
 			if (editingReminder) {
-				result = await AxiosRequest.put<Partial<IReminder>, IReminder>(
+				result = await axiosInstance.put<Partial<IReminder>, IReminder>(
 					`/reminder/${editingReminder.id}`,
 					data
 				);
 			} else {
-				result = await AxiosRequest.post<IReminderDTO, IReminder>("/reminder", {
+				result = await axiosInstance.post<IReminderDTO, IReminder>("/reminder", {
 					...data,
 					type: "lead",
 					entityType: "lead",
@@ -142,7 +142,7 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
 	const handleDelete = async (id: string) => {
 		setIsLoading(true);
 		try {
-			await AxiosRequest.delete(`/reminder/${id}`);
+			await axiosInstance.delete(`/reminder/${id}`);
 		} catch (error) {
 			if (error instanceof Error) {
 				toast.error(error.message);
@@ -256,8 +256,8 @@ export function ReminderTab({ leadId }: ReminderTabProps) {
 											? "Saving..."
 											: "Adding..."
 										: editingReminder
-											? "Save Changes"
-											: "Add Reminder"}
+										? "Save Changes"
+										: "Add Reminder"}
 								</Button>
 							</div>
 						</form>
