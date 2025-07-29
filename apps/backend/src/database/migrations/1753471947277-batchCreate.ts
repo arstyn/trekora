@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateBatch1753528700000 implements MigrationInterface {
+export class batchCreate1753471947277 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create batch table
     await queryRunner.query(`
