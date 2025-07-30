@@ -1,13 +1,19 @@
+import * as bcrypt from 'bcrypt';
+import { config } from 'dotenv';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
-import { config } from 'dotenv';
-import { Role } from '../entity/role.entity';
-import { Department } from '../entity/department.entity';
-import { roles } from './role.seed';
-import { departments } from './department.seed';
 import configuration from '../../config/configuration';
-import { notificationTypes } from './notification-type.seed';
+import { Department } from '../entity/department.entity';
+import { Employee, EmployeeStatus } from '../entity/employee.entity';
 import { NotificationType } from '../entity/notification-type.entity';
+import { Organization } from '../entity/organization.entity';
+import { Role } from '../entity/role.entity';
+import { User } from '../entity/user.entity';
+import { departments } from './department.seed';
+import { notificationTypes } from './notification-type.seed';
+import { roles } from './role.seed';
+import { organizations } from './organization.seed';
+import { users } from './user.seed';
 
 config();
 
@@ -27,13 +33,19 @@ const AppDataSource = new DataSource({
 });
 
 async function seed() {
-  try {
-    await AppDataSource.initialize();
-    console.log('Database connection initialized');
+  await AppDataSource.initialize();
+  console.log('Database connection initialized');
 
-    const roleRepository = AppDataSource.getRepository(Role);
-    const departmentRepository = AppDataSource.getRepository(Department);
-    const notificationTypeRepository = AppDataSource.getRepository(NotificationType)
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+
+  await queryRunner.startTransaction();
+
+  try {
+    const roleRepository = queryRunner.manager.getRepository(Role);
+    const departmentRepository = queryRunner.manager.getRepository(Department);
+    const notificationTypeRepository =
+      queryRunner.manager.getRepository(NotificationType);
 
     console.log('Seeding roles...');
     for (const roleData of roles) {
@@ -67,24 +79,94 @@ async function seed() {
 
     console.log('Seeding notification types...');
     for (const notification_type of notificationTypes) {
-      const existingNotificationType = await notificationTypeRepository.findOne({
-        where: { title: notification_type.title },
-      });
+      const existingNotificationType = await notificationTypeRepository.findOne(
+        {
+          where: { title: notification_type.title },
+        },
+      );
 
       if (!existingNotificationType) {
-        const notificationType = notificationTypeRepository.create(notification_type);
+        const notificationType =
+          notificationTypeRepository.create(notification_type);
         await notificationTypeRepository.save(notificationType);
         console.log(`Created notification type: ${notification_type.title}`);
       } else {
-        console.log(`Notification type ${notification_type.title} already exists`);
+        console.log(
+          `Notification type ${notification_type.title} already exists`,
+        );
       }
     }
 
+    for (const organization of organizations) {
+      // Create organization
+      const organizationData = queryRunner.manager.create(Organization, {
+        name: organization.name,
+        size: organization.size,
+        industry: organization.industry,
+        domain: organization.domain,
+        description: organization.description,
+      });
+      const savedOrganization =
+        await queryRunner.manager.save(organizationData);
+      console.log('Organization created:', savedOrganization.id);
+    }
+
+    // Find admin role
+    const adminRole = await queryRunner.manager.findOne(Role, {
+      where: { name: 'admin' },
+    });
+    if (!adminRole) {
+      throw new Error('Admin role not found in database');
+    }
+
+    for (const user of users) {
+      const org = await queryRunner.manager.findOne(Organization, {
+        where: { domain: user.organizationDomain },
+      });
+
+      if (!org) {
+        throw new Error('Organization not found in database');
+      }
+
+      // Create user
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+      const newUser = queryRunner.manager.create(User, {
+        name: user.name,
+        email: user.email,
+        password: hashedPassword,
+        phone: user.phone,
+        organizationId: org.id,
+        roleId: adminRole.id,
+        notificationsEnabled: user.notificationsEnabled,
+        newsletterSubscribed: user.newsletterSubscribed,
+      });
+
+      const savedUser = await queryRunner.manager.save(newUser);
+      console.log('User created:', savedUser.id);
+
+      // Create employee
+      const employee = queryRunner.manager.create(Employee, {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        organizationId: org.id,
+        userId: savedUser.id,
+        roleId: adminRole.id,
+        status: EmployeeStatus.ACTIVE,
+        joinDate: new Date().toISOString(),
+      });
+      const savedEmployee = await queryRunner.manager.save(employee);
+      console.log('Employee created:', savedEmployee.id);
+    }
+
+    await queryRunner.commitTransaction();
     console.log('Seeding completed successfully');
   } catch (error) {
-    console.error('Error during seeding:', error);
+    console.error('Error during seeding, rolling back transaction:', error);
+    await queryRunner.rollbackTransaction();
     throw error;
   } finally {
+    await queryRunner.release();
     if (AppDataSource.isInitialized) {
       await AppDataSource.destroy();
       console.log('Database connection closed');
@@ -100,4 +182,4 @@ seed()
   .catch((error) => {
     console.error('Seeding failed:', error);
     process.exit(1);
-  }); 
+  });
