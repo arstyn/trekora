@@ -173,6 +173,11 @@ export default function BatchesPage() {
 							</div>
 						))}
 					</div>
+					{fastFillingBatches.length === 0 && (
+						<div className="text-center py-8 text-muted-foreground">
+							No fast filling batches available to display
+						</div>
+					)}
 				</CardContent>
 			</Card>
 

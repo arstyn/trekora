@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/table";
 import axiosInstance from "@/lib/axios";
 import type { IBatches } from "@/types/batches.types";
+import type { IBookingPassenger } from "@/types/booking.types";
 import type { ICheckList } from "@/types/checklist.types";
+import type { IEmployee } from "@/types/employee.types";
 import { Calendar, Edit, Mail, Phone, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
@@ -24,8 +26,12 @@ export default function BatchDetailsPage() {
 	const { id } = useParams<{ id: string }>();
 
 	const [batch, setBatch] = useState<IBatches>();
-	const [selectedPassenger, setSelectedPassenger] = useState<any>(null);
-	const [selectedCoordinator, setSelectedCoordinator] = useState<any>(null);
+	const [selectedPassenger, setSelectedPassenger] = useState<IBookingPassenger | null>(
+		null
+	);
+	const [selectedCoordinator, setSelectedCoordinator] = useState<IEmployee | null>(
+		null
+	);
 	const [packageCheckList, setPackageCheckList] = useState<ICheckList[]>();
 
 	useEffect(() => {
@@ -92,7 +98,7 @@ export default function BatchDetailsPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					{batch && getStatusBadge(batch.status)}
-					<NavLink to={`/batches/${id}/edit`}>
+					<NavLink to={`/batches/edit/${id}`}>
 						<Button>
 							<Edit className="w-4 h-4 mr-2" />
 							Edit Batch
@@ -235,6 +241,11 @@ export default function BatchDetailsPage() {
 								))}
 						</TableBody>
 					</Table>
+					{batch && batch.coordinators?.length === 0 && (
+						<div className="text-center py-8 text-muted-foreground">
+							No coordinators were added
+						</div>
+					)}
 				</CardContent>
 			</Card>
 
@@ -242,7 +253,7 @@ export default function BatchDetailsPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>
-						Passengers ({batch && batch.passengers?.length})
+						Passengers ({(batch && batch.passengers?.length) || 0})
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -307,6 +318,11 @@ export default function BatchDetailsPage() {
 								})}
 						</TableBody>
 					</Table>
+					{batch && (!batch.passengers || batch.passengers?.length === 0) && (
+						<div className="text-center py-8 text-muted-foreground">
+							No passengers were added
+						</div>
+					)}
 				</CardContent>
 			</Card>
 
@@ -318,11 +334,13 @@ export default function BatchDetailsPage() {
 				packageCheckList={packageCheckList}
 			/>
 
-			<CoordinatorModal
-				coordinator={selectedCoordinator}
-				open={!!selectedCoordinator}
-				onOpenChange={(open) => !open && setSelectedCoordinator(null)}
-			/>
+			{selectedCoordinator && (
+				<CoordinatorModal
+					coordinator={selectedCoordinator}
+					open={!!selectedCoordinator}
+					onOpenChange={(open) => !open && setSelectedCoordinator(null)}
+				/>
+			)}
 		</div>
 	);
 }
