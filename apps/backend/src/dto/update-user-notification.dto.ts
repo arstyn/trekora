@@ -1,8 +1,7 @@
-import { IsUUID, ArrayNotEmpty, ArrayUnique } from 'class-validator';
+// src/dto/update-user-notification.dto.ts
+import { IsObject } from 'class-validator';
 
 export class UpdateUserNotificationDto {
-  @ArrayNotEmpty()
-  @ArrayUnique()
-  @IsUUID('4', { each: true })
-  typeIds: string[];
+  @IsObject()
+  preferences: Record<string, boolean>;
 }

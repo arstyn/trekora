@@ -17,4 +17,3 @@ import { User } from 'src/database/entity/user.entity';
   exports: [UserNotificationService],
 })
 export class UserNotificationModule {}
-

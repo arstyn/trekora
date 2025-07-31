@@ -18,48 +18,64 @@ export class UserNotificationService {
     private readonly userRepo: Repository<User>,
   ) {}
 
-  /** Return all enabled notification rows for a user */
-  async getByUserId(userId: string): Promise<UserNotification[]> {
-    return this.userNotificationRepo.find({
+  async getByUserId(userId: string): Promise<Record<string, boolean>> {
+    const allTypes = await this.typeRepo.find();
+    const active = await this.userNotificationRepo.find({
       where: { user: { id: userId } },
-      relations: { userNotificationType: true },
+      relations: ['userNotificationType'],
     });
+
+    const activeTypeTitles = new Set(
+      active.map((n) => n.userNotificationType.title),
+    );
+
+    const result: Record<string, boolean> = {};
+    for (const type of allTypes) {
+      result[type.title] = activeTypeTitles.has(type.title);
+    }
+
+    return result;
   }
 
-  /**
-   * Up‑sert user preferences:
-   *  • Adds rows for newly‑enabled types  
-   *  • Deletes rows for disabled types
-   */
-  async updatePreferences(userId: string, enabledTypeIds: string[]): Promise<void> {
+  async updatePreferences(
+    userId: string,
+    input: Record<string, boolean>,
+  ): Promise<Record<string, boolean>> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    // 1) grab existing rows
+    const allTypes = await this.typeRepo.find();
+    const typeMap = new Map(allTypes.map((t) => [t.title, t]));
+
     const existing = await this.userNotificationRepo.find({
       where: { user: { id: userId } },
+      relations: ['userNotificationType'],
     });
-    const existingTypeIds = existing.map((n) => n.userNotificationType.id);
 
-    // 2) diff
-    const toAddIds    = enabledTypeIds.filter((id) => !existingTypeIds.includes(id));
-    const toRemoveIds = existingTypeIds.filter((id) => !enabledTypeIds.includes(id));
+    const existingTitles = new Set(
+      existing.map((n) => n.userNotificationType.title),
+    );
 
-    // 3a) remove disabled
-    if (toRemoveIds.length) {
-      await this.userNotificationRepo.delete({
-        user: { id: userId },
-        userNotificationType: { id: In(toRemoveIds) },
-      });
+    const toAdd = Object.entries(input)
+      .filter(([title, enabled]) => enabled && !existingTitles.has(title))
+      .map(([title]) => typeMap.get(title))
+      .filter(Boolean) as UserNotificationType[];
+
+    const toRemove = existing.filter(
+      (n) => input[n.userNotificationType.title] === false,
+    );
+
+    if (toRemove.length) {
+      await this.userNotificationRepo.remove(toRemove);
     }
 
-    // 3b) add new enabled
-    if (toAddIds.length) {
-      const types = await this.typeRepo.find({ where: { id: In(toAddIds) } });
-      const newRows = types.map((t) =>
-        this.userNotificationRepo.create({ user, userNotificationType: t }),
+    if (toAdd.length) {
+      const newEntities = toAdd.map((type) =>
+        this.userNotificationRepo.create({ user, userNotificationType: type }),
       );
-      await this.userNotificationRepo.save(newRows);
+      await this.userNotificationRepo.save(newEntities);
     }
+
+    return this.getByUserId(userId);
   }
 }

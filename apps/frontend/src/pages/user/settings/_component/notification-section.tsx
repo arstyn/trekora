@@ -1,52 +1,125 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
-import { Button } from "@/components/ui/button"
-import { Bell } from "lucide-react"
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Bell } from "lucide-react";
+import axiosInstance from "@/lib/axios";
+import type { IUserNotification } from "@/types/user-notification.types";
 
 interface NotificationSettings {
-  emailNotifications: boolean
-  pushNotifications: boolean
-  smsNotifications: boolean
-  marketingEmails: boolean
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  smsNotifications: boolean;
+  whatsappNotifications: boolean;
+  marketingEmails: boolean;
 }
 
+// Default state
 const defaultSettings: NotificationSettings = {
-  emailNotifications: true,
+  emailNotifications: false,
   pushNotifications: false,
-  smsNotifications: true,
+  smsNotifications: false,
+  whatsappNotifications: false,
   marketingEmails: false,
-}
+};
+
+// API keys from backend mapped to internal state
+const apiToStateKeyMap: Record<string, keyof NotificationSettings> = {
+  "Email notification": "emailNotifications",
+  "Push notification": "pushNotifications",
+  "Sms notification": "smsNotifications",
+  "Whatsapp notification": "whatsappNotifications",
+  "Marketing emails": "marketingEmails",
+};
+
+// Internal state mapped back to API keys for sending back
+const stateToApiKeyMap: Record<keyof NotificationSettings, string> = {
+  emailNotifications: "Email notification",
+  pushNotifications: "Push notification",
+  smsNotifications: "Sms notification",
+  whatsappNotifications: "Whatsapp notification",
+  marketingEmails: "Marketing emails",
+};
 
 export function NotificationSection() {
-  const [notifications, setNotifications] = useState<NotificationSettings>(defaultSettings)
-  const [isChanged, setIsChanged] = useState(false)
+  const [notifications, setNotifications] =
+    useState<NotificationSettings>(defaultSettings);
 
-  const updateNotification = (key: keyof NotificationSettings, value: boolean) => {
+  const [initialSettings, setInitialSettings] =
+    useState<NotificationSettings>(defaultSettings);
+
+  const [isChanged, setIsChanged] = useState(false);
+
+  const [userNotifications, setUserNotifications] =
+    useState<IUserNotification>();
+
+  useEffect(() => {
+    const getNotification = async () => {
+      const response =
+        await axiosInstance.get<Record<string, boolean>>("/user-notification");
+
+      const apiData = response.data;
+
+      const updatedSettings: NotificationSettings = { ...defaultSettings };
+
+      for (const [apiKey, value] of Object.entries(apiData)) {
+        const stateKey = apiToStateKeyMap[apiKey];
+        if (stateKey) {
+          updatedSettings[stateKey] = value;
+        }
+      }
+
+      const transformedUserNotification: IUserNotification = {
+        emailNotification: apiData["Email notification"],
+        pushNotification: apiData["Push notification"],
+        smsNotification: apiData["Sms notification"],
+        whatsappNotification: apiData["Whatsapp notification"],
+        marketingEmails: apiData["Marketing emails"],
+      };
+
+      setNotifications(updatedSettings);
+      setInitialSettings(updatedSettings); // Used for change comparison
+      setUserNotifications(transformedUserNotification); // Type-safe
+    };
+
+    getNotification();
+  }, []);
+
+  const updateNotification = (
+    key: keyof NotificationSettings,
+    value: boolean
+  ) => {
     setNotifications((prev) => {
-      const updated = { ...prev, [key]: value }
-      setIsChanged(JSON.stringify(updated) !== JSON.stringify(defaultSettings))
-      return updated
-    })
-  }
+      const updated = { ...prev, [key]: value };
+      setIsChanged(JSON.stringify(updated) !== JSON.stringify(initialSettings));
+      return updated;
+    });
+  };
 
-  const handleSaveChanges = () => {
-    console.log("Saving changes:", notifications)
-    // Here you can add your API call or logic to save changes
-    // Once saved, reset the change detection state
-    Object.assign(defaultSettings, notifications) // Update the default to new saved settings
-    setIsChanged(false)
-  }
+  const handleSaveChanges = async () => {
+    // Prepare payload to match API keys
+    const payload: Record<string, boolean> = {};
+    for (const [stateKey, value] of Object.entries(notifications)) {
+      const apiKey = stateToApiKeyMap[stateKey as keyof NotificationSettings];
+      payload[apiKey] = value;
+    }
+
+    await axiosInstance.patch("/user-notification", payload);
+
+    // Update base state
+    setInitialSettings(notifications);
+    setIsChanged(false);
+  };
 
   return (
     <Card>
@@ -55,7 +128,9 @@ export function NotificationSection() {
           <Bell className="h-5 w-5" />
           Notifications
         </CardTitle>
-        <CardDescription>Configure your notification preferences</CardDescription>
+        <CardDescription>
+          Configure your notification preferences
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {[
@@ -94,7 +169,10 @@ export function NotificationSection() {
               <Switch
                 checked={notifications[key as keyof NotificationSettings]}
                 onCheckedChange={(checked) =>
-                  updateNotification(key as keyof NotificationSettings, checked)
+                  updateNotification(
+                    key as keyof NotificationSettings,
+                    checked
+                  )
                 }
               />
             </div>
@@ -113,5 +191,5 @@ export function NotificationSection() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
