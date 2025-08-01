@@ -6,8 +6,9 @@ import { Department } from '../entity/department.entity';
 import { roles } from './role.seed';
 import { departments } from './department.seed';
 import configuration from '../../config/configuration';
-import { notificationTypes } from './notification-type.seed';
-import { NotificationType } from '../entity/notification-type.entity';
+import { userNotificationType } from './user-notification-type.seed';
+import { UserNotificationType } from '../entity/user-notification-type.entity';
+import { UserNotification } from '../entity/user-notification.entity';
 
 config();
 
@@ -33,7 +34,8 @@ async function seed() {
 
     const roleRepository = AppDataSource.getRepository(Role);
     const departmentRepository = AppDataSource.getRepository(Department);
-    const notificationTypeRepository = AppDataSource.getRepository(NotificationType)
+    const userNotificationTypeRepository = AppDataSource.getRepository(UserNotificationType);
+    const userNotificationRepository = AppDataSource.getRepository(UserNotification);
 
     console.log('Seeding roles...');
     for (const roleData of roles) {
@@ -65,18 +67,18 @@ async function seed() {
       }
     }
 
-    console.log('Seeding notification types...');
-    for (const notification_type of notificationTypes) {
-      const existingNotificationType = await notificationTypeRepository.findOne({
-        where: { title: notification_type.title },
+    console.log('Seeding user notification types...');
+    for (const user_notification_type of userNotificationType) {
+      const existingNotificationType = await userNotificationTypeRepository.findOne({
+        where: { title: user_notification_type.title },
       });
 
       if (!existingNotificationType) {
-        const notificationType = notificationTypeRepository.create(notification_type);
-        await notificationTypeRepository.save(notificationType);
-        console.log(`Created notification type: ${notification_type.title}`);
+        const notificationType = userNotificationTypeRepository.create(user_notification_type);
+        await userNotificationTypeRepository.save(notificationType);
+        console.log(`Created notification type: ${user_notification_type.title}`);
       } else {
-        console.log(`Notification type ${notification_type.title} already exists`);
+        console.log(`Notification type ${user_notification_type.title} already exists`);
       }
     }
 
