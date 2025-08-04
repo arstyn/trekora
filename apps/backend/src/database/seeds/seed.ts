@@ -14,6 +14,9 @@ import { notificationTypes } from './notification-type.seed';
 import { roles } from './role.seed';
 import { organizations } from './organization.seed';
 import { users } from './user.seed';
+import { userNotificationType } from './user-notification-type.seed';
+import { UserNotificationType } from '../entity/user-notification-type.entity';
+import { UserNotification } from '../entity/user-notification.entity';
 
 config();
 
@@ -46,6 +49,8 @@ async function seed() {
     const departmentRepository = queryRunner.manager.getRepository(Department);
     const notificationTypeRepository =
       queryRunner.manager.getRepository(NotificationType);
+    const userNotificationTypeRepository = AppDataSource.getRepository(UserNotificationType);
+    const userNotificationRepository = AppDataSource.getRepository(UserNotification);
 
     console.log('Seeding roles...');
     for (const roleData of roles) {
@@ -94,6 +99,18 @@ async function seed() {
         console.log(
           `Notification type ${notification_type.title} already exists`,
         );
+    console.log('Seeding user notification types...');
+    for (const user_notification_type of userNotificationType) {
+      const existingNotificationType = await userNotificationTypeRepository.findOne({
+        where: { title: user_notification_type.title },
+      });
+
+      if (!existingNotificationType) {
+        const notificationType = userNotificationTypeRepository.create(user_notification_type);
+        await userNotificationTypeRepository.save(notificationType);
+        console.log(`Created notification type: ${user_notification_type.title}`);
+      } else {
+        console.log(`Notification type ${user_notification_type.title} already exists`);
       }
     }
 
