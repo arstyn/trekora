@@ -203,7 +203,7 @@ export function BatchList({ status }: BatchListProps) {
 											</DropdownMenuItem>
 											<DropdownMenuItem asChild>
 												<NavLink
-													to={`/batches/${batch.id}/edit`}
+													to={`/batches/edit/${batch.id}`}
 													className="flex items-center"
 												>
 													<Edit className="mr-2 h-4 w-4" />

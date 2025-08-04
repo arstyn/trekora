@@ -1,8 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -10,57 +12,54 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Plus, Save, X } from "lucide-react";
+import axiosInstance from "@/lib/axios";
+import type { IEmployee } from "@/types/employee.types";
+import type { IPackages } from "@/types/package.schema";
+import { Save, X } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function EditBatchPage() {
 	const { id } = useParams<{ id: string }>();
+	const [packages, setPackages] = useState<IPackages[]>([]);
+	const [employees, setEmployees] = useState<IEmployee[]>([]);
 
 	const [formData, setFormData] = useState({
-		packageId: "1",
-		startDate: "2024-01-15",
-		endDate: "2024-01-25",
-		totalSeats: "20",
-		coordinators: [
-			{
-				name: "John Doe",
-				type: "Tour Guide",
-				phone: "+1-234-567-8900",
-				email: "john.doe@example.com",
-			},
-			{
-				name: "Mike Smith",
-				type: "Driver",
-				phone: "+1-234-567-8901",
-				email: "mike.smith@example.com",
-			},
-		],
+		packageId: "",
+		startDate: "",
+		endDate: "",
+		totalSeats: "",
+		coordinators: [] as IEmployee[],
 	});
-
-	const [newCoordinator, setNewCoordinator] = useState({
-		name: "",
-		type: "",
-		phone: "",
-		email: "",
-	});
-
-	const coordinatorTypes = [
-		"Tour Guide",
-		"Driver",
-		"Tour Operator",
-		"Local Guide",
-		"Medical Support",
-	];
-
-	const addCoordinator = () => {
-		if (newCoordinator.name && newCoordinator.type) {
-			setFormData((prev) => ({
+	const toggleCoordinator = (employee: IEmployee) => {
+		setFormData((prev) => {
+			const alreadySelected = prev.coordinators.some((c) => c.id === employee.id);
+			return {
 				...prev,
-				coordinators: [...prev.coordinators, newCoordinator],
-			}));
-			setNewCoordinator({ name: "", type: "", phone: "", email: "" });
+				coordinators: alreadySelected
+					? prev.coordinators.filter((c) => c.id !== employee.id)
+					: [...prev.coordinators, employee],
+			};
+		});
+	};
+
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		e.preventDefault();
+		try {
+			const payload = {
+				...formData,
+				coordinators: formData.coordinators.map((c) => c.id),
+			};
+			await axiosInstance.patch(`/batches/${id}`, payload);
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to load batches");
+			}
 		}
 	};
 
@@ -71,21 +70,33 @@ export default function EditBatchPage() {
 		}));
 	};
 
-	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
-		// Handle form submission
-		console.log("Updating batch:", formData);
-	};
+	useLayoutEffect(() => {
+		const getData = async () => {
+			try {
+				const [batchRes, packagesRes, employeesRes] = await Promise.all([
+					axiosInstance.get(`/batches/${id}`),
+					axiosInstance.get(`/packages?status=published`),
+					axiosInstance.get(`/employee`),
+				]);
+
+				setFormData(batchRes.data);
+				setPackages(packagesRes.data);
+				setEmployees(employeesRes.data);
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					toast.error(error.message);
+				} else {
+					toast.error("Failed to load data");
+				}
+			}
+		};
+
+		getData();
+	}, []);
 
 	return (
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex items-center gap-4">
-				<NavLink to={`/batches/${id}`}>
-					<Button variant="outline" size="sm">
-						<ArrowLeft className="w-4 h-4 mr-2" />
-						Back to Details
-					</Button>
-				</NavLink>
 				<div>
 					<h1 className="text-3xl font-bold">Edit Batch</h1>
 					<p className="text-muted-foreground">
@@ -101,7 +112,7 @@ export default function EditBatchPage() {
 						<CardTitle>Basic Information</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
-						<div>
+						<div className="space-y-2">
 							<Label htmlFor="package">Tour Package</Label>
 							<Select
 								value={formData.packageId}
@@ -113,18 +124,19 @@ export default function EditBatchPage() {
 									<SelectValue placeholder="Select a package" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="1">Himalayan Adventure</SelectItem>
-									<SelectItem value="2">Beach Paradise</SelectItem>
-									<SelectItem value="3">
-										Cultural Heritage Tour
-									</SelectItem>
-									<SelectItem value="4">Mountain Trek</SelectItem>
+									{packages &&
+										packages.length > 0 &&
+										packages.map((pkg) => (
+											<SelectItem value={pkg.id}>
+												{pkg.name}
+											</SelectItem>
+										))}
 								</SelectContent>
 							</Select>
 						</div>
 
 						<div className="grid grid-cols-2 gap-4">
-							<div>
+							<div className="space-y-2">
 								<Label htmlFor="startDate">Start Date</Label>
 								<Input
 									id="startDate"
@@ -139,7 +151,7 @@ export default function EditBatchPage() {
 									required
 								/>
 							</div>
-							<div>
+							<div className="space-y-2">
 								<Label htmlFor="endDate">End Date</Label>
 								<Input
 									id="endDate"
@@ -156,7 +168,7 @@ export default function EditBatchPage() {
 							</div>
 						</div>
 
-						<div>
+						<div className="space-y-2">
 							<Label htmlFor="totalSeats">Total Seats</Label>
 							<Input
 								id="totalSeats"
@@ -185,103 +197,86 @@ export default function EditBatchPage() {
 						{formData.coordinators.length > 0 && (
 							<div className="space-y-2">
 								<Label>Current Coordinators</Label>
-								{formData.coordinators.map((coordinator, index) => (
-									<div
-										key={index}
-										className="flex items-center justify-between p-3 border rounded-lg"
-									>
-										<div className="flex items-center gap-3">
-											<div>
-												<p className="font-medium">
-													{coordinator.name}
-												</p>
-												<p className="text-sm text-muted-foreground">
-													{coordinator.phone} •{" "}
-													{coordinator.email}
-												</p>
-											</div>
-											<Badge variant="outline">
-												{coordinator.type}
-											</Badge>
-										</div>
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											onClick={() => removeCoordinator(index)}
-										>
-											<X className="w-4 h-4" />
-										</Button>
+								{formData.coordinators.length > 0 && (
+									<div className="space-y-2 mt-2">
+										<Label>Coordinators</Label>
+										{formData.coordinators.map(
+											(coordinator, index) => (
+												<div
+													key={index}
+													className="flex items-center justify-between p-3 border rounded-lg"
+												>
+													<div className="flex items-center gap-3">
+														<div>
+															<p className="font-medium">
+																{coordinator.name}
+															</p>
+															<p className="text-sm text-muted-foreground">
+																{coordinator.phone} •{" "}
+																{coordinator.email}
+															</p>
+														</div>
+														<Badge variant="outline">
+															{coordinator.role.name}
+														</Badge>
+													</div>
+													<Button
+														type="button"
+														variant="ghost"
+														size="sm"
+														onClick={() =>
+															removeCoordinator(index)
+														}
+													>
+														<X className="w-4 h-4" />
+													</Button>
+												</div>
+											)
+										)}
 									</div>
-								))}
+								)}
 							</div>
 						)}
 
 						{/* Add New Coordinator */}
 						<div className="space-y-3 p-4 border rounded-lg bg-muted/50">
 							<Label>Add New Coordinator</Label>
-							<div className="grid grid-cols-2 gap-3">
-								<Input
-									placeholder="Name"
-									value={newCoordinator.name}
-									onChange={(e) =>
-										setNewCoordinator((prev) => ({
-											...prev,
-											name: e.target.value,
-										}))
-									}
-								/>
-								<Select
-									value={newCoordinator.type}
-									onValueChange={(value) =>
-										setNewCoordinator((prev) => ({
-											...prev,
-											type: value,
-										}))
-									}
-								>
-									<SelectTrigger>
-										<SelectValue placeholder="Role" />
-									</SelectTrigger>
-									<SelectContent>
-										{coordinatorTypes.map((type) => (
-											<SelectItem key={type} value={type}>
-												{type}
-											</SelectItem>
+							<Popover>
+								<PopoverTrigger asChild>
+									<Button
+										variant="outline"
+										role="combobox"
+										className="w-full justify-between"
+									>
+										{formData.coordinators.length > 0
+											? `${formData.coordinators.length} selected`
+											: "Select coordinators"}
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent className="w-full max-h-60 overflow-y-auto">
+									<div className="space-y-2 w-full">
+										{employees.map((emp) => (
+											<div
+												key={emp.id}
+												className="flex items-center space-x-2 cursor-pointer"
+												onClick={() => toggleCoordinator(emp)}
+											>
+												<Checkbox
+													checked={formData.coordinators.some(
+														(c) => c.id === emp.id
+													)}
+													onCheckedChange={() =>
+														toggleCoordinator(emp)
+													}
+												/>
+												<span>
+													{emp.name} ({emp.role.name})
+												</span>
+											</div>
 										))}
-									</SelectContent>
-								</Select>
-								<Input
-									placeholder="Phone"
-									value={newCoordinator.phone}
-									onChange={(e) =>
-										setNewCoordinator((prev) => ({
-											...prev,
-											phone: e.target.value,
-										}))
-									}
-								/>
-								<Input
-									placeholder="Email"
-									type="email"
-									value={newCoordinator.email}
-									onChange={(e) =>
-										setNewCoordinator((prev) => ({
-											...prev,
-											email: e.target.value,
-										}))
-									}
-								/>
-							</div>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={addCoordinator}
-								className="w-full bg-transparent"
-							>
-								<Plus className="w-4 h-4 mr-2" />
-								Add Coordinator
-							</Button>
+									</div>
+								</PopoverContent>
+							</Popover>
 						</div>
 					</CardContent>
 				</Card>
