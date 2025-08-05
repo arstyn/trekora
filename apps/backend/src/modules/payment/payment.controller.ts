@@ -10,10 +10,11 @@ import {
   Request,
   Query,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
   BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { PaymentService } from './payment.service';
 import { 
   CreatePaymentDto, 
@@ -28,9 +29,7 @@ import {
 } from 'src/dto/payment.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import * as fs from 'fs';
+import { FileManager } from 'src/database/entity/file-manager.entity';
 
 @UseGuards(AuthGuard)
 @Controller('api/payments')
@@ -81,9 +80,11 @@ export class PaymentController {
   @Get(':id')
   findOne(
     @Param('id') id: string,
+    @Query('includeReceipts') includeReceipts: string,
     @Request() req: ApiRequestJWT,
   ): Promise<PaymentResponseDto> {
-    return this.paymentService.findOne(id, req.user.organizationId);
+    const shouldIncludeReceipts = includeReceipts === 'true';
+    return this.paymentService.findOne(id, req.user.organizationId, shouldIncludeReceipts);
   }
 
   @Patch(':id')
@@ -132,52 +133,62 @@ export class PaymentController {
   }
 
   @Post(':id/upload-receipt')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const uploadPath = './uploads/payment-receipts';
-          if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
-          }
-          cb(null, uploadPath);
-        },
-        filename: (req, file, cb) => {
-          const paymentId = req.params.id;
-          const timestamp = Date.now();
-          const ext = extname(file.originalname);
-          cb(null, `payment-${paymentId}-${timestamp}${ext}`);
-        },
-      }),
-      fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|pdf/;
-        const extName = allowedTypes.test(extname(file.originalname).toLowerCase());
-        const mimeType = allowedTypes.test(file.mimetype);
-        
-        if (mimeType && extName) {
-          return cb(null, true);
-        } else {
-          cb(new BadRequestException('Only images (JPEG, JPG, PNG) and PDF files are allowed'), false);
-        }
-      },
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB limit
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file'))
   async uploadReceipt(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @Request() req: ApiRequestJWT,
-  ): Promise<PaymentResponseDto> {
+  ): Promise<FileManager> {
     if (!file) {
       throw new BadRequestException('File is required');
     }
 
-    const updateDto: UpdatePaymentDto = {
-      receiptFilePath: file.path,
-    };
+    return this.paymentService.uploadReceiptFile(
+      id,
+      file,
+      req.user.organizationId,
+    );
+  }
 
-    return this.paymentService.update(id, updateDto, req.user.organizationId);
+  @Post(':id/upload-receipts')
+  @UseInterceptors(FilesInterceptor('files'))
+  async uploadReceipts(
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Request() req: ApiRequestJWT,
+  ): Promise<FileManager[]> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('At least one file is required');
+    }
+
+    return this.paymentService.uploadReceiptFiles(
+      id,
+      files,
+      req.user.organizationId,
+    );
+  }
+
+  @Get(':id/receipts')
+  async getPaymentReceipts(
+    @Param('id') id: string,
+    @Request() req: ApiRequestJWT,
+  ): Promise<FileManager[]> {
+    return this.paymentService.getPaymentReceiptFiles(
+      id,
+      req.user.organizationId,
+    );
+  }
+
+  @Delete(':id/receipts/:fileId')
+  async deletePaymentReceipt(
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+    @Request() req: ApiRequestJWT,
+  ): Promise<{ deleted: boolean }> {
+    return this.paymentService.deleteReceiptFile(
+      id,
+      fileId,
+      req.user.organizationId,
+    );
   }
 } 

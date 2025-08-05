@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FileManager } from '../../database/entity/file-manager.entity';
+import { FileManager, RelatedType } from '../../database/entity/file-manager.entity';
 import * as fs from 'fs';
-import { join } from 'path';
 
 @Injectable()
 export class FileManagerService {
@@ -49,6 +48,13 @@ export class FileManagerService {
 
   findOne(id: string) {
     return this.fileManagerRepository.findOne({ where: { id } });
+  }
+
+  findByRelatedEntity(relatedId: string, relatedType: RelatedType) {
+    return this.fileManagerRepository.find({
+      where: { relatedId, relatedType },
+      order: { createdAt: 'DESC' }
+    });
   }
 
   update(id: string, data: Partial<FileManager>) {

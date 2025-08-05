@@ -18,6 +18,7 @@ export enum RelatedType {
   ITINERARY = 'itinerary',
   LEAD = 'lead',
   LEAD_UPDATES = 'lead-updates',
+  PAYMENT = 'payment',
 }
 
 @Entity({ name: 'file_manager' })
@@ -35,7 +36,7 @@ export class FileManager extends BaseEntity {
     type: 'enum',
     enum: RelatedType,
     default: RelatedType.NA,
-    name: 'related_id',
+    name: 'related_type',
   })
   relatedType: RelatedType;
 

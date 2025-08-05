@@ -6,8 +6,10 @@ import { Booking } from 'src/database/entity/booking.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
 import { Batch } from 'src/database/entity/batch.entity';
+import { FileManager } from 'src/database/entity/file-manager.entity';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
+import { FileManagerService } from '../file-manager/file-manager.service';
 
 @Module({
   imports: [
@@ -17,11 +19,12 @@ import { PaymentService } from './payment.service';
       Customer,
       Package,
       Batch,
+      FileManager,
     ]),
     JwtModule.register({}),
   ],
   controllers: [PaymentController],
-  providers: [PaymentService],
+  providers: [PaymentService, FileManagerService],
   exports: [PaymentService],
 })
 export class PaymentModule {} 
