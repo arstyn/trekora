@@ -62,12 +62,14 @@ export default function ViewPackagePage() {
 			{/* Hero Section */}
 			<section className="relative">
 				<div className="h-96 relative">
-					<img
-						// src={packageData.thumbnail || '/placeholder.svg'}
-						src={"/placeholder.svg"}
-						alt={packageData.name || ""}
-						className="object-cover opacity-30"
-					/>
+					<div>
+						<img
+							// src={packageData.thumbnail || '/placeholder.svg'}
+							src={"/placeholder.svg"}
+							alt={packageData.name || ""}
+							className="object-cover opacity-30 w-full h-96"
+						/>
+					</div>
 					<div className="absolute inset-0 bg-opacity-40" />
 					<div className="absolute bottom-6 left-6">
 						<div className="flex items-center gap-4 mb-4">
@@ -98,7 +100,7 @@ export default function ViewPackagePage() {
 						</p>
 					</div>
 				</div>
-				<NavLink to={`/edit-package/${id}`} className="absolute top-5 right-5">
+				<NavLink to={`/packages/edit/${id}`} className="absolute top-5 right-5">
 					<Button>
 						<Edit className="w-4 h-4 mr-2" />
 						Edit Package
