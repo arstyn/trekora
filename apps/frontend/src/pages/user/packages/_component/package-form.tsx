@@ -455,7 +455,7 @@ export function PackageForm({
 		<div className="min-h-screen ">
 			<Form {...form}>
 				<form>
-					<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+					<div className="px-4 sm:px-6 lg:px-8 py-8">
 						<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 							{/* Main Form */}
 							<div className="lg:col-span-2 space-y-6">
@@ -2083,7 +2083,7 @@ export function PackageForm({
 									</CardContent>
 								</Card>
 
-								{/* Pre-Trip Checklist */}
+								{/* Pre-Trip Checklist - Not Needed */}
 								<Card>
 									<CardHeader>
 										<div className="flex justify-between items-center">
@@ -2131,24 +2131,6 @@ export function PackageForm({
 											>
 												<div className="flex justify-between items-center">
 													<div className="flex items-center gap-2">
-														<FormField
-															control={form.control}
-															name={`preTripChecklist.${index}.completed`}
-															render={({ field }) => (
-																<FormItem>
-																	<FormControl>
-																		<Checkbox
-																			checked={
-																				field.value
-																			}
-																			onCheckedChange={
-																				field.onChange
-																			}
-																		/>
-																	</FormControl>
-																</FormItem>
-															)}
-														/>
 														<h4 className="font-medium">
 															Checklist Item
 														</h4>
@@ -2306,64 +2288,6 @@ export function PackageForm({
 												</div>
 											</div>
 										))}
-
-										{/* Checklist Summary */}
-										<div className="mt-6 p-4  rounded-lg">
-											<h4 className="font-medium mb-3">
-												Checklist Summary
-											</h4>
-											<div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-												<div className="text-center">
-													<div className="text-2xl font-bold text-primary">
-														{form
-															.watch("preTripChecklist")
-															?.filter(
-																(item) =>
-																	item.category ===
-																	"documents"
-															).length || 0}
-													</div>
-													<div className="">Documents</div>
-												</div>
-												<div className="text-center">
-													<div className="text-2xl font-bold text-primary">
-														{form
-															.watch("preTripChecklist")
-															?.filter(
-																(item) =>
-																	item.category ===
-																	"booking"
-															).length || 0}
-													</div>
-													<div className="">Bookings</div>
-												</div>
-												<div className="text-center">
-													<div className="text-2xl font-bold text-primary">
-														{form
-															.watch("preTripChecklist")
-															?.filter(
-																(item) =>
-																	item.category ===
-																	"preparation"
-															).length || 0}
-													</div>
-													<div className="">Preparation</div>
-												</div>
-												<div className="text-center">
-													<div className="text-2xl font-bold text-primary">
-														{form
-															.watch("preTripChecklist")
-															?.filter(
-																(item) => item.completed
-															).length || 0}
-														/
-														{form.watch("preTripChecklist")
-															?.length || 0}
-													</div>
-													<div className="">Completed</div>
-												</div>
-											</div>
-										</div>
 									</CardContent>
 								</Card>
 							</div>
@@ -2624,11 +2548,6 @@ export function PackageForm({
 												Checklist Items:
 											</span>
 											<span className="text-sm font-medium">
-												{form
-													.watch("preTripChecklist")
-													?.filter((item) => item.completed)
-													.length || 0}
-												/
 												{form.watch("preTripChecklist")?.length ||
 													0}
 											</span>

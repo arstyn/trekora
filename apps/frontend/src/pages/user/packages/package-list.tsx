@@ -47,7 +47,7 @@ export default function Packages() {
 	return (
 		<div className="min-h-screen">
 			{/* Main Content */}
-			<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 py-6">
+			<main className="px-4 sm:px-6 lg:px-6 py-6">
 				{/* Stats */}
 				<div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
 					<Card>
