@@ -1,7 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPaymentTypeAndArchiveStatus1734567890123 implements MigrationInterface {
-  name = 'AddPaymentTypeAndArchiveStatus1734567890123';
+export class AddPaymentTypeAndArchiveStatus1753891159845
+  implements MigrationInterface
+{
+  name = 'AddPaymentTypeAndArchiveStatus1753891159845';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create PaymentType enum
@@ -39,4 +41,4 @@ export class AddPaymentTypeAndArchiveStatus1734567890123 implements MigrationInt
       -- This would require backing up data, dropping enum, recreating, and restoring data
     `);
   }
-} 
+}
