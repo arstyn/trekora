@@ -23,7 +23,7 @@ export const uploadFiles = async (
   formData.append('relatedType', relatedType);
 
   try {
-    const response = await axiosInstance.post<FileUploadResponse[]>('/file-manager/upload', formData, {
+    const response = await axiosInstance.post<FileUploadResponse[]>(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/file-manager/upload`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -47,7 +47,7 @@ export const uploadSingleFile = async (
 
 export const deleteFile = async (fileId: string): Promise<void> => {
   try {
-    await axiosInstance.delete(`/file-manager/${fileId}`);
+    await axiosInstance.delete(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/file-manager/${fileId}`);
   } catch (error) {
     console.error('File deletion failed:', error);
     throw new Error('Failed to delete file');
@@ -60,7 +60,7 @@ export const getFilesByEntity = async (
 ): Promise<FileUploadResponse[]> => {
   try {
     console.log(relatedId, relatedType);
-    const response = await axiosInstance.get<FileUploadResponse[]>(`/file-manager/related-id/${relatedId}`);
+    const response = await axiosInstance.get<FileUploadResponse[]>(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/file-manager/related-id/${relatedId}`);
     return response.data;
   } catch (error) {
     console.error('Failed to fetch files:', error);

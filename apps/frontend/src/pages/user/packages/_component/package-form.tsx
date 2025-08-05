@@ -28,6 +28,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
 import { uploadSingleFile, deleteFile, type FileUploadResponse } from "@/lib/file-upload";
+import { getFileUrl } from "@/lib/utils";
 import { packageFormSchema, type PackageFormData } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, Plus, Save, Trash2, Upload, X } from "lucide-react";
@@ -526,7 +527,7 @@ export function PackageForm({
 										<div className="flex items-center gap-4">
 											<div className="relative">
 												<img
-													src={thumbnailFile?.url || "/placeholder.svg"}
+													src={thumbnailFile?.url ? getFileUrl(thumbnailFile?.url) : "/placeholder.svg"}
 													alt="Package thumbnail"
 													width={200}
 													height={150}
@@ -848,7 +849,7 @@ export function PackageForm({
 																	className="relative group"
 																>
 																	<img
-																		src={fileData.url || "/placeholder.svg"}
+																		src={fileData.url ? getFileUrl(fileData.url) : "/placeholder.svg"}
 																		alt={`Day ${dayIndex + 1} image ${imageIndex + 1}`}
 																		width={150}
 																		height={100}
