@@ -29,14 +29,13 @@ export class FileManager extends BaseEntity {
   @Column()
   filename: string;
 
-  @Column({ name: 'related_id' })
+  @Column()
   relatedId: string;
 
   @Column({
     type: 'enum',
     enum: RelatedType,
     default: RelatedType.NA,
-    name: 'related_type',
   })
   relatedType: RelatedType;
 
