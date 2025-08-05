@@ -18,11 +18,12 @@ import type { IPackages } from "@/types/package.schema";
 import { Save, X } from "lucide-react";
 import type React from "react";
 import { useLayoutEffect, useState } from "react";
-import { NavLink, useParams } from "react-router-dom";
+import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 export default function EditBatchPage() {
 	const { id } = useParams<{ id: string }>();
+	const navigate = useNavigate();
 	const [packages, setPackages] = useState<IPackages[]>([]);
 	const [employees, setEmployees] = useState<IEmployee[]>([]);
 
@@ -54,6 +55,17 @@ export default function EditBatchPage() {
 				coordinators: formData.coordinators.map((c) => c.id),
 			};
 			await axiosInstance.patch(`/batches/${id}`, payload);
+			toast.success("Batch updated successfully", {
+				action: (
+					<Button
+						onClick={() => {
+							navigate(`/batches/${id}`);
+						}}
+					>
+						View Batch
+					</Button>
+				),
+			});
 		} catch (error: unknown) {
 			if (error instanceof Error) {
 				toast.error(error.message);
@@ -92,7 +104,7 @@ export default function EditBatchPage() {
 		};
 
 		getData();
-	}, []);
+	}, [id]);
 
 	return (
 		<div className="container mx-auto p-6 space-y-6">
@@ -198,8 +210,7 @@ export default function EditBatchPage() {
 							<div className="space-y-2">
 								<Label>Current Coordinators</Label>
 								{formData.coordinators.length > 0 && (
-									<div className="space-y-2 mt-2">
-										<Label>Coordinators</Label>
+									<div className="space-y-2">
 										{formData.coordinators.map(
 											(coordinator, index) => (
 												<div

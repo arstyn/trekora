@@ -59,19 +59,52 @@ export class BatchesService {
   async update(id: string, data: UpdateBatchDto): Promise<Batch> {
     const { coordinators, ...rest } = data;
 
-    let coordinatorsData: Employee[] = [];
+    // Fetch current batch including coordinators relation
+    const existingBatch = await this.batchRepo.findOne({
+      where: { id },
+      relations: ['coordinators'],
+    });
 
+    if (!existingBatch) throw new NotFoundException('Batch not found');
+
+    // Prepare update object by comparing fields
+    const updateData: Partial<Batch> = {};
+
+    for (const key in rest) {
+      if (
+        rest[key] !== undefined &&
+        rest[key] !== (existingBatch as any)[key]
+      ) {
+        (updateData as any)[key] = rest[key];
+      }
+    }
+
+    // Handle coordinators comparison
     if (coordinators) {
-      coordinatorsData = await this.empRepo.findBy({
+      const coordinatorsData = await this.empRepo.findBy({
         id: In(coordinators),
+      });
+
+      const existingIds = existingBatch.coordinators.map((c) => c.id).sort();
+      const newIds = coordinatorsData.map((c) => c.id).sort();
+
+      const isDifferent =
+        existingIds.length !== newIds.length ||
+        !existingIds.every((id, index) => id === newIds[index]);
+
+      if (isDifferent) {
+        updateData.coordinators = coordinatorsData;
+      }
+    }
+
+    // Only update if there is something to update
+    if (Object.keys(updateData).length > 0) {
+      await this.batchRepo.save({
+        ...existingBatch,
+        ...updateData,
       });
     }
 
-    await this.findOne(id); // check existence
-    await this.batchRepo.update(id, {
-      ...rest,
-      coordinators: coordinatorsData,
-    });
     return this.findOne(id);
   }
 
