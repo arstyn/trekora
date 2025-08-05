@@ -26,6 +26,7 @@ import {
 	PaymentStatus 
 } from "@/types/payment.types";
 import { useToast } from "@/hooks/use-toast";
+import { getFileUrl } from "@/lib/utils";
 
 export default function EditPaymentPage() {
 	const { id } = useParams<{ id: string }>();
@@ -684,7 +685,7 @@ export default function EditPaymentPage() {
 																	type="button"
 																	size="sm" 
 																	variant="ghost"
-																	onClick={() => window.open(file.url, '_blank')}
+																	onClick={() => window.open(getFileUrl(file.url), '_blank')}
 																>
 																	<Eye className="w-4 h-4" />
 																</Button>
@@ -692,7 +693,16 @@ export default function EditPaymentPage() {
 																	type="button"
 																	size="sm" 
 																	variant="ghost"
-																	onClick={() => window.open(file.url, '_blank')}
+																	onClick={() => {
+																		// For download, we can also trigger a download attribute
+																		const link = document.createElement('a');
+																		link.href = getFileUrl(file.url);
+																		link.download = file.filename;
+																		link.target = '_blank';
+																		document.body.appendChild(link);
+																		link.click();
+																		document.body.removeChild(link);
+																	}}
 																>
 																	<Download className="w-4 h-4" />
 																</Button>

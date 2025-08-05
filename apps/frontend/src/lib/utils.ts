@@ -31,3 +31,25 @@ export function formatDate(dateString: string): string {
 		year: "numeric",
 	}).format(date);
 }
+
+/**
+ * Convert relative file URL to absolute backend URL for file serving
+ */
+export function getFileUrl(relativeUrl: string): string {
+	const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+	
+	// Remove '/api' from base URL since our relative URL already includes '/api'
+	const backendBaseUrl = BASE_URL.replace('/api', '');
+	
+	// Handle both relative URLs that start with '/api' and absolute URLs
+	if (relativeUrl.startsWith('http')) {
+		return relativeUrl; // Already absolute
+	}
+	
+	if (relativeUrl.startsWith('/api')) {
+		return `${backendBaseUrl}${relativeUrl}`;
+	}
+	
+	// Fallback: assume it's a relative path and prepend full backend URL
+	return `${BASE_URL}${relativeUrl}`;
+}

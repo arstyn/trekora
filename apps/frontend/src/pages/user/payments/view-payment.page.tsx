@@ -23,6 +23,7 @@ import { NavLink, useParams } from "react-router-dom";
 import PaymentService from "@/services/payment.service";
 import type { Payment, FileManager } from "@/types/payment.types";
 import { useToast } from "@/hooks/use-toast";
+import { getFileUrl } from "@/lib/utils";
 
 export default function PaymentDetailsPage() {
 	const { id } = useParams<{ id: string }>();
@@ -223,10 +224,6 @@ export default function PaymentDetailsPage() {
 		return extension === 'pdf' ? FileText : Eye;
 	};
 
-	const formatFileSize = (url: string) => {
-		// This is a placeholder - in a real app you might want to store file size
-		return "Unknown size";
-	};
 
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat('en-US', {
@@ -399,7 +396,7 @@ export default function PaymentDetailsPage() {
 								onClick={() => {
 									// Download first receipt file or show dropdown for multiple
 									if (receiptFiles.length === 1) {
-										window.open(receiptFiles[0].url, '_blank');
+										window.open(getFileUrl(receiptFiles[0].url), '_blank');
 									}
 								}}
 							>
@@ -656,14 +653,23 @@ export default function PaymentDetailsPage() {
 													<Button 
 														size="sm" 
 														variant="ghost"
-														onClick={() => window.open(file.url, '_blank')}
+														onClick={() => window.open(getFileUrl(file.url), '_blank')}
 													>
 														<Eye className="w-4 h-4" />
 													</Button>
 													<Button 
 														size="sm" 
 														variant="ghost"
-														onClick={() => window.open(file.url, '_blank')}
+														onClick={() => {
+															// For download, we can also trigger a download attribute
+															const link = document.createElement('a');
+															link.href = getFileUrl(file.url);
+															link.download = file.filename;
+															link.target = '_blank';
+															document.body.appendChild(link);
+															link.click();
+															document.body.removeChild(link);
+														}}
 													>
 														<Download className="w-4 h-4" />
 													</Button>
