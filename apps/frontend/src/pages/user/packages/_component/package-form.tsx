@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
+import { uploadSingleFile, deleteFile, type FileUploadResponse } from "@/lib/file-upload";
 import { packageFormSchema, type PackageFormData } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, Plus, Save, Trash2, Upload, X } from "lucide-react";
@@ -167,8 +168,8 @@ export function PackageForm({
 	onSuccess,
 }: PackageFormProps) {
 	const [isLoading, setIsLoading] = useState(false);
-	const [thumbnail, setThumbnail] = useState("");
-	console.log("🚀 ~ package-form.tsx:172 ~ thumbnail:", thumbnail);
+	const [thumbnailFile, setThumbnailFile] = useState<FileUploadResponse | null>(null);
+	const [itineraryImageFiles, setItineraryImageFiles] = useState<{ [dayIndex: number]: FileUploadResponse[] }>({});
 	const [newInclusion, setNewInclusion] = useState("");
 	const [newExclusion, setNewExclusion] = useState("");
 
@@ -228,17 +229,17 @@ export function PackageForm({
 			const loadPackage = async () => {
 				try {
 					const res = await axiosInstance.get<PackageFormData>(
-						`/packages/${packageId}`
+						`/api/packages/${packageId}`
 					);
-					if (res) {
+					if (res.data) {
 						form.reset(res.data);
-						setThumbnail(res.data.thumbnail || "");
+						// Note: thumbnail and images will be loaded separately if needed
 					}
 				} catch (error) {
 					if (error instanceof Error) {
 						toast.error(error.message);
 					} else {
-						toast.error("Failed to load updates");
+						toast.error("Failed to load package");
 					}
 				}
 			};
@@ -246,43 +247,86 @@ export function PackageForm({
 		}
 	}, [isEditing, packageId, form]);
 
-	const handleThumbnailUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+	const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		if (file) {
-			const reader = new FileReader();
-			reader.onload = (e) => {
-				const result = e.target?.result as string;
-				setThumbnail(result);
-				form.setValue("thumbnail", result);
-			};
-			reader.readAsDataURL(file);
+			try {
+				setIsLoading(true);
+				const relatedId = packageId || 'temp-package-' + Date.now();
+				const uploadedFile = await uploadSingleFile(file, relatedId, 'package');
+				setThumbnailFile(uploadedFile);
+				form.setValue("thumbnail", uploadedFile.url);
+				toast.success("Thumbnail uploaded successfully");
+			} catch (error) {
+				console.log(error);
+				toast.error("Failed to upload thumbnail");
+			} finally {
+				setIsLoading(false);
+			}
 		}
 	};
 
-	const handleDayImageUpload = (
+	const handleDayImageUpload = async (
 		dayIndex: number,
 		event: React.ChangeEvent<HTMLInputElement>
 	) => {
 		const file = event.target.files?.[0];
 		if (file) {
-			const reader = new FileReader();
-			reader.onload = (e) => {
-				const result = e.target?.result as string;
-				const currentImages = form.getValues(`itinerary.${dayIndex}.images`);
-				if (currentImages)
-					form.setValue(`itinerary.${dayIndex}.images`, [
-						...currentImages,
-						result,
-					]);
-			};
-			reader.readAsDataURL(file);
+			try {
+				setIsLoading(true);
+				// Use a temporary ID for new packages, real ID for existing ones
+				const relatedId = packageId || 'temp-itinerary-' + Date.now();
+				const uploadedFile = await uploadSingleFile(file, relatedId, 'itinerary');
+
+				// Update state for display
+				const currentDayFiles = itineraryImageFiles[dayIndex] || [];
+				setItineraryImageFiles(prev => ({
+					...prev,
+					[dayIndex]: [...currentDayFiles, uploadedFile]
+				}));
+
+				// Update form values
+				const currentImages = form.getValues(`itinerary.${dayIndex}.images`) || [];
+				form.setValue(`itinerary.${dayIndex}.images`, [
+					...currentImages,
+					uploadedFile.url,
+				]);
+
+				toast.success("Image uploaded successfully");
+			} catch (error) {
+				console.log(error)
+				toast.error("Failed to upload image");
+			} finally {
+				setIsLoading(false);
+			}
 		}
 	};
 
-	const removeDayImage = (dayIndex: number, imageIndex: number) => {
-		const currentImages = form.getValues(`itinerary.${dayIndex}.images`);
-		const newImages = currentImages?.filter((_, i) => i !== imageIndex);
-		form.setValue(`itinerary.${dayIndex}.images`, newImages);
+	const removeDayImage = async (dayIndex: number, imageIndex: number) => {
+		try {
+			// Remove from file manager if we have the file ID
+			const currentDayFiles = itineraryImageFiles[dayIndex] || [];
+			if (currentDayFiles[imageIndex]) {
+				await deleteFile(currentDayFiles[imageIndex].id);
+			}
+
+			// Update state
+			const newDayFiles = currentDayFiles.filter((_, i) => i !== imageIndex);
+			setItineraryImageFiles(prev => ({
+				...prev,
+				[dayIndex]: newDayFiles
+			}));
+
+			// Update form
+			const currentImages = form.getValues(`itinerary.${dayIndex}.images`);
+			const newImages = currentImages?.filter((_, i) => i !== imageIndex);
+			form.setValue(`itinerary.${dayIndex}.images`, newImages);
+
+			toast.success("Image removed successfully");
+		} catch (error) {
+			console.log(error)
+			toast.error("Failed to remove image");
+		}
 	};
 
 	const addActivity = (dayIndex: number) => {
@@ -384,21 +428,32 @@ export function PackageForm({
 	};
 
 	const onSubmit = async (data: PackageFormData, status: "draft" | "published") => {
-		console.log("🚀 ~ package-form.tsx:385 ~ onSubmit ~ status:", status);
-		console.log("🚀 ~ package-form.tsx:385 ~ onSubmit ~ data:", data);
 		setIsLoading(true);
 		try {
-			// const submitData = {
-			// 	...data,
-			// 	status,
-			// 	thumbnail,
-			// 	id: isEditing ? packageId : null,
-			// };
+			const submitData = {
+				...data,
+				status,
+				thumbnail: thumbnailFile?.url || data.thumbnail || "",
+			};
 
-			toast.success(`Package ${isEditing ? "updated" : "created"} successfully!`);
-			onSuccess?.();
+			let response;
+			if (isEditing && packageId) {
+				response = await axiosInstance.patch(`/api/packages/${packageId}`, submitData);
+			} else {
+				response = await axiosInstance.post('/api/packages', submitData);
+			}
+
+			if (response.data) {
+				toast.success(`Package ${isEditing ? "updated" : "created"} successfully!`);
+				onSuccess?.();
+			}
 		} catch (error) {
-			if (error instanceof Error) {
+			console.error('Package submission error:', error);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			if ((error as any)?.response?.data?.message) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				toast.error((error as any)?.response.data.message);
+			} else if (error instanceof Error) {
 				toast.error(error.message);
 			} else {
 				toast.error(`Failed to ${isEditing ? "update" : "create"} package`);
@@ -471,8 +526,7 @@ export function PackageForm({
 										<div className="flex items-center gap-4">
 											<div className="relative">
 												<img
-													// src={thumbnail || '/placeholder.svg'}
-													src={"/placeholder.svg"}
+													src={thumbnailFile?.url || "/placeholder.svg"}
 													alt="Package thumbnail"
 													width={200}
 													height={150}
@@ -787,25 +841,15 @@ export function PackageForm({
 												<div className="space-y-3">
 													<Label>Day Images</Label>
 													<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-														{form
-															.watch(
-																`itinerary.${dayIndex}.images`
-															)
-															?.map((image, imageIndex) => (
+														{(itineraryImageFiles[dayIndex] || [])
+															.map((fileData, imageIndex) => (
 																<div
-																	key={imageIndex}
+																	key={fileData.id || imageIndex}
 																	className="relative group"
 																>
 																	<img
-																		src={
-																			image ||
-																			"/placeholder.svg"
-																		}
-																		alt={`Day ${
-																			dayIndex + 1
-																		} image ${
-																			imageIndex + 1
-																		}`}
+																		src={fileData.url || "/placeholder.svg"}
+																		alt={`Day ${dayIndex + 1} image ${imageIndex + 1}`}
 																		width={150}
 																		height={100}
 																		className="rounded-lg object-cover border"
@@ -939,20 +983,20 @@ export function PackageForm({
 																		`itinerary.${dayIndex}.activities`
 																	)?.length ?? 0) >
 																		1 && (
-																		<Button
-																			type="button"
-																			variant="ghost"
-																			size="sm"
-																			onClick={() =>
-																				removeActivity(
-																					dayIndex,
-																					activityIndex
-																				)
-																			}
-																		>
-																			<Trash2 className="w-4 h-4" />
-																		</Button>
-																	)}
+																			<Button
+																				type="button"
+																				variant="ghost"
+																				size="sm"
+																				onClick={() =>
+																					removeActivity(
+																						dayIndex,
+																						activityIndex
+																					)
+																				}
+																			>
+																				<Trash2 className="w-4 h-4" />
+																			</Button>
+																		)}
 																</div>
 															)
 														)}
@@ -986,18 +1030,18 @@ export function PackageForm({
 																						const updatedMeals =
 																							checked
 																								? [
-																										...(field.value ||
-																											[]),
-																										meal,
-																								  ]
+																									...(field.value ||
+																										[]),
+																									meal,
+																								]
 																								: field.value?.filter(
-																										(
-																											value
-																										) =>
-																											value !==
-																											meal
-																								  ) ||
-																								  [];
+																									(
+																										value
+																									) =>
+																										value !==
+																										meal
+																								) ||
+																								[];
 																						field.onChange(
 																							updatedMeals
 																						);
@@ -1820,41 +1864,41 @@ export function PackageForm({
 
 										{form.watch("packageLocation.type") ===
 											"local" && (
-											<FormField
-												control={form.control}
-												name="packageLocation.state"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>
-															State/Region
-														</FormLabel>
-														<Select
-															onValueChange={field.onChange}
-															defaultValue={field.value}
-														>
-															<FormControl>
-																<SelectTrigger>
-																	<SelectValue placeholder="Select state" />
-																</SelectTrigger>
-															</FormControl>
-															<SelectContent>
-																{indianStates.map(
-																	(state) => (
-																		<SelectItem
-																			key={state}
-																			value={state}
-																		>
-																			{state}
-																		</SelectItem>
-																	)
-																)}
-															</SelectContent>
-														</Select>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-										)}
+												<FormField
+													control={form.control}
+													name="packageLocation.state"
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>
+																State/Region
+															</FormLabel>
+															<Select
+																onValueChange={field.onChange}
+																defaultValue={field.value}
+															>
+																<FormControl>
+																	<SelectTrigger>
+																		<SelectValue placeholder="Select state" />
+																	</SelectTrigger>
+																</FormControl>
+																<SelectContent>
+																	{indianStates.map(
+																		(state) => (
+																			<SelectItem
+																				key={state}
+																				value={state}
+																			>
+																				{state}
+																			</SelectItem>
+																		)
+																	)}
+																</SelectContent>
+															</Select>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+											)}
 									</CardContent>
 								</Card>
 
@@ -2029,9 +2073,9 @@ export function PackageForm({
 															?.filter(
 																(doc) =>
 																	doc.applicableFor ===
-																		"adults" ||
+																	"adults" ||
 																	doc.applicableFor ===
-																		"all"
+																	"all"
 															)
 															.map((doc, index) => (
 																<li key={index}>
@@ -2050,9 +2094,9 @@ export function PackageForm({
 															?.filter(
 																(doc) =>
 																	doc.applicableFor ===
-																		"children" ||
+																	"children" ||
 																	doc.applicableFor ===
-																		"all"
+																	"all"
 															)
 															.map((doc, index) => (
 																<li key={index}>
@@ -2322,13 +2366,18 @@ export function PackageForm({
 													onSubmit(data, "published")
 												)()
 											}
-											disabled={isLoading}
+											disabled={isLoading || getTotalPaymentPercentage() !== 100}
 										>
 											<Eye className="w-4 h-4 mr-2" />
 											{isEditing
 												? "Update & Publish"
 												: "Publish Package"}
 										</Button>
+										{getTotalPaymentPercentage() !== 100 && (
+											<p className="text-sm text-red-500 mt-2">
+												Payment structure must total exactly 100% to publish
+											</p>
+										)}
 									</CardContent>
 								</Card>
 
@@ -2518,7 +2567,7 @@ export function PackageForm({
 											<Badge
 												variant={
 													form.watch("packageLocation.type") ===
-													"international"
+														"international"
 														? "default"
 														: "secondary"
 												}

@@ -49,16 +49,27 @@ export const mealsBreakdownSchema = z.object({
 });
 
 export const transportationSchema = z.object({
-  toMode: z.string().nullable().optional(),
-  toDetails: z.string().nullable().optional(),
-  toIncluded: z.boolean().optional(),
-  fromMode: z.string().nullable().optional(),
-  fromDetails: z.string().nullable().optional(),
-  fromIncluded: z.boolean().optional(),
-  duringMode: z.string().nullable().optional(),
-  duringDetails: z.string().nullable().optional(),
-  duringIncluded: z.boolean().optional(),
-  packageId: z.string(),
+  toDestination: z
+    .object({
+      mode: z.string().optional(),
+      details: z.string().optional(),
+      included: z.boolean().optional(),
+    })
+    .optional(),
+  fromDestination: z
+    .object({
+      mode: z.string().optional(),
+      details: z.string().optional(),
+      included: z.boolean().optional(),
+    })
+    .optional(),
+  duringTrip: z
+    .object({
+      mode: z.string().optional(),
+      details: z.string().optional(),
+      included: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export const itineraryDaySchema = z.object({

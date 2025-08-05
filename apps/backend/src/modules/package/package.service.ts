@@ -174,10 +174,21 @@ export class PackageService {
       }
 
       if (transportation) {
-        const entity = this.transportationRepository.create({
-          ...transportation,
+        // Transform nested structure to flat structure for database
+        const transportationData = {
+          toMode: transportation.toDestination?.mode || undefined,
+          toDetails: transportation.toDestination?.details || undefined,
+          toIncluded: transportation.toDestination?.included || false,
+          fromMode: transportation.fromDestination?.mode || undefined,
+          fromDetails: transportation.fromDestination?.details || undefined,
+          fromIncluded: transportation.fromDestination?.included || false,
+          duringMode: transportation.duringTrip?.mode || undefined,
+          duringDetails: transportation.duringTrip?.details || undefined,
+          duringIncluded: transportation.duringTrip?.included || false,
           packageId: savedPackage.id,
-        } as Transportation);
+        };
+        
+        const entity = this.transportationRepository.create(transportationData);
         await queryRunner.manager.save(entity);
       }
 
@@ -204,8 +215,45 @@ export class PackageService {
   }
 
   async findOne(id: string): Promise<Package> {
-    const pkg = await this.packageRepository.findOneBy({ id });
+    const pkg = await this.packageRepository.findOne({
+      where: { id },
+      relations: [
+        'inclusions',
+        'exclusions',
+        'paymentStructure',
+        'cancellationStructure',
+        'cancellationPolicy',
+        'mealsBreakdown',
+        'transportation',
+        'packageLocation',
+        'itinerary',
+        'documentRequirements',
+        'preTripChecklist',
+      ],
+    });
     if (!pkg) throw new NotFoundException('Package not found');
+    
+    if (pkg.transportation) {
+      const transformedTransportation = {
+        toDestination: {
+          mode: pkg.transportation.toMode,
+          details: pkg.transportation.toDetails,
+          included: pkg.transportation.toIncluded,
+        },
+        fromDestination: {
+          mode: pkg.transportation.fromMode,
+          details: pkg.transportation.fromDetails,
+          included: pkg.transportation.fromIncluded,
+        },
+        duringTrip: {
+          mode: pkg.transportation.duringMode,
+          details: pkg.transportation.duringDetails,
+          included: pkg.transportation.duringIncluded,
+        },
+      };
+      (pkg as any).transportation = transformedTransportation;
+    }
+    
     return pkg;
   }
 
@@ -228,8 +276,152 @@ export class PackageService {
       ...rest
     } = updatePackageDto;
 
-    await this.packageRepository.update(id, rest);
-    return this.findOne(id);
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Update main package
+      await queryRunner.manager.update(Package, id, rest);
+
+      // Delete existing related entities to recreate them
+      await queryRunner.manager.delete(CancellationPolicy, { packageId: id });
+      await queryRunner.manager.delete(CancellationTier, { packageId: id });
+      await queryRunner.manager.delete(DocumentRequirement, { packageId: id });
+      await queryRunner.manager.delete(Inclusion, { packageId: id });
+      await queryRunner.manager.delete(Exclusion, { packageId: id });
+      await queryRunner.manager.delete(ItineraryDay, { packageId: id });
+      await queryRunner.manager.delete(ChecklistItem, { packageId: id });
+      await queryRunner.manager.delete(PaymentMilestone, { packageId: id });
+      await queryRunner.manager.delete(MealsBreakdown, { packageId: id });
+      await queryRunner.manager.delete(Transportation, { packageId: id });
+      await queryRunner.manager.delete(PackageLocation, { packageId: id });
+
+      // Recreate all related entities (same logic as create)
+      if (cancellationPolicy) {
+        for (const policy of cancellationPolicy) {
+          const entity = this.cancellationPolicyRepository.create({
+            text: policy,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (cancellationStructure) {
+        for (const tier of cancellationStructure) {
+          const entity = this.cancellationTierRepository.create({
+            ...tier,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (documentRequirements) {
+        for (const doc of documentRequirements) {
+          const entity = this.documentRequirementRepository.create({
+            ...doc,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (inclusions) {
+        for (const item of inclusions) {
+          const entity = this.inclusionRepository.create({
+            item,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (exclusions) {
+        for (const item of exclusions) {
+          const entity = this.exclusionRepository.create({
+            item,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (itinerary) {
+        for (const day of itinerary) {
+          const entity = this.itineraryDayRepository.create({
+            ...day,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (preTripChecklist) {
+        for (const item of preTripChecklist) {
+          const entity = this.checklistItemRepository.create({
+            ...item,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (paymentStructure) {
+        for (const milestone of paymentStructure) {
+          const entity = this.paymentMilestoneRepository.create({
+            ...milestone,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (mealsBreakdown) {
+        const entity = this.mealsBreakdownRepository.create({
+          ...mealsBreakdown,
+          packageId: id,
+        });
+        await queryRunner.manager.save(entity);
+      }
+
+      if (packageLocation) {
+        const entity = this.packageLocationRepository.create({
+          ...packageLocation,
+          packageId: id,
+        });
+        await queryRunner.manager.save(entity);
+      }
+
+      if (transportation) {
+        // Transform nested structure to flat structure for database
+        const transportationData = {
+          toMode: transportation.toDestination?.mode || undefined,
+          toDetails: transportation.toDestination?.details || undefined,
+          toIncluded: transportation.toDestination?.included || false,
+          fromMode: transportation.fromDestination?.mode || undefined,
+          fromDetails: transportation.fromDestination?.details || undefined,
+          fromIncluded: transportation.fromDestination?.included || false,
+          duringMode: transportation.duringTrip?.mode || undefined,
+          duringDetails: transportation.duringTrip?.details || undefined,
+          duringIncluded: transportation.duringTrip?.included || false,
+          packageId: id,
+        };
+        
+        const entity = this.transportationRepository.create(transportationData);
+        await queryRunner.manager.save(entity);
+      }
+
+      await queryRunner.commitTransaction();
+      return this.findOne(id);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async remove(id: string): Promise<void> {
