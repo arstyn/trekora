@@ -472,7 +472,7 @@ export class PaymentService {
   async getPaymentReceiptFiles(
     paymentId: string,
     organizationId: string,
-  ): Promise<FileManager[]> {
+  ){
     // Verify payment exists and user has access
     await this.findOne(paymentId, organizationId);
 

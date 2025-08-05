@@ -35,6 +35,7 @@ import { PaymentModule } from './modules/payment/payment.module';
       load: [configuration],
       isGlobal: true,
     }),
+
     DatabaseModule,
     ScheduleModule.forRoot(),
     UserModule,

@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   Res,
   StreamableFile,
+  NotFoundException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { createReadStream } from 'fs';
@@ -78,18 +79,26 @@ export class FileManagerController {
   async serveFile(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
     const fileRecord = await this.fileManagerService.findOneWithPath(id);
     if (!fileRecord) {
-      throw new Error('File not found');
+      throw new NotFoundException('File not found');
     }
 
     const filePath = join(process.cwd(), fileRecord.url);
-    const file = createReadStream(filePath);
     
-    // Set proper content type
-    const extension = fileRecord.filename.split('.').pop()?.toLowerCase();
-    const contentType = this.getContentType(extension);
-    res.set({ 'Content-Type': contentType });
-    
-    return new StreamableFile(file);
+    try {
+      const file = createReadStream(filePath);
+      
+      // Set proper content type and headers
+      const extension = fileRecord.filename.split('.').pop()?.toLowerCase();
+      const contentType = this.getContentType(extension);
+      res.set({
+        'Content-Type': contentType,
+        'Content-Disposition': `inline; filename="${fileRecord.filename}"`,
+      });
+      
+      return new StreamableFile(file);
+    } catch (error) {
+      throw new NotFoundException('File not found on disk');
+    }
   }
 
   private getContentType(extension?: string): string {

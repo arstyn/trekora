@@ -172,7 +172,7 @@ export class PaymentController {
   async getPaymentReceipts(
     @Param('id') id: string,
     @Request() req: ApiRequestJWT,
-  ): Promise<FileManager[]> {
+  ) {
     return this.paymentService.getPaymentReceiptFiles(
       id,
       req.user.organizationId,
