@@ -47,9 +47,8 @@ export function getFileUrl(relativeUrl: string): string {
 	}
 	
 	if (relativeUrl.startsWith('/api')) {
-		return `${backendBaseUrl}${relativeUrl}`;
+		return `${backendBaseUrl}${relativeUrl.replace('/api', '')}`;
 	}
 	
-	// Fallback: assume it's a relative path and prepend full backend URL
-	return `${BASE_URL}${relativeUrl}`;
+	return `${backendBaseUrl}${relativeUrl}`;
 }

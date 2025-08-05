@@ -389,22 +389,6 @@ export default function PaymentDetailsPage() {
 							</Button>
 						</NavLink>
 					)}
-					{receiptFiles.length > 0 && (
-						<div className="flex gap-2">
-							<Button 
-								variant="outline"
-								onClick={() => {
-									// Download first receipt file or show dropdown for multiple
-									if (receiptFiles.length === 1) {
-										window.open(getFileUrl(receiptFiles[0].url), '_blank');
-									}
-								}}
-							>
-								<Download className="w-4 h-4 mr-2" />
-								{receiptFiles.length === 1 ? 'Download Receipt' : `Download (${receiptFiles.length})`}
-							</Button>
-						</div>
-					)}
 				</div>
 			</div>
 
