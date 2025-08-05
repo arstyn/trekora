@@ -201,7 +201,7 @@ export function PackageForm({
 				thumbnail: undefined,
 			};
 			
-			const response = await axiosInstance.post('/api/packages', draftData);
+			const response = await axiosInstance.post('/packages', draftData);
 			if (response.data?.id) {
 				setPackageId(response.data.id);
 				setIsDraftCreated(true);
@@ -240,7 +240,7 @@ export function PackageForm({
 				thumbnail: thumbnailFile?.url || cleanedData.thumbnail || undefined,
 			};
 
-			await axiosInstance.patch(`/api/packages/${packageId}`, submitData);
+			await axiosInstance.patch(`/packages/${packageId}`, submitData);
 			setLastSaved(new Date());
 		} catch (error) {
 			console.error('Auto-save failed:', error);
@@ -309,9 +309,10 @@ export function PackageForm({
 			const loadPackage = async () => {
 				try {
 					const res = await axiosInstance.get<PackageFormData>(
-						`/api/packages/${packageId}`
+						`/packages/${packageId}`
 					);
 					if (res.data) {
+						console.log(res.data)
 						form.reset(res.data);
 					}
 				} catch (error) {
@@ -548,7 +549,7 @@ export function PackageForm({
 				thumbnail: thumbnailFile?.url || cleanedData.thumbnail || undefined,
 			};
 
-			const response = await axiosInstance.patch(`/api/packages/${packageId}`, submitData);
+			const response = await axiosInstance.patch(`/packages/${packageId}`, submitData);
 
 			if (response.data) {
 				const action = status === "published" ? "published" : "saved";
