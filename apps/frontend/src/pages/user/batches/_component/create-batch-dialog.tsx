@@ -21,6 +21,7 @@ import { useLayoutEffect, useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface CreateBatchDialogProps {
 	open: boolean;
@@ -85,6 +86,18 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
 				toast.error("Failed to load batches");
 			}
 		}
+	};
+
+	const toggleCoordinator = (employee: IEmployee) => {
+		setFormData((prev) => {
+			const alreadySelected = prev.coordinators.some((c) => c.id === employee.id);
+			return {
+				...prev,
+				coordinators: alreadySelected
+					? prev.coordinators.filter((c) => c.id !== employee.id)
+					: [...prev.coordinators, employee],
+			};
+		});
 	};
 
 	return (
@@ -237,38 +250,42 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
 						{/* Add New Coordinator */}
 						<div className="space-y-2 mt-2">
 							<Label>Add Coordinators</Label>
-							<Select
-								onValueChange={(value) => {
-									const selected = employees?.find(
-										(e) => e.id === value
-									);
-									if (
-										selected &&
-										!formData.coordinators.find(
-											(c) => c.id === selected.id
-										)
-									) {
-										setFormData((prev) => ({
-											...prev,
-											coordinators: [
-												...prev.coordinators,
-												selected,
-											],
-										}));
-									}
-								}}
-							>
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder="Select employee to add" />
-								</SelectTrigger>
-								<SelectContent>
-									{employees?.map((emp) => (
-										<SelectItem key={emp.id} value={emp.id}>
-											{emp.name} ({emp.role.name})
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<Popover>
+								<PopoverTrigger asChild>
+									<Button
+										variant="outline"
+										role="combobox"
+										className="w-full justify-between"
+									>
+										{formData.coordinators.length > 0
+											? `${formData.coordinators.length} selected`
+											: "Select coordinators"}
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent className="w-full max-h-60 overflow-y-auto">
+									<div className="space-y-2 w-full">
+										{employees.map((emp) => (
+											<div
+												key={emp.id}
+												className="flex items-center space-x-2 cursor-pointer"
+												onClick={() => toggleCoordinator(emp)}
+											>
+												<Checkbox
+													checked={formData.coordinators.some(
+														(c) => c.id === emp.id
+													)}
+													onCheckedChange={() =>
+														toggleCoordinator(emp)
+													}
+												/>
+												<span>
+													{emp.name} ({emp.role.name})
+												</span>
+											</div>
+										))}
+									</div>
+								</PopoverContent>
+							</Popover>
 						</div>
 
 						{/* Coordinators */}

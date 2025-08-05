@@ -5,22 +5,20 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
-import { UserService } from '../user/user.service';
-import { OrganizationService } from '../organization/organization.service';
-import { UserInviteService } from '../user-invite/user-invite.service';
-import { RoleService } from '../role/role.service';
-import { EmployeeService } from '../employee/employee.service';
-import { SignupFormDTO } from 'src/dto/signup.schema';
-import { ILoginResponse } from 'src/dto/auth.types';
-import { InjectRepository } from '@nestjs/typeorm';
-import { User } from 'src/database/entity/user.entity';
-import { Organization } from 'src/database/entity/organization.entity';
-import { DataSource, Repository } from 'typeorm';
-import { Role } from 'src/database/entity/role.entity';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
+import { Organization } from 'src/database/entity/organization.entity';
+import { Role } from 'src/database/entity/role.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
+import { User } from 'src/database/entity/user.entity';
+import { ILoginResponse } from 'src/dto/auth.types';
+import { SignupFormDTO } from 'src/dto/signup.schema';
+import { DataSource, Repository } from 'typeorm';
+import { EmployeeService } from '../employee/employee.service';
+import { UserInviteService } from '../user-invite/user-invite.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class AuthService {

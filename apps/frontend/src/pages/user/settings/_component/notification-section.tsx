@@ -1,30 +1,125 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
-import { Bell } from "lucide-react"
+import { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Bell } from "lucide-react";
+import axiosInstance from "@/lib/axios";
+import type { IUserNotification } from "@/types/user-notification.types";
 
 interface NotificationSettings {
-  emailNotifications: boolean
-  pushNotifications: boolean
-  smsNotifications: boolean
-  marketingEmails: boolean
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  smsNotifications: boolean;
+  whatsappNotifications: boolean;
+  marketingEmails: boolean;
 }
 
-export function NotificationSection() {
-  const [notifications, setNotifications] = useState<NotificationSettings>({
-    emailNotifications: true,
-    pushNotifications: false,
-    smsNotifications: true,
-    marketingEmails: false,
-  })
+// Default state
+const defaultSettings: NotificationSettings = {
+  emailNotifications: false,
+  pushNotifications: false,
+  smsNotifications: false,
+  whatsappNotifications: false,
+  marketingEmails: false,
+};
 
-  const updateNotification = (key: keyof NotificationSettings, value: boolean) => {
-    setNotifications((prev) => ({ ...prev, [key]: value }))
-  }
+// API keys from backend mapped to internal state
+const apiToStateKeyMap: Record<string, keyof NotificationSettings> = {
+  "Email notification": "emailNotifications",
+  "Push notification": "pushNotifications",
+  "Sms notification": "smsNotifications",
+  "Whatsapp notification": "whatsappNotifications",
+  "Marketing emails": "marketingEmails",
+};
+
+// Internal state mapped back to API keys for sending back
+const stateToApiKeyMap: Record<keyof NotificationSettings, string> = {
+  emailNotifications: "Email notification",
+  pushNotifications: "Push notification",
+  smsNotifications: "Sms notification",
+  whatsappNotifications: "Whatsapp notification",
+  marketingEmails: "Marketing emails",
+};
+
+export function NotificationSection() {
+  const [notifications, setNotifications] =
+    useState<NotificationSettings>(defaultSettings);
+
+  const [initialSettings, setInitialSettings] =
+    useState<NotificationSettings>(defaultSettings);
+
+  const [isChanged, setIsChanged] = useState(false);
+
+  const [userNotifications, setUserNotifications] =
+    useState<IUserNotification>();
+
+  useEffect(() => {
+    const getNotification = async () => {
+      const response =
+        await axiosInstance.get<Record<string, boolean>>("/user-notification");
+
+      const apiData = response.data;
+
+      const updatedSettings: NotificationSettings = { ...defaultSettings };
+
+      for (const [apiKey, value] of Object.entries(apiData)) {
+        const stateKey = apiToStateKeyMap[apiKey];
+        if (stateKey) {
+          updatedSettings[stateKey] = value;
+        }
+      }
+
+      const transformedUserNotification: IUserNotification = {
+        emailNotification: apiData["Email notification"],
+        pushNotification: apiData["Push notification"],
+        smsNotification: apiData["Sms notification"],
+        whatsappNotification: apiData["Whatsapp notification"],
+        marketingEmails: apiData["Marketing emails"],
+      };
+
+      setNotifications(updatedSettings);
+      setInitialSettings(updatedSettings); // Used for change comparison
+      setUserNotifications(transformedUserNotification); // Type-safe
+    };
+
+    getNotification();
+  }, []);
+
+  const updateNotification = (
+    key: keyof NotificationSettings,
+    value: boolean
+  ) => {
+    setNotifications((prev) => {
+      const updated = { ...prev, [key]: value };
+      setIsChanged(JSON.stringify(updated) !== JSON.stringify(initialSettings));
+      return updated;
+    });
+  };
+
+  const handleSaveChanges = async () => {
+    // Prepare payload to match API keys
+    const payload: Record<string, boolean> = {};
+    for (const [stateKey, value] of Object.entries(notifications)) {
+      const apiKey = stateToApiKeyMap[stateKey as keyof NotificationSettings];
+      payload[apiKey] = value;
+    }
+
+    await axiosInstance.patch("/user-notification", payload);
+
+    // Update base state
+    setInitialSettings(notifications);
+    setIsChanged(false);
+  };
 
   return (
     <Card>
@@ -33,53 +128,68 @@ export function NotificationSection() {
           <Bell className="h-5 w-5" />
           Notifications
         </CardTitle>
-        <CardDescription>Configure your notification preferences</CardDescription>
+        <CardDescription>
+          Configure your notification preferences
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Email Notifications</Label>
-            <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+        {[
+          {
+            key: "whatsappNotifications",
+            label: "Whatsapp Notifications",
+            desc: "Receive important alerts via Whatsapp",
+          },
+          {
+            key: "smsNotifications",
+            label: "SMS Notifications",
+            desc: "Receive important alerts via SMS",
+          },
+          {
+            key: "emailNotifications",
+            label: "Email Notifications",
+            desc: "Receive notifications via email",
+          },
+          {
+            key: "pushNotifications",
+            label: "Push Notifications",
+            desc: "Receive push notifications in browser",
+          },
+          {
+            key: "marketingEmails",
+            label: "Marketing Emails",
+            desc: "Receive updates and promotional content",
+          },
+        ].map(({ key, label, desc }, idx, arr) => (
+          <div key={key}>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>{label}</Label>
+                <p className="text-sm text-muted-foreground">{desc}</p>
+              </div>
+              <Switch
+                checked={notifications[key as keyof NotificationSettings]}
+                onCheckedChange={(checked) =>
+                  updateNotification(
+                    key as keyof NotificationSettings,
+                    checked
+                  )
+                }
+              />
+            </div>
+            {idx !== arr.length - 1 && <Separator />}
           </div>
-          <Switch
-            checked={notifications.emailNotifications}
-            onCheckedChange={(checked) => updateNotification("emailNotifications", checked)}
-          />
-        </div>
-        <Separator />
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Push Notifications</Label>
-            <p className="text-sm text-muted-foreground">Receive push notifications in browser</p>
-          </div>
-          <Switch
-            checked={notifications.pushNotifications}
-            onCheckedChange={(checked) => updateNotification("pushNotifications", checked)}
-          />
-        </div>
-        <Separator />
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>SMS Notifications</Label>
-            <p className="text-sm text-muted-foreground">Receive important alerts via SMS</p>
-          </div>
-          <Switch
-            checked={notifications.smsNotifications}
-            onCheckedChange={(checked) => updateNotification("smsNotifications", checked)}
-          />
-        </div>
-        <Separator />
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Marketing Emails</Label>
-            <p className="text-sm text-muted-foreground">Receive updates and promotional content</p>
-          </div>
-          <Switch
-            checked={notifications.marketingEmails}
-            onCheckedChange={(checked) => updateNotification("marketingEmails", checked)}
-          />
+        ))}
+
+        <div className="pt-4 flex justify-end">
+          <Button
+            disabled={!isChanged}
+            onClick={handleSaveChanges}
+            className="ml-auto"
+          >
+            Save Changes
+          </Button>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

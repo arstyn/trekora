@@ -3,50 +3,42 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import axiosInstance from "@/lib/axios";
+import type { IBatches, IBatchStats } from "@/types/batches.types";
 import { AlertTriangle, Calendar, Plus, TrendingUp, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { toast } from "sonner";
 import { BatchList } from "./_component/batch-list";
-import { CreateBatchDialog } from "./_component/create-batch-dialog";
 import { CalendarView } from "./_component/calendar-view";
-
-// Mock data
-const dashboardStats = {
-	totalActiveBatches: 12,
-	totalUpcomingBatches: 8,
-	totalSeatsLeft: 156,
-	fastFillingBatches: 3,
-};
-
-const fastFillingBatches = [
-	{
-		id: "1",
-		packageName: "Himalayan Adventure",
-		startDate: "2024-02-15",
-		totalSeats: 20,
-		bookedSeats: 18,
-		fillRate: 90,
-	},
-	{
-		id: "2",
-		packageName: "Beach Paradise",
-		startDate: "2024-02-20",
-		totalSeats: 15,
-		bookedSeats: 12,
-		fillRate: 80,
-	},
-	{
-		id: "3",
-		packageName: "Cultural Heritage Tour",
-		startDate: "2024-02-25",
-		totalSeats: 25,
-		bookedSeats: 19,
-		fillRate: 76,
-	},
-];
+import { CreateBatchDialog } from "./_component/create-batch-dialog";
 
 export default function BatchesPage() {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
+	const [fastFillingBatches, setFastFillingBatches] = useState<IBatches[]>([]);
+	const [dashboardStats, setDashboardStats] = useState<IBatchStats>();
+
+	useEffect(() => {
+		const getBatches = async () => {
+			try {
+				const [fastFilling, stats] = await Promise.all([
+					axiosInstance.get<IBatches[]>(`/batches/fast-filling`),
+					axiosInstance.get<IBatchStats>(`/batches/stats`),
+				]);
+
+				setFastFillingBatches(fastFilling.data);
+				setDashboardStats(stats.data);
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					toast.error(error.message);
+				} else {
+					toast.error("Failed to load batches");
+				}
+			}
+		};
+
+		getBatches();
+	}, []);
 
 	return (
 		<div className="container mx-auto p-6 space-y-6">
@@ -74,7 +66,7 @@ export default function BatchesPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{dashboardStats.totalActiveBatches}
+							{dashboardStats && dashboardStats.activeBatches}
 						</div>
 						<p className="text-xs text-muted-foreground">Currently running</p>
 					</CardContent>
@@ -89,7 +81,7 @@ export default function BatchesPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{dashboardStats.totalUpcomingBatches}
+							{dashboardStats && dashboardStats.upcomingBatches}
 						</div>
 						<p className="text-xs text-muted-foreground">Starting soon</p>
 					</CardContent>
@@ -104,7 +96,7 @@ export default function BatchesPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{dashboardStats.totalSeatsLeft}
+							{dashboardStats && dashboardStats.availableSeats}
 						</div>
 						<p className="text-xs text-muted-foreground">
 							Across all upcoming batches
@@ -121,7 +113,7 @@ export default function BatchesPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{dashboardStats.fastFillingBatches}
+							{dashboardStats && dashboardStats.fastFilling}
 						</div>
 						<p className="text-xs text-muted-foreground">
 							{">"} 75% capacity
@@ -145,17 +137,19 @@ export default function BatchesPage() {
 								<div className="flex-1">
 									<div className="flex items-center gap-2 mb-2">
 										<h3 className="font-semibold">
-											{batch.packageName}
+											{batch.package?.name}
 										</h3>
-										<Badge
-											variant={
-												batch.fillRate >= 90
-													? "destructive"
-													: "secondary"
-											}
-										>
-											{batch.fillRate}% Full
-										</Badge>
+										{batch.fillRate && (
+											<Badge
+												variant={
+													batch.fillRate >= 90
+														? "destructive"
+														: "secondary"
+												}
+											>
+												{batch.fillRate}% Full
+											</Badge>
+										)}
 									</div>
 									<p className="text-sm text-muted-foreground mb-2">
 										Starts:{" "}
@@ -179,6 +173,11 @@ export default function BatchesPage() {
 							</div>
 						))}
 					</div>
+					{fastFillingBatches.length === 0 && (
+						<div className="text-center py-8 text-muted-foreground">
+							No fast filling batches available to display
+						</div>
+					)}
 				</CardContent>
 			</Card>
 

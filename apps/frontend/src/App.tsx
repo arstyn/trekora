@@ -30,6 +30,7 @@ import EditPaymentPage from "./pages/user/payments/edit-payment.page";
 import PaymentsPage from "./pages/user/payments/payments.page";
 import PaymentDetailsPage from "./pages/user/payments/view-payment.page";
 import SettingsPage from "./pages/user/settings/page";
+import ImportPage from "./pages/user/import/page";
 import { TeamsPage } from "./pages/user/teams/teams-table";
 
 function AuthenticatedApp() {
@@ -59,6 +60,7 @@ function AuthenticatedApp() {
 					<Route path="/payments" element={<PaymentsPage />} />
 					<Route path="/payments/:id" element={<PaymentDetailsPage />} />
 					<Route path="/payments/:id/edit" element={<EditPaymentPage />} />
+					<Route path="/import" element={<ImportPage />} />
 				</Routes>
 			</SidebarInset>
 		</SidebarProvider>

@@ -3,16 +3,23 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import type { ICheckList } from "@/types/checklist.types";
 import { AlertCircle, Mail, Phone, Save, User } from "lucide-react";
 import { useState } from "react";
 
 interface PassengerModalProps {
 	passenger: any;
+	packageCheckList?: ICheckList[];
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
 
-export function PassengerModal({ passenger, open, onOpenChange }: PassengerModalProps) {
+export function PassengerModal({
+	passenger,
+	packageCheckList,
+	open,
+	onOpenChange,
+}: PassengerModalProps) {
 	const [checklist, setChecklist] = useState(passenger?.checklist || {});
 
 	if (!passenger) return null;
@@ -30,16 +37,8 @@ export function PassengerModal({ passenger, open, onOpenChange }: PassengerModal
 		// Show success message or handle error
 	};
 
-	const checklistItems = [
-		{ key: "passport", label: "Passport Copy" },
-		{ key: "visa", label: "Visa Documentation" },
-		{ key: "insurance", label: "Travel Insurance" },
-		{ key: "medicalClearance", label: "Medical Clearance" },
-		{ key: "equipment", label: "Required Equipment" },
-	];
-
 	const completedItems = Object.values(checklist).filter(Boolean).length;
-	const totalItems = checklistItems.length;
+	const totalItems = packageCheckList ? packageCheckList.length : 0;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -104,29 +103,30 @@ export function PassengerModal({ passenger, open, onOpenChange }: PassengerModal
 						</div>
 
 						<div className="space-y-3">
-							{checklistItems.map((item) => (
-								<div
-									key={item.key}
-									className="flex items-center space-x-3 p-3 border rounded-lg"
-								>
-									<Checkbox
-										id={item.key}
-										checked={checklist[item.key] || false}
-										onCheckedChange={(checked) =>
-											handleChecklistChange(item.key, !!checked)
-										}
-									/>
-									<label
-										htmlFor={item.key}
-										className="flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+							{packageCheckList &&
+								packageCheckList.map((item, index) => (
+									<div
+										key={index}
+										className="flex items-center space-x-3 p-3 border rounded-lg"
 									>
-										{item.label}
-									</label>
-									{!checklist[item.key] && (
-										<AlertCircle className="w-4 h-4 text-amber-500" />
-									)}
-								</div>
-							))}
+										<Checkbox
+											id={item.id}
+											checked={checklist[item.id] || false}
+											onCheckedChange={(checked) =>
+												handleChecklistChange(item.id, !!checked)
+											}
+										/>
+										<label
+											htmlFor={item.id}
+											className="flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+										>
+											{item.task}
+										</label>
+										{!checklist[item.id] && (
+											<AlertCircle className="w-4 h-4 text-amber-500" />
+										)}
+									</div>
+								))}
 						</div>
 
 						{completedItems < totalItems && (

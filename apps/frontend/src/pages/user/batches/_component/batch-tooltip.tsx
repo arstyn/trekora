@@ -108,17 +108,10 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 						<MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
 						<div className="text-sm">
 							<span className="font-medium">Destinations: </span>
-							<div className="flex flex-wrap gap-1 mt-1">
-								{/* {batch.package?.destinations.map((dest: string, index: number) => (
-									<Badge
-										key={index}
-										variant="outline"
-										className="text-xs"
-									>
-										{dest}
-									</Badge>
-								))} */}
-							</div>
+
+							<Badge variant="outline" className="text-xs">
+								{batch.package?.destination}
+							</Badge>
 						</div>
 					</div>
 

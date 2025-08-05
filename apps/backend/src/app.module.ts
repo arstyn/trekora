@@ -24,9 +24,11 @@ import { RoleModule } from './modules/role/role.module';
 import { UserDepartmentsModule } from './modules/user-departments/user-departments.module';
 import { UserInviteModule } from './modules/user-invite/user-invite.module';
 import { UserModule } from './modules/user/user.module';
+import { UserNotificationModule } from './modules/user-notification/user-notification.module';
 import { BatchesModule } from './modules/batches/batches.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { ImportModule } from './modules/import/import.module';
 
 @Module({
   imports: [
@@ -56,9 +58,11 @@ import { PaymentModule } from './modules/payment/payment.module';
     GroupModule,
     PackageModule,
     FileManagerModule,
+    UserNotificationModule,
     BatchesModule,
     BookingModule,
     PaymentModule,
+    ImportModule
   ],
   controllers: [AppController],
   providers: [AppService],

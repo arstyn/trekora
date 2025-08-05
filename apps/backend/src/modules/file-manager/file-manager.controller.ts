@@ -60,6 +60,11 @@ export class FileManagerController {
     return this.fileManagerService.findAll();
   }
 
+  @Get('related-id/:id')
+  findWithRelatedId(@Param('id') id: string) {
+    return this.fileManagerService.findWithRelatedId(id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.fileManagerService.findOne(id);
