@@ -70,11 +70,19 @@ export class PackageService {
     await queryRunner.startTransaction();
 
     try {
-      const pkg = queryRunner.manager.create(Package, {
+      const cleanedData = {
         ...rest,
+        startDate: rest.startDate === '' || rest.startDate === undefined ? undefined : rest.startDate,
+        endDate: rest.endDate === '' || rest.endDate === undefined ? undefined : rest.endDate,
+        destination: rest.destination === '' ? undefined : rest.destination,
+        duration: rest.duration === '' ? undefined : rest.duration,
+        description: rest.description === '' ? undefined : rest.description,
+        thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail,
         organizationId: user.organizationId,
         createdById: user.userId,
-      });
+      };
+
+      const pkg = queryRunner.manager.create(Package, cleanedData);
       const savedPackage = await queryRunner.manager.save(pkg);
 
       if (cancellationPolicy) {
@@ -282,8 +290,20 @@ export class PackageService {
     await queryRunner.startTransaction();
 
     try {
+      const cleanedData = {
+        ...rest,
+        // Convert empty strings to undefined for date fields
+        startDate: rest.startDate === '' || rest.startDate === undefined ? undefined : rest.startDate,
+        endDate: rest.endDate === '' || rest.endDate === undefined ? undefined : rest.endDate,
+        // Convert empty strings to undefined for optional fields
+        destination: rest.destination === '' ? undefined : rest.destination,
+        duration: rest.duration === '' ? undefined : rest.duration,
+        description: rest.description === '' ? undefined : rest.description,
+        thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail,
+      };
+
       // Update main package
-      await queryRunner.manager.update(Package, id, rest);
+      await queryRunner.manager.update(Package, id, cleanedData);
 
       // Delete existing related entities to recreate them
       await queryRunner.manager.delete(CancellationPolicy, { packageId: id });

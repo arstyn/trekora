@@ -33,7 +33,7 @@ import { packageFormSchema, type PackageFormData } from "@/types/package.schema"
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -50,8 +50,8 @@ const defaultValues: PackageFormData = {
 	price: 0,
 	description: "",
 	maxGuests: 0,
-	startDate: "",
-	endDate: "",
+	startDate: undefined,
+	endDate: undefined,
 	difficulty: "easy",
 	category: "adventure",
 	inclusions: [],
@@ -165,10 +165,14 @@ const defaultValues: PackageFormData = {
 
 export function PackageForm({
 	isEditing = false,
-	packageId,
+	packageId: initialPackageId,
 	onSuccess,
 }: PackageFormProps) {
 	const [isLoading, setIsLoading] = useState(false);
+	const [packageId, setPackageId] = useState<string | undefined>(initialPackageId);
+	const [isDraftCreated, setIsDraftCreated] = useState(!!initialPackageId);
+	const [isAutoSaving, setIsAutoSaving] = useState(false);
+	const [lastSaved, setLastSaved] = useState<Date | null>(null);
 	const [thumbnailFile, setThumbnailFile] = useState<FileUploadResponse | null>(null);
 	const [itineraryImageFiles, setItineraryImageFiles] = useState<{ [dayIndex: number]: FileUploadResponse[] }>({});
 	const [newInclusion, setNewInclusion] = useState("");
@@ -178,6 +182,82 @@ export function PackageForm({
 		resolver: zodResolver(packageFormSchema),
 		defaultValues,
 	});
+
+	const autoSaveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+	const createDraftPackage = useCallback(async () => {
+		if (isDraftCreated || isEditing) return;
+		
+		try {
+			setIsLoading(true);
+			const draftData = {
+				...defaultValues,
+				status: "draft",
+				name: "New Package Draft",
+				// Ensure undefined values for empty fields
+				destination: undefined,
+				duration: undefined,
+				description: undefined,
+				thumbnail: undefined,
+			};
+			
+			const response = await axiosInstance.post('/api/packages', draftData);
+			if (response.data?.id) {
+				setPackageId(response.data.id);
+				setIsDraftCreated(true);
+				setLastSaved(new Date());
+				toast.success("Draft package created");
+			}
+		} catch (error) {
+			console.error('Failed to create draft package:', error);
+			toast.error("Failed to create draft package");
+		} finally {
+			setIsLoading(false);
+		}
+	}, [isDraftCreated, isEditing]);
+
+	const cleanFormData = useCallback((data: PackageFormData) => {
+		return {
+			...data,
+			// Convert empty strings to undefined
+			destination: data.destination === '' ? undefined : data.destination,
+			duration: data.duration === '' ? undefined : data.duration,
+			description: data.description === '' ? undefined : data.description,
+			thumbnail: data.thumbnail === '' ? undefined : data.thumbnail,
+			startDate: data.startDate === '' ? undefined : data.startDate,
+			endDate: data.endDate === '' ? undefined : data.endDate,
+		};
+	}, []);
+
+	const autoSave = useCallback(async (data: PackageFormData) => {
+		if (!packageId || !isDraftCreated) return;
+
+		try {
+			setIsAutoSaving(true);
+			const cleanedData = cleanFormData(data);
+			const submitData = {
+				...cleanedData,
+				thumbnail: thumbnailFile?.url || cleanedData.thumbnail || undefined,
+			};
+
+			await axiosInstance.patch(`/api/packages/${packageId}`, submitData);
+			setLastSaved(new Date());
+		} catch (error) {
+			console.error('Auto-save failed:', error);
+		} finally {
+			setIsAutoSaving(false);
+		}
+	}, [packageId, isDraftCreated, thumbnailFile, cleanFormData]);
+
+	const debouncedAutoSave = useCallback((data: PackageFormData) => {
+		if (autoSaveTimeoutRef.current) {
+			clearTimeout(autoSaveTimeoutRef.current);
+		}
+		
+		autoSaveTimeoutRef.current = window.setTimeout(() => {
+			autoSave(data);
+		}, 2000) as unknown as NodeJS.Timeout; // Auto-save after 2 seconds of inactivity
+	}, [autoSave]);
 
 	const {
 		fields: itineraryFields,
@@ -224,7 +304,6 @@ export function PackageForm({
 		name: "preTripChecklist",
 	});
 
-	// Load package data if editing
 	useEffect(() => {
 		if (isEditing && packageId) {
 			const loadPackage = async () => {
@@ -234,7 +313,6 @@ export function PackageForm({
 					);
 					if (res.data) {
 						form.reset(res.data);
-						// Note: thumbnail and images will be loaded separately if needed
 					}
 				} catch (error) {
 					if (error instanceof Error) {
@@ -245,16 +323,40 @@ export function PackageForm({
 				}
 			};
 			loadPackage();
+		} else if (!isEditing && !isDraftCreated) {
+			createDraftPackage();
 		}
-	}, [isEditing, packageId, form]);
+	}, [isEditing, packageId, form, isDraftCreated, createDraftPackage]);
+
+	// Watch form changes and trigger auto-save
+	useEffect(() => {
+		const subscription = form.watch((data) => {
+			if (isDraftCreated && packageId) {
+				debouncedAutoSave(data as PackageFormData);
+			}
+		});
+		return () => subscription.unsubscribe();
+	}, [form, isDraftCreated, packageId, debouncedAutoSave]);
+
+	useEffect(() => {
+		return () => {
+			if (autoSaveTimeoutRef.current) {
+				clearTimeout(autoSaveTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		if (file) {
+			if (!packageId) {
+				toast.error("Please wait for draft package to be created");
+				return;
+			}
+			
 			try {
 				setIsLoading(true);
-				const relatedId = packageId || 'temp-package-' + Date.now();
-				const uploadedFile = await uploadSingleFile(file, relatedId, 'package');
+				const uploadedFile = await uploadSingleFile(file, packageId, 'package');
 				setThumbnailFile(uploadedFile);
 				form.setValue("thumbnail", uploadedFile.url);
 				toast.success("Thumbnail uploaded successfully");
@@ -273,11 +375,14 @@ export function PackageForm({
 	) => {
 		const file = event.target.files?.[0];
 		if (file) {
+			if (!packageId) {
+				toast.error("Please wait for draft package to be created");
+				return;
+			}
+			
 			try {
 				setIsLoading(true);
-				// Use a temporary ID for new packages, real ID for existing ones
-				const relatedId = packageId || 'temp-itinerary-' + Date.now();
-				const uploadedFile = await uploadSingleFile(file, relatedId, 'itinerary');
+				const uploadedFile = await uploadSingleFile(file, packageId, 'itinerary');
 
 				// Update state for display
 				const currentDayFiles = itineraryImageFiles[dayIndex] || [];
@@ -431,21 +536,24 @@ export function PackageForm({
 	const onSubmit = async (data: PackageFormData, status: "draft" | "published") => {
 		setIsLoading(true);
 		try {
-			const submitData = {
-				...data,
-				status,
-				thumbnail: thumbnailFile?.url || data.thumbnail || "",
-			};
-
-			let response;
-			if (isEditing && packageId) {
-				response = await axiosInstance.patch(`/api/packages/${packageId}`, submitData);
-			} else {
-				response = await axiosInstance.post('/api/packages', submitData);
+			if (!packageId) {
+				toast.error("Package not ready for submission");
+				return;
 			}
 
+			const cleanedData = cleanFormData(data);
+			const submitData = {
+				...cleanedData,
+				status,
+				thumbnail: thumbnailFile?.url || cleanedData.thumbnail || undefined,
+			};
+
+			const response = await axiosInstance.patch(`/api/packages/${packageId}`, submitData);
+
 			if (response.data) {
-				toast.success(`Package ${isEditing ? "updated" : "created"} successfully!`);
+				const action = status === "published" ? "published" : "saved";
+				toast.success(`Package ${action} successfully!`);
+				setLastSaved(new Date());
 				onSuccess?.();
 			}
 		} catch (error) {
@@ -457,7 +565,7 @@ export function PackageForm({
 			} else if (error instanceof Error) {
 				toast.error(error.message);
 			} else {
-				toast.error(`Failed to ${isEditing ? "update" : "create"} package`);
+				toast.error(`Failed to ${status === "published" ? "publish" : "save"} package`);
 			}
 		} finally {
 			setIsLoading(false);
@@ -2343,6 +2451,17 @@ export function PackageForm({
 								<Card>
 									<CardHeader>
 										<CardTitle>Actions</CardTitle>
+										{isDraftCreated && (
+											<CardDescription className="flex items-center gap-2">
+												{isAutoSaving ? (
+													<span className="text-blue-600">Saving...</span>
+												) : lastSaved ? (
+													<span className="text-green-600">
+														Last saved: {lastSaved.toLocaleTimeString()}
+													</span>
+												) : null}
+											</CardDescription>
+										)}
 									</CardHeader>
 									<CardContent className="space-y-2">
 										<Button

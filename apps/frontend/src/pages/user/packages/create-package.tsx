@@ -5,7 +5,7 @@ export default function CreatePackagePage() {
 	const navigate = useNavigate();
 
 	const handleSuccess = () => {
-		navigate("/packages");
+		navigate("/packages", { replace: true });
 	};
 
 	return (
