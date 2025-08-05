@@ -11,6 +11,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
 	ArrowLeft,
 	Calendar,
@@ -26,15 +27,18 @@ import {
 	Plus,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { NavLink, useParams } from "react-router-dom";
+import { NavLink, useNavigate, useParams } from "react-router-dom";
 import BookingService from "@/services/booking.service";
+import { InvoiceService } from "@/services/invoice.service";
 import type { IBooking, BookingStatus } from "@/types/booking.types";
 
 export default function BookingDetailsPage() {
 	const { id } = useParams<{ id: string }>();
+	const navigate = useNavigate();
 	const [booking, setBooking] = useState<IBooking | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const [selectedDocument, setSelectedDocument] = useState<any>(null);
 
@@ -58,6 +62,21 @@ export default function BookingDetailsPage() {
 			setError((err as any)?.response?.data?.message || 'Failed to load booking details.');
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const handleDownloadInvoice = async () => {
+		if (!booking) return;
+
+		try {
+			setIsGeneratingInvoice(true);
+			await InvoiceService.generateAndDownloadInvoice(booking);
+		} catch (err) {
+			console.error('Error generating invoice:', err);
+			// You could show a toast or alert here
+			alert((err as Error).message || 'Failed to generate invoice');
+		} finally {
+			setIsGeneratingInvoice(false);
 		}
 	};
 
@@ -457,18 +476,40 @@ export default function BookingDetailsPage() {
 			{/* Action Buttons */}
 			<div className="flex justify-between items-center">
 				<div className="flex gap-2">
-					<Button variant="outline">
-						<Download className="w-4 h-4 mr-2" />
-						Download Invoice
-					</Button>
-					<Button variant="outline">
-						<FileText className="w-4 h-4 mr-2" />
-						Download Itinerary
-					</Button>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button 
+									variant="outline"
+									onClick={handleDownloadInvoice}
+									disabled={!booking || !InvoiceService.hasCompletedPayments(booking) || isGeneratingInvoice}
+								>
+									{isGeneratingInvoice ? (
+										<>
+											<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+											Generating...
+										</>
+									) : (
+										<>
+											<Download className="w-4 h-4 mr-2" />
+											Download Invoice
+										</>
+									)}
+								</Button>
+							</TooltipTrigger>
+							{booking && !InvoiceService.hasCompletedPayments(booking) && (
+								<TooltipContent>
+									<p>Invoice can only be downloaded when there are completed payments</p>
+								</TooltipContent>
+							)}
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 				<div className="flex gap-2">
 					{booking.balanceAmount > 0 && (
-						<Button variant="outline">
+						<Button variant="outline" onClick={() => {
+							navigate(`/payments?addNew=true&bookingId=${booking.id}`);
+						}}>
 							<Plus className="w-4 h-4 mr-2" />
 							Add Payment
 						</Button>

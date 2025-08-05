@@ -10,6 +10,13 @@ import {
 import { Booking } from './booking.entity';
 import { User } from './user.entity';
 
+export enum PaymentType {
+  ADVANCE = 'advance',
+  BALANCE = 'balance',
+  PARTIAL = 'partial',
+  REFUND = 'refund',
+}
+
 export enum PaymentMethod {
   BANK_TRANSFER = 'bank_transfer',
   CREDIT_CARD = 'credit_card',
@@ -24,6 +31,7 @@ export enum PaymentStatus {
   COMPLETED = 'completed',
   FAILED = 'failed',
   REFUNDED = 'refunded',
+  ARCHIVED = 'archived',
 }
 
 @Entity('booking_payments')
@@ -33,6 +41,14 @@ export class BookingPayment {
 
   @Column('decimal', { precision: 10, scale: 2 })
   amount: number;
+
+  @Column({
+    type: 'enum',
+    enum: PaymentType,
+    default: PaymentType.ADVANCE,
+    name: 'payment_type',
+  })
+  paymentType: PaymentType;
 
   @Column({
     type: 'enum',

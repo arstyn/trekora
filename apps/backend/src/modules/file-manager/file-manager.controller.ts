@@ -8,7 +8,13 @@ import {
   Post,
   UploadedFiles,
   UseInterceptors,
+  Res,
+  StreamableFile,
+  NotFoundException,
 } from '@nestjs/common';
+import { Response } from 'express';
+import { createReadStream } from 'fs';
+import { join } from 'path';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   FileManager,
@@ -72,5 +78,45 @@ export class FileManagerController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.fileManagerService.remove(id);
+  }
+
+  @Get('serve/:id')
+  async serveFile(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+    const fileRecord = await this.fileManagerService.findOneWithPath(id);
+    if (!fileRecord) {
+      throw new NotFoundException('File not found');
+    }
+
+    const filePath = join(process.cwd(), fileRecord.url);
+    
+    try {
+      const file = createReadStream(filePath);
+      
+      // Set proper content type and headers
+      const extension = fileRecord.filename.split('.').pop()?.toLowerCase();
+      const contentType = this.getContentType(extension);
+      res.set({
+        'Content-Type': contentType,
+        'Content-Disposition': `inline; filename="${fileRecord.filename}"`,
+      });
+      
+      return new StreamableFile(file);
+    } catch (error) {
+      throw new NotFoundException('File not found on disk');
+    }
+  }
+
+  private getContentType(extension?: string): string {
+    switch (extension) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      default:
+        return 'application/octet-stream';
+    }
   }
 }

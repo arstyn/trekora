@@ -27,6 +27,7 @@ import { UserModule } from './modules/user/user.module';
 import { UserNotificationModule } from './modules/user-notification/user-notification.module';
 import { BatchesModule } from './modules/batches/batches.module';
 import { BookingModule } from './modules/booking/booking.module';
+import { PaymentModule } from './modules/payment/payment.module';
 import { ImportModule } from './modules/import/import.module';
 
 @Module({
@@ -36,6 +37,7 @@ import { ImportModule } from './modules/import/import.module';
       load: [configuration],
       isGlobal: true,
     }),
+
     DatabaseModule,
     ScheduleModule.forRoot(),
     UserModule,
@@ -59,6 +61,7 @@ import { ImportModule } from './modules/import/import.module';
     UserNotificationModule,
     BatchesModule,
     BookingModule,
+    PaymentModule,
     ImportModule
   ],
   controllers: [AppController],
