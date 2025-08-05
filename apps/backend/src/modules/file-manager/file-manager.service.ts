@@ -50,7 +50,7 @@ export class FileManagerService {
         // Return file with HTTP URL for frontend access
         const fileWithHttpUrl = {
           ...savedFile,
-          url: `/api/file-manager/serve/${savedFile.id}`
+          url: `/file-manager/serve/${savedFile.id}`
         };
         
         filesData.push(fileWithHttpUrl);
@@ -76,7 +76,7 @@ export class FileManagerService {
     // Convert file paths to HTTP URLs for frontend access
     return files.map(file => ({
       ...file,
-      url: `/api/file-manager/serve/${file.id}`
+      url: `/file-manager/serve/${file.id}`
     }));
   }
 
@@ -86,7 +86,7 @@ export class FileManagerService {
       // For frontend access, return HTTP URL
       return {
         ...file,
-        url: `/api/file-manager/serve/${file.id}`
+        url: `/file-manager/serve/${file.id}`
       };
     }
     return file;
