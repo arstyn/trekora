@@ -751,8 +751,16 @@ export function PackageForm({
 														<FormControl>
 															<Input
 																type="number"
+																min="0"
 																placeholder="1299"
 																{...field}
+																onChange={(e) =>
+																	field.onChange(
+																		Number.parseFloat(
+																			e.target.value
+																		) || 0
+																	)
+																}
 															/>
 														</FormControl>
 														<FormMessage />
@@ -768,8 +776,16 @@ export function PackageForm({
 														<FormControl>
 															<Input
 																type="number"
+																min="0"
 																placeholder="12"
 																{...field}
+																onChange={(e) =>
+																	field.onChange(
+																		Number.parseInt(
+																			e.target.value
+																		) || 0
+																	)
+																}
 															/>
 														</FormControl>
 														<FormMessage />
