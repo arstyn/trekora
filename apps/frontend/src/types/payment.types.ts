@@ -66,6 +66,17 @@ export interface User {
   email: string;
 }
 
+// File Manager types
+export interface FileManager {
+  id: string;
+  filename: string;
+  relatedId: string;
+  relatedType: string;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Payment interface
 export interface Payment {
   id: string;
@@ -82,6 +93,7 @@ export interface Payment {
   paymentDetails?: Record<string, any>;
   booking: Booking;
   recordedBy: User;
+  receiptFiles?: FileManager[]; // New field for file manager integration
   createdAt: string;
   updatedAt: string;
 }

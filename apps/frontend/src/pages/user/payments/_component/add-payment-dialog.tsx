@@ -25,6 +25,7 @@ import PaymentService from "@/services/payment.service";
 import type {
   BookingForPayment,
   CreatePaymentDto,
+  FileManager,
 } from "@/types/payment.types";
 import { PaymentType, PaymentMethod } from "@/types/payment.types";
 import { useToast } from "@/hooks/use-toast";

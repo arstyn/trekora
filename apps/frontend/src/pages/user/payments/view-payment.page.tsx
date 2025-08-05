@@ -15,22 +15,24 @@ import {
 	RefreshCw,
 	AlertTriangle,
 	Loader2,
+	Trash2,
+	Upload,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import PaymentService from "@/services/payment.service";
-import type { Payment } from "@/types/payment.types";
+import type { Payment, FileManager } from "@/types/payment.types";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PaymentDetailsPage() {
 	const { id } = useParams<{ id: string }>();
 	// const navigate = useNavigate();
 	const [paymentData, setPaymentData] = useState<Payment | null>(null);
+	const [receiptFiles, setReceiptFiles] = useState<FileManager[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [selectedDocument, setSelectedDocument] = useState<any>(null);
+	const [selectedDocument, setSelectedDocument] = useState<FileManager | null>(null);
 	const { toast } = useToast();
 
 	useEffect(() => {
@@ -45,8 +47,15 @@ export default function PaymentDetailsPage() {
 		try {
 			setLoading(true);
 			setError(null);
-			const payment = await PaymentService.getPaymentById(id);
+			
+			// Load payment details with receipt files
+			const [payment, receipts] = await Promise.all([
+				PaymentService.getPaymentById(id, true),
+				PaymentService.getPaymentReceipts(id).catch(() => []) // Fallback to empty array if fails
+			]);
+			
 			setPaymentData(payment);
+			setReceiptFiles(receipts);
 		} catch (error) {
 			console.error("Error loading payment details:", error);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -117,6 +126,106 @@ export default function PaymentDetailsPage() {
 		} finally {
 			setActionLoading(prev => ({ ...prev, [action]: false }));
 		}
+	};
+
+	const handleDeleteReceiptFile = async (fileId: string) => {
+		if (!id) return;
+
+		try {
+			setActionLoading(prev => ({ ...prev, [`deleteFile_${fileId}`]: true }));
+			
+			await PaymentService.deleteReceiptFile(id, fileId);
+			
+			// Remove file from local state
+			setReceiptFiles(prev => prev.filter(file => file.id !== fileId));
+			
+			toast({
+				title: "Success",
+				description: "Receipt file deleted successfully.",
+			});
+		} catch (error) {
+			console.error("Error deleting receipt file:", error);
+			toast({
+				title: "Error",
+				description: "Failed to delete receipt file. Please try again.",
+				variant: "destructive",
+			});
+		} finally {
+			setActionLoading(prev => ({ ...prev, [`deleteFile_${fileId}`]: false }));
+		}
+	};
+
+	const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+		const files = event.target.files;
+		if (!files || files.length === 0 || !id) return;
+
+		// Validate file types and size
+		const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+		const maxSize = 5 * 1024 * 1024; // 5MB
+
+		for (const file of Array.from(files)) {
+			if (!allowedTypes.includes(file.type)) {
+				toast({
+					title: "Invalid file type",
+					description: "Please upload only JPEG, PNG, or PDF files.",
+					variant: "destructive",
+				});
+				return;
+			}
+
+			if (file.size > maxSize) {
+				toast({
+					title: "File too large",
+					description: "Please upload files smaller than 5MB.",
+					variant: "destructive",
+				});
+				return;
+			}
+		}
+
+		try {
+			setActionLoading(prev => ({ ...prev, upload: true }));
+			
+			let newFiles: FileManager[];
+			
+			if (files.length === 1) {
+				// Single file upload
+				const newFile = await PaymentService.uploadReceipt(id, files[0]);
+				newFiles = [newFile];
+			} else {
+				// Multiple file upload
+				newFiles = await PaymentService.uploadReceipts(id, Array.from(files));
+			}
+			
+			// Add new files to local state
+			setReceiptFiles(prev => [...prev, ...newFiles]);
+			
+			toast({
+				title: "Success",
+				description: `${files.length} receipt file(s) uploaded successfully.`,
+			});
+		} catch (error) {
+			console.error("Error uploading receipt files:", error);
+			toast({
+				title: "Error",
+				description: "Failed to upload receipt files. Please try again.",
+				variant: "destructive",
+			});
+		} finally {
+			setActionLoading(prev => ({ ...prev, upload: false }));
+			// Reset file input
+			event.target.value = '';
+		}
+	};
+
+	const getFileIcon = (filename: string) => {
+		const extension = filename.split('.').pop()?.toLowerCase();
+		return extension === 'pdf' ? FileText : Eye;
+	};
+
+	const formatFileSize = (url: string) => {
+		// This is a placeholder - in a real app you might want to store file size
+		return "Unknown size";
 	};
 
 	const formatCurrency = (amount: number) => {
@@ -283,11 +392,21 @@ export default function PaymentDetailsPage() {
 							</Button>
 						</NavLink>
 					)}
-					{paymentData.receiptFilePath && (
-						<Button variant="outline">
-							<Download className="w-4 h-4 mr-2" />
-							Download Receipt
-						</Button>
+					{receiptFiles.length > 0 && (
+						<div className="flex gap-2">
+							<Button 
+								variant="outline"
+								onClick={() => {
+									// Download first receipt file or show dropdown for multiple
+									if (receiptFiles.length === 1) {
+										window.open(receiptFiles[0].url, '_blank');
+									}
+								}}
+							>
+								<Download className="w-4 h-4 mr-2" />
+								{receiptFiles.length === 1 ? 'Download Receipt' : `Download (${receiptFiles.length})`}
+							</Button>
+						</div>
 					)}
 				</div>
 			</div>
@@ -489,26 +608,123 @@ export default function PaymentDetailsPage() {
 					)}
 
 					{/* Documents */}
-					{paymentData.receiptFilePath && (
-						<Card>
-							<CardHeader>
-								<CardTitle>Documents</CardTitle>
-							</CardHeader>
-							<CardContent>
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center justify-between">
+								Documents
+								<div className="flex gap-2">
+									<label>
+										<input
+											type="file"
+											className="hidden"
+											multiple
+											accept="image/jpeg,image/jpg,image/png,application/pdf"
+											onChange={handleFileUpload}
+											disabled={actionLoading.upload}
+										/>
+										<Button size="sm" variant="outline" disabled={actionLoading.upload} asChild>
+											<span>
+												{actionLoading.upload ? (
+													<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+												) : (
+													<Upload className="w-4 h-4 mr-2" />
+												)}
+												{actionLoading.upload ? 'Uploading...' : 'Upload'}
+											</span>
+										</Button>
+									</label>
+								</div>
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							{receiptFiles.length > 0 ? (
 								<div className="space-y-2">
-									<div className="flex items-center justify-between p-3 border rounded-lg">
+									{receiptFiles.map((file) => {
+										const FileIcon = getFileIcon(file.filename);
+										return (
+											<div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
+												<div className="flex items-center gap-3">
+													<FileIcon className="w-4 h-4 text-muted-foreground" />
+													<div>
+														<span className="text-sm font-medium">{file.filename}</span>
+														<p className="text-xs text-muted-foreground">
+															Uploaded {new Date(file.createdAt).toLocaleDateString()}
+														</p>
+													</div>
+												</div>
+												<div className="flex items-center gap-2">
+													<Button 
+														size="sm" 
+														variant="ghost"
+														onClick={() => window.open(file.url, '_blank')}
+													>
+														<Eye className="w-4 h-4" />
+													</Button>
+													<Button 
+														size="sm" 
+														variant="ghost"
+														onClick={() => window.open(file.url, '_blank')}
+													>
+														<Download className="w-4 h-4" />
+													</Button>
+													<Button 
+														size="sm" 
+														variant="ghost"
+														onClick={() => handleDeleteReceiptFile(file.id)}
+														disabled={actionLoading[`deleteFile_${file.id}`]}
+													>
+														{actionLoading[`deleteFile_${file.id}`] ? (
+															<Loader2 className="w-4 h-4 animate-spin" />
+														) : (
+															<Trash2 className="w-4 h-4" />
+														)}
+													</Button>
+												</div>
+											</div>
+										);
+									})}
+								</div>
+							) : (
+								<div className="text-center py-6 text-muted-foreground">
+									<FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+									<p className="text-sm">No receipt files uploaded</p>
+									<p className="text-xs">Upload payment receipts or screenshots</p>
+								</div>
+							)}
+							
+							{/* Legacy receipt file path support */}
+							{paymentData.receiptFilePath && !receiptFiles.length && (
+								<div className="space-y-2">
+									<div className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50">
 										<div className="flex items-center gap-2">
 											<FileText className="w-4 h-4" />
-											<span className="text-sm">Payment Receipt</span>
+											<div>
+												<span className="text-sm">Legacy Receipt File</span>
+												<p className="text-xs text-muted-foreground">
+													Uploaded via old system
+												</p>
+											</div>
 										</div>
-										<Button size="sm" variant="ghost">
+										<Button 
+											size="sm" 
+											variant="ghost"
+											onClick={() => setSelectedDocument({ 
+												id: 'legacy', 
+												filename: 'receipt', 
+												url: paymentData.receiptFilePath || '',
+												relatedId: paymentData.id,
+												relatedType: 'payment',
+												createdAt: paymentData.createdAt,
+												updatedAt: paymentData.updatedAt
+											})}
+										>
 											<Eye className="w-4 h-4" />
 										</Button>
 									</div>
 								</div>
-							</CardContent>
-						</Card>
-					)}
+							)}
+						</CardContent>
+					</Card>
 				</div>
 			</div>
 

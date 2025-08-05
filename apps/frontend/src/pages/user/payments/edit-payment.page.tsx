@@ -14,12 +14,12 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Save, Upload, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save, Upload, Loader2, AlertTriangle, Trash2, Eye, Download, FileText } from "lucide-react";
 import type React from "react";
 import { useState, useEffect } from "react";
 import { NavLink, useParams, useNavigate } from "react-router-dom";
 import PaymentService from "@/services/payment.service";
-import type { Payment, UpdatePaymentDto } from "@/types/payment.types";
+import type { Payment, UpdatePaymentDto, FileManager } from "@/types/payment.types";
 import { 
 	PaymentType, 
 	PaymentMethod, 
@@ -31,6 +31,7 @@ export default function EditPaymentPage() {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const [paymentData, setPaymentData] = useState<Payment | null>(null);
+	const [receiptFiles, setReceiptFiles] = useState<FileManager[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
 	const [uploading, setUploading] = useState(false);
@@ -64,8 +65,15 @@ export default function EditPaymentPage() {
 		try {
 			setLoading(true);
 			setError(null);
-			const payment = await PaymentService.getPaymentById(id);
+			
+			// Load payment details with receipt files
+			const [payment, receipts] = await Promise.all([
+				PaymentService.getPaymentById(id, true),
+				PaymentService.getPaymentReceipts(id).catch(() => []) // Fallback to empty array if fails
+			]);
+			
 			setPaymentData(payment);
+			setReceiptFiles(receipts);
 			
 			// Populate form with existing data
 			setFormData({
@@ -152,49 +160,90 @@ export default function EditPaymentPage() {
 	};
 
 	const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-		const file = event.target.files?.[0];
-		if (!file || !id) return;
+		const files = event.target.files;
+		if (!files || files.length === 0 || !id) return;
 
-		// Validate file type and size
+		// Validate file types and size
 		const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 		const maxSize = 5 * 1024 * 1024; // 5MB
 
-		if (!allowedTypes.includes(file.type)) {
-			toast({
-				title: "Invalid file type",
-				description: "Please upload a JPEG, PNG, or PDF file.",
-				variant: "destructive",
-			});
-			return;
-		}
+		for (const file of Array.from(files)) {
+			if (!allowedTypes.includes(file.type)) {
+				toast({
+					title: "Invalid file type",
+					description: "Please upload only JPEG, PNG, or PDF files.",
+					variant: "destructive",
+				});
+				return;
+			}
 
-		if (file.size > maxSize) {
-			toast({
-				title: "File too large",
-				description: "Please upload a file smaller than 5MB.",
-				variant: "destructive",
-			});
-			return;
+			if (file.size > maxSize) {
+				toast({
+					title: "File too large",
+					description: "Please upload files smaller than 5MB.",
+					variant: "destructive",
+				});
+				return;
+			}
 		}
 
 		try {
 			setUploading(true);
-			await PaymentService.uploadReceipt(id, file);
-			setFormData((prev) => ({ ...prev, paymentScreenshot: file }));
+			
+			let newFiles: FileManager[];
+			
+			if (files.length === 1) {
+				// Single file upload
+				const newFile = await PaymentService.uploadReceipt(id, files[0]);
+				newFiles = [newFile];
+			} else {
+				// Multiple file upload
+				newFiles = await PaymentService.uploadReceipts(id, Array.from(files));
+			}
+			
+			// Add new files to local state
+			setReceiptFiles(prev => [...prev, ...newFiles]);
 			setHasChanges(true);
+			
 			toast({
 				title: "Success",
-				description: "Receipt uploaded successfully.",
+				description: `${files.length} receipt file(s) uploaded successfully.`,
 			});
 		} catch (error) {
-			console.error("Error uploading receipt:", error);
+			console.error("Error uploading receipt files:", error);
 			toast({
 				title: "Error",
-				description: "Failed to upload receipt. Please try again.",
+				description: "Failed to upload receipt files. Please try again.",
 				variant: "destructive",
 			});
 		} finally {
 			setUploading(false);
+			// Reset file input
+			event.target.value = '';
+		}
+	};
+
+	const handleDeleteReceiptFile = async (fileId: string) => {
+		if (!id) return;
+
+		try {
+			await PaymentService.deleteReceiptFile(id, fileId);
+			
+			// Remove file from local state
+			setReceiptFiles(prev => prev.filter(file => file.id !== fileId));
+			setHasChanges(true);
+			
+			toast({
+				title: "Success",
+				description: "Receipt file deleted successfully.",
+			});
+		} catch (error) {
+			console.error("Error deleting receipt file:", error);
+			toast({
+				title: "Error",
+				description: "Failed to delete receipt file. Please try again.",
+				variant: "destructive",
+			});
 		}
 	};
 
@@ -576,9 +625,10 @@ export default function EditPaymentPage() {
 
 								<div>
 									<Label htmlFor="paymentScreenshot">
-										Payment Screenshot/Receipt
+										Payment Screenshots/Receipts
 									</Label>
-									<div className="mt-2">
+									<div className="mt-2 space-y-4">
+										{/* Upload Area */}
 										<label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:bg-muted/50">
 											<div className="text-center">
 												{uploading ? (
@@ -592,11 +642,10 @@ export default function EditPaymentPage() {
 													<>
 														<Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
 														<p className="text-sm text-muted-foreground">
-															{formData.paymentScreenshot
-																? formData.paymentScreenshot.name
-																: paymentData.receiptFilePath
-																? "Receipt uploaded - Click to replace (JPEG, PNG, PDF - Max 5MB)"
-																: "Click to upload payment proof (JPEG, PNG, PDF - Max 5MB)"}
+															Click to upload receipts (JPEG, PNG, PDF - Max 5MB each)
+														</p>
+														<p className="text-xs text-muted-foreground mt-1">
+															Multiple files supported
 														</p>
 													</>
 												)}
@@ -604,11 +653,78 @@ export default function EditPaymentPage() {
 											<input
 												type="file"
 												className="hidden"
+												multiple
 												accept="image/jpeg,image/jpg,image/png,application/pdf"
 												onChange={handleFileUpload}
 												disabled={uploading}
 											/>
 										</label>
+
+										{/* Uploaded Files */}
+										{receiptFiles.length > 0 && (
+											<div className="space-y-2">
+												<p className="text-sm font-medium">Uploaded Receipt Files:</p>
+												{receiptFiles.map((file) => {
+													const isImage = file.filename.toLowerCase().match(/\.(jpg|jpeg|png)$/);
+													const FileIcon = isImage ? Eye : FileText;
+													
+													return (
+														<div key={file.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/20">
+															<div className="flex items-center gap-3">
+																<FileIcon className="w-4 h-4 text-muted-foreground" />
+																<div>
+																	<span className="text-sm font-medium">{file.filename}</span>
+																	<p className="text-xs text-muted-foreground">
+																		Uploaded {new Date(file.createdAt).toLocaleDateString()}
+																	</p>
+																</div>
+															</div>
+															<div className="flex items-center gap-1">
+																<Button 
+																	type="button"
+																	size="sm" 
+																	variant="ghost"
+																	onClick={() => window.open(file.url, '_blank')}
+																>
+																	<Eye className="w-4 h-4" />
+																</Button>
+																<Button 
+																	type="button"
+																	size="sm" 
+																	variant="ghost"
+																	onClick={() => window.open(file.url, '_blank')}
+																>
+																	<Download className="w-4 h-4" />
+																</Button>
+																<Button 
+																	type="button"
+																	size="sm" 
+																	variant="ghost"
+																	onClick={() => handleDeleteReceiptFile(file.id)}
+																>
+																	<Trash2 className="w-4 h-4" />
+																</Button>
+															</div>
+														</div>
+													);
+												})}
+											</div>
+										)}
+
+										{/* Legacy receipt file support */}
+										{paymentData?.receiptFilePath && !receiptFiles.length && (
+											<div className="p-3 border rounded-lg bg-yellow-50">
+												<div className="flex items-center gap-2">
+													<FileText className="w-4 h-4" />
+													<div>
+														<span className="text-sm font-medium">Legacy Receipt File</span>
+														<p className="text-xs text-muted-foreground">
+															Uploaded via old system - Upload new files to replace
+														</p>
+													</div>
+												</div>
+											</div>
+										)}
 									</div>
 								</div>
 

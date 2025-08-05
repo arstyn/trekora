@@ -8,7 +8,8 @@ import type {
   PaymentListResponse,
   BookingSearchResponse,
   PaginationParams,
-  PaymentFilters
+  PaymentFilters,
+  FileManager
 } from "@/types/payment.types";
 
 export class PaymentService {
@@ -49,8 +50,9 @@ export class PaymentService {
   }
 
   // Get single payment by ID
-  static async getPaymentById(id: string): Promise<Payment> {
-    const response = await axiosInstance.get(`${this.baseUrl}/${id}`);
+  static async getPaymentById(id: string, includeReceipts: boolean = false): Promise<Payment> {
+    const params = includeReceipts ? { includeReceipts: 'true' } : {};
+    const response = await axiosInstance.get(`${this.baseUrl}/${id}`, { params });
     return response.data;
   }
 
@@ -83,8 +85,8 @@ export class PaymentService {
     return response.data;
   }
 
-  // Upload payment receipt
-  static async uploadReceipt(id: string, file: File): Promise<Payment> {
+  // Upload single payment receipt (returns FileManager object)
+  static async uploadReceipt(id: string, file: File): Promise<FileManager> {
     const formData = new FormData();
     formData.append("file", file);
 
@@ -100,6 +102,37 @@ export class PaymentService {
     return response.data;
   }
 
+  // Upload multiple payment receipts
+  static async uploadReceipts(id: string, files: File[]): Promise<FileManager[]> {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append("files", file);
+    });
+
+    const response = await axiosInstance.post(
+      `${this.baseUrl}/${id}/upload-receipts`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  }
+
+  // Get all receipt files for a payment
+  static async getPaymentReceipts(id: string): Promise<FileManager[]> {
+    const response = await axiosInstance.get(`${this.baseUrl}/${id}/receipts`);
+    return response.data;
+  }
+
+  // Delete a specific receipt file
+  static async deleteReceiptFile(paymentId: string, fileId: string): Promise<{ deleted: boolean }> {
+    const response = await axiosInstance.delete(`${this.baseUrl}/${paymentId}/receipts/${fileId}`);
+    return response.data;
+  }
+
   // Retry failed payment
   static async retryPayment(id: string): Promise<Payment> {
     // This might be a custom endpoint or just marking as pending again
@@ -111,10 +144,7 @@ export class PaymentService {
 
   // Archive payment
   static async archivePayment(id: string): Promise<Payment> {
-    // This might be a custom status update
-    const response = await axiosInstance.patch(`${this.baseUrl}/${id}`, {
-      status: "archived",
-    });
+    const response = await axiosInstance.patch(`${this.baseUrl}/${id}/archive`);
     return response.data;
   }
 }
