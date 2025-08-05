@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FileManager, RelatedType } from '../../database/entity/file-manager.entity';
 import * as fs from 'fs';
+import { extname } from 'path';
 
 @Injectable()
 export class FileManagerService {
@@ -17,24 +18,42 @@ export class FileManagerService {
   }
 
   async upload(data: Partial<FileManager>, files: Array<Express.Multer.File>) {
-    let filesData: Array<FileManager> = [];
+    let filesData: Array<any> = [];
+    
+    // Create upload directory for this related type
+    const uploadDir = `./uploads/${data.relatedType}`;
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
     for (const file of files) {
-      const uploadPath = `/uploads/${data.relatedType}/${file.filename}`;
-
       try {
-        if (!fs.existsSync(uploadPath)) {
-          fs.mkdirSync(uploadPath, { recursive: true });
-        }
+        // Generate unique filename with timestamp
+        const timestamp = Date.now();
+        const ext = extname(file.originalname);
+        const filename = `${data.relatedType}-${data.relatedId}-${timestamp}${ext}`;
+        const filePath = `${uploadDir}/${filename}`;
 
-        await fs.promises.writeFile(uploadPath, file.buffer);
+        // Save file to filesystem
+        await fs.promises.writeFile(filePath, file.buffer);
 
+        // Create database record
         const fileData = this.fileManagerRepository.create({
-          filename: file.filename,
+          filename: file.originalname, // Store original filename for display
           relatedId: data.relatedId,
           relatedType: data.relatedType,
-          url: uploadPath,
+          url: filePath, // Store actual file path
         });
-        filesData.push(fileData);
+        
+        const savedFile = await this.fileManagerRepository.save(fileData);
+        
+        // Return file with HTTP URL for frontend access
+        const fileWithHttpUrl = {
+          ...savedFile,
+          url: `/api/file-manager/serve/${savedFile.id}`
+        };
+        
+        filesData.push(fileWithHttpUrl);
       } catch (error: any) {
         throw new Error(`Local file save failed: ${error.message}`);
       }
@@ -46,15 +65,36 @@ export class FileManagerService {
     return this.fileManagerRepository.find();
   }
 
-  findOne(id: string) {
-    return this.fileManagerRepository.findOne({ where: { id } });
-  }
 
-  findByRelatedEntity(relatedId: string, relatedType: RelatedType) {
-    return this.fileManagerRepository.find({
+
+  async findByRelatedEntity(relatedId: string, relatedType: RelatedType) {
+    const files = await this.fileManagerRepository.find({
       where: { relatedId, relatedType },
       order: { createdAt: 'DESC' }
     });
+    
+    // Convert file paths to HTTP URLs for frontend access
+    return files.map(file => ({
+      ...file,
+      url: `/api/file-manager/serve/${file.id}`
+    }));
+  }
+
+  async findOne(id: string) {
+    const file = await this.fileManagerRepository.findOne({ where: { id } });
+    if (file) {
+      // For frontend access, return HTTP URL
+      return {
+        ...file,
+        url: `/api/file-manager/serve/${file.id}`
+      };
+    }
+    return file;
+  }
+
+  // Internal method to get file with actual file path (for file serving)
+  async findOneWithPath(id: string) {
+    return this.fileManagerRepository.findOne({ where: { id } });
   }
 
   update(id: string, data: Partial<FileManager>) {
@@ -62,7 +102,24 @@ export class FileManagerService {
   }
 
   async remove(id: string) {
-    await this.fileManagerRepository.delete(id);
+    // Get file record to get file path (use internal method with actual path)
+    const fileRecord = await this.fileManagerRepository.findOne({ where: { id } });
+    
+    if (fileRecord) {
+      // Delete physical file if it exists
+      if (fs.existsSync(fileRecord.url)) {
+        try {
+          await fs.promises.unlink(fileRecord.url);
+        } catch (error) {
+          console.warn(`Failed to delete physical file: ${fileRecord.url}`, error);
+          // Continue with database deletion even if file deletion fails
+        }
+      }
+      
+      // Delete database record
+      await this.fileManagerRepository.delete(id);
+    }
+    
     return { deleted: true };
   }
 }
