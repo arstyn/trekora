@@ -694,7 +694,6 @@ export default function EditPaymentPage() {
 																	size="sm" 
 																	variant="ghost"
 																	onClick={() => {
-																		// For download, we can also trigger a download attribute
 																		const link = document.createElement('a');
 																		link.href = getFileUrl(file.url);
 																		link.download = file.filename;

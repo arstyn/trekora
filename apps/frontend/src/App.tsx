@@ -58,7 +58,7 @@ function AuthenticatedApp() {
 					<Route path="/bookings/:id/edit" element={<EditBookingPage />} />
 					<Route path="/payments" element={<PaymentsPage />} />
 					<Route path="/payments/:id" element={<PaymentDetailsPage />} />
-					<Route path="/payments/edit/:id" element={<EditPaymentPage />} />
+					<Route path="/payments/:id/edit" element={<EditPaymentPage />} />
 				</Routes>
 			</SidebarInset>
 		</SidebarProvider>
