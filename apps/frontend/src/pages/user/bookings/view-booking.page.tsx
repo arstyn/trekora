@@ -26,12 +26,13 @@ import {
 	Plus,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { NavLink, useParams } from "react-router-dom";
+import { NavLink, useNavigate, useParams } from "react-router-dom";
 import BookingService from "@/services/booking.service";
 import type { IBooking, BookingStatus } from "@/types/booking.types";
 
 export default function BookingDetailsPage() {
 	const { id } = useParams<{ id: string }>();
+	const navigate = useNavigate();
 	const [booking, setBooking] = useState<IBooking | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -461,14 +462,12 @@ export default function BookingDetailsPage() {
 						<Download className="w-4 h-4 mr-2" />
 						Download Invoice
 					</Button>
-					<Button variant="outline">
-						<FileText className="w-4 h-4 mr-2" />
-						Download Itinerary
-					</Button>
 				</div>
 				<div className="flex gap-2">
 					{booking.balanceAmount > 0 && (
-						<Button variant="outline">
+						<Button variant="outline" onClick={() => {
+							navigate(`/payments?addNew=true&bookingId=${booking.id}`);
+						}}>
 							<Plus className="w-4 h-4 mr-2" />
 							Add Payment
 						</Button>
