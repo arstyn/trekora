@@ -30,7 +30,6 @@ interface CustomerFormProps {
 export default function CustomerForm({ customer, onSave, onCancel }: CustomerFormProps) {
 	const [formData, setFormData] = useState<Customer>(
 		customer || {
-			id: "",
 			name: "",
 			email: "",
 			phone: "",
