@@ -188,6 +188,21 @@ export function PackageForm({
 
 	const autoSaveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
+	const transformBackendDataToForm = useCallback((backendData: PackageFormData) => {
+		return {
+			...backendData,
+			cancellationPolicy: backendData.cancellationPolicy?.map((policy: string | { text: string }) => 
+				typeof policy === 'object' ? policy?.text : policy
+			) || [],
+			inclusions: backendData.inclusions?.map((inc: string | { item: string }) => 
+				typeof inc === 'object' ? inc?.item : inc
+			) || [],
+			exclusions: backendData.exclusions?.map((exc: string | { item: string }) => 
+				typeof exc === 'object' ? exc?.item : exc
+			) || []
+		};
+	}, []);
+
 	const createDraftPackage = useCallback(async () => {
 		if (isDraftCreated || isEditing) return;
 
@@ -227,11 +242,14 @@ export function PackageForm({
 	const cleanFormData = useCallback((data: PackageFormData) => {
 		return {
 			...data,
+			price: typeof data.price === 'string' ? Number(data.price) : data.price,
+			maxGuests: typeof data.maxGuests === 'string' ? Number(data.maxGuests) : data.maxGuests,
 			// Convert empty strings to undefined
 			destination: data.destination === '' ? undefined : data.destination,
 			duration: data.duration === '' ? undefined : data.duration,
 			description: data.description === '' ? undefined : data.description,
-			thumbnail: data.thumbnail === '' ? undefined : data.thumbnail,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			thumbnail: data.thumbnail === '' ? undefined : (typeof data.thumbnail === 'object' ? (data.thumbnail as any)?.id : data.thumbnail),
 			startDate: data.startDate === '' ? undefined : data.startDate,
 			endDate: data.endDate === '' ? undefined : data.endDate,
 			itinerary: data.itinerary?.map(day => ({
@@ -243,7 +261,14 @@ export function PackageForm({
 					}
 					return img;
 				}).filter(Boolean) || []
-			})) || []
+			})) || [],
+			cancellationPolicy: data.cancellationPolicy?.map(policy => {
+				if (typeof policy === 'object' && policy !== null && 'text' in policy) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					return (policy as any)?.text;
+				}
+				return policy;
+			}).filter(Boolean) || []
 		};
 	}, []);
 
@@ -256,7 +281,8 @@ export function PackageForm({
 			
 			const response = await axiosInstance.patch(`/packages/${packageId}`, cleanedData);
 			if (response.data) {
-				setCurrentPackage(response.data);
+				const transformedData = transformBackendDataToForm(response.data);
+				setCurrentPackage(transformedData);
 				setLastSaved(new Date());
 			}
 		} catch (error) {
@@ -264,7 +290,7 @@ export function PackageForm({
 		} finally {
 			setIsAutoSaving(false);
 		}
-	}, [packageId, isDraftCreated, isLoading, cleanFormData]);
+	}, [packageId, isDraftCreated, isLoading, cleanFormData, transformBackendDataToForm]);
 
 		const debouncedAutoSave = useCallback((data: PackageFormData) => {
 		// Don't auto-save if we're currently loading or if draft isn't created yet
@@ -333,8 +359,9 @@ export function PackageForm({
 						`/packages/${packageId}`
 					);
 					if (res.data) {
-						setCurrentPackage(res.data);
-						form.reset(res.data);
+						const transformedData = transformBackendDataToForm(res.data);
+						setCurrentPackage(transformedData);
+						form.reset(transformedData);
 						
 						if (res.data.thumbnail) {
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -358,7 +385,7 @@ export function PackageForm({
 		} else if (!isEditing && !isDraftCreated) {
 			createDraftPackage();
 		}
-	}, [isEditing, packageId, form, isDraftCreated, createDraftPackage]);
+	}, [isEditing, packageId, form, isDraftCreated, createDraftPackage, transformBackendDataToForm]);
 
 	useEffect(() => {
 		const subscription = form.watch((data) => {
