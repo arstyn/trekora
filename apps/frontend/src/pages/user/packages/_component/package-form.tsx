@@ -36,6 +36,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface PackageFormProps {
 	isEditing?: boolean;
@@ -168,6 +169,8 @@ export function PackageForm({
 	packageId: initialPackageId,
 	onSuccess,
 }: PackageFormProps) {
+	const navigate = useNavigate();
+	const location = useLocation();
 	const [isLoading, setIsLoading] = useState(false);
 	const [packageId, setPackageId] = useState<string | undefined>(initialPackageId);
 	const [currentPackage, setCurrentPackage] = useState<PackageFormData | null>(null);
@@ -175,7 +178,6 @@ export function PackageForm({
 	const [isAutoSaving, setIsAutoSaving] = useState(false);
 	const [lastSaved, setLastSaved] = useState<Date | null>(null);
 	const [thumbnailFile, setThumbnailFile] = useState<FileUploadResponse | null>(null);
-	const [itineraryImageFiles, setItineraryImageFiles] = useState<{ [dayIndex: number]: FileUploadResponse[] }>({});
 	const [newInclusion, setNewInclusion] = useState("");
 	const [newExclusion, setNewExclusion] = useState("");
 
@@ -207,6 +209,11 @@ export function PackageForm({
 				setPackageId(response.data.id);
 				setIsDraftCreated(true);
 				setLastSaved(new Date());
+				
+				if (!isEditing && location.pathname === '/packages/create') {
+					navigate(`/packages/create/${response.data.id}`, { replace: true });
+				}
+				
 				toast.success("Draft package created");
 			}
 		} catch (error) {
@@ -215,7 +222,7 @@ export function PackageForm({
 		} finally {
 			setIsLoading(false);
 		}
-	}, [isDraftCreated, isEditing]);
+	}, [isDraftCreated, isEditing, navigate, location.pathname]);
 
 	const cleanFormData = useCallback((data: PackageFormData) => {
 		return {
@@ -227,38 +234,50 @@ export function PackageForm({
 			thumbnail: data.thumbnail === '' ? undefined : data.thumbnail,
 			startDate: data.startDate === '' ? undefined : data.startDate,
 			endDate: data.endDate === '' ? undefined : data.endDate,
+			itinerary: data.itinerary?.map(day => ({
+				...day,
+				images: day.images?.map(img => {
+					if (typeof img === 'object' && img !== null && 'id' in img) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						return (img as any)?.id;
+					}
+					return img;
+				}).filter(Boolean) || []
+			})) || []
 		};
 	}, []);
 
 	const autoSave = useCallback(async (data: PackageFormData) => {
-		if (!packageId || !isDraftCreated) return;
+		if (!packageId || !isDraftCreated || isLoading) return;
 
 		try {
 			setIsAutoSaving(true);
 			const cleanedData = cleanFormData(data);
-			const submitData = {
-				...cleanedData,
-				thumbnail: thumbnailFile?.url || cleanedData.thumbnail || undefined,
-			};
-
-			await axiosInstance.patch(`/packages/${packageId}`, submitData);
-			setLastSaved(new Date());
+			
+			const response = await axiosInstance.patch(`/packages/${packageId}`, cleanedData);
+			if (response.data) {
+				setCurrentPackage(response.data);
+				setLastSaved(new Date());
+			}
 		} catch (error) {
 			console.error('Auto-save failed:', error);
 		} finally {
 			setIsAutoSaving(false);
 		}
-	}, [packageId, isDraftCreated, thumbnailFile, cleanFormData]);
+	}, [packageId, isDraftCreated, isLoading, cleanFormData]);
 
-	const debouncedAutoSave = useCallback((data: PackageFormData) => {
+		const debouncedAutoSave = useCallback((data: PackageFormData) => {
+		// Don't auto-save if we're currently loading or if draft isn't created yet
+		if (!packageId || !isDraftCreated || isLoading || isAutoSaving) return;
+		
 		if (autoSaveTimeoutRef.current) {
 			clearTimeout(autoSaveTimeoutRef.current);
 		}
-
+		
 		autoSaveTimeoutRef.current = window.setTimeout(() => {
 			autoSave(data);
-		}, 2000) as unknown as NodeJS.Timeout; // Auto-save after 2 seconds of inactivity
-	}, [autoSave]);
+		}, 3000) as unknown as NodeJS.Timeout; // Increased to 3 seconds to reduce frequency
+	}, [autoSave, packageId, isDraftCreated, isLoading, isAutoSaving]);
 
 	const {
 		fields: itineraryFields,
@@ -309,12 +328,21 @@ export function PackageForm({
 		if (isEditing && packageId) {
 			const loadPackage = async () => {
 				try {
+					setIsLoading(true);
 					const res = await axiosInstance.get<PackageFormData>(
 						`/packages/${packageId}`
 					);
 					if (res.data) {
 						setCurrentPackage(res.data);
 						form.reset(res.data);
+						
+						if (res.data.thumbnail) {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							const thumbnailObj = res.data.thumbnail as any;
+							if (thumbnailObj?.id) {
+								setThumbnailFile(thumbnailObj);
+							}
+						}
 					}
 				} catch (error) {
 					if (error instanceof Error) {
@@ -322,6 +350,8 @@ export function PackageForm({
 					} else {
 						toast.error("Failed to load package");
 					}
+				} finally {
+					setIsLoading(false);
 				}
 			};
 			loadPackage();
@@ -330,15 +360,17 @@ export function PackageForm({
 		}
 	}, [isEditing, packageId, form, isDraftCreated, createDraftPackage]);
 
-	// Watch form changes and trigger auto-save
 	useEffect(() => {
 		const subscription = form.watch((data) => {
-			if (isDraftCreated && packageId) {
-				debouncedAutoSave(data as PackageFormData);
+			if (isDraftCreated && packageId && !isLoading && !isAutoSaving) {
+				const formData = data as PackageFormData;
+				if (formData.name && formData.name.trim() !== 'New Package Draft') {
+					debouncedAutoSave(formData);
+				}
 			}
 		});
 		return () => subscription.unsubscribe();
-	}, [form, isDraftCreated, packageId, debouncedAutoSave]);
+	}, [form, isDraftCreated, packageId, isLoading, isAutoSaving, debouncedAutoSave]);
 
 	useEffect(() => {
 		return () => {
@@ -361,6 +393,13 @@ export function PackageForm({
 				const uploadedFile = await uploadSingleFile(file, packageId, 'package');
 				setThumbnailFile(uploadedFile);
 				form.setValue("thumbnail", uploadedFile.id);
+				
+				setCurrentPackage(prev => prev ? {
+					...prev,
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					thumbnail: uploadedFile as any
+				} : null);
+				
 				debouncedAutoSave(form.getValues() as PackageFormData);
 				toast.success("Thumbnail uploaded successfully");
 			} catch (error) {
@@ -387,11 +426,21 @@ export function PackageForm({
 				setIsLoading(true);
 				const uploadedFile = await uploadSingleFile(file, packageId, 'itinerary');
 
-				const currentDayFiles = itineraryImageFiles[dayIndex] || [];
-				setItineraryImageFiles(prev => ({
-					...prev,
-					[dayIndex]: [...currentDayFiles, uploadedFile]
-				}));
+				setCurrentPackage(prev => {
+					if (!prev) return null;
+					const updatedItinerary = [...(prev.itinerary || [])];
+					if (updatedItinerary[dayIndex]) {
+						updatedItinerary[dayIndex] = {
+							...updatedItinerary[dayIndex],
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							images: [...(updatedItinerary[dayIndex].images || []), uploadedFile as any]
+						};
+					}
+					return {
+						...prev,
+						itinerary: updatedItinerary
+					};
+				});
 
 				const currentImages = form.getValues(`itinerary.${dayIndex}.images`) || [];
 				form.setValue(`itinerary.${dayIndex}.images`, [
@@ -412,22 +461,33 @@ export function PackageForm({
 
 	const removeDayImage = async (dayIndex: number, imageIndex: number) => {
 		try {
-			// Remove from file manager if we have the file ID
-			const currentDayFiles = itineraryImageFiles[dayIndex] || [];
-			if (currentDayFiles[imageIndex]) {
-				await deleteFile(currentDayFiles[imageIndex].id);
+			const currentImages = currentPackage?.itinerary?.[dayIndex]?.images || [];
+			const imageToDelete = currentImages[imageIndex];
+
+			if (imageToDelete && typeof imageToDelete === 'object' && 'id' in imageToDelete) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				await deleteFile((imageToDelete as any)?.id);
 			}
 
-			// Update state
-			const newDayFiles = currentDayFiles.filter((_, i) => i !== imageIndex);
-			setItineraryImageFiles(prev => ({
-				...prev,
-				[dayIndex]: newDayFiles
-			}));
+			// Update currentPackage state
+			setCurrentPackage(prev => {
+				if (!prev) return null;
+				const updatedItinerary = [...(prev.itinerary || [])];
+				if (updatedItinerary[dayIndex]) {
+					updatedItinerary[dayIndex] = {
+						...updatedItinerary[dayIndex],
+						images: updatedItinerary[dayIndex].images?.filter((_, i) => i !== imageIndex) || []
+					};
+				}
+				return {
+					...prev,
+					itinerary: updatedItinerary
+				};
+			});
 
 			// Update form
-			const currentImages = form.getValues(`itinerary.${dayIndex}.images`);
-			const newImages = currentImages?.filter((_, i) => i !== imageIndex);
+			const formImages = form.getValues(`itinerary.${dayIndex}.images`);
+			const newImages = formImages?.filter((_, i) => i !== imageIndex);
 			form.setValue(`itinerary.${dayIndex}.images`, newImages);
 
 			toast.success("Image removed successfully");
@@ -547,8 +607,15 @@ export function PackageForm({
 			const submitData = {
 				...cleanedData,
 				status,
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				thumbnail: (currentPackage?.thumbnail as any)?.id || undefined,
+				thumbnail: (() => {
+					if (thumbnailFile?.id) return thumbnailFile.id;
+					if (typeof cleanedData.thumbnail === 'object' && cleanedData.thumbnail !== null && 'id' in cleanedData.thumbnail) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						return (cleanedData.thumbnail as any)?.id;
+					}
+					if (typeof cleanedData.thumbnail === 'string') return cleanedData.thumbnail;
+					return undefined;
+				})(),
 			};
 
 			const response = await axiosInstance.patch(`/packages/${packageId}`, submitData);
@@ -638,9 +705,15 @@ export function PackageForm({
 										<div className="flex items-center gap-4">
 											<div className="relative">
 												<img
-													// eslint-disable-next-line @typescript-eslint/no-explicit-any
-													src={currentPackage?.thumbnail ? getFileUrl(getServeFileUrl((currentPackage?.thumbnail as any)?.id)) : "/placeholder.svg"}
-													alt={`Package thumbnail ${currentPackage?.thumbnail}`}
+													src={(() => {
+														if (thumbnailFile?.id) return getFileUrl(getServeFileUrl(thumbnailFile.id));
+														if (currentPackage?.thumbnail && typeof currentPackage.thumbnail === 'object' && 'id' in currentPackage.thumbnail) {
+															// eslint-disable-next-line @typescript-eslint/no-explicit-any
+															return getFileUrl(getServeFileUrl((currentPackage.thumbnail as any)?.id));
+														}
+														return "/placeholder.svg";
+													})()}
+													alt="Package thumbnail"
 													width={200}
 													height={150}
 													className="rounded-lg object-cover border"
@@ -751,7 +824,7 @@ export function PackageForm({
 												name="price"
 												render={({ field }) => (
 													<FormItem>
-														<FormLabel>Price (USD)</FormLabel>
+														<FormLabel>Price (INR)</FormLabel>
 														<FormControl>
 															<Input
 																type="number"
