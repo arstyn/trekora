@@ -191,6 +191,8 @@ export function PackageForm({
 	const transformBackendDataToForm = useCallback((backendData: PackageFormData) => {
 		return {
 			...backendData,
+			price: typeof backendData.price === 'string' ? Number(backendData.price) || 0 : backendData.price,
+			maxGuests: typeof backendData.maxGuests === 'string' ? Number(backendData.maxGuests) || 0 : backendData.maxGuests,
 			cancellationPolicy: backendData.cancellationPolicy?.map((policy: string | { text: string }) => 
 				typeof policy === 'object' ? policy?.text : policy
 			) || [],
