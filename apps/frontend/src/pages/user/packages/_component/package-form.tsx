@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
-import { uploadSingleFile, deleteFile, type FileUploadResponse } from "@/lib/file-upload";
+import { uploadSingleFile, deleteFile, getFileUrl as getServeFileUrl, type FileUploadResponse } from "@/lib/file-upload";
 import { getFileUrl } from "@/lib/utils";
 import { packageFormSchema, type PackageFormData } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -170,6 +170,7 @@ export function PackageForm({
 }: PackageFormProps) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [packageId, setPackageId] = useState<string | undefined>(initialPackageId);
+	const [currentPackage, setCurrentPackage] = useState<PackageFormData | null>(null);
 	const [isDraftCreated, setIsDraftCreated] = useState(!!initialPackageId);
 	const [isAutoSaving, setIsAutoSaving] = useState(false);
 	const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -187,7 +188,7 @@ export function PackageForm({
 
 	const createDraftPackage = useCallback(async () => {
 		if (isDraftCreated || isEditing) return;
-		
+
 		try {
 			setIsLoading(true);
 			const draftData = {
@@ -200,7 +201,7 @@ export function PackageForm({
 				description: undefined,
 				thumbnail: undefined,
 			};
-			
+
 			const response = await axiosInstance.post('/packages', draftData);
 			if (response.data?.id) {
 				setPackageId(response.data.id);
@@ -253,7 +254,7 @@ export function PackageForm({
 		if (autoSaveTimeoutRef.current) {
 			clearTimeout(autoSaveTimeoutRef.current);
 		}
-		
+
 		autoSaveTimeoutRef.current = window.setTimeout(() => {
 			autoSave(data);
 		}, 2000) as unknown as NodeJS.Timeout; // Auto-save after 2 seconds of inactivity
@@ -312,7 +313,7 @@ export function PackageForm({
 						`/packages/${packageId}`
 					);
 					if (res.data) {
-						console.log(res.data)
+						setCurrentPackage(res.data);
 						form.reset(res.data);
 					}
 				} catch (error) {
@@ -354,12 +355,13 @@ export function PackageForm({
 				toast.error("Please wait for draft package to be created");
 				return;
 			}
-			
+
 			try {
 				setIsLoading(true);
 				const uploadedFile = await uploadSingleFile(file, packageId, 'package');
 				setThumbnailFile(uploadedFile);
-				form.setValue("thumbnail", uploadedFile.url);
+				form.setValue("thumbnail", uploadedFile.id);
+				debouncedAutoSave(form.getValues() as PackageFormData);
 				toast.success("Thumbnail uploaded successfully");
 			} catch (error) {
 				console.log(error);
@@ -380,24 +382,23 @@ export function PackageForm({
 				toast.error("Please wait for draft package to be created");
 				return;
 			}
-			
+
 			try {
 				setIsLoading(true);
 				const uploadedFile = await uploadSingleFile(file, packageId, 'itinerary');
 
-				// Update state for display
 				const currentDayFiles = itineraryImageFiles[dayIndex] || [];
 				setItineraryImageFiles(prev => ({
 					...prev,
 					[dayIndex]: [...currentDayFiles, uploadedFile]
 				}));
 
-				// Update form values
 				const currentImages = form.getValues(`itinerary.${dayIndex}.images`) || [];
 				form.setValue(`itinerary.${dayIndex}.images`, [
 					...currentImages,
-					uploadedFile.url,
+					uploadedFile.id,
 				]);
+				debouncedAutoSave(form.getValues() as PackageFormData);
 
 				toast.success("Image uploaded successfully");
 			} catch (error) {
@@ -546,7 +547,8 @@ export function PackageForm({
 			const submitData = {
 				...cleanedData,
 				status,
-				thumbnail: thumbnailFile?.url || cleanedData.thumbnail || undefined,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				thumbnail: (currentPackage?.thumbnail as any)?.id || undefined,
 			};
 
 			const response = await axiosInstance.patch(`/packages/${packageId}`, submitData);
@@ -636,8 +638,9 @@ export function PackageForm({
 										<div className="flex items-center gap-4">
 											<div className="relative">
 												<img
-													src={thumbnailFile?.url ? getFileUrl(thumbnailFile?.url) : "/placeholder.svg"}
-													alt="Package thumbnail"
+													// eslint-disable-next-line @typescript-eslint/no-explicit-any
+													src={currentPackage?.thumbnail ? getFileUrl(getServeFileUrl((currentPackage?.thumbnail as any)?.id)) : "/placeholder.svg"}
+													alt={`Package thumbnail ${currentPackage?.thumbnail}`}
 													width={200}
 													height={150}
 													className="rounded-lg object-cover border"
@@ -967,14 +970,15 @@ export function PackageForm({
 												<div className="space-y-3">
 													<Label>Day Images</Label>
 													<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-														{(itineraryImageFiles[dayIndex] || [])
-															.map((fileData, imageIndex) => (
+														{(currentPackage?.itinerary?.[dayIndex]?.images || [])
+															// eslint-disable-next-line @typescript-eslint/no-explicit-any
+															.map((fileData: any, imageIndex) => (
 																<div
 																	key={fileData.id || imageIndex}
 																	className="relative group"
 																>
 																	<img
-																		src={fileData.url ? getFileUrl(fileData.url) : "/placeholder.svg"}
+																		src={fileData ? getFileUrl(getServeFileUrl(fileData.id)) : "/placeholder.svg"}
 																		alt={`Day ${dayIndex + 1} image ${imageIndex + 1}`}
 																		width={150}
 																		height={100}

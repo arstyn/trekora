@@ -14,6 +14,7 @@ import { CancellationPolicy } from '../../database/entity/package-related/cancel
 import { Package } from '../../database/entity/package-related/package.entity';
 import { ItineraryDay } from 'src/database/entity/package-related/itinerary-days.entity';
 import { PackageFormData } from 'src/dto/package.schema';
+import { FileManager } from 'src/database/entity/file-manager.entity';
 
 @Injectable()
 export class PackageService {
@@ -43,6 +44,8 @@ export class PackageService {
     private readonly transportationRepository: Repository<Transportation>,
     @InjectRepository(ItineraryDay)
     private readonly itineraryDayRepository: Repository<ItineraryDay>,
+    @InjectRepository(FileManager)
+    private readonly fileManagerRepository: Repository<FileManager>,
   ) {}
 
   async create(
@@ -77,7 +80,7 @@ export class PackageService {
         destination: rest.destination === '' ? undefined : rest.destination,
         duration: rest.duration === '' ? undefined : rest.duration,
         description: rest.description === '' ? undefined : rest.description,
-        thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail,
+        thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail?.replace('/file-manager/serve/', ''),
         organizationId: user.organizationId,
         createdById: user.userId,
       };
@@ -139,6 +142,7 @@ export class PackageService {
         for (const day of itinerary) {
           const entity = this.itineraryDayRepository.create({
             ...day,
+            images: day.images?.map((image) => image?.replace('/file-manager/serve/', '')),
             packageId: savedPackage.id,
           });
           await queryRunner.manager.save(entity);
@@ -259,6 +263,29 @@ export class PackageService {
           included: pkg.transportation.duringIncluded,
         },
       };
+      if (pkg.thumbnail) {
+        const file = await this.fileManagerRepository.findOne({
+          where: {
+            id: pkg.thumbnail,
+          },
+        });
+        (pkg as any).thumbnail = file;
+      }
+      if (pkg.itinerary.length) {
+        for (const day of pkg.itinerary) {
+          if (day.images.length) {
+            for (let i = 0; i < day.images.length; i++) {
+              const imageId = day.images[i];
+              const file = await this.fileManagerRepository.findOne({
+                where: {
+                  id: imageId,
+                },
+              });
+              (day as any).images[i] = file;
+            }
+          }
+        }
+      }
       (pkg as any).transportation = transformedTransportation;
     }
     
@@ -299,7 +326,7 @@ export class PackageService {
         destination: rest.destination === '' ? undefined : rest.destination,
         duration: rest.duration === '' ? undefined : rest.duration,
         description: rest.description === '' ? undefined : rest.description,
-        thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail,
+        thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail?.replace('/file-manager/serve/', ''),
       };
 
       // Update main package
@@ -373,6 +400,7 @@ export class PackageService {
         for (const day of itinerary) {
           const entity = this.itineraryDayRepository.create({
             ...day,
+            images: day.images?.map((image) => image?.replace('/file-manager/serve/', '')),
             packageId: id,
           });
           await queryRunner.manager.save(entity);
