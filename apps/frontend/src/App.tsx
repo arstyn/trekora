@@ -45,6 +45,7 @@ function AuthenticatedApp() {
 					<Route path="/leads" element={<Leads />} />
 					<Route path="/packages" element={<Packages />} />
 					<Route path="/packages/create" element={<CreatePackagePage />} />
+					<Route path="/packages/create/:id" element={<CreatePackagePage />} />
 					<Route path="/packages/edit/:id" element={<EditPackagePage />} />
 					<Route path="/packages/:id" element={<ViewPackagePage />} />
 					<Route path="/customers" element={<CustomerManagement />} />

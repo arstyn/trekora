@@ -27,13 +27,16 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
+import { uploadSingleFile, deleteFile, getFileUrl as getServeFileUrl, type FileUploadResponse } from "@/lib/file-upload";
+import { getFileUrl } from "@/lib/utils";
 import { packageFormSchema, type PackageFormData } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface PackageFormProps {
 	isEditing?: boolean;
@@ -48,8 +51,8 @@ const defaultValues: PackageFormData = {
 	price: 0,
 	description: "",
 	maxGuests: 0,
-	startDate: "",
-	endDate: "",
+	startDate: undefined,
+	endDate: undefined,
 	difficulty: "easy",
 	category: "adventure",
 	inclusions: [],
@@ -163,12 +166,18 @@ const defaultValues: PackageFormData = {
 
 export function PackageForm({
 	isEditing = false,
-	packageId,
+	packageId: initialPackageId,
 	onSuccess,
 }: PackageFormProps) {
+	const navigate = useNavigate();
+	const location = useLocation();
 	const [isLoading, setIsLoading] = useState(false);
-	const [thumbnail, setThumbnail] = useState("");
-	console.log("🚀 ~ package-form.tsx:172 ~ thumbnail:", thumbnail);
+	const [packageId, setPackageId] = useState<string | undefined>(initialPackageId);
+	const [currentPackage, setCurrentPackage] = useState<PackageFormData | null>(null);
+	const [isDraftCreated, setIsDraftCreated] = useState(!!initialPackageId);
+	const [isAutoSaving, setIsAutoSaving] = useState(false);
+	const [lastSaved, setLastSaved] = useState<Date | null>(null);
+	const [thumbnailFile, setThumbnailFile] = useState<FileUploadResponse | null>(null);
 	const [newInclusion, setNewInclusion] = useState("");
 	const [newExclusion, setNewExclusion] = useState("");
 
@@ -176,6 +185,127 @@ export function PackageForm({
 		resolver: zodResolver(packageFormSchema),
 		defaultValues,
 	});
+
+	const autoSaveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+	const transformBackendDataToForm = useCallback((backendData: PackageFormData) => {
+		return {
+			...backendData,
+			price: typeof backendData.price === 'string' ? Number(backendData.price) || 0 : backendData.price,
+			maxGuests: typeof backendData.maxGuests === 'string' ? Number(backendData.maxGuests) || 0 : backendData.maxGuests,
+			cancellationPolicy: backendData.cancellationPolicy?.map((policy: string | { text: string }) => 
+				typeof policy === 'object' ? policy?.text : policy
+			) || [],
+			inclusions: backendData.inclusions?.map((inc: string | { item: string }) => 
+				typeof inc === 'object' ? inc?.item : inc
+			) || [],
+			exclusions: backendData.exclusions?.map((exc: string | { item: string }) => 
+				typeof exc === 'object' ? exc?.item : exc
+			) || []
+		};
+	}, []);
+
+	const createDraftPackage = useCallback(async () => {
+		if (isDraftCreated || isEditing) return;
+
+		try {
+			setIsLoading(true);
+			const draftData = {
+				...defaultValues,
+				status: "draft",
+				name: "New Package Draft",
+				// Ensure undefined values for empty fields
+				destination: undefined,
+				duration: undefined,
+				description: undefined,
+				thumbnail: undefined,
+			};
+
+			const response = await axiosInstance.post('/packages', draftData);
+			if (response.data?.id) {
+				setPackageId(response.data.id);
+				setIsDraftCreated(true);
+				setLastSaved(new Date());
+				
+				if (!isEditing && location.pathname === '/packages/create') {
+					navigate(`/packages/create/${response.data.id}`, { replace: true });
+				}
+				
+				toast.success("Draft package created");
+			}
+		} catch (error) {
+			console.error('Failed to create draft package:', error);
+			toast.error("Failed to create draft package");
+		} finally {
+			setIsLoading(false);
+		}
+	}, [isDraftCreated, isEditing, navigate, location.pathname]);
+
+	const cleanFormData = useCallback((data: PackageFormData) => {
+		return {
+			...data,
+			price: typeof data.price === 'string' ? Number(data.price) : data.price,
+			maxGuests: typeof data.maxGuests === 'string' ? Number(data.maxGuests) : data.maxGuests,
+			// Convert empty strings to undefined
+			destination: data.destination === '' ? undefined : data.destination,
+			duration: data.duration === '' ? undefined : data.duration,
+			description: data.description === '' ? undefined : data.description,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			thumbnail: data.thumbnail === '' ? undefined : (typeof data.thumbnail === 'object' ? (data.thumbnail as any)?.id : data.thumbnail),
+			startDate: data.startDate === '' ? undefined : data.startDate,
+			endDate: data.endDate === '' ? undefined : data.endDate,
+			itinerary: data.itinerary?.map(day => ({
+				...day,
+				images: day.images?.map(img => {
+					if (typeof img === 'object' && img !== null && 'id' in img) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						return (img as any)?.id;
+					}
+					return img;
+				}).filter(Boolean) || []
+			})) || [],
+			cancellationPolicy: data.cancellationPolicy?.map(policy => {
+				if (typeof policy === 'object' && policy !== null && 'text' in policy) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					return (policy as any)?.text;
+				}
+				return policy;
+			}).filter(Boolean) || []
+		};
+	}, []);
+
+	const autoSave = useCallback(async (data: PackageFormData) => {
+		if (!packageId || !isDraftCreated || isLoading) return;
+
+		try {
+			setIsAutoSaving(true);
+			const cleanedData = cleanFormData(data);
+			
+			const response = await axiosInstance.patch(`/packages/${packageId}`, cleanedData);
+			if (response.data) {
+				const transformedData = transformBackendDataToForm(response.data);
+				setCurrentPackage(transformedData);
+				setLastSaved(new Date());
+			}
+		} catch (error) {
+			console.error('Auto-save failed:', error);
+		} finally {
+			setIsAutoSaving(false);
+		}
+	}, [packageId, isDraftCreated, isLoading, cleanFormData, transformBackendDataToForm]);
+
+		const debouncedAutoSave = useCallback((data: PackageFormData) => {
+		// Don't auto-save if we're currently loading or if draft isn't created yet
+		if (!packageId || !isDraftCreated || isLoading || isAutoSaving) return;
+		
+		if (autoSaveTimeoutRef.current) {
+			clearTimeout(autoSaveTimeoutRef.current);
+		}
+		
+		autoSaveTimeoutRef.current = window.setTimeout(() => {
+			autoSave(data);
+		}, 3000) as unknown as NodeJS.Timeout; // Increased to 3 seconds to reduce frequency
+	}, [autoSave, packageId, isDraftCreated, isLoading, isAutoSaving]);
 
 	const {
 		fields: itineraryFields,
@@ -222,67 +352,178 @@ export function PackageForm({
 		name: "preTripChecklist",
 	});
 
-	// Load package data if editing
 	useEffect(() => {
 		if (isEditing && packageId) {
 			const loadPackage = async () => {
 				try {
+					setIsLoading(true);
 					const res = await axiosInstance.get<PackageFormData>(
 						`/packages/${packageId}`
 					);
-					if (res) {
-						form.reset(res.data);
-						setThumbnail(res.data.thumbnail || "");
+					if (res.data) {
+						const transformedData = transformBackendDataToForm(res.data);
+						setCurrentPackage(transformedData);
+						form.reset(transformedData);
+						
+						if (res.data.thumbnail) {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							const thumbnailObj = res.data.thumbnail as any;
+							if (thumbnailObj?.id) {
+								setThumbnailFile(thumbnailObj);
+							}
+						}
 					}
 				} catch (error) {
 					if (error instanceof Error) {
 						toast.error(error.message);
 					} else {
-						toast.error("Failed to load updates");
+						toast.error("Failed to load package");
 					}
+				} finally {
+					setIsLoading(false);
 				}
 			};
 			loadPackage();
+		} else if (!isEditing && !isDraftCreated) {
+			createDraftPackage();
 		}
-	}, [isEditing, packageId, form]);
+	}, [isEditing, packageId, form, isDraftCreated, createDraftPackage, transformBackendDataToForm]);
 
-	const handleThumbnailUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+	useEffect(() => {
+		const subscription = form.watch((data) => {
+			if (isDraftCreated && packageId && !isLoading && !isAutoSaving) {
+				const formData = data as PackageFormData;
+				if (formData.name && formData.name.trim() !== 'New Package Draft') {
+					debouncedAutoSave(formData);
+				}
+			}
+		});
+		return () => subscription.unsubscribe();
+	}, [form, isDraftCreated, packageId, isLoading, isAutoSaving, debouncedAutoSave]);
+
+	useEffect(() => {
+		return () => {
+			if (autoSaveTimeoutRef.current) {
+				clearTimeout(autoSaveTimeoutRef.current);
+			}
+		};
+	}, []);
+
+	const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		if (file) {
-			const reader = new FileReader();
-			reader.onload = (e) => {
-				const result = e.target?.result as string;
-				setThumbnail(result);
-				form.setValue("thumbnail", result);
-			};
-			reader.readAsDataURL(file);
+			if (!packageId) {
+				toast.error("Please wait for draft package to be created");
+				return;
+			}
+
+			try {
+				setIsLoading(true);
+				const uploadedFile = await uploadSingleFile(file, packageId, 'package');
+				setThumbnailFile(uploadedFile);
+				form.setValue("thumbnail", uploadedFile.id);
+				
+				setCurrentPackage(prev => prev ? {
+					...prev,
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					thumbnail: uploadedFile as any
+				} : null);
+				
+				debouncedAutoSave(form.getValues() as PackageFormData);
+				toast.success("Thumbnail uploaded successfully");
+			} catch (error) {
+				console.log(error);
+				toast.error("Failed to upload thumbnail");
+			} finally {
+				setIsLoading(false);
+			}
 		}
 	};
 
-	const handleDayImageUpload = (
+	const handleDayImageUpload = async (
 		dayIndex: number,
 		event: React.ChangeEvent<HTMLInputElement>
 	) => {
 		const file = event.target.files?.[0];
 		if (file) {
-			const reader = new FileReader();
-			reader.onload = (e) => {
-				const result = e.target?.result as string;
-				const currentImages = form.getValues(`itinerary.${dayIndex}.images`);
-				if (currentImages)
-					form.setValue(`itinerary.${dayIndex}.images`, [
-						...currentImages,
-						result,
-					]);
-			};
-			reader.readAsDataURL(file);
+			if (!packageId) {
+				toast.error("Please wait for draft package to be created");
+				return;
+			}
+
+			try {
+				setIsLoading(true);
+				const uploadedFile = await uploadSingleFile(file, packageId, 'itinerary');
+
+				setCurrentPackage(prev => {
+					if (!prev) return null;
+					const updatedItinerary = [...(prev.itinerary || [])];
+					if (updatedItinerary[dayIndex]) {
+						updatedItinerary[dayIndex] = {
+							...updatedItinerary[dayIndex],
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							images: [...(updatedItinerary[dayIndex].images || []), uploadedFile as any]
+						};
+					}
+					return {
+						...prev,
+						itinerary: updatedItinerary
+					};
+				});
+
+				const currentImages = form.getValues(`itinerary.${dayIndex}.images`) || [];
+				form.setValue(`itinerary.${dayIndex}.images`, [
+					...currentImages,
+					uploadedFile.id,
+				]);
+				debouncedAutoSave(form.getValues() as PackageFormData);
+
+				toast.success("Image uploaded successfully");
+			} catch (error) {
+				console.log(error)
+				toast.error("Failed to upload image");
+			} finally {
+				setIsLoading(false);
+			}
 		}
 	};
 
-	const removeDayImage = (dayIndex: number, imageIndex: number) => {
-		const currentImages = form.getValues(`itinerary.${dayIndex}.images`);
-		const newImages = currentImages?.filter((_, i) => i !== imageIndex);
-		form.setValue(`itinerary.${dayIndex}.images`, newImages);
+	const removeDayImage = async (dayIndex: number, imageIndex: number) => {
+		try {
+			const currentImages = currentPackage?.itinerary?.[dayIndex]?.images || [];
+			const imageToDelete = currentImages[imageIndex];
+
+			if (imageToDelete && typeof imageToDelete === 'object' && 'id' in imageToDelete) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				await deleteFile((imageToDelete as any)?.id);
+			}
+
+			// Update currentPackage state
+			setCurrentPackage(prev => {
+				if (!prev) return null;
+				const updatedItinerary = [...(prev.itinerary || [])];
+				if (updatedItinerary[dayIndex]) {
+					updatedItinerary[dayIndex] = {
+						...updatedItinerary[dayIndex],
+						images: updatedItinerary[dayIndex].images?.filter((_, i) => i !== imageIndex) || []
+					};
+				}
+				return {
+					...prev,
+					itinerary: updatedItinerary
+				};
+			});
+
+			// Update form
+			const formImages = form.getValues(`itinerary.${dayIndex}.images`);
+			const newImages = formImages?.filter((_, i) => i !== imageIndex);
+			form.setValue(`itinerary.${dayIndex}.images`, newImages);
+
+			toast.success("Image removed successfully");
+		} catch (error) {
+			console.log(error)
+			toast.error("Failed to remove image");
+		}
 	};
 
 	const addActivity = (dayIndex: number) => {
@@ -384,24 +625,46 @@ export function PackageForm({
 	};
 
 	const onSubmit = async (data: PackageFormData, status: "draft" | "published") => {
-		console.log("🚀 ~ package-form.tsx:385 ~ onSubmit ~ status:", status);
-		console.log("🚀 ~ package-form.tsx:385 ~ onSubmit ~ data:", data);
 		setIsLoading(true);
 		try {
-			// const submitData = {
-			// 	...data,
-			// 	status,
-			// 	thumbnail,
-			// 	id: isEditing ? packageId : null,
-			// };
+			if (!packageId) {
+				toast.error("Package not ready for submission");
+				return;
+			}
 
-			toast.success(`Package ${isEditing ? "updated" : "created"} successfully!`);
-			onSuccess?.();
+			const cleanedData = cleanFormData(data);
+			const submitData = {
+				...cleanedData,
+				status,
+				thumbnail: (() => {
+					if (thumbnailFile?.id) return thumbnailFile.id;
+					if (typeof cleanedData.thumbnail === 'object' && cleanedData.thumbnail !== null && 'id' in cleanedData.thumbnail) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						return (cleanedData.thumbnail as any)?.id;
+					}
+					if (typeof cleanedData.thumbnail === 'string') return cleanedData.thumbnail;
+					return undefined;
+				})(),
+			};
+
+			const response = await axiosInstance.patch(`/packages/${packageId}`, submitData);
+
+			if (response.data) {
+				const action = status === "published" ? "published" : "saved";
+				toast.success(`Package ${action} successfully!`);
+				setLastSaved(new Date());
+				onSuccess?.();
+			}
 		} catch (error) {
-			if (error instanceof Error) {
+			console.error('Package submission error:', error);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			if ((error as any)?.response?.data?.message) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				toast.error((error as any)?.response.data.message);
+			} else if (error instanceof Error) {
 				toast.error(error.message);
 			} else {
-				toast.error(`Failed to ${isEditing ? "update" : "create"} package`);
+				toast.error(`Failed to ${status === "published" ? "publish" : "save"} package`);
 			}
 		} finally {
 			setIsLoading(false);
@@ -455,7 +718,7 @@ export function PackageForm({
 		<div className="min-h-screen ">
 			<Form {...form}>
 				<form>
-					<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+					<div className="px-4 sm:px-6 lg:px-8 py-8">
 						<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 							{/* Main Form */}
 							<div className="lg:col-span-2 space-y-6">
@@ -471,8 +734,14 @@ export function PackageForm({
 										<div className="flex items-center gap-4">
 											<div className="relative">
 												<img
-													// src={thumbnail || '/placeholder.svg'}
-													src={"/placeholder.svg"}
+													src={(() => {
+														if (thumbnailFile?.id) return getFileUrl(getServeFileUrl(thumbnailFile.id));
+														if (currentPackage?.thumbnail && typeof currentPackage.thumbnail === 'object' && 'id' in currentPackage.thumbnail) {
+															// eslint-disable-next-line @typescript-eslint/no-explicit-any
+															return getFileUrl(getServeFileUrl((currentPackage.thumbnail as any)?.id));
+														}
+														return "/placeholder.svg";
+													})()}
 													alt="Package thumbnail"
 													width={200}
 													height={150}
@@ -584,12 +853,20 @@ export function PackageForm({
 												name="price"
 												render={({ field }) => (
 													<FormItem>
-														<FormLabel>Price (USD)</FormLabel>
+														<FormLabel>Price (INR)</FormLabel>
 														<FormControl>
 															<Input
 																type="number"
+																min="0"
 																placeholder="1299"
 																{...field}
+																onChange={(e) =>
+																	field.onChange(
+																		Number.parseFloat(
+																			e.target.value
+																		) || 0
+																	)
+																}
 															/>
 														</FormControl>
 														<FormMessage />
@@ -605,8 +882,16 @@ export function PackageForm({
 														<FormControl>
 															<Input
 																type="number"
+																min="0"
 																placeholder="12"
 																{...field}
+																onChange={(e) =>
+																	field.onChange(
+																		Number.parseInt(
+																			e.target.value
+																		) || 0
+																	)
+																}
 															/>
 														</FormControl>
 														<FormMessage />
@@ -787,25 +1072,16 @@ export function PackageForm({
 												<div className="space-y-3">
 													<Label>Day Images</Label>
 													<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-														{form
-															.watch(
-																`itinerary.${dayIndex}.images`
-															)
-															?.map((image, imageIndex) => (
+														{(currentPackage?.itinerary?.[dayIndex]?.images || [])
+															// eslint-disable-next-line @typescript-eslint/no-explicit-any
+															.map((fileData: any, imageIndex) => (
 																<div
-																	key={imageIndex}
+																	key={fileData.id || imageIndex}
 																	className="relative group"
 																>
 																	<img
-																		src={
-																			image ||
-																			"/placeholder.svg"
-																		}
-																		alt={`Day ${
-																			dayIndex + 1
-																		} image ${
-																			imageIndex + 1
-																		}`}
+																		src={fileData ? getFileUrl(getServeFileUrl(fileData.id)) : "/placeholder.svg"}
+																		alt={`Day ${dayIndex + 1} image ${imageIndex + 1}`}
 																		width={150}
 																		height={100}
 																		className="rounded-lg object-cover border"
@@ -939,20 +1215,20 @@ export function PackageForm({
 																		`itinerary.${dayIndex}.activities`
 																	)?.length ?? 0) >
 																		1 && (
-																		<Button
-																			type="button"
-																			variant="ghost"
-																			size="sm"
-																			onClick={() =>
-																				removeActivity(
-																					dayIndex,
-																					activityIndex
-																				)
-																			}
-																		>
-																			<Trash2 className="w-4 h-4" />
-																		</Button>
-																	)}
+																			<Button
+																				type="button"
+																				variant="ghost"
+																				size="sm"
+																				onClick={() =>
+																					removeActivity(
+																						dayIndex,
+																						activityIndex
+																					)
+																				}
+																			>
+																				<Trash2 className="w-4 h-4" />
+																			</Button>
+																		)}
 																</div>
 															)
 														)}
@@ -986,18 +1262,18 @@ export function PackageForm({
 																						const updatedMeals =
 																							checked
 																								? [
-																										...(field.value ||
-																											[]),
-																										meal,
-																								  ]
+																									...(field.value ||
+																										[]),
+																									meal,
+																								]
 																								: field.value?.filter(
-																										(
-																											value
-																										) =>
-																											value !==
-																											meal
-																								  ) ||
-																								  [];
+																									(
+																										value
+																									) =>
+																										value !==
+																										meal
+																								) ||
+																								[];
 																						field.onChange(
 																							updatedMeals
 																						);
@@ -1820,41 +2096,41 @@ export function PackageForm({
 
 										{form.watch("packageLocation.type") ===
 											"local" && (
-											<FormField
-												control={form.control}
-												name="packageLocation.state"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>
-															State/Region
-														</FormLabel>
-														<Select
-															onValueChange={field.onChange}
-															defaultValue={field.value}
-														>
-															<FormControl>
-																<SelectTrigger>
-																	<SelectValue placeholder="Select state" />
-																</SelectTrigger>
-															</FormControl>
-															<SelectContent>
-																{indianStates.map(
-																	(state) => (
-																		<SelectItem
-																			key={state}
-																			value={state}
-																		>
-																			{state}
-																		</SelectItem>
-																	)
-																)}
-															</SelectContent>
-														</Select>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-										)}
+												<FormField
+													control={form.control}
+													name="packageLocation.state"
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>
+																State/Region
+															</FormLabel>
+															<Select
+																onValueChange={field.onChange}
+																defaultValue={field.value}
+															>
+																<FormControl>
+																	<SelectTrigger>
+																		<SelectValue placeholder="Select state" />
+																	</SelectTrigger>
+																</FormControl>
+																<SelectContent>
+																	{indianStates.map(
+																		(state) => (
+																			<SelectItem
+																				key={state}
+																				value={state}
+																			>
+																				{state}
+																			</SelectItem>
+																		)
+																	)}
+																</SelectContent>
+															</Select>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+											)}
 									</CardContent>
 								</Card>
 
@@ -2029,9 +2305,9 @@ export function PackageForm({
 															?.filter(
 																(doc) =>
 																	doc.applicableFor ===
-																		"adults" ||
+																	"adults" ||
 																	doc.applicableFor ===
-																		"all"
+																	"all"
 															)
 															.map((doc, index) => (
 																<li key={index}>
@@ -2050,9 +2326,9 @@ export function PackageForm({
 															?.filter(
 																(doc) =>
 																	doc.applicableFor ===
-																		"children" ||
+																	"children" ||
 																	doc.applicableFor ===
-																		"all"
+																	"all"
 															)
 															.map((doc, index) => (
 																<li key={index}>
@@ -2083,7 +2359,7 @@ export function PackageForm({
 									</CardContent>
 								</Card>
 
-								{/* Pre-Trip Checklist */}
+								{/* Pre-Trip Checklist - Not Needed */}
 								<Card>
 									<CardHeader>
 										<div className="flex justify-between items-center">
@@ -2131,24 +2407,6 @@ export function PackageForm({
 											>
 												<div className="flex justify-between items-center">
 													<div className="flex items-center gap-2">
-														<FormField
-															control={form.control}
-															name={`preTripChecklist.${index}.completed`}
-															render={({ field }) => (
-																<FormItem>
-																	<FormControl>
-																		<Checkbox
-																			checked={
-																				field.value
-																			}
-																			onCheckedChange={
-																				field.onChange
-																			}
-																		/>
-																	</FormControl>
-																</FormItem>
-															)}
-														/>
 														<h4 className="font-medium">
 															Checklist Item
 														</h4>
@@ -2306,64 +2564,6 @@ export function PackageForm({
 												</div>
 											</div>
 										))}
-
-										{/* Checklist Summary */}
-										<div className="mt-6 p-4  rounded-lg">
-											<h4 className="font-medium mb-3">
-												Checklist Summary
-											</h4>
-											<div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-												<div className="text-center">
-													<div className="text-2xl font-bold text-primary">
-														{form
-															.watch("preTripChecklist")
-															?.filter(
-																(item) =>
-																	item.category ===
-																	"documents"
-															).length || 0}
-													</div>
-													<div className="">Documents</div>
-												</div>
-												<div className="text-center">
-													<div className="text-2xl font-bold text-primary">
-														{form
-															.watch("preTripChecklist")
-															?.filter(
-																(item) =>
-																	item.category ===
-																	"booking"
-															).length || 0}
-													</div>
-													<div className="">Bookings</div>
-												</div>
-												<div className="text-center">
-													<div className="text-2xl font-bold text-primary">
-														{form
-															.watch("preTripChecklist")
-															?.filter(
-																(item) =>
-																	item.category ===
-																	"preparation"
-															).length || 0}
-													</div>
-													<div className="">Preparation</div>
-												</div>
-												<div className="text-center">
-													<div className="text-2xl font-bold text-primary">
-														{form
-															.watch("preTripChecklist")
-															?.filter(
-																(item) => item.completed
-															).length || 0}
-														/
-														{form.watch("preTripChecklist")
-															?.length || 0}
-													</div>
-													<div className="">Completed</div>
-												</div>
-											</div>
-										</div>
 									</CardContent>
 								</Card>
 							</div>
@@ -2374,6 +2574,17 @@ export function PackageForm({
 								<Card>
 									<CardHeader>
 										<CardTitle>Actions</CardTitle>
+										{isDraftCreated && (
+											<CardDescription className="flex items-center gap-2">
+												{isAutoSaving ? (
+													<span className="text-blue-600">Saving...</span>
+												) : lastSaved ? (
+													<span className="text-green-600">
+														Last saved: {lastSaved.toLocaleTimeString()}
+													</span>
+												) : null}
+											</CardDescription>
+										)}
 									</CardHeader>
 									<CardContent className="space-y-2">
 										<Button
@@ -2398,13 +2609,18 @@ export function PackageForm({
 													onSubmit(data, "published")
 												)()
 											}
-											disabled={isLoading}
+											disabled={isLoading || getTotalPaymentPercentage() !== 100}
 										>
 											<Eye className="w-4 h-4 mr-2" />
 											{isEditing
 												? "Update & Publish"
 												: "Publish Package"}
 										</Button>
+										{getTotalPaymentPercentage() !== 100 && (
+											<p className="text-sm text-red-500 mt-2">
+												Payment structure must total exactly 100% to publish
+											</p>
+										)}
 									</CardContent>
 								</Card>
 
@@ -2594,7 +2810,7 @@ export function PackageForm({
 											<Badge
 												variant={
 													form.watch("packageLocation.type") ===
-													"international"
+														"international"
 														? "default"
 														: "secondary"
 												}
@@ -2624,11 +2840,6 @@ export function PackageForm({
 												Checklist Items:
 											</span>
 											<span className="text-sm font-medium">
-												{form
-													.watch("preTripChecklist")
-													?.filter((item) => item.completed)
-													.length || 0}
-												/
 												{form.watch("preTripChecklist")?.length ||
 													0}
 											</span>
