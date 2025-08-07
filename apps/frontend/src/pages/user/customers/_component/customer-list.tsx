@@ -53,7 +53,7 @@ export default function CustomerList({
 	};
 
 	const handleDelete = () => {
-		if (customerToDelete) {
+		if (customerToDelete?.id) {
 			onDelete(customerToDelete.id);
 			setCustomerToDelete(null);
 		}
