@@ -8,7 +8,9 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import axiosInstance from "@/lib/axios";
-import type { IPackages } from "@/types/package.schema";
+import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
+import { getFileUrl } from "@/lib/utils";
+import type { IPackages, IThumbnail } from "@/types/package.schema";
 import { Calendar, IndianRupee, MapPin, Plus, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -151,7 +153,20 @@ export default function Packages() {
 						>
 							<div className="relative">
 								<img
-									src={"/placeholder.svg"}
+									src={(() => {
+										if (
+											pkg?.thumbnail &&
+											typeof pkg.thumbnail === "object" &&
+											"id" in pkg.thumbnail
+										) {
+											return getFileUrl(
+												getServeFileUrl(
+													(pkg.thumbnail as IThumbnail)?.id
+												)
+											);
+										}
+										return "/placeholder.svg";
+									})()}
 									alt={pkg.name || ""}
 									className="w-full h-48 object-cover"
 								/>

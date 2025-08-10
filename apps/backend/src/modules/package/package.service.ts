@@ -75,12 +75,21 @@ export class PackageService {
     try {
       const cleanedData = {
         ...rest,
-        startDate: rest.startDate === '' || rest.startDate === undefined ? undefined : rest.startDate,
-        endDate: rest.endDate === '' || rest.endDate === undefined ? undefined : rest.endDate,
+        startDate:
+          rest.startDate === '' || rest.startDate === undefined
+            ? undefined
+            : rest.startDate,
+        endDate:
+          rest.endDate === '' || rest.endDate === undefined
+            ? undefined
+            : rest.endDate,
         destination: rest.destination === '' ? undefined : rest.destination,
         duration: rest.duration === '' ? undefined : rest.duration,
         description: rest.description === '' ? undefined : rest.description,
-        thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail?.replace('/file-manager/serve/', ''),
+        thumbnail:
+          rest.thumbnail === ''
+            ? undefined
+            : rest.thumbnail?.replace('/file-manager/serve/', ''),
         organizationId: user.organizationId,
         createdById: user.userId,
       };
@@ -142,7 +151,9 @@ export class PackageService {
         for (const day of itinerary) {
           const entity = this.itineraryDayRepository.create({
             ...day,
-            images: day.images?.map((image) => image?.replace('/file-manager/serve/', '')),
+            images: day.images?.map((image) =>
+              image?.replace('/file-manager/serve/', ''),
+            ),
             packageId: savedPackage.id,
           });
           await queryRunner.manager.save(entity);
@@ -199,7 +210,7 @@ export class PackageService {
           duringIncluded: transportation.duringTrip?.included || false,
           packageId: savedPackage.id,
         };
-        
+
         const entity = this.transportationRepository.create(transportationData);
         await queryRunner.manager.save(entity);
       }
@@ -221,9 +232,32 @@ export class PackageService {
     if (status) {
       query.status = status;
     }
-    return this.packageRepository.find({
+    const res = await this.packageRepository.find({
       where: query,
+      select: [
+        'id',
+        'name',
+        'destination',
+        'duration',
+        'price',
+        'description',
+        'maxGuests',
+        'startDate',
+        'thumbnail',
+        'status',
+      ],
     });
+
+    for (const pkg of res) {
+      if (pkg.thumbnail) {
+        const file = await this.fileManagerRepository.findOne({
+          where: { id: pkg.thumbnail },
+        });
+        (pkg as any).thumbnail = file;
+      }
+    }
+
+    return res;
   }
 
   async findOne(id: string): Promise<Package> {
@@ -244,7 +278,7 @@ export class PackageService {
       ],
     });
     if (!pkg) throw new NotFoundException('Package not found');
-    
+
     if (pkg.transportation) {
       const transformedTransportation = {
         toDestination: {
@@ -288,7 +322,7 @@ export class PackageService {
       }
       (pkg as any).transportation = transformedTransportation;
     }
-    
+
     return pkg;
   }
 
@@ -320,13 +354,22 @@ export class PackageService {
       const cleanedData = {
         ...rest,
         // Convert empty strings to undefined for date fields
-        startDate: rest.startDate === '' || rest.startDate === undefined ? undefined : rest.startDate,
-        endDate: rest.endDate === '' || rest.endDate === undefined ? undefined : rest.endDate,
+        startDate:
+          rest.startDate === '' || rest.startDate === undefined
+            ? undefined
+            : rest.startDate,
+        endDate:
+          rest.endDate === '' || rest.endDate === undefined
+            ? undefined
+            : rest.endDate,
         // Convert empty strings to undefined for optional fields
         destination: rest.destination === '' ? undefined : rest.destination,
         duration: rest.duration === '' ? undefined : rest.duration,
         description: rest.description === '' ? undefined : rest.description,
-        thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail?.replace('/file-manager/serve/', ''),
+        thumbnail:
+          rest.thumbnail === ''
+            ? undefined
+            : rest.thumbnail?.replace('/file-manager/serve/', ''),
       };
 
       // Update main package
@@ -400,7 +443,9 @@ export class PackageService {
         for (const day of itinerary) {
           const entity = this.itineraryDayRepository.create({
             ...day,
-            images: day.images?.map((image) => image?.replace('/file-manager/serve/', '')),
+            images: day.images?.map((image) =>
+              image?.replace('/file-manager/serve/', ''),
+            ),
             packageId: id,
           });
           await queryRunner.manager.save(entity);
@@ -457,7 +502,7 @@ export class PackageService {
           duringIncluded: transportation.duringTrip?.included || false,
           packageId: id,
         };
-        
+
         const entity = this.transportationRepository.create(transportationData);
         await queryRunner.manager.save(entity);
       }
