@@ -13,6 +13,7 @@ import axiosInstance from "@/lib/axios";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/lib/constants/auth.constants";
 import type { ILoginResponse } from "@/types/auth.types";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import { Eye, EyeClosed } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -54,7 +55,9 @@ export default function LoginForm() {
 			refresh();
 			navigate("/");
 		} catch (error: unknown) {
-			if (error instanceof Error) {
+			if (error instanceof AxiosError) {
+				setError(error.response?.data.message ?? "An unexpected error occurred");
+			} else if (error instanceof Error) {
 				setError(error.message);
 			} else {
 				setError("An error occurred during login");

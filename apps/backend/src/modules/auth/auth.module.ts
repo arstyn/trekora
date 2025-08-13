@@ -13,6 +13,7 @@ import { RoleModule } from '../role/role.module';
 import { UserInviteModule } from '../user-invite/user-invite.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { MailerModule } from '../mailer/mailer.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AuthService } from './auth.service';
     UserInviteModule,
     RoleModule,
     EmployeeModule,
+    MailerModule,
     TypeOrmModule.forFeature([UserInvite, Employee, Organization, Role, User]),
   ],
   providers: [AuthService],

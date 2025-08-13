@@ -19,6 +19,7 @@ import { DataSource, Repository } from 'typeorm';
 import { EmployeeService } from '../employee/employee.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { UserService } from '../user/user.service';
+import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class AuthService {
@@ -38,6 +39,7 @@ export class AuthService {
     private readonly userInviteService: UserInviteService,
     private readonly employeeService: EmployeeService,
     private readonly dataSource: DataSource,
+    private readonly mailerService: MailerService,
   ) {}
 
   private generateAccessToken(userId: string, organizationId: string): string {
@@ -88,9 +90,6 @@ export class AuthService {
   // Signup functionality
   async signup(userData: SignupFormDTO): Promise<{
     message: string;
-    userId: string;
-    accessToken: string;
-    refreshToken: string;
   }> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -209,25 +208,16 @@ export class AuthService {
         }
       }
 
-      // Generate tokens
-      const accessToken = this.generateAccessToken(
-        savedUser.id,
-        savedOrganization.id,
-      );
-      const refreshToken = this.generateRefreshToken(
-        savedUser.id,
-        savedOrganization.id,
-      );
-
       // CRITICAL: Commit the transaction
       await queryRunner.commitTransaction();
       console.log('Transaction committed successfully');
 
+      const invite = await this.userInviteService.createInvite(employee);
+
+      await this.sendActivationEmail(userData.email, invite.token);
+
       return {
         message: 'User registered successfully',
-        userId: savedUser.id,
-        accessToken,
-        refreshToken,
       };
     } catch (error) {
       console.error('Signup error:', error);
@@ -327,10 +317,7 @@ export class AuthService {
 
   async resendActivation(email: string) {
     const employee = await this.employeeService.findOneWithEmail(email);
-    console.log(
-      '🚀 ~ auth.service.ts:225 ~ AuthService ~ resendActivation ~ employee:',
-      employee,
-    );
+
     if (!employee) {
       throw new HttpException(
         'If your email is registered and not yet activated, a new activation link has been sent.',
@@ -385,5 +372,41 @@ export class AuthService {
     await this.userService.update(user.id, user);
 
     return { message: 'Password updated successfully' };
+  }
+
+  async sendActivationEmail(email: string, token: string) {
+    const activateUrl = `${process.env.FRONTEND_URL}/activate-account/${token}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; background: #f4f4f7; padding: 40px 0;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+          <tr>
+            <td style="padding: 40px 40px 20px 40px; text-align: center;">
+              <h2 style="color: #333; margin-bottom: 16px;">Welcome to Trekora!</h2>
+              <p style="color: #555; font-size: 16px; margin-bottom: 32px;">
+                Thank you for signing up. To start using your account, please confirm your email address by clicking the button below.
+              </p>
+              <a href="${activateUrl}" style="display: inline-block; padding: 14px 32px; background: #4f46e5; color: #fff; border-radius: 6px; text-decoration: none; font-size: 18px; font-weight: bold; margin-bottom: 24px;">
+                Activate My Account
+              </a>
+              <p style="color: #888; font-size: 13px; margin-top: 32px;">If the button doesn't work, copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; color: #4f46e5; font-size: 14px;">${activateUrl}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 24px 40px 40px 40px; text-align: center; color: #aaa; font-size: 12px;">
+              &copy; ${new Date().getFullYear()} Trekora. All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'Activate Your Trekora Account',
+      text: `Welcome to Trekora! Activate your account: ${activateUrl}`,
+      html,
+    });
   }
 }

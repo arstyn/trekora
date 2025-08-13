@@ -1,5 +1,3 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -31,16 +29,17 @@ import axiosInstance from "@/lib/axios";
 import type { ILoginResponse } from "@/types/auth.types";
 import { onboardingSchema, type SignupFormDTO } from "@/types/signup.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import {
 	ArrowLeft,
 	ArrowRight,
 	Building2,
 	CheckCircle,
+	Eye,
+	EyeClosed,
 	Globe,
-	Lock,
 	Mail,
 	Phone,
-	Sparkles,
 	User,
 	UserPlus,
 	Users,
@@ -54,6 +53,8 @@ export default function Signup() {
 	const [currentStep, setCurrentStep] = useState<Step>("signup");
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
+	const [showPassword, setShowPassword] = useState(false);
+	const [signupComplete, setSignupComplete] = useState(false);
 
 	const form = useForm<SignupFormDTO>({
 		resolver: zodResolver(onboardingSchema),
@@ -147,14 +148,17 @@ export default function Signup() {
 			);
 
 			if (response) {
-				console.log("🚀 ~ signup.tsx:161 ~ onSubmit ~ response:", response);
+				setSignupComplete(true); // ✅ Show confirmation page
 			}
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
-			if (err?.message === "NEXT_REDIRECT") {
-				return;
+		} catch (error: unknown) {
+			if (error instanceof AxiosError) {
+				setError(error.response?.data.message ?? "An unexpected error occurred");
+			} else if (error instanceof Error) {
+				setError(error.message);
+			} else {
+				setError("An unexpected error occurred");
 			}
-			setError("An unexpected error occurred");
+		} finally {
 			setIsLoading(false);
 		}
 	};
@@ -266,13 +270,24 @@ export default function Signup() {
 							<FormLabel>Password</FormLabel>
 							<FormControl>
 								<div className="relative">
-									<Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 									<Input
-										type="password"
-										className="pl-10"
-										placeholder="••••••••"
+										type={showPassword ? "text" : "password"}
+										placeholder="Enter your password"
 										{...field}
 									/>
+									<button
+										className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 cursor-pointer"
+										onClick={(e) => {
+											e.preventDefault();
+											setShowPassword(!showPassword);
+										}}
+									>
+										{showPassword ? (
+											<Eye className="w-4 h-4" />
+										) : (
+											<EyeClosed className="w-4 h-4" />
+										)}
+									</button>
 								</div>
 							</FormControl>
 							<FormMessage />
@@ -598,66 +613,54 @@ export default function Signup() {
 		</Card>
 	);
 
-	const renderCompleteStep = () => {
+	const renderReviewStep = () => {
 		const formData = form.getValues();
 
 		return (
 			<Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
 				<CardHeader className="text-center">
-					<div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-						<CheckCircle className="w-8 h-8 text-primary" />
-					</div>
-					<CardTitle className="text-2xl">Welcome to the Platform!</CardTitle>
+					<CardTitle className="text-2xl">Review Your Information</CardTitle>
 					<CardDescription>
-						Your account and organization have been successfully created
+						Make sure everything looks good before signing up
 					</CardDescription>
 				</CardHeader>
-				<CardContent className="space-y-6">
-					<div className="bg-muted/30 rounded-lg p-4 space-y-3">
-						<div className="flex items-center gap-3">
-							<Avatar>
-								<AvatarFallback>
-									{formData.firstName[0]}
-									{formData.lastName[0]}
-								</AvatarFallback>
-							</Avatar>
-							<div>
-								<p className="font-medium">
-									{formData.firstName} {formData.lastName}
-								</p>
-								<p className="text-sm text-muted-foreground">
-									{formData.email}
-								</p>
-							</div>
-						</div>
-
-						<div className="flex items-center gap-2 text-sm">
-							<Building2 className="w-4 h-4 text-muted-foreground" />
-							<span>{formData.orgName}</span>
-							<Badge variant="secondary">{formData.orgSize}</Badge>
-						</div>
-
-						{formData.teamMembers.length > 0 && (
-							<div className="flex items-center gap-2 text-sm">
-								<Users className="w-4 h-4 text-muted-foreground" />
-								<span>
-									{formData.teamMembers.length} team member(s) invited
-								</span>
-							</div>
-						)}
+				<CardContent className="space-y-4">
+					<div className="space-y-2">
+						<h4 className="font-semibold">Personal Info</h4>
+						<p>
+							{formData.firstName} {formData.lastName}
+						</p>
+						<p>{formData.email}</p>
+						{formData.phone && <p>{formData.phone}</p>}
 					</div>
 
 					<div className="space-y-2">
-						<h4 className="font-medium flex items-center gap-2">
-							<Sparkles className="w-4 h-4" />
-							What's next?
-						</h4>
-						<ul className="text-sm text-muted-foreground space-y-1">
-							<li>• Check your email for verification</li>
-							<li>• Explore your dashboard</li>
-							<li>• Set up your first project</li>
-							<li>• Invite more team members</li>
-						</ul>
+						<h4 className="font-semibold">Organization</h4>
+						<p>
+							{formData.orgName} ({formData.orgSize})
+						</p>
+						<p>{formData.industry}</p>
+						{formData.website && <p>{formData.website}</p>}
+						{formData.description && <p>{formData.description}</p>}
+					</div>
+
+					{formData.teamMembers.length > 0 && (
+						<div className="space-y-2">
+							<h4 className="font-semibold">Team Members</h4>
+							<ul className="list-disc pl-4">
+								{formData.teamMembers.map((m, i) => (
+									<li key={i}>
+										{m.email} — {m.role}
+									</li>
+								))}
+							</ul>
+						</div>
+					)}
+
+					<div className="space-y-2">
+						<h4 className="font-semibold">Preferences</h4>
+						<p>Notifications: {formData.notifications ? "Yes" : "No"}</p>
+						<p>Newsletter: {formData.newsletter ? "Yes" : "No"}</p>
 					</div>
 
 					{error && (
@@ -666,25 +669,38 @@ export default function Signup() {
 						</div>
 					)}
 
-					<Button
-						onClick={() => form.handleSubmit(onSubmit)()}
-						className="w-full"
-						size="lg"
-						disabled={isLoading}
-					>
-						{isLoading ? (
-							<div className="flex items-center gap-2">
-								<span className="animate-spin">◌</span>
-								Setting up your account...
-							</div>
-						) : (
-							"Go to Dashboard"
-						)}
-					</Button>
+					<div className="flex gap-2">
+						<Button
+							variant="outline"
+							onClick={prevStep}
+							className="flex-1 bg-transparent"
+						>
+							<ArrowLeft className="mr-2 h-4 w-4" /> Back
+						</Button>
+						<Button
+							onClick={() => form.handleSubmit(onSubmit)()}
+							className="flex-1"
+							disabled={isLoading}
+						>
+							{isLoading ? "Signing Up..." : "Sign Up"}
+						</Button>
+					</div>
 				</CardContent>
 			</Card>
 		);
 	};
+
+	const renderSignupConfirmation = () => (
+		<Card className="mx-auto max-w-md w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl text-center">
+			<CardHeader>
+				<CardTitle className="text-2xl">Check Your Email</CardTitle>
+				<CardDescription>
+					You might have received an email to activate your account. Please
+					check your inbox.
+				</CardDescription>
+			</CardHeader>
+		</Card>
+	);
 
 	return (
 		<div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 flex items-center justify-center py-10">
@@ -702,10 +718,15 @@ export default function Signup() {
 				{renderStepIndicator()}
 
 				<Form {...form}>
-					{currentStep === "signup" && renderSignupStep()}
-					{currentStep === "organization" && renderOrganizationStep()}
-					{currentStep === "team" && renderTeamStep()}
-					{currentStep === "complete" && renderCompleteStep()}
+					{signupComplete
+						? renderSignupConfirmation()
+						: currentStep === "signup"
+						? renderSignupStep()
+						: currentStep === "organization"
+						? renderOrganizationStep()
+						: currentStep === "team"
+						? renderTeamStep()
+						: renderReviewStep()}
 				</Form>
 			</div>
 		</div>
