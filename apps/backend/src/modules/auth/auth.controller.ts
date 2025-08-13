@@ -32,6 +32,11 @@ export class AuthController {
     return await this.authService.refreshAccessToken(body.refreshToken);
   }
 
+  @Post('activate-account/:id')
+  async activateAccount(@Param('id') id: string) {
+    return this.authService.activateAccount(id);
+  }
+
   @Post('activate-user/:id')
   async activateUser(@Param('id') id: string) {
     return this.authService.activateUser(id);

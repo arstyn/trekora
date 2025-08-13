@@ -324,7 +324,7 @@ export class EmployeeService {
 
   // Placeholder for sending invite email
   async sendInviteEmail(email: string, token: string) {
-    const inviteUrl = `${process.env.FRONTEND_URL}/activate-account/${token}`;
+    const inviteUrl = `${process.env.FRONTEND_URL}/activate-user-account/${token}`;
 
     const html = `
       <div style="font-family: Arial, sans-serif; background: #f4f4f7; padding: 40px 0;">

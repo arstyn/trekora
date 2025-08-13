@@ -24,7 +24,7 @@ export class UserInviteService {
 
   async createInvite(employee: Employee): Promise<UserInvite> {
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 hours
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48); // 24 hours
     const invite = this.inviteRepository.create({
       email: employee.email,
       token,
@@ -37,7 +37,14 @@ export class UserInviteService {
   }
 
   async verifyToken(token: string): Promise<UserInvite | null> {
-    const invite = await this.inviteRepository.findOne({ where: { token } });
+    const invite = await this.inviteRepository.findOne({
+      where: { token },
+      relations: ['employee'],
+    });
+    console.log(
+      '🚀 ~ user-invite.service.ts:41 ~ UserInviteService ~ verifyToken ~ invite:',
+      invite,
+    );
     if (!invite || invite.used || invite.expiresAt < new Date()) {
       return null;
     }
@@ -69,6 +76,23 @@ export class UserInviteService {
       roleId: invite.employee.roleId,
       password: hashedPassword,
     });
+    invite.used = true;
+    await this.inviteRepository.save(invite);
+    return { message: 'Account activated', success: true };
+  }
+
+  async acceptAccountInvite(token: string): Promise<any> {
+    const invite = await this.inviteRepository.findOne({
+      where: { token },
+      relations: ['employee'],
+    });
+    if (!invite || invite.used || invite.expiresAt < new Date()) {
+      throw new HttpException(
+        'Invalid or expired invite token',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     invite.used = true;
     await this.inviteRepository.save(invite);
     return { message: 'Account activated', success: true };

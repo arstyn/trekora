@@ -1,6 +1,6 @@
 export class IEmployeeCreateDTO {
   userId?: string;
-  name: string;
+  name?: string;
   email?: string;
   departments?: string[];
   roleId?: string;
@@ -19,5 +19,6 @@ export class IEmployeeCreateDTO {
     phone: string;
     relation: string;
   }[];
+  isActive?: boolean;
   // branchId?: string;
 }

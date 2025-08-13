@@ -32,8 +32,9 @@ import PaymentDetailsPage from "./pages/user/payments/view-payment.page";
 import SettingsPage from "./pages/user/settings/page";
 import ImportPage from "./pages/user/import/page";
 import { TeamsPage } from "./pages/user/teams/teams-table";
-import ActivatePage from "./pages/auth/activate-user";
+import ActivatePage from "./pages/auth/activate-account";
 import ResendActivationPage from "./pages/auth/resend-activation";
+import ActivateUserPage from "./pages/auth/activate-user-account";
 
 function AuthenticatedApp() {
 	// Add your dashboard and other protected routes here
@@ -89,6 +90,7 @@ export default function App() {
 				<Route path="/login" element={<LoginPage />} />
 				<Route path="/signup" element={<Signup />} />
 				<Route path="/activate-account/:id" element={<ActivatePage />} />
+				<Route path="/activate-user-account/:id" element={<ActivateUserPage />} />
 				<Route path="/resend-activation" element={<ResendActivationPage />} />
 			</Routes>
 			<Footer />

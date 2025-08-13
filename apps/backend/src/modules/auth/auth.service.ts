@@ -137,6 +137,7 @@ export class AuthService {
         roleId: adminRole.id,
         notificationsEnabled: userData.notifications,
         newsletterSubscribed: userData.newsletter,
+        isActive: false,
       });
 
       const savedUser = await queryRunner.manager.save(newUser);
@@ -150,8 +151,9 @@ export class AuthService {
         organizationId: savedOrganization.id,
         userId: savedUser.id,
         roleId: adminRole.id,
-        status: EmployeeStatus.ACTIVE,
+        status: EmployeeStatus.INACTIVE,
         joinDate: new Date().toISOString(),
+        isActive: false,
       });
 
       const savedEmployee = await queryRunner.manager.save(employee);
@@ -307,6 +309,47 @@ export class AuthService {
         message: 'Your account has been successfully activated!',
         status: 'success',
       };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message ?? 'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+  async activateAccount(id: string) {
+    try {
+      const invite = await this.userInviteService.verifyToken(id);
+
+      if (!invite) {
+        throw new HttpException(
+          'This activation link has expired. Please request a new one.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      await this.userInviteService.acceptAccountInvite(id);
+
+      if (invite.employee && invite.employee.userId) {
+        const user = await this.userService.findOne(invite.employee.userId);
+        if (user) {
+          await this.userService.update(user.id, {
+            isActive: true,
+          });
+          await this.employeeService.update(invite.employeeId, {
+            isActive: true,
+            status: EmployeeStatus.ACTIVE,
+          });
+          return {
+            success: true,
+            message: 'Your account has been successfully activated!',
+            status: 'success',
+          };
+        } else {
+          throw Error('User not found');
+        }
+      } else {
+        throw Error('Token is not valid please check.');
+      }
     } catch (error: any) {
       throw new HttpException(
         error.message ?? 'Internal server error',

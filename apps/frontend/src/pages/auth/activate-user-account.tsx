@@ -19,7 +19,7 @@ interface IActivationResult {
 	status: "success" | "error" | "expired" | "invalid" | "already_active";
 }
 
-export default function ActivatePage() {
+export default function ActivateUserPage() {
 	const [result, setResult] = useState<IActivationResult>();
 	const { id: token } = useParams<{ id: string }>();
 
