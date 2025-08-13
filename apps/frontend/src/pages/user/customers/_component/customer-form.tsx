@@ -17,18 +17,18 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Customer } from "@/types/customer.type";
+import type { ICustomer } from "@/types/customer.type";
 import type React from "react";
 import { useState } from "react";
 
 interface CustomerFormProps {
-	customer?: Customer;
-	onSave: (customer: Customer) => void;
+	customer?: ICustomer;
+	onSave: (customer: ICustomer) => void;
 	onCancel: () => void;
 }
 
 export default function CustomerForm({ customer, onSave, onCancel }: CustomerFormProps) {
-	const [formData, setFormData] = useState<Customer>(
+	const [formData, setFormData] = useState<ICustomer>(
 		customer || {
 			name: "",
 			email: "",
@@ -87,7 +87,7 @@ export default function CustomerForm({ customer, onSave, onCancel }: CustomerFor
 									value={formData.status}
 									onValueChange={handleStatusChange}
 								>
-									<SelectTrigger>
+									<SelectTrigger className="w-full">
 										<SelectValue placeholder="Select status" />
 									</SelectTrigger>
 									<SelectContent>
@@ -106,7 +106,6 @@ export default function CustomerForm({ customer, onSave, onCancel }: CustomerFor
 								type="email"
 								value={formData.email}
 								onChange={handleChange}
-								required
 							/>
 						</div>
 						<div className="grid gap-2">
@@ -116,7 +115,6 @@ export default function CustomerForm({ customer, onSave, onCancel }: CustomerFor
 								name="phone"
 								value={formData.phone}
 								onChange={handleChange}
-								required
 							/>
 						</div>
 						<div className="grid gap-2">

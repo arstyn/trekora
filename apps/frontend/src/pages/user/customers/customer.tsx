@@ -1,29 +1,30 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Customer, Group, Itinerary } from "@/types/customer.type";
-import { Calendar, MapPin, PlusCircle, Search, Users } from "lucide-react";
+import axiosInstance from "@/lib/axios";
+import type { Group, ICustomer } from "@/types/customer.type";
+import { MapPin, PlusCircle, Search, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import CustomerForm from "./_component/customer-form";
 import CustomerList from "./_component/customer-list";
-import { generateSampleData } from "./_component/customer.seeds";
 import GroupManagement from "./_component/group-management";
-import ItineraryView from "./_component/itinerary-view";
 
 export default function CustomerManagement() {
-	const [customers, setCustomers] = useState<Customer[]>([]);
-	const [itineraries, setItineraries] = useState<Itinerary[]>([]);
+	const [customers, setCustomers] = useState<ICustomer[]>([]);
 	const [groups, setGroups] = useState<Group[]>([]);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+	const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
 	const [isAddingCustomer, setIsAddingCustomer] = useState(false);
 	const [activeTab, setActiveTab] = useState("customers");
 
 	useEffect(() => {
-		const data = generateSampleData();
-		setCustomers(data.customers);
-		setItineraries(data.itineraries);
-		setGroups(data.groups);
+		const fetchCustomers = async () => {
+			const res = await axiosInstance.get<ICustomer[]>("/customers");
+			if (res && res.data) {
+				setCustomers(res.data);
+			}
+		};
+		fetchCustomers();
 	}, []);
 
 	const filteredCustomers = customers.filter(
@@ -32,27 +33,28 @@ export default function CustomerManagement() {
 			customer.email.toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
-	const handleAddCustomer = (newCustomer: Customer) => {
+	const handleAddCustomer = async (newCustomer: ICustomer) => {
+		await axiosInstance.post<ICustomer>("/customers", newCustomer);
+
 		setCustomers([...customers, { ...newCustomer, id: Date.now().toString() }]);
 		setIsAddingCustomer(false);
 	};
 
-	const handleUpdateCustomer = (updatedCustomer: Customer) => {
+	const handleUpdateCustomer = async (updatedCustomer: ICustomer) => {
+		await axiosInstance.put<ICustomer>(
+			`/customers/${updatedCustomer.id}`,
+			updatedCustomer
+		);
 		setCustomers(
 			customers.map((c) => (c.id === updatedCustomer.id ? updatedCustomer : c))
 		);
 		setSelectedCustomer(null);
 	};
 
-	const handleDeleteCustomer = (customerId: string) => {
+	const handleDeleteCustomer = async (customerId: string) => {
+		await axiosInstance.delete<ICustomer>(`/customers/${customerId}`);
+
 		setCustomers(customers.filter((c) => c.id !== customerId));
-		setItineraries(
-			itineraries.map((itinerary) =>
-				itinerary.customerId === customerId
-					? { ...itinerary, status: "cancelled" }
-					: itinerary
-			)
-		);
 
 		setGroups(
 			groups.map((group) => ({
@@ -62,20 +64,6 @@ export default function CustomerManagement() {
 		);
 
 		setSelectedCustomer(null);
-	};
-
-	const handleAddItinerary = (newItinerary: Itinerary) => {
-		setItineraries([...itineraries, { ...newItinerary, id: Date.now().toString() }]);
-	};
-
-	const handleUpdateItinerary = (updatedItinerary: Itinerary) => {
-		setItineraries(
-			itineraries.map((i) => (i.id === updatedItinerary.id ? updatedItinerary : i))
-		);
-	};
-
-	const handleDeleteItinerary = (itineraryId: string) => {
-		setItineraries(itineraries.filter((i) => i.id !== itineraryId));
 	};
 
 	const handleAddGroup = (newGroup: Group) => {
@@ -123,10 +111,6 @@ export default function CustomerManagement() {
 						<Users className="mr-2 h-4 w-4" />
 						Customers
 					</TabsTrigger>
-					<TabsTrigger value="itineraries">
-						<Calendar className="mr-2 h-4 w-4" />
-						Itineraries
-					</TabsTrigger>
 					<TabsTrigger value="groups">
 						<MapPin className="mr-2 h-4 w-4" />
 						Groups
@@ -138,16 +122,6 @@ export default function CustomerManagement() {
 						customers={filteredCustomers}
 						onSelect={setSelectedCustomer}
 						onDelete={handleDeleteCustomer}
-					/>
-				</TabsContent>
-
-				<TabsContent value="itineraries" className="space-y-4">
-					<ItineraryView
-						itineraries={itineraries}
-						customers={customers}
-						onAdd={handleAddItinerary}
-						onUpdate={handleUpdateItinerary}
-						onDelete={handleDeleteItinerary}
 					/>
 				</TabsContent>
 

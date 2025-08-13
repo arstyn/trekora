@@ -31,13 +31,13 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { Customer } from "@/types/customer.type";
+import type { ICustomer } from "@/types/customer.type";
 import { Edit, MoreHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 interface CustomerListProps {
-	customers: Customer[];
-	onSelect: (customer: Customer) => void;
+	customers: ICustomer[];
+	onSelect: (customer: ICustomer) => void;
 	onDelete: (customerId: string) => void;
 }
 
@@ -46,9 +46,9 @@ export default function CustomerList({
 	onSelect,
 	onDelete,
 }: CustomerListProps) {
-	const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+	const [customerToDelete, setCustomerToDelete] = useState<ICustomer | null>(null);
 
-	const confirmDelete = (customer: Customer) => {
+	const confirmDelete = (customer: ICustomer) => {
 		setCustomerToDelete(customer);
 	};
 
@@ -83,7 +83,7 @@ export default function CustomerList({
 							<TableRow>
 								<TableCell
 									colSpan={5}
-									className="text-center text-muted-foreground"
+									className="text-center text-muted-foreground py-20"
 								>
 									No customers found. Add a new customer to get started.
 								</TableCell>
