@@ -18,11 +18,7 @@ import { NavLink } from "react-router-dom";
 import { AddPaymentDialog } from "./_component/add-payment-dialog";
 import { PaymentList } from "./_component/payment-list";
 import PaymentService from "@/services/payment.service";
-import type { 
-	PaymentStats, 
-	OverduePayment, 
-	Payment,
-} from "@/types/payment.types";
+import type { PaymentStats, OverduePayment, Payment } from "@/types/payment.types";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PaymentsPage() {
@@ -46,13 +42,18 @@ export default function PaymentsPage() {
 	const loadDashboardData = async () => {
 		try {
 			setError(null);
-			
+
 			// Load all data in parallel
-			const [statsResponse, recentResponse, overdueResponse] = await Promise.allSettled([
-				PaymentService.getPaymentStats(),
-				PaymentService.getPayments({ limit: 5, sortBy: "createdAt", sortOrder: "DESC" }),
-				PaymentService.getOverduePayments(),
-			]);
+			const [statsResponse, recentResponse, overdueResponse] =
+				await Promise.allSettled([
+					PaymentService.getPaymentStats(),
+					PaymentService.getPayments({
+						limit: 5,
+						sortBy: "createdAt",
+						sortOrder: "DESC",
+					}),
+					PaymentService.getOverduePayments(),
+				]);
 
 			// Handle stats
 			if (statsResponse.status === "fulfilled") {
@@ -60,7 +61,7 @@ export default function PaymentsPage() {
 			} else {
 				console.error("Failed to load stats:", statsResponse.reason);
 			}
-			setLoading(prev => ({ ...prev, stats: false }));
+			setLoading((prev) => ({ ...prev, stats: false }));
 
 			// Handle recent payments
 			if (recentResponse.status === "fulfilled") {
@@ -68,7 +69,7 @@ export default function PaymentsPage() {
 			} else {
 				console.error("Failed to load recent payments:", recentResponse.reason);
 			}
-			setLoading(prev => ({ ...prev, recent: false }));
+			setLoading((prev) => ({ ...prev, recent: false }));
 
 			// Handle overdue payments
 			if (overdueResponse.status === "fulfilled") {
@@ -76,8 +77,7 @@ export default function PaymentsPage() {
 			} else {
 				console.error("Failed to load overdue payments:", overdueResponse.reason);
 			}
-			setLoading(prev => ({ ...prev, overdue: false }));
-
+			setLoading((prev) => ({ ...prev, overdue: false }));
 		} catch (error) {
 			console.error("Error loading dashboard data:", error);
 			setError("Failed to load dashboard data. Please try again.");
@@ -96,9 +96,9 @@ export default function PaymentsPage() {
 	};
 
 	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat('en-US', {
-			style: 'currency',
-			currency: 'USD',
+		return new Intl.NumberFormat("en-US", {
+			style: "currency",
+			currency: "INR",
 		}).format(amount);
 	};
 
@@ -191,7 +191,8 @@ export default function PaymentsPage() {
 									{dashboardStats?.totalPayments || 0}
 								</div>
 								<p className="text-xs text-muted-foreground">
-									{formatCurrency(dashboardStats?.totalAmount || 0)} total
+									{formatCurrency(dashboardStats?.totalAmount || 0)}{" "}
+									total
 								</p>
 							</>
 						)}
@@ -217,7 +218,8 @@ export default function PaymentsPage() {
 									{dashboardStats?.pendingPayments || 0}
 								</div>
 								<p className="text-xs text-muted-foreground">
-									{formatCurrency(dashboardStats?.pendingAmount || 0)} pending
+									{formatCurrency(dashboardStats?.pendingAmount || 0)}{" "}
+									pending
 								</p>
 							</>
 						)}
@@ -241,7 +243,8 @@ export default function PaymentsPage() {
 									{dashboardStats?.completedPayments || 0}
 								</div>
 								<p className="text-xs text-muted-foreground">
-									{formatCurrency(dashboardStats?.completedAmount || 0)} received
+									{formatCurrency(dashboardStats?.completedAmount || 0)}{" "}
+									received
 								</p>
 							</>
 						)}
@@ -265,7 +268,8 @@ export default function PaymentsPage() {
 									{dashboardStats?.refundedPayments || 0}
 								</div>
 								<p className="text-xs text-muted-foreground">
-									{formatCurrency(dashboardStats?.refundedAmount || 0)} refunded
+									{formatCurrency(dashboardStats?.refundedAmount || 0)}{" "}
+									refunded
 								</p>
 							</>
 						)}
@@ -304,7 +308,9 @@ export default function PaymentsPage() {
 										</p>
 										<p className="text-sm text-muted-foreground">
 											{payment.packageName} • Due:{" "}
-											{new Date(payment.dueDate).toLocaleDateString()}
+											{new Date(
+												payment.dueDate
+											).toLocaleDateString()}
 										</p>
 									</div>
 									<div className="text-right">
@@ -331,7 +337,10 @@ export default function PaymentsPage() {
 					{loading.recent ? (
 						<div className="space-y-4">
 							{[...Array(3)].map((_, i) => (
-								<div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+								<div
+									key={i}
+									className="flex items-center justify-between p-4 border rounded-lg"
+								>
 									<div className="flex-1">
 										<div className="flex items-center gap-2 mb-2">
 											<Skeleton className="h-5 w-32" />
@@ -359,13 +368,15 @@ export default function PaymentsPage() {
 									<div className="flex-1">
 										<div className="flex items-center gap-2 mb-2">
 											<h3 className="font-semibold">
-												{payment.id} - {payment.booking.customer.name}
+												{payment.id} -{" "}
+												{payment.booking.customer.name}
 											</h3>
 											{getStatusBadge(payment.status)}
 											{getPaymentTypeBadge(payment.paymentType)}
 										</div>
 										<p className="text-sm text-muted-foreground mb-2">
-											{payment.booking.package.name} • {payment.paymentMethod.replace('_', ' ')}
+											{payment.booking.package.name} •{" "}
+											{payment.paymentMethod.replace("_", " ")}
 										</p>
 										<div className="flex items-center gap-4">
 											<span className="text-sm">
@@ -377,7 +388,10 @@ export default function PaymentsPage() {
 												</span>
 											)}
 											<span className="text-sm text-muted-foreground">
-												Date: {new Date(payment.paymentDate).toLocaleDateString()}
+												Date:{" "}
+												{new Date(
+													payment.paymentDate
+												).toLocaleDateString()}
 											</span>
 										</div>
 									</div>
@@ -416,7 +430,10 @@ export default function PaymentsPage() {
 				</TabsContent>
 
 				<TabsContent value="completed">
-					<PaymentList status="completed" onPaymentUpdate={handlePaymentAdded} />
+					<PaymentList
+						status="completed"
+						onPaymentUpdate={handlePaymentAdded}
+					/>
 				</TabsContent>
 
 				<TabsContent value="failed">
