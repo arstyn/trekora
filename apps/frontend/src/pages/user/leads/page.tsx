@@ -49,7 +49,7 @@ export function Leads() {
 
 	useEffect(() => {
 		const searchParams = new URLSearchParams(location.search);
-		const leadId = searchParams.get("lead");
+		const leadId = searchParams.get("selected");
 		if (leadId) {
 			const foundLead = leads && leads.find((l) => l.id === leadId);
 			if (foundLead) {
@@ -127,7 +127,7 @@ export function Leads() {
 	};
 
 	const handleLeadClick = (lead: ILead) => {
-		navigate(`?lead=${lead.id}`);
+		navigate(`?selected=${lead.id}`);
 	};
 
 	const handleCreateLead = () => {
