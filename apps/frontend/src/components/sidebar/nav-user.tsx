@@ -3,6 +3,7 @@
 import {
 	BellIcon,
 	CreditCardIcon,
+	Loader2,
 	LogOutIcon,
 	MoreVerticalIcon,
 	UserCircleIcon,
@@ -24,6 +25,11 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
+import axiosInstance from "@/lib/axios";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { useAuth } from "@/context/authContext";
 
 export function NavUser({
 	user,
@@ -35,6 +41,41 @@ export function NavUser({
 	};
 }) {
 	const { isMobile } = useSidebar();
+	const [isLoading, setIsLoading] = useState(false);
+	const navigate = useNavigate();
+	const { logout } = useAuth();
+
+	const handleLogout = async () => {
+		setIsLoading(true);
+		try {
+			const response = await axiosInstance.post<{
+				success: boolean;
+				message: string;
+			}>("/auth/logout");
+
+			if (response.data.success) {
+				logout();
+				localStorage.removeItem("accessToken");
+				localStorage.removeItem("refreshToken");
+				toast("Logged Out", {
+					description: "You have been successfully logged out.",
+				});
+				navigate("/", { replace: true });
+			} else {
+				toast("Error", {
+					description: "Logout failed. Please try again.",
+				});
+			}
+		} catch (error) {
+			if (error instanceof Error) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to load updates");
+			}
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
 	return (
 		<SidebarMenu>
@@ -98,9 +139,15 @@ export function NavUser({
 							</DropdownMenuItem>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem>
-							<LogOutIcon />
-							Log out
+						<DropdownMenuItem
+							onClick={handleLogout}
+							className="flex items-center justify-between"
+						>
+							<div className="flex items-center gap-2">
+								<LogOutIcon />
+								Log out
+							</div>
+							{isLoading && <Loader2 className="animate-spin" />}
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
