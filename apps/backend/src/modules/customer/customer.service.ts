@@ -11,12 +11,24 @@ export class CustomerService {
     private customerRepository: Repository<Customer>,
   ) {}
 
-  async createCustomer(data: CreateCustomerDto): Promise<Customer> {
-    const customer = this.customerRepository.create(data);
+  async createCustomer(
+    data: CreateCustomerDto,
+    userId: string,
+    organizationId: string,
+  ): Promise<Customer> {
+    const customer = this.customerRepository.create({
+      ...data,
+      createdById: userId,
+      organizationId: organizationId,
+    });
     return this.customerRepository.save(customer);
   }
-  async findAll(): Promise<Customer[]> {
-    return this.customerRepository.find();
+  async findAll(organizationId: string): Promise<Customer[]> {
+    return this.customerRepository.find({
+      where: {
+        organizationId,
+      },
+    });
   }
   async findOne(id: string): Promise<Customer | null> {
     return this.customerRepository.findOne({ where: { id } });

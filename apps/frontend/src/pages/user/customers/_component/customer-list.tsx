@@ -94,8 +94,20 @@ export default function CustomerList({
 									<TableCell className="font-medium">
 										{customer.name}
 									</TableCell>
-									<TableCell>{customer.email}</TableCell>
-									<TableCell>{customer.phone}</TableCell>
+									<TableCell>
+										{customer.email || (
+											<span className="text-muted-foreground italic text-xs">
+												N/A
+											</span>
+										)}
+									</TableCell>
+									<TableCell>
+										{customer.phone || (
+											<span className="text-muted-foreground italic text-xs">
+												N/A
+											</span>
+										)}
+									</TableCell>
 									<TableCell>
 										<Badge
 											variant={
@@ -103,6 +115,7 @@ export default function CustomerList({
 													? "default"
 													: "secondary"
 											}
+											className="capitalize"
 										>
 											{customer.status}
 										</Badge>

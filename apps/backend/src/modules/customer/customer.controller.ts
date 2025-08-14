@@ -8,11 +8,13 @@ import {
   UseGuards,
   Param,
   Query,
+  Request,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from '../../dto/create-customer';
 import { Customer } from '../../database/entity/customer.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 
 @UseGuards(AuthGuard)
 @Controller('api/customers')
@@ -21,14 +23,21 @@ export class CustomerController {
 
   //Creating Customers
   @Post()
-  async create(@Body() data: CreateCustomerDto): Promise<Customer> {
-    return this.customerService.createCustomer(data);
+  async create(
+    @Body() data: CreateCustomerDto,
+    @Request() req: ApiRequestJWT,
+  ): Promise<Customer> {
+    return this.customerService.createCustomer(
+      data,
+      req.user.userId,
+      req.user.organizationId,
+    );
   }
 
-  //Geting all data
+  //Getting all data
   @Get()
-  async findAll(): Promise<Customer[]> {
-    return this.customerService.findAll();
+  async findAll(@Request() req: ApiRequestJWT): Promise<Customer[]> {
+    return this.customerService.findAll(req.user.organizationId);
   }
 
   @Get('search')

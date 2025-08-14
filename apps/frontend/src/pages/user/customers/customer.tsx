@@ -30,7 +30,7 @@ export default function CustomerManagement() {
 	const filteredCustomers = customers.filter(
 		(customer) =>
 			customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			customer.email.toLowerCase().includes(searchQuery.toLowerCase())
+			customer.email?.toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
 	const handleAddCustomer = async (newCustomer: ICustomer) => {
