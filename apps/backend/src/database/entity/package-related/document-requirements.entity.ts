@@ -18,6 +18,7 @@ export class DocumentRequirement {
   @Column({
     type: 'enum',
     enum: ['adults', 'children', 'all'],
+    nullable: true,
   })
   applicableFor: string;
 

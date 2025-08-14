@@ -15,6 +15,7 @@ export class ChecklistItem {
   @Column({
     type: 'enum',
     enum: ['documents', 'booking', 'preparation', 'communication'],
+    nullable: true,
   })
   category: string;
 
