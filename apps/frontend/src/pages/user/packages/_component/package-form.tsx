@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
+import { indianStates } from "@/lib/constants/indian-states";
 import {
 	deleteFile,
 	getFileUrl as getServeFileUrl,
@@ -215,42 +216,6 @@ export function PackageForm({
 				) || [],
 		};
 	}, []);
-
-	const createDraftPackage = useCallback(async () => {
-		if (isDraftCreated || isEditing) return;
-
-		try {
-			setIsLoading(true);
-			const draftData = {
-				...defaultValues,
-				status: "draft",
-				name: "New Package Draft",
-				// Ensure undefined values for empty fields
-				destination: undefined,
-				duration: undefined,
-				description: undefined,
-				thumbnail: undefined,
-			};
-
-			const response = await axiosInstance.post("/packages", draftData);
-			if (response.data?.id) {
-				setPackageId(response.data.id);
-				setIsDraftCreated(true);
-				setLastSaved(new Date());
-
-				if (!isEditing && location.pathname === "/packages/create") {
-					navigate(`/packages/create/${response.data.id}`, { replace: true });
-				}
-
-				toast.success("Draft package created");
-			}
-		} catch (error) {
-			console.error("Failed to create draft package:", error);
-			toast.error("Failed to create draft package");
-		} finally {
-			setIsLoading(false);
-		}
-	}, [isDraftCreated, isEditing, navigate, location.pathname]);
 
 	const cleanFormData = useCallback((data: PackageFormData) => {
 		return {
@@ -681,40 +646,6 @@ export function PackageForm({
 			0
 		);
 	};
-
-	const indianStates = [
-		"Andhra Pradesh",
-		"Arunachal Pradesh",
-		"Assam",
-		"Bihar",
-		"Chhattisgarh",
-		"Goa",
-		"Gujarat",
-		"Haryana",
-		"Himachal Pradesh",
-		"Jharkhand",
-		"Karnataka",
-		"Kerala",
-		"Madhya Pradesh",
-		"Maharashtra",
-		"Manipur",
-		"Meghalaya",
-		"Mizoram",
-		"Nagaland",
-		"Odisha",
-		"Punjab",
-		"Rajasthan",
-		"Sikkim",
-		"Tamil Nadu",
-		"Telangana",
-		"Tripura",
-		"Uttar Pradesh",
-		"Uttarakhand",
-		"West Bengal",
-		"Delhi",
-		"Jammu and Kashmir",
-		"Ladakh",
-	];
 
 	return (
 		<div className="min-h-screen ">
