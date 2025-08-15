@@ -1,3 +1,14 @@
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,11 +48,12 @@ import {
 import { getFileUrl } from "@/lib/utils";
 import { packageFormSchema, type PackageFormData } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { AxiosError } from "axios";
+import { Eye, Loader2, Plus, Save, Trash, Trash2, Upload, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 interface PackageFormProps {
@@ -176,15 +188,16 @@ export function PackageForm({
 	onSuccess,
 }: PackageFormProps) {
 	const navigate = useNavigate();
-	const location = useLocation();
+
 	const [isLoading, setIsLoading] = useState(false);
-	const [packageId, setPackageId] = useState<string | undefined>(initialPackageId);
+	const [isDeletionLoading, setIsDeletionLoading] = useState(false);
+	const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+	const [packageId] = useState<string | undefined>(initialPackageId);
 	const [currentPackage, setCurrentPackage] = useState<PackageFormData | null>(null);
-	const [isDraftCreated, setIsDraftCreated] = useState(!!initialPackageId);
-	const [lastSaved, setLastSaved] = useState<Date | null>(null);
 	const [thumbnailFile, setThumbnailFile] = useState<FileUploadResponse | null>(null);
 	const [newInclusion, setNewInclusion] = useState("");
 	const [newExclusion, setNewExclusion] = useState("");
+	// const []
 
 	const form = useForm<PackageFormData>({
 		resolver: zodResolver(packageFormSchema),
@@ -351,7 +364,7 @@ export function PackageForm({
 			};
 			loadPackage();
 		}
-	}, [isEditing, packageId, form, isDraftCreated, transformBackendDataToForm]);
+	}, [isEditing, packageId, form, transformBackendDataToForm]);
 
 	const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
@@ -617,7 +630,6 @@ export function PackageForm({
 			if (response.data) {
 				const action = status === "published" ? "published" : "saved";
 				toast.success(`Package ${action} successfully!`);
-				setLastSaved(new Date());
 				onSuccess?.();
 			}
 		} catch (error) {
@@ -645,6 +657,26 @@ export function PackageForm({
 				total + (milestone?.percentage ?? 0),
 			0
 		);
+	};
+
+	const deletePackage = async () => {
+		try {
+			setIsDeletionLoading(true);
+			const res = await axiosInstance.delete(`/packages/${packageId}`);
+			if (res) {
+				navigate("/packages");
+			}
+		} catch (error) {
+			if (error instanceof AxiosError) {
+				toast.error(error.response?.data.message);
+			} else if (error instanceof Error) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to load updates");
+			}
+		} finally {
+			setIsDeletionLoading(false);
+		}
 	};
 
 	return (
@@ -2550,21 +2582,12 @@ export function PackageForm({
 								<Card>
 									<CardHeader>
 										<CardTitle>Actions</CardTitle>
-										{isDraftCreated && (
-											<CardDescription className="flex items-center gap-2">
-												<span className="text-green-600">
-													Last saved:{" "}
-													{lastSaved &&
-														lastSaved.toLocaleTimeString()}
-												</span>
-											</CardDescription>
-										)}
 									</CardHeader>
 									<CardContent className="space-y-2">
 										<Button
 											type="button"
 											variant="outline"
-											className="w-full bg-transparent"
+											className="w-full bg-transparent cursor-pointer"
 											onClick={() =>
 												form.handleSubmit((data) =>
 													onSubmit(data, "draft")
@@ -2575,9 +2598,59 @@ export function PackageForm({
 											<Save className="w-4 h-4 mr-2" />
 											Save as Draft
 										</Button>
+										{isEditing &&
+											currentPackage?.status === "draft" && (
+												<AlertDialog
+													open={isDeleteAlertOpen}
+													onOpenChange={setIsDeleteAlertOpen}
+												>
+													<Button
+														type="button"
+														variant="destructive"
+														className="w-full bg-transparent cursor-pointer"
+														onClick={() =>
+															setIsDeleteAlertOpen(true)
+														}
+														disabled={isLoading}
+													>
+														<Trash className="w-4 h-4 mr-2" />
+														Delete the draft
+													</Button>
+													<AlertDialogContent>
+														<AlertDialogHeader>
+															<AlertDialogTitle>
+																Are you absolutely sure?
+															</AlertDialogTitle>
+															<AlertDialogDescription>
+																This action cannot be
+																undone. This will
+																permanently delete this
+																package data from our
+																servers.
+															</AlertDialogDescription>
+														</AlertDialogHeader>
+														<AlertDialogFooter>
+															<AlertDialogCancel className="cursor-pointer">
+																Cancel
+															</AlertDialogCancel>
+															<AlertDialogAction
+																onClick={() =>
+																	deletePackage()
+																}
+																className="flex items-center justify-between cursor-pointer"
+															>
+																Continue
+																{isDeletionLoading && (
+																	<Loader2 className="animate-spin" />
+																)}
+															</AlertDialogAction>
+														</AlertDialogFooter>
+													</AlertDialogContent>
+												</AlertDialog>
+											)}
 										<Button
 											type="button"
-											className="w-full"
+											className="w-full cursor-pointer"
 											onClick={() =>
 												form.handleSubmit((data) =>
 													onSubmit(data, "published")

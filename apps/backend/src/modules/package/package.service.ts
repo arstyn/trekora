@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CancellationTier } from 'src/database/entity/package-related/cancellation-tiers.entity';
 import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
@@ -518,6 +523,15 @@ export class PackageService {
   }
 
   async remove(id: string): Promise<void> {
+    const pkg = await this.packageRepository.findOneBy({ id });
+
+    if (pkg?.status !== 'draft') {
+      throw new HttpException(
+        'Packages in draft can only be deleted',
+        HttpStatus.CONFLICT,
+      );
+    }
+
     await this.packageRepository.delete(id);
   }
 
