@@ -7,7 +7,6 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,17 +38,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
 import { indianStates } from "@/lib/constants/indian-states";
-import {
-	deleteFile,
-	getFileUrl as getServeFileUrl,
-	uploadSingleFile,
-	type FileUploadResponse,
-} from "@/lib/file-upload";
+import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
 import { getFileUrl } from "@/lib/utils";
-import { packageFormSchema, type PackageFormData } from "@/types/package.schema";
+import {
+	packageFormSchema,
+	type IPackages,
+	type PackageFormData,
+} from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
-import { Eye, Loader2, Plus, Save, Trash, Trash2, Upload, X } from "lucide-react";
+import { Eye, Loader2, Plus, Save, Trash, Trash2, Upload } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -76,7 +74,7 @@ const defaultValues: PackageFormData = {
 	inclusions: [],
 	exclusions: [],
 	status: "draft",
-	thumbnail: "",
+	thumbnail: undefined,
 	itinerary: [
 		{
 			day: 1,
@@ -193,8 +191,10 @@ export function PackageForm({
 	const [isDeletionLoading, setIsDeletionLoading] = useState(false);
 	const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
 	const [packageId] = useState<string | undefined>(initialPackageId);
-	const [currentPackage, setCurrentPackage] = useState<PackageFormData | null>(null);
-	const [thumbnailFile, setThumbnailFile] = useState<FileUploadResponse | null>(null);
+	const [thumbnailFile, setThumbnailFile] = useState<string>();
+	const [itineraryPreviewUrls, setItineraryPreviewUrls] = useState<
+		Record<number, string[]>
+	>({});
 	const [newInclusion, setNewInclusion] = useState("");
 	const [newExclusion, setNewExclusion] = useState("");
 	// const []
@@ -204,9 +204,10 @@ export function PackageForm({
 		defaultValues,
 	});
 
-	const transformBackendDataToForm = useCallback((backendData: PackageFormData) => {
+	const transformBackendDataToForm = useCallback((backendData: IPackages) => {
 		return {
 			...backendData,
+			thumbnail: undefined,
 			price:
 				typeof backendData.price === "string"
 					? Number(backendData.price) || 0
@@ -216,9 +217,11 @@ export function PackageForm({
 					? Number(backendData.maxGuests) || 0
 					: backendData.maxGuests,
 			cancellationPolicy:
-				backendData.cancellationPolicy?.map((policy: string | { text: string }) =>
-					typeof policy === "object" ? policy?.text : policy
-				) || [],
+				backendData.cancellationPolicy
+					?.map((policy) =>
+						typeof policy === "object" ? policy?.text : policy
+					)
+					.filter((p): p is string => typeof p === "string") || [],
 			inclusions:
 				backendData.inclusions?.map((inc: string | { item: string }) =>
 					typeof inc === "object" ? inc?.item : inc
@@ -227,62 +230,6 @@ export function PackageForm({
 				backendData.exclusions?.map((exc: string | { item: string }) =>
 					typeof exc === "object" ? exc?.item : exc
 				) || [],
-		};
-	}, []);
-
-	const cleanFormData = useCallback((data: PackageFormData) => {
-		return {
-			...data,
-			price: typeof data.price === "string" ? Number(data.price) : data.price,
-			maxGuests:
-				typeof data.maxGuests === "string"
-					? Number(data.maxGuests)
-					: data.maxGuests,
-			// Convert empty strings to undefined
-			destination: data.destination === "" ? undefined : data.destination,
-			duration: data.duration === "" ? undefined : data.duration,
-			description: data.description === "" ? undefined : data.description,
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			thumbnail:
-				data.thumbnail === ""
-					? undefined
-					: typeof data.thumbnail === "object"
-					? (data.thumbnail as any)?.id
-					: data.thumbnail,
-			startDate: data.startDate === "" ? undefined : data.startDate,
-			endDate: data.endDate === "" ? undefined : data.endDate,
-			itinerary:
-				data.itinerary?.map((day) => ({
-					...day,
-					images:
-						day.images
-							?.map((img) => {
-								if (
-									typeof img === "object" &&
-									img !== null &&
-									"id" in img
-								) {
-									// eslint-disable-next-line @typescript-eslint/no-explicit-any
-									return (img as any)?.id;
-								}
-								return img;
-							})
-							.filter(Boolean) || [],
-				})) || [],
-			cancellationPolicy:
-				data.cancellationPolicy
-					?.map((policy) => {
-						if (
-							typeof policy === "object" &&
-							policy !== null &&
-							"text" in policy
-						) {
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							return (policy as any)?.text;
-						}
-						return policy;
-					})
-					.filter(Boolean) || [],
 		};
 	}, []);
 
@@ -336,19 +283,19 @@ export function PackageForm({
 			const loadPackage = async () => {
 				try {
 					setIsLoading(true);
-					const res = await axiosInstance.get<PackageFormData>(
+					const res = await axiosInstance.get<IPackages>(
 						`/packages/${packageId}`
 					);
 					if (res.data) {
 						const transformedData = transformBackendDataToForm(res.data);
-						setCurrentPackage(transformedData);
+
 						form.reset(transformedData);
 
 						if (res.data.thumbnail) {
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							const thumbnailObj = res.data.thumbnail as any;
+							const thumbnailObj = res.data.thumbnail;
 							if (thumbnailObj?.id) {
-								setThumbnailFile(thumbnailObj);
+								const url = getFileUrl(getServeFileUrl(thumbnailObj.id));
+								setThumbnailFile(url);
 							}
 						}
 					}
@@ -369,33 +316,18 @@ export function PackageForm({
 	const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		if (file) {
-			if (!packageId) {
-				toast.error("Please wait for draft package to be created");
-				return;
-			}
-
 			try {
-				setIsLoading(true);
-				const uploadedFile = await uploadSingleFile(file, packageId, "package");
-				setThumbnailFile(uploadedFile);
-				form.setValue("thumbnail", uploadedFile.id);
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					if (e.target?.result && typeof e.target.result === "string") {
+						setThumbnailFile(e.target.result);
+					}
+				};
+				reader.readAsDataURL(file);
 
-				setCurrentPackage((prev) =>
-					prev
-						? {
-								...prev,
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								thumbnail: uploadedFile as any,
-						  }
-						: null
-				);
-
-				toast.success("Thumbnail uploaded successfully");
+				form.setValue("thumbnail", file);
 			} catch (error) {
 				console.log(error);
-				toast.error("Failed to upload thumbnail");
-			} finally {
-				setIsLoading(false);
 			}
 		}
 	};
@@ -404,92 +336,39 @@ export function PackageForm({
 		dayIndex: number,
 		event: React.ChangeEvent<HTMLInputElement>
 	) => {
-		const file = event.target.files?.[0];
-		if (file) {
-			if (!packageId) {
-				toast.error("Please wait for draft package to be created");
-				return;
-			}
-
+		const files = Array.from(event.target.files || []);
+		if (files) {
 			try {
-				setIsLoading(true);
-				const uploadedFile = await uploadSingleFile(file, packageId, "itinerary");
-
-				setCurrentPackage((prev) => {
-					if (!prev) return null;
-					const updatedItinerary = [...(prev.itinerary || [])];
-					if (updatedItinerary[dayIndex]) {
-						updatedItinerary[dayIndex] = {
-							...updatedItinerary[dayIndex],
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							images: [
-								...(updatedItinerary[dayIndex].images || []),
-								uploadedFile as any,
-							],
-						};
-					}
-					return {
-						...prev,
-						itinerary: updatedItinerary,
-					};
-				});
+				const urls = files.map((file) => URL.createObjectURL(file));
+				setItineraryPreviewUrls((prev) => ({
+					...prev,
+					[dayIndex]: [...(prev[dayIndex] || []), ...urls],
+				}));
 
 				const currentImages =
 					form.getValues(`itinerary.${dayIndex}.images`) || [];
 				form.setValue(`itinerary.${dayIndex}.images`, [
 					...currentImages,
-					uploadedFile.id,
+					...files,
 				]);
-
-				toast.success("Image uploaded successfully");
 			} catch (error) {
 				console.log(error);
 				toast.error("Failed to upload image");
-			} finally {
-				setIsLoading(false);
 			}
 		}
 	};
 
 	const removeDayImage = async (dayIndex: number, imageIndex: number) => {
 		try {
-			const currentImages = currentPackage?.itinerary?.[dayIndex]?.images || [];
-			const imageToDelete = currentImages[imageIndex];
-
-			if (
-				imageToDelete &&
-				typeof imageToDelete === "object" &&
-				"id" in imageToDelete
-			) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				await deleteFile((imageToDelete as any)?.id);
-			}
-
-			// Update currentPackage state
-			setCurrentPackage((prev) => {
-				if (!prev) return null;
-				const updatedItinerary = [...(prev.itinerary || [])];
-				if (updatedItinerary[dayIndex]) {
-					updatedItinerary[dayIndex] = {
-						...updatedItinerary[dayIndex],
-						images:
-							updatedItinerary[dayIndex].images?.filter(
-								(_, i) => i !== imageIndex
-							) || [],
-					};
-				}
-				return {
-					...prev,
-					itinerary: updatedItinerary,
-				};
-			});
+			setItineraryPreviewUrls((prev) => ({
+				...prev,
+				[dayIndex]: prev[dayIndex]?.filter((_, idx) => idx !== imageIndex) || [],
+			}));
 
 			// Update form
 			const formImages = form.getValues(`itinerary.${dayIndex}.images`);
 			const newImages = formImages?.filter((_, i) => i !== imageIndex);
 			form.setValue(`itinerary.${dayIndex}.images`, newImages);
-
-			toast.success("Image removed successfully");
 		} catch (error) {
 			console.log(error);
 			toast.error("Failed to remove image");
@@ -594,38 +473,88 @@ export function PackageForm({
 			);
 	};
 
+	const packageFormDataToFormData = (data: PackageFormData): FormData => {
+		const formData = new FormData();
+
+		const appendIfDefined = (
+			key: string,
+			value?: null | File | string | number | string[] | object
+		) => {
+			if (value !== undefined && value !== null) {
+				// If it's a File, append directly
+				if (value instanceof File) {
+					formData.append(key, value);
+				}
+				// If it's an array or object, stringify it
+				else if (Array.isArray(value) || typeof value === "object") {
+					formData.append(key, JSON.stringify(value));
+				}
+				// Otherwise, append as string
+				else {
+					formData.append(key, String(value));
+				}
+			}
+		};
+
+		// Top-level fields
+		appendIfDefined("name", data.name);
+		appendIfDefined("destination", data.destination);
+		appendIfDefined("duration", data.duration);
+		appendIfDefined("price", data.price);
+		appendIfDefined("description", data.description);
+		appendIfDefined("maxGuests", data.maxGuests);
+		appendIfDefined("startDate", data.startDate);
+		appendIfDefined("endDate", data.endDate);
+		appendIfDefined("difficulty", data.difficulty);
+		appendIfDefined("category", data.category);
+		appendIfDefined("status", data.status);
+		appendIfDefined("thumbnail", data.thumbnail);
+		appendIfDefined("inclusions", data.inclusions);
+		appendIfDefined("exclusions", data.exclusions);
+		appendIfDefined("paymentStructure", data.paymentStructure);
+		appendIfDefined("cancellationStructure", data.cancellationStructure);
+		appendIfDefined("mealsBreakdown", data.mealsBreakdown);
+		appendIfDefined("transportation", data.transportation);
+		appendIfDefined("documentRequirements", data.documentRequirements);
+		appendIfDefined("preTripChecklist", data.preTripChecklist);
+		appendIfDefined("packageLocation", data.packageLocation);
+		appendIfDefined("cancellationPolicy", data.cancellationPolicy);
+
+		// Special case: itinerary with image arrays
+		if (data.itinerary) {
+			data.itinerary.forEach((day, idx) => {
+				// Append non-file fields of each itinerary day
+				appendIfDefined(`itinerary[${idx}].day`, day.day);
+				appendIfDefined(`itinerary[${idx}].title`, day.title);
+				appendIfDefined(`itinerary[${idx}].description`, day.description);
+				appendIfDefined(`itinerary[${idx}].activities`, day.activities);
+				appendIfDefined(`itinerary[${idx}].meals`, day.meals);
+				appendIfDefined(`itinerary[${idx}].accommodation`, day.accommodation);
+
+				// Append images separately so backend can parse as files
+				if (day.images) {
+					day.images.forEach((file, fileIdx) => {
+						if (file instanceof File) {
+							formData.append(`itinerary[${idx}].images[${fileIdx}]`, file);
+						}
+					});
+				}
+			});
+		}
+
+		return formData;
+	};
+
 	const onSubmit = async (data: PackageFormData, status: "draft" | "published") => {
 		setIsLoading(true);
 		try {
-			if (!packageId) {
-				toast.error("Package not ready for submission");
-				return;
-			}
+			const formData = packageFormDataToFormData(data);
 
-			const cleanedData = cleanFormData(data);
-			const submitData = {
-				...cleanedData,
-				status,
-				thumbnail: (() => {
-					if (thumbnailFile?.id) return thumbnailFile.id;
-					if (
-						typeof cleanedData.thumbnail === "object" &&
-						cleanedData.thumbnail !== null &&
-						"id" in cleanedData.thumbnail
-					) {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						return (cleanedData.thumbnail as any)?.id;
-					}
-					if (typeof cleanedData.thumbnail === "string")
-						return cleanedData.thumbnail;
-					return undefined;
-				})(),
-			};
-
-			const response = await axiosInstance.patch(
-				`/packages/${packageId}`,
-				submitData
-			);
+			const response = await axiosInstance.post(`/packages`, formData, {
+				headers: {
+					"Content-Type": "multipart/form-data",
+				},
+			});
 
 			if (response.data) {
 				const action = status === "published" ? "published" : "saved";
@@ -700,27 +629,8 @@ export function PackageForm({
 											<div className="relative">
 												<img
 													src={(() => {
-														if (thumbnailFile?.id)
-															return getFileUrl(
-																getServeFileUrl(
-																	thumbnailFile.id
-																)
-															);
-														if (
-															currentPackage?.thumbnail &&
-															typeof currentPackage.thumbnail ===
-																"object" &&
-															"id" in
-																currentPackage.thumbnail
-														) {
-															// eslint-disable-next-line @typescript-eslint/no-explicit-any
-															return getFileUrl(
-																getServeFileUrl(
-																	(
-																		currentPackage.thumbnail as any
-																	)?.id
-																)
-															);
+														if (thumbnailFile) {
+															return thumbnailFile;
 														}
 														return "/placeholder.svg";
 													})()}
@@ -1054,74 +964,49 @@ export function PackageForm({
 												<div className="space-y-3">
 													<Label>Day Images</Label>
 													<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-														{(
-															currentPackage?.itinerary?.[
-																dayIndex
-															]?.images || []
-														)
-															// eslint-disable-next-line @typescript-eslint/no-explicit-any
-															.map(
-																(
-																	fileData: any,
-																	imageIndex
-																) => (
-																	<div
-																		key={
-																			fileData.id ||
+														{itineraryPreviewUrls[
+															dayIndex
+														]?.map((url, imageIndex) => (
+															<div
+																key={imageIndex}
+																className="relative group"
+															>
+																<img
+																	src={url}
+																	alt={`test`}
+																	width={150}
+																	height={100}
+																	className="rounded-lg object-cover border"
+																/>
+																<Button
+																	type="button"
+																	variant="destructive"
+																	size="sm"
+																	className="absolute top-1 right-5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+																	onClick={() =>
+																		removeDayImage(
+																			dayIndex,
 																			imageIndex
-																		}
-																		className="relative group"
-																	>
-																		<img
-																			src={
-																				fileData
-																					? getFileUrl(
-																							getServeFileUrl(
-																								fileData.id
-																							)
-																					  )
-																					: "/placeholder.svg"
-																			}
-																			alt={`Day ${
-																				dayIndex +
-																				1
-																			} image ${
-																				imageIndex +
-																				1
-																			}`}
-																			width={150}
-																			height={100}
-																			className="rounded-lg object-cover border"
-																		/>
-																		<Button
-																			type="button"
-																			variant="destructive"
-																			size="sm"
-																			className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-																			onClick={() =>
-																				removeDayImage(
-																					dayIndex,
-																					imageIndex
-																				)
-																			}
-																		>
-																			<X className="w-3 h-3" />
-																		</Button>
-																	</div>
-																)
-															)}
+																		)
+																	}
+																>
+																	<Trash className="w-3 h-3" />
+																</Button>
+															</div>
+														))}
 														<div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center min-h-[100px]">
 															<Upload className="w-6 h-6 text-muted-foreground mb-2" />
 															<Label
 																htmlFor={`day-${dayIndex}-image`}
 																className="cursor-pointer text-sm "
 															>
-																Add Image
+																Add Images
 															</Label>
 															<Input
 																id={`day-${dayIndex}-image`}
 																type="file"
 																accept="image/*"
+																multiple
 																className="hidden"
 																onChange={(e) =>
 																	handleDayImageUpload(
@@ -1592,6 +1477,15 @@ export function PackageForm({
 																		max="100"
 																		placeholder="10"
 																		{...field}
+																		onChange={(e) =>
+																			field.onChange(
+																				Number.parseInt(
+																					e
+																						.target
+																						.value
+																				) || 0
+																			)
+																		}
 																	/>
 																</FormControl>
 																<FormMessage />
@@ -2599,7 +2493,7 @@ export function PackageForm({
 											Save as Draft
 										</Button>
 										{isEditing &&
-											currentPackage?.status === "draft" && (
+											form.watch(`status`) === "draft" && (
 												<AlertDialog
 													open={isDeleteAlertOpen}
 													onOpenChange={setIsDeleteAlertOpen}

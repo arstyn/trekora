@@ -56,6 +56,7 @@ export class PackageService {
   async create(
     user: { userId: string; organizationId: string },
     createPackageDto: PackageFormData,
+    files: Express.Multer.File[],
   ): Promise<Package> {
     const {
       cancellationPolicy,

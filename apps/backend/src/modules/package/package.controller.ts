@@ -1,19 +1,23 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
-  Request,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
+  Request,
+  UploadedFile,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { PackageService } from './package.service';
-import { AuthGuard } from '../auth/guard/auth.guard';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { PackageFormData } from 'src/dto/package.schema';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { PackageService } from './package.service';
 
 @UseGuards(AuthGuard)
 @Controller('api/packages')
@@ -21,11 +25,13 @@ export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 
   @Post()
+  @UseInterceptors(AnyFilesInterceptor())
   create(
     @Request() req: ApiRequestJWT,
     @Body() createPackageDto: PackageFormData,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
-    return this.packageService.create(req.user, createPackageDto);
+    return this.packageService.create(req.user, createPackageDto, files);
   }
 
   @Get()

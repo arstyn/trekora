@@ -10,6 +10,20 @@ export interface IThumbnail {
 	updatedAt: Date;
 }
 
+export interface ICancellationStructure {
+	id: string;
+	timeframe?: string;
+	percentage?: number;
+	description?: number;
+	packageId?: string;
+}
+
+export interface ICancellationPolicy {
+	id: string;
+	text?: string;
+	packageId?: string;
+}
+
 export interface IPackages {
 	id: string;
 	name?: string;
@@ -18,17 +32,20 @@ export interface IPackages {
 	price?: string;
 	description?: string;
 	maxGuests?: number;
-	startDate?: Date;
-	endDate?: Date;
+	startDate?: string;
+	endDate?: string;
 	difficulty?: "easy" | "moderate" | "challenging" | "extreme";
-	category?: "documents" | "booking" | "preparation" | "communication";
+	category?: "adventure" | "cultural" | "relaxation" | "wildlife" | "luxury" | "budget";
 	status?: "draft" | "published";
-	thumbnail?: string | IThumbnail;
+	thumbnail?: IThumbnail;
 	preTripChecklist?: [];
+	cancellationPolicy?: ICancellationPolicy[];
+	inclusions?: string[];
+	exclusions?: string[];
 	createdById: string;
 	organizationId: string;
-	createdAt: Date;
-	updatedAt: Date;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export const paymentMilestoneSchema = z.object({
@@ -89,7 +106,7 @@ export const itineraryDaySchema = z.object({
 	activities: z.array(z.string()).optional(),
 	meals: z.array(z.string()).optional(),
 	accommodation: z.string().optional(),
-	images: z.array(z.string()).optional(),
+	images: z.array(z.file()).optional(),
 });
 
 export const documentRequirementSchema = z.object({
@@ -127,7 +144,7 @@ export const packageFormSchema = z.object({
 		.enum(["adventure", "cultural", "relaxation", "wildlife", "luxury", "budget"])
 		.optional(),
 	status: z.enum(["draft", "published"]).optional(),
-	thumbnail: z.string().optional(),
+	thumbnail: z.file().optional(),
 	inclusions: z.array(z.string()).optional(),
 	exclusions: z.array(z.string()).optional(),
 	itinerary: z.array(itineraryDaySchema).optional(),
