@@ -28,6 +28,7 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { LeadStatusBadge } from "./lead-status-badge";
+import NAText from "@/components/na-text";
 
 interface LeadTableProps {
 	leads: ILead[];
@@ -47,17 +48,17 @@ export function LeadTable({ leads, onStatusChange, onLeadClick }: LeadTableProps
 		{
 			accessorKey: "company",
 			header: "Company",
-			cell: ({ row }) => row.original.company,
+			cell: ({ row }) => row.original.company || <NAText />,
 		},
 		{
 			accessorKey: "email",
 			header: "Email",
-			cell: ({ row }) => row.original.email,
+			cell: ({ row }) => row.original.email || <NAText />,
 		},
 		{
 			accessorKey: "phone",
 			header: "Phone",
-			cell: ({ row }) => row.original.phone,
+			cell: ({ row }) => row.original.phone || <NAText />,
 		},
 		{
 			accessorKey: "status",
@@ -156,7 +157,7 @@ export function LeadTable({ leads, onStatusChange, onLeadClick }: LeadTableProps
 											: flexRender(
 													header.column.columnDef.header,
 													header.getContext()
-												)}
+											  )}
 									</TableHead>
 								))}
 							</TableRow>

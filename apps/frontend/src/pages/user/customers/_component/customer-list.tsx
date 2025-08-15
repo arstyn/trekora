@@ -1,3 +1,4 @@
+import NAText from "@/components/na-text";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -94,20 +95,8 @@ export default function CustomerList({
 									<TableCell className="font-medium">
 										{customer.name}
 									</TableCell>
-									<TableCell>
-										{customer.email || (
-											<span className="text-muted-foreground italic text-xs">
-												N/A
-											</span>
-										)}
-									</TableCell>
-									<TableCell>
-										{customer.phone || (
-											<span className="text-muted-foreground italic text-xs">
-												N/A
-											</span>
-										)}
-									</TableCell>
+									<TableCell>{customer.email || <NAText />}</TableCell>
+									<TableCell>{customer.phone || <NAText />}</TableCell>
 									<TableCell>
 										<Badge
 											variant={

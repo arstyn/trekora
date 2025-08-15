@@ -85,8 +85,8 @@ export function Leads() {
 			filtered = filtered.filter(
 				(lead) =>
 					lead.name.toLowerCase().includes(query.toLowerCase()) ||
-					lead.company.toLowerCase().includes(query.toLowerCase()) ||
-					lead.email.toLowerCase().includes(query.toLowerCase())
+					lead.company?.toLowerCase().includes(query.toLowerCase()) ||
+					lead.email?.toLowerCase().includes(query.toLowerCase())
 			);
 		}
 

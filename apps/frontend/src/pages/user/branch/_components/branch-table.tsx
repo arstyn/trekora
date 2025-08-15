@@ -1,4 +1,5 @@
 import DataTableFooter from "@/components/data-table-footer";
+import NAText from "@/components/na-text";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -45,7 +46,7 @@ export function BranchTable({ branches, onBranchClick }: BranchTableProps) {
 		{
 			accessorKey: "location",
 			header: "Location",
-			cell: ({ row }) => row.original.location,
+			cell: ({ row }) => row.original.location || <NAText />,
 		},
 		{
 			accessorKey: "isActive",

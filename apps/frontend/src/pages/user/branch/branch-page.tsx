@@ -42,7 +42,7 @@ export function BranchPage() {
 
 	useEffect(() => {
 		const searchParams = new URLSearchParams(location.search);
-		const branchId = searchParams.get("branch");
+		const branchId = searchParams.get("selected");
 		if (branchId) {
 			const foundBranch = branches && branches.find((l) => l.id === branchId);
 			if (foundBranch) {
@@ -79,7 +79,7 @@ export function BranchPage() {
 	};
 
 	const handleBranchClick = (branch: IBranch) => {
-		navigate(`?branch=${branch.id}`);
+		navigate(`?selected=${branch.id}`);
 	};
 
 	const handleCreateBranch = () => {
