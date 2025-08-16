@@ -20,7 +20,10 @@ export class FileManagerService {
     return this.fileManagerRepository.save(file);
   }
 
-  async upload(data: Partial<FileManager>, files: Array<Express.Multer.File>) {
+  async upload(
+    data: Partial<FileManager>,
+    files: Array<Express.Multer.File>,
+  ): Promise<FileManager[]> {
     let filesData: Array<any> = [];
 
     // Create upload directory for this related type

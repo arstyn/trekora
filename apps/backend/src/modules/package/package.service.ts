@@ -18,7 +18,7 @@ import { DataSource, Repository } from 'typeorm';
 import { CancellationPolicy } from '../../database/entity/package-related/cancellation-policies.entity';
 import { Package } from '../../database/entity/package-related/package.entity';
 import { ItineraryDay } from 'src/database/entity/package-related/itinerary-days.entity';
-import { PackageFormData } from 'src/dto/package.schema';
+import { ITransportation, PackageFormData } from 'src/dto/package.schema';
 import {
   FileManager,
   RelatedType,
@@ -63,7 +63,7 @@ export class PackageService {
     user: { userId: string; organizationId: string },
     createPackageDto: PackageFormData,
     files: Express.Multer.File[],
-  ): Promise<Package> {
+  ) {
     const {
       cancellationPolicy,
       cancellationStructure,
@@ -105,16 +105,8 @@ export class PackageService {
       };
 
       const pkg = queryRunner.manager.create(Package, cleanedData);
-      console.log(
-        '🚀 ~ package.service.ts:106 ~ PackageService ~ create ~ pkg:',
-        pkg,
-      );
 
       const pkgFile = files.find((val) => val.fieldname === 'thumbnail');
-      console.log(
-        '🚀 ~ package.service.ts:109 ~ PackageService ~ create ~ pkgFile:',
-        pkgFile,
-      );
 
       if (pkgFile) {
         const fileData = await this.fileManagerService.uploadOneFile(
@@ -124,15 +116,14 @@ export class PackageService {
 
         pkg.thumbnail = fileData.id;
       }
-      console.log(
-        '🚀 ~ package.service.ts:106 ~ PackageService ~ create ~ pkg:',
-        pkg,
-      );
 
       const savedPackage = await queryRunner.manager.save(pkg);
 
       if (cancellationPolicy) {
-        for (const policy of cancellationPolicy) {
+        const cancellationPolicyData = JSON.parse(
+          cancellationPolicy,
+        ) as string[];
+        for (const policy of cancellationPolicyData) {
           const entity = this.cancellationPolicyRepository.create({
             text: policy,
             packageId: savedPackage.id,
@@ -142,7 +133,10 @@ export class PackageService {
       }
 
       if (cancellationStructure) {
-        for (const tier of cancellationStructure) {
+        const cancellationStructureData = JSON.parse(
+          cancellationStructure,
+        ) as CancellationTier[];
+        for (const tier of cancellationStructureData) {
           const entity = this.cancellationTierRepository.create({
             ...tier,
             packageId: savedPackage.id,
@@ -152,7 +146,10 @@ export class PackageService {
       }
 
       if (documentRequirements) {
-        for (const doc of documentRequirements) {
+        const cancellationStructureData = JSON.parse(
+          documentRequirements,
+        ) as DocumentRequirement[];
+        for (const doc of cancellationStructureData) {
           const entity = this.documentRequirementRepository.create({
             ...doc,
             packageId: savedPackage.id,
@@ -162,7 +159,8 @@ export class PackageService {
       }
 
       if (inclusions) {
-        for (const item of inclusions) {
+        const inclusionsData = JSON.parse(inclusions) as string[];
+        for (const item of inclusionsData) {
           const entity = this.inclusionRepository.create({
             item,
             packageId: savedPackage.id,
@@ -172,7 +170,8 @@ export class PackageService {
       }
 
       if (exclusions) {
-        for (const item of exclusions) {
+        const exclusionsData = JSON.parse(exclusions) as string[];
+        for (const item of exclusionsData) {
           const entity = this.exclusionRepository.create({
             item,
             packageId: savedPackage.id,
@@ -182,20 +181,39 @@ export class PackageService {
       }
 
       if (itinerary) {
-        for (const day of itinerary) {
+        const itineraryData = JSON.parse(itinerary) as ItineraryDay[];
+        for (let dayIndex = 0; dayIndex < itineraryData.length; dayIndex++) {
+          const day = itineraryData[dayIndex];
+
+          // Filter only files that belong to this day
+          const dayImageFiles = files.filter((val) =>
+            val.fieldname.startsWith(`itinerary[${dayIndex}].images`),
+          );
+
+          if (dayImageFiles.length > 0) {
+            const filesData = await this.fileManagerService.upload(
+              { relatedId: pkg.id, relatedType: RelatedType.PACKAGE },
+              dayImageFiles,
+            );
+
+            const images = filesData.map((val) => val.id);
+            day.images = images;
+          }
+
           const entity = this.itineraryDayRepository.create({
             ...day,
-            images: day.images?.map((image) =>
-              image?.replace('/file-manager/serve/', ''),
-            ),
             packageId: savedPackage.id,
           });
+
           await queryRunner.manager.save(entity);
         }
       }
 
       if (preTripChecklist) {
-        for (const item of preTripChecklist) {
+        const preTripChecklistData = JSON.parse(
+          preTripChecklist,
+        ) as ChecklistItem[];
+        for (const item of preTripChecklistData) {
           const entity = this.checklistItemRepository.create({
             ...item,
             packageId: savedPackage.id,
@@ -205,7 +223,10 @@ export class PackageService {
       }
 
       if (paymentStructure) {
-        for (const milestone of paymentStructure) {
+        const paymentStructureData = JSON.parse(
+          paymentStructure,
+        ) as PaymentMilestone[];
+        for (const milestone of paymentStructureData) {
           const entity = this.paymentMilestoneRepository.create({
             ...milestone,
             packageId: savedPackage.id,
@@ -215,16 +236,21 @@ export class PackageService {
       }
 
       if (mealsBreakdown) {
+        const mealsBreakdownData = JSON.parse(mealsBreakdown) as MealsBreakdown;
         const entity = this.mealsBreakdownRepository.create({
-          ...mealsBreakdown,
+          ...mealsBreakdownData,
           packageId: savedPackage.id,
         });
         await queryRunner.manager.save(entity);
       }
 
       if (packageLocation) {
+        const packageLocationData = JSON.parse(
+          packageLocation,
+        ) as PackageLocation;
+
         const entity = this.packageLocationRepository.create({
-          ...packageLocation,
+          ...packageLocationData,
           packageId: savedPackage.id,
         });
         await queryRunner.manager.save(entity);
@@ -232,19 +258,25 @@ export class PackageService {
 
       if (transportation) {
         // Transform nested structure to flat structure for database
+        const transportationParseData = JSON.parse(
+          transportation,
+        ) as ITransportation;
         const transportationData = {
-          toMode: transportation.toDestination?.mode || undefined,
-          toDetails: transportation.toDestination?.details || undefined,
-          toIncluded: transportation.toDestination?.included || false,
-          fromMode: transportation.fromDestination?.mode || undefined,
-          fromDetails: transportation.fromDestination?.details || undefined,
-          fromIncluded: transportation.fromDestination?.included || false,
-          duringMode: transportation.duringTrip?.mode || undefined,
-          duringDetails: transportation.duringTrip?.details || undefined,
-          duringIncluded: transportation.duringTrip?.included || false,
+          toMode: transportationParseData.toDestination?.mode || undefined,
+          toDetails:
+            transportationParseData.toDestination?.details || undefined,
+          toIncluded: transportationParseData.toDestination?.included || false,
+          fromMode: transportationParseData.fromDestination?.mode || undefined,
+          fromDetails:
+            transportationParseData.fromDestination?.details || undefined,
+          fromIncluded:
+            transportationParseData.fromDestination?.included || false,
+          duringMode: transportationParseData.duringTrip?.mode || undefined,
+          duringDetails:
+            transportationParseData.duringTrip?.details || undefined,
+          duringIncluded: transportationParseData.duringTrip?.included || false,
           packageId: savedPackage.id,
         };
-
         const entity = this.transportationRepository.create(transportationData);
         await queryRunner.manager.save(entity);
       }
@@ -424,7 +456,11 @@ export class PackageService {
 
       // Recreate all related entities (same logic as create)
       if (cancellationPolicy) {
-        for (const policy of cancellationPolicy) {
+        const cancellationPolicyData = JSON.parse(
+          cancellationPolicy,
+        ) as string[];
+
+        for (const policy of cancellationPolicyData) {
           const entity = this.cancellationPolicyRepository.create({
             text: policy,
             packageId: id,
@@ -434,7 +470,10 @@ export class PackageService {
       }
 
       if (cancellationStructure) {
-        for (const tier of cancellationStructure) {
+        const cancellationStructureData = JSON.parse(
+          cancellationStructure,
+        ) as CancellationTier[];
+        for (const tier of cancellationStructureData) {
           const entity = this.cancellationTierRepository.create({
             ...tier,
             packageId: id,
@@ -444,7 +483,10 @@ export class PackageService {
       }
 
       if (documentRequirements) {
-        for (const doc of documentRequirements) {
+        const cancellationStructureData = JSON.parse(
+          documentRequirements,
+        ) as DocumentRequirement[];
+        for (const doc of cancellationStructureData) {
           const entity = this.documentRequirementRepository.create({
             ...doc,
             packageId: id,
@@ -454,7 +496,8 @@ export class PackageService {
       }
 
       if (inclusions) {
-        for (const item of inclusions) {
+        const inclusionsData = JSON.parse(inclusions) as string[];
+        for (const item of inclusionsData) {
           const entity = this.inclusionRepository.create({
             item,
             packageId: id,
@@ -464,7 +507,8 @@ export class PackageService {
       }
 
       if (exclusions) {
-        for (const item of exclusions) {
+        const exclusionsData = JSON.parse(exclusions) as string[];
+        for (const item of exclusionsData) {
           const entity = this.exclusionRepository.create({
             item,
             packageId: id,
@@ -474,7 +518,9 @@ export class PackageService {
       }
 
       if (itinerary) {
-        for (const day of itinerary) {
+        const itineraryData = JSON.parse(itinerary) as ItineraryDay[];
+
+        for (const day of itineraryData) {
           const entity = this.itineraryDayRepository.create({
             ...day,
             images: day.images?.map((image) =>
@@ -487,7 +533,10 @@ export class PackageService {
       }
 
       if (preTripChecklist) {
-        for (const item of preTripChecklist) {
+        const preTripChecklistData = JSON.parse(
+          preTripChecklist,
+        ) as ChecklistItem[];
+        for (const item of preTripChecklistData) {
           const entity = this.checklistItemRepository.create({
             ...item,
             packageId: id,
@@ -497,7 +546,11 @@ export class PackageService {
       }
 
       if (paymentStructure) {
-        for (const milestone of paymentStructure) {
+        const paymentStructureData = JSON.parse(
+          paymentStructure,
+        ) as PaymentMilestone[];
+
+        for (const milestone of paymentStructureData) {
           const entity = this.paymentMilestoneRepository.create({
             ...milestone,
             packageId: id,
@@ -507,16 +560,20 @@ export class PackageService {
       }
 
       if (mealsBreakdown) {
+        const mealsBreakdownData = JSON.parse(mealsBreakdown) as MealsBreakdown;
         const entity = this.mealsBreakdownRepository.create({
-          ...mealsBreakdown,
+          ...mealsBreakdownData,
           packageId: id,
         });
         await queryRunner.manager.save(entity);
       }
 
       if (packageLocation) {
+        const packageLocationData = JSON.parse(
+          packageLocation,
+        ) as PackageLocation;
         const entity = this.packageLocationRepository.create({
-          ...packageLocation,
+          ...packageLocationData,
           packageId: id,
         });
         await queryRunner.manager.save(entity);
@@ -524,16 +581,24 @@ export class PackageService {
 
       if (transportation) {
         // Transform nested structure to flat structure for database
+        const transportationParseData = JSON.parse(
+          transportation,
+        ) as ITransportation;
+
         const transportationData = {
-          toMode: transportation.toDestination?.mode || undefined,
-          toDetails: transportation.toDestination?.details || undefined,
-          toIncluded: transportation.toDestination?.included || false,
-          fromMode: transportation.fromDestination?.mode || undefined,
-          fromDetails: transportation.fromDestination?.details || undefined,
-          fromIncluded: transportation.fromDestination?.included || false,
-          duringMode: transportation.duringTrip?.mode || undefined,
-          duringDetails: transportation.duringTrip?.details || undefined,
-          duringIncluded: transportation.duringTrip?.included || false,
+          toMode: transportationParseData.toDestination?.mode || undefined,
+          toDetails:
+            transportationParseData.toDestination?.details || undefined,
+          toIncluded: transportationParseData.toDestination?.included || false,
+          fromMode: transportationParseData.fromDestination?.mode || undefined,
+          fromDetails:
+            transportationParseData.fromDestination?.details || undefined,
+          fromIncluded:
+            transportationParseData.fromDestination?.included || false,
+          duringMode: transportationParseData.duringTrip?.mode || undefined,
+          duringDetails:
+            transportationParseData.duringTrip?.details || undefined,
+          duringIncluded: transportationParseData.duringTrip?.included || false,
           packageId: id,
         };
 

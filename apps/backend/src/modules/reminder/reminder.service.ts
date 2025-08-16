@@ -83,6 +83,8 @@ export class ReminderService {
 
   @Cron('*/1 * * * *') // every minute
   async handleCron() {
-    await this.processDueReminders();
+    if (process.env.CRON_JOB) {
+      await this.processDueReminders();
+    }
   }
 }

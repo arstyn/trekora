@@ -10,11 +10,10 @@ import {
 import axiosInstance from "@/lib/axios";
 import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
 import { getFileUrl } from "@/lib/utils";
-import type { IThumbnail, PackageFormData } from "@/types/package.schema";
+import type { IPackages } from "@/types/package.schema";
 import {
 	Calendar,
 	CheckCircle,
-	Clock,
 	Edit,
 	IndianRupee,
 	MapPin,
@@ -27,12 +26,12 @@ import { toast } from "sonner";
 
 export default function ViewPackagePage() {
 	const { id } = useParams<{ id: string }>();
-	const [packageData, setPackageData] = useState<PackageFormData>();
+	const [packageData, setPackageData] = useState<IPackages>();
 
 	useEffect(() => {
 		const getPackage = async () => {
 			try {
-				const res = await axiosInstance.get<PackageFormData>(`/packages/${id}`);
+				const res = await axiosInstance.get<IPackages>(`/packages/${id}`);
 				setPackageData(res.data);
 			} catch (error) {
 				if (error instanceof Error) {
@@ -65,9 +64,7 @@ export default function ViewPackagePage() {
 									"id" in packageData.thumbnail
 								) {
 									return getFileUrl(
-										getServeFileUrl(
-											(packageData.thumbnail as IThumbnail)?.id
-										)
+										getServeFileUrl(packageData.thumbnail?.id)
 									);
 								}
 								return "/placeholder.svg";
@@ -208,17 +205,33 @@ export default function ViewPackagePage() {
 											{/* Day Images */}
 											{day?.images && day.images.length > 0 && (
 												<div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-													{day.images.map((_, imageIndex) => (
-														<img
-															key={imageIndex}
-															// src={image || '/placeholder.svg'}
-															src={"/placeholder.svg"}
-															alt={`Day ${
-																day?.day || index + 1
-															} - Image ${imageIndex + 1}`}
-															className="rounded-lg object-cover"
-														/>
-													))}
+													{day.images.map(
+														(image, imageIndex) => (
+															<img
+																key={imageIndex}
+																src={(() => {
+																	if (
+																		typeof image ===
+																			"object" &&
+																		"id" in image
+																	) {
+																		return getFileUrl(
+																			getServeFileUrl(
+																				image.id
+																			)
+																		);
+																	}
+																	return "/placeholder.svg";
+																})()}
+																alt={`Day ${
+																	day?.day || index + 1
+																} - Image ${
+																	imageIndex + 1
+																}`}
+																className="rounded-lg object-cover"
+															/>
+														)
+													)}
 												</div>
 											)}
 
@@ -807,11 +820,6 @@ export default function ViewPackagePage() {
 													key={index}
 													className="flex items-center gap-2 p-2 rounded border"
 												>
-													{item?.completed ? (
-														<CheckCircle className="w-4 h-4 text-primary" />
-													) : (
-														<Clock className="w-4 h-4 text-muted-foreground" />
-													)}
 													<div className="flex-1">
 														<div className="text-sm font-medium">
 															{item?.task ||

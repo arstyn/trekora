@@ -216,12 +216,6 @@ export function PackageForm({
 				typeof backendData.maxGuests === "string"
 					? Number(backendData.maxGuests) || 0
 					: backendData.maxGuests,
-			cancellationPolicy:
-				backendData.cancellationPolicy
-					?.map((policy) =>
-						typeof policy === "object" ? policy?.text : policy
-					)
-					.filter((p): p is string => typeof p === "string") || [],
 			inclusions:
 				backendData.inclusions?.map((inc: string | { item: string }) =>
 					typeof inc === "object" ? inc?.item : inc
@@ -230,6 +224,13 @@ export function PackageForm({
 				backendData.exclusions?.map((exc: string | { item: string }) =>
 					typeof exc === "object" ? exc?.item : exc
 				) || [],
+			itinerary: backendData.itinerary?.map((iti) => {
+				const { images, ...rest } = iti;
+				console.log("🚀 ~ package-form.tsx:208 ~ PackageForm ~ images:", images);
+
+				return rest;
+			}),
+			cancellationPolicy: backendData.cancellationPolicy?.map((can) => can.text),
 		};
 	}, []);
 
@@ -296,6 +297,30 @@ export function PackageForm({
 							if (thumbnailObj?.id) {
 								const url = getFileUrl(getServeFileUrl(thumbnailObj.id));
 								setThumbnailFile(url);
+							}
+						}
+
+						if (res.data.itinerary) {
+							for (
+								let dayIndex = 0;
+								dayIndex < res.data.itinerary.length;
+								dayIndex++
+							) {
+								const itinerary = res.data.itinerary[dayIndex];
+
+								if (itinerary.images) {
+									const urls: string[] = [];
+
+									for (const img of itinerary.images) {
+										const url = getFileUrl(getServeFileUrl(img.id));
+										urls?.push(url);
+									}
+
+									setItineraryPreviewUrls((prev) => ({
+										...prev,
+										[dayIndex]: [...(prev[dayIndex] || []), ...urls],
+									}));
+								}
 							}
 						}
 					}
@@ -520,17 +545,21 @@ export function PackageForm({
 		appendIfDefined("packageLocation", data.packageLocation);
 		appendIfDefined("cancellationPolicy", data.cancellationPolicy);
 
+		const itineraryData = data.itinerary?.map((val) => {
+			const { images, ...rest } = val;
+			console.log(
+				"🚀 ~ package-form.tsx:525 ~ packageFormDataToFormData ~ images:",
+				images
+			);
+
+			return rest;
+		});
+
+		appendIfDefined("itinerary", itineraryData);
+
 		// Special case: itinerary with image arrays
 		if (data.itinerary) {
 			data.itinerary.forEach((day, idx) => {
-				// Append non-file fields of each itinerary day
-				appendIfDefined(`itinerary[${idx}].day`, day.day);
-				appendIfDefined(`itinerary[${idx}].title`, day.title);
-				appendIfDefined(`itinerary[${idx}].description`, day.description);
-				appendIfDefined(`itinerary[${idx}].activities`, day.activities);
-				appendIfDefined(`itinerary[${idx}].meals`, day.meals);
-				appendIfDefined(`itinerary[${idx}].accommodation`, day.accommodation);
-
 				// Append images separately so backend can parse as files
 				if (day.images) {
 					day.images.forEach((file, fileIdx) => {

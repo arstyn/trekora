@@ -10,6 +10,16 @@ export interface IThumbnail {
 	updatedAt: Date;
 }
 
+export interface IItinerary {
+	day?: number;
+	title?: string;
+	description?: string;
+	activities?: string[];
+	meals?: string[];
+	accommodation?: string;
+	images?: IThumbnail[];
+}
+
 export interface ICancellationStructure {
 	id: string;
 	timeframe?: string;
@@ -22,6 +32,16 @@ export interface ICancellationPolicy {
 	id: string;
 	text?: string;
 	packageId?: string;
+}
+
+export interface IPreTripChecklist {
+	id: string;
+	task: string;
+	description: string;
+	category: "documents" | "booking" | "preparation" | "communication";
+	packagedId: string;
+	completed: boolean;
+	dueDate: string;
 }
 
 export interface IPackages {
@@ -38,7 +58,7 @@ export interface IPackages {
 	category?: "adventure" | "cultural" | "relaxation" | "wildlife" | "luxury" | "budget";
 	status?: "draft" | "published";
 	thumbnail?: IThumbnail;
-	preTripChecklist?: [];
+	preTripChecklist?: IPreTripChecklist[];
 	cancellationPolicy?: ICancellationPolicy[];
 	inclusions?: string[];
 	exclusions?: string[];
@@ -46,6 +66,13 @@ export interface IPackages {
 	organizationId: string;
 	createdAt: string;
 	updatedAt: string;
+	packageLocation?: PackageLocation;
+	itinerary?: IItinerary[];
+	paymentStructure?: PaymentMilestone[];
+	cancellationStructure?: CancellationTier[];
+	documentRequirements?: DocumentRequirement[];
+	mealsBreakdown?: MealsBreakdown;
+	transportation?: Transportation;
 }
 
 export const paymentMilestoneSchema = z.object({

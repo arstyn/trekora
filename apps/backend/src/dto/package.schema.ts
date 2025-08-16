@@ -127,34 +127,24 @@ export const packageFormSchema = z.object({
     .optional(),
   status: z.enum(['draft', 'published']).optional(),
   thumbnail: z.string().optional(),
-  inclusions: z.array(z.string()).optional(),
-  exclusions: z.array(z.string()).optional(),
-  itinerary: z.array(itineraryDaySchema).optional(),
-  paymentStructure: z
-    .array(paymentMilestoneSchema)
-    .optional()
-    .refine(
-      (milestones) =>
-        !milestones ||
-        milestones.reduce((sum, m) => sum + (m.percentage ?? 0), 0) === 100,
-      {
-        message: 'Payment structure must total exactly 100%',
-      },
-    ),
-  cancellationStructure: z.array(cancellationTierSchema).optional(),
-  mealsBreakdown: mealsBreakdownSchema.optional(),
-  transportation: transportationSchema.optional(),
-  documentRequirements: z.array(documentRequirementSchema).optional(),
-  preTripChecklist: z.array(checklistItemSchema).optional(),
-  packageLocation: packageLocationSchema.optional(),
-  cancellationPolicy: z.array(z.string()).optional(),
+  inclusions: z.string().optional(),
+  exclusions: z.string().optional(),
+  itinerary: z.string().optional(),
+  paymentStructure: z.string().optional(),
+  cancellationStructure: z.string().optional(),
+  mealsBreakdown: z.string().optional(),
+  transportation: z.string().optional(),
+  documentRequirements: z.string().optional(),
+  preTripChecklist: z.string().optional(),
+  packageLocation: z.string().optional(),
+  cancellationPolicy: z.string().optional(),
 });
 
 export type PackageFormData = z.infer<typeof packageFormSchema>;
 export type PaymentMilestone = z.infer<typeof paymentMilestoneSchema>;
 export type CancellationTier = z.infer<typeof cancellationTierSchema>;
 export type MealsBreakdown = z.infer<typeof mealsBreakdownSchema>;
-export type Transportation = z.infer<typeof transportationSchema>;
+export type ITransportation = z.infer<typeof transportationSchema>;
 export type ItineraryDay = z.infer<typeof itineraryDaySchema>;
 export type DocumentRequirement = z.infer<typeof documentRequirementSchema>;
 export type ChecklistItem = z.infer<typeof checklistItemSchema>;
