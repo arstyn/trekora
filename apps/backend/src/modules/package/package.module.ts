@@ -16,6 +16,7 @@ import { Transportation } from '../../database/entity/package-related/transporta
 import { PackageController } from './package.controller';
 import { PackageService } from './package.service';
 import { FileManager } from 'src/database/entity/file-manager.entity';
+import { FileManagerModule } from '../file-manager/file-manager.module';
 
 @Module({
   imports: [
@@ -32,8 +33,9 @@ import { FileManager } from 'src/database/entity/file-manager.entity';
       PaymentMilestone,
       Transportation,
       ItineraryDay,
-      FileManager
+      FileManager,
     ]),
+    FileManagerModule,
     JwtModule.register({}),
   ],
   providers: [PackageService],

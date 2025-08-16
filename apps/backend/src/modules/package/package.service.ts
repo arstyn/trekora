@@ -19,7 +19,12 @@ import { CancellationPolicy } from '../../database/entity/package-related/cancel
 import { Package } from '../../database/entity/package-related/package.entity';
 import { ItineraryDay } from 'src/database/entity/package-related/itinerary-days.entity';
 import { PackageFormData } from 'src/dto/package.schema';
-import { FileManager } from 'src/database/entity/file-manager.entity';
+import {
+  FileManager,
+  RelatedType,
+} from 'src/database/entity/file-manager.entity';
+import { FileManagerService } from '../file-manager/file-manager.service';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class PackageService {
@@ -51,6 +56,7 @@ export class PackageService {
     private readonly itineraryDayRepository: Repository<ItineraryDay>,
     @InjectRepository(FileManager)
     private readonly fileManagerRepository: Repository<FileManager>,
+    private readonly fileManagerService: FileManagerService,
   ) {}
 
   async create(
@@ -81,6 +87,7 @@ export class PackageService {
     try {
       const cleanedData = {
         ...rest,
+        id: randomUUID(),
         startDate:
           rest.startDate === '' || rest.startDate === undefined
             ? undefined
@@ -92,15 +99,36 @@ export class PackageService {
         destination: rest.destination === '' ? undefined : rest.destination,
         duration: rest.duration === '' ? undefined : rest.duration,
         description: rest.description === '' ? undefined : rest.description,
-        thumbnail:
-          rest.thumbnail === ''
-            ? undefined
-            : rest.thumbnail?.replace('/file-manager/serve/', ''),
+        thumbnail: undefined,
         organizationId: user.organizationId,
         createdById: user.userId,
       };
 
       const pkg = queryRunner.manager.create(Package, cleanedData);
+      console.log(
+        '🚀 ~ package.service.ts:106 ~ PackageService ~ create ~ pkg:',
+        pkg,
+      );
+
+      const pkgFile = files.find((val) => val.fieldname === 'thumbnail');
+      console.log(
+        '🚀 ~ package.service.ts:109 ~ PackageService ~ create ~ pkgFile:',
+        pkgFile,
+      );
+
+      if (pkgFile) {
+        const fileData = await this.fileManagerService.uploadOneFile(
+          { relatedId: pkg.id, relatedType: RelatedType.PACKAGE },
+          pkgFile,
+        );
+
+        pkg.thumbnail = fileData.id;
+      }
+      console.log(
+        '🚀 ~ package.service.ts:106 ~ PackageService ~ create ~ pkg:',
+        pkg,
+      );
+
       const savedPackage = await queryRunner.manager.save(pkg);
 
       if (cancellationPolicy) {

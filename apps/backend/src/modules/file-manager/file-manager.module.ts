@@ -8,5 +8,6 @@ import { FileManager } from '../../database/entity/file-manager.entity';
   imports: [TypeOrmModule.forFeature([FileManager])],
   providers: [FileManagerService],
   controllers: [FileManagerController],
+  exports: [FileManagerService],
 })
 export class FileManagerModule {}
