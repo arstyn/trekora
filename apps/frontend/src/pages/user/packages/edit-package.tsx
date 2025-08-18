@@ -6,7 +6,7 @@ export default function EditPackagePage() {
 	const navigate = useNavigate();
 
 	const handleSuccess = () => {
-		navigate("/");
+		navigate(`/packages/${id}`, { replace: true });
 	};
 
 	return (

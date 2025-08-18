@@ -47,7 +47,16 @@ import {
 } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
-import { Eye, Loader2, Plus, Save, Trash, Trash2, Upload } from "lucide-react";
+import {
+	AlertCircle,
+	Eye,
+	Loader2,
+	Plus,
+	Save,
+	Trash,
+	Trash2,
+	Upload,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -197,12 +206,23 @@ export function PackageForm({
 	>({});
 	const [newInclusion, setNewInclusion] = useState("");
 	const [newExclusion, setNewExclusion] = useState("");
-	// const []
+	const [validationErrors, setValidationErrors] = useState<string[]>([]);
+	const [isValidating, setIsValidating] = useState(false);
 
 	const form = useForm<PackageFormData>({
 		resolver: zodResolver(packageFormSchema),
 		defaultValues,
 	});
+
+	// Clear validation errors when form values change
+	useEffect(() => {
+		const subscription = form.watch(() => {
+			if (validationErrors.length > 0) {
+				setValidationErrors([]);
+			}
+		});
+		return () => subscription.unsubscribe();
+	}, [form, validationErrors.length]);
 
 	const transformBackendDataToForm = useCallback((backendData: IPackages) => {
 		return {
@@ -229,6 +249,12 @@ export function PackageForm({
 				console.log("🚀 ~ package-form.tsx:208 ~ PackageForm ~ images:", images);
 
 				return rest;
+			}),
+			paymentStructure: backendData.paymentStructure?.map((pay) => {
+				return {
+					...pay,
+					percentage: parseInt(pay.percentage),
+				};
 			}),
 			cancellationPolicy: backendData.cancellationPolicy?.map((can) => can.text),
 		};
@@ -293,11 +319,8 @@ export function PackageForm({
 						form.reset(transformedData);
 
 						if (res.data.thumbnail) {
-							const thumbnailObj = res.data.thumbnail;
-							if (thumbnailObj?.id) {
-								const url = getFileUrl(getServeFileUrl(thumbnailObj.id));
-								setThumbnailFile(url);
-							}
+							const url = getFileUrl(getServeFileUrl(res.data.thumbnail));
+							setThumbnailFile(url);
 						}
 
 						if (res.data.itinerary) {
@@ -312,14 +335,22 @@ export function PackageForm({
 									const urls: string[] = [];
 
 									for (const img of itinerary.images) {
-										const url = getFileUrl(getServeFileUrl(img.id));
-										urls?.push(url);
+										const url = getFileUrl(getServeFileUrl(img));
+										urls.push(url);
 									}
 
-									setItineraryPreviewUrls((prev) => ({
-										...prev,
-										[dayIndex]: [...(prev[dayIndex] || []), ...urls],
-									}));
+									setItineraryPreviewUrls((prev) => {
+										const existing = prev[dayIndex] || [];
+										// merge and remove duplicates
+										const merged = Array.from(
+											new Set([...existing, ...urls])
+										);
+
+										return {
+											...prev,
+											[dayIndex]: merged,
+										};
+									});
 								}
 							}
 						}
@@ -499,12 +530,18 @@ export function PackageForm({
 	};
 
 	const packageFormDataToFormData = (data: PackageFormData): FormData => {
+		console.log(
+			"🚀 ~ package-form.tsx:533 ~ packageFormDataToFormData ~ data:",
+			data
+		);
 		const formData = new FormData();
 
 		const appendIfDefined = (
 			key: string,
 			value?: null | File | string | number | string[] | object
 		) => {
+			console.log("🚀 ~ package-form.tsx:540 ~ appendIfDefined ~ value:", value);
+			console.log("🚀 ~ package-form.tsx:540 ~ appendIfDefined ~ key:", key);
 			if (value !== undefined && value !== null) {
 				// If it's a File, append directly
 				if (value instanceof File) {
@@ -554,6 +591,10 @@ export function PackageForm({
 
 			return rest;
 		});
+		console.log(
+			"🚀 ~ package-form.tsx:594 ~ packageFormDataToFormData ~ itineraryData:",
+			itineraryData
+		);
 
 		appendIfDefined("itinerary", itineraryData);
 
@@ -578,17 +619,38 @@ export function PackageForm({
 		setIsLoading(true);
 		try {
 			const formData = packageFormDataToFormData(data);
+			console.log("🚀 ~ package-form.tsx:612 ~ onSubmit ~ formData:", formData);
 
-			const response = await axiosInstance.post(`/packages`, formData, {
-				headers: {
-					"Content-Type": "multipart/form-data",
-				},
-			});
+			if (isEditing && packageId) {
+				const response = await axiosInstance.patch(
+					`/packages/${packageId}`,
+					formData,
+					{
+						headers: {
+							"Content-Type": "multipart/form-data",
+						},
+					}
+				);
 
-			if (response.data) {
-				const action = status === "published" ? "published" : "saved";
-				toast.success(`Package ${action} successfully!`);
-				onSuccess?.();
+				if (response.data) {
+					const action = status === "published" ? "published" : "saved";
+					toast.success(`Package ${action} successfully!`);
+					setValidationErrors([]); // Clear validation errors on success
+					onSuccess?.();
+				}
+			} else {
+				const response = await axiosInstance.post(`/packages`, formData, {
+					headers: {
+						"Content-Type": "multipart/form-data",
+					},
+				});
+
+				if (response.data) {
+					const action = status === "published" ? "published" : "saved";
+					toast.success(`Package ${action} successfully!`);
+					setValidationErrors([]); // Clear validation errors on success
+					onSuccess?.();
+				}
 			}
 		} catch (error) {
 			console.error("Package submission error:", error);
@@ -606,6 +668,53 @@ export function PackageForm({
 		} finally {
 			setIsLoading(false);
 		}
+	};
+
+	const validatePackage = async () => {
+		if (!packageId) return { isValid: false, errors: ["Package ID is required"] };
+
+		try {
+			setIsValidating(true);
+			const response = await axiosInstance.post(`/packages/${packageId}/validate`);
+			return response.data;
+		} catch (error) {
+			if (error instanceof AxiosError && error.response?.data?.errors) {
+				return {
+					isValid: false,
+					errors: error.response.data.errors,
+				};
+			}
+			return {
+				isValid: false,
+				errors: ["Failed to validate package"],
+			};
+		} finally {
+			setIsValidating(false);
+		}
+	};
+
+	const handleSaveAsDraft = async () => {
+		// For draft, bypass validation and submit directly
+		const formData = form.getValues();
+		console.log(
+			"🚀 ~ package-form.tsx:689 ~ handleSaveAsDraft ~ formData:",
+			formData
+		);
+		await onSubmit(formData, "draft");
+	};
+
+	const handlePublish = async (data: PackageFormData) => {
+		// First validate the package
+		const validation = await validatePackage();
+
+		if (!validation.isValid) {
+			setValidationErrors(validation.errors);
+			toast.error("Package validation failed. Please check the errors below.");
+			return;
+		}
+
+		// If validation passes, proceed with publishing
+		await onSubmit(data, "published");
 	};
 
 	const getTotalPaymentPercentage = () => {
@@ -642,6 +751,35 @@ export function PackageForm({
 			<Form {...form}>
 				<form>
 					<div className="px-4 sm:px-6 lg:px-8 py-8">
+						{/* Validation Errors Display */}
+						{validationErrors.length > 0 && (
+							<Card className="mb-6 border-red-200 bg-red-50">
+								<CardHeader>
+									<CardTitle className="text-red-800 flex items-center gap-2">
+										<AlertCircle className="w-5 h-5" />
+										Validation Errors
+									</CardTitle>
+									<CardDescription className="text-red-700">
+										Please fix the following issues before publishing:
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<ul className="space-y-2">
+										{validationErrors.map((error, index) => (
+											<li
+												key={index}
+												className="flex items-start gap-2 text-red-700"
+											>
+												<span className="text-red-500 mt-1">
+													•
+												</span>
+												<span>{error}</span>
+											</li>
+										))}
+									</ul>
+								</CardContent>
+							</Card>
+						)}
 						<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 							{/* Main Form */}
 							<div className="lg:col-span-2 space-y-6">
@@ -1005,7 +1143,7 @@ export function PackageForm({
 																	alt={`test`}
 																	width={150}
 																	height={100}
-																	className="rounded-lg object-cover border"
+																	className="rounded-lg object-cover border h-full"
 																/>
 																<Button
 																	type="button"
@@ -2507,15 +2645,45 @@ export function PackageForm({
 										<CardTitle>Actions</CardTitle>
 									</CardHeader>
 									<CardContent className="space-y-2">
+										{isEditing && (
+											<Button
+												type="button"
+												variant="outline"
+												className="w-full bg-transparent cursor-pointer"
+												onClick={async () => {
+													const result =
+														await validatePackage();
+													if (result.isValid) {
+														toast.success(
+															"Package validation passed!"
+														);
+														setValidationErrors([]);
+													} else {
+														setValidationErrors(
+															result.errors
+														);
+														toast.error(
+															"Package validation failed. Please check the errors below."
+														);
+													}
+												}}
+												disabled={isLoading || isValidating}
+											>
+												{isValidating ? (
+													<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+												) : (
+													<AlertCircle className="w-4 h-4 mr-2" />
+												)}
+												{isValidating
+													? "Validating..."
+													: "Validate Package"}
+											</Button>
+										)}
 										<Button
 											type="button"
 											variant="outline"
 											className="w-full bg-transparent cursor-pointer"
-											onClick={() =>
-												form.handleSubmit((data) =>
-													onSubmit(data, "draft")
-												)()
-											}
+											onClick={handleSaveAsDraft}
 											disabled={isLoading}
 										>
 											<Save className="w-4 h-4 mr-2" />
@@ -2575,17 +2743,22 @@ export function PackageForm({
 											type="button"
 											className="w-full cursor-pointer"
 											onClick={() =>
-												form.handleSubmit((data) =>
-													onSubmit(data, "published")
-												)()
+												form.handleSubmit(handlePublish)()
 											}
 											disabled={
 												isLoading ||
+												isValidating ||
 												getTotalPaymentPercentage() !== 100
 											}
 										>
-											<Eye className="w-4 h-4 mr-2" />
-											{isEditing
+											{isValidating ? (
+												<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+											) : (
+												<Eye className="w-4 h-4 mr-2" />
+											)}
+											{isValidating
+												? "Validating..."
+												: isEditing
 												? "Update & Publish"
 												: "Publish Package"}
 										</Button>

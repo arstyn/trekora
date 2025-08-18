@@ -17,7 +17,7 @@ export interface IItinerary {
 	activities?: string[];
 	meals?: string[];
 	accommodation?: string;
-	images?: IThumbnail[];
+	images?: string[];
 }
 
 export interface ICancellationStructure {
@@ -44,6 +44,18 @@ export interface IPreTripChecklist {
 	dueDate: string;
 }
 
+export interface IPaymentStructure {
+	name: string;
+	percentage: string;
+	description: string;
+	dueDate:
+		| "30_days_before"
+		| "2_weeks_before"
+		| "1_week_before"
+		| "booking"
+		| "departure";
+}
+
 export interface IPackages {
 	id: string;
 	name?: string;
@@ -57,7 +69,7 @@ export interface IPackages {
 	difficulty?: "easy" | "moderate" | "challenging" | "extreme";
 	category?: "adventure" | "cultural" | "relaxation" | "wildlife" | "luxury" | "budget";
 	status?: "draft" | "published";
-	thumbnail?: IThumbnail;
+	thumbnail?: string;
 	preTripChecklist?: IPreTripChecklist[];
 	cancellationPolicy?: ICancellationPolicy[];
 	inclusions?: string[];
@@ -68,7 +80,7 @@ export interface IPackages {
 	updatedAt: string;
 	packageLocation?: PackageLocation;
 	itinerary?: IItinerary[];
-	paymentStructure?: PaymentMilestone[];
+	paymentStructure?: IPaymentStructure[];
 	cancellationStructure?: CancellationTier[];
 	documentRequirements?: DocumentRequirement[];
 	mealsBreakdown?: MealsBreakdown;

@@ -58,13 +58,9 @@ export default function ViewPackagePage() {
 					<div>
 						<img
 							src={(() => {
-								if (
-									packageData?.thumbnail &&
-									typeof packageData.thumbnail === "object" &&
-									"id" in packageData.thumbnail
-								) {
+								if (packageData?.thumbnail) {
 									return getFileUrl(
-										getServeFileUrl(packageData.thumbnail?.id)
+										getServeFileUrl(packageData.thumbnail)
 									);
 								}
 								return "/placeholder.svg";
@@ -210,14 +206,10 @@ export default function ViewPackagePage() {
 															<img
 																key={imageIndex}
 																src={(() => {
-																	if (
-																		typeof image ===
-																			"object" &&
-																		"id" in image
-																	) {
+																	if (image) {
 																		return getFileUrl(
 																			getServeFileUrl(
-																				image.id
+																				image
 																			)
 																		);
 																	}
@@ -228,7 +220,7 @@ export default function ViewPackagePage() {
 																} - Image ${
 																	imageIndex + 1
 																}`}
-																className="rounded-lg object-cover"
+																className="rounded-lg object-cover h-full"
 															/>
 														)
 													)}

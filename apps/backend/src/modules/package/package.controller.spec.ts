@@ -17,6 +17,12 @@ const mockService = {
   findOne: jest.fn().mockResolvedValue(mockPackage),
   update: jest.fn().mockResolvedValue(mockPackage),
   remove: jest.fn().mockResolvedValue(undefined),
+  validatePackageForPublishing: jest.fn().mockResolvedValue({
+    isValid: true,
+    errors: [],
+    packageData: mockPackage,
+  }),
+  publishPackage: jest.fn().mockResolvedValue(mockPackage),
 };
 
 describe('PackageController', () => {
@@ -35,13 +41,20 @@ describe('PackageController', () => {
   });
 
   it('should create a package', async () => {
+    const mockRequest = { user: { userId: '1', organizationId: '1' } };
+    const mockFiles = [];
     expect(
-      await controller.create({ name: 'Test', description: 'Desc', price: 10 }),
+      await controller.create(
+        mockRequest,
+        { name: 'Test', description: 'Desc', price: 10 },
+        mockFiles,
+      ),
     ).toEqual(mockPackage);
   });
 
   it('should find all packages', async () => {
-    expect(await controller.findAll()).toEqual([mockPackage]);
+    const mockRequest = { user: { userId: '1', organizationId: '1' } };
+    expect(await controller.findAll(mockRequest)).toEqual([mockPackage]);
   });
 
   it('should find one package', async () => {
@@ -56,5 +69,18 @@ describe('PackageController', () => {
 
   it('should remove a package', async () => {
     await expect(controller.remove('1')).resolves.toBeUndefined();
+  });
+
+  it('should validate a package', async () => {
+    const validationResult = {
+      isValid: true,
+      errors: [],
+      packageData: mockPackage,
+    };
+    expect(await controller.validatePackage('1')).toEqual(validationResult);
+  });
+
+  it('should publish a package', async () => {
+    expect(await controller.publishPackage('1')).toEqual(mockPackage);
   });
 });

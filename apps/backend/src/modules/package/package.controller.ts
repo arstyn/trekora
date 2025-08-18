@@ -14,7 +14,6 @@ import {
 } from '@nestjs/common';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
-import { PackageFormData } from 'src/dto/package.schema';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PackageService } from './package.service';
 
@@ -27,7 +26,7 @@ export class PackageController {
   @UseInterceptors(AnyFilesInterceptor())
   create(
     @Request() req: ApiRequestJWT,
-    @Body() createPackageDto: PackageFormData,
+    @Body() createPackageDto: any,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     return this.packageService.create(req.user, createPackageDto, files);
@@ -49,12 +48,27 @@ export class PackageController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePackageDto: PackageFormData) {
-    return this.packageService.update(id, updatePackageDto);
+  @UseInterceptors(AnyFilesInterceptor())
+  update(
+    @Param('id') id: string,
+    @Body() updatePackageDto: any,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    return this.packageService.update(id, updatePackageDto, files);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.packageService.remove(id);
+  }
+
+  @Post(':id/validate')
+  validatePackage(@Param('id') id: string) {
+    return this.packageService.validatePackageForPublishing(id);
+  }
+
+  @Post(':id/publish')
+  publishPackage(@Param('id') id: string) {
+    return this.packageService.publishPackage(id);
   }
 }

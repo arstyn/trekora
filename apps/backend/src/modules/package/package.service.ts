@@ -314,15 +314,6 @@ export class PackageService {
       ],
     });
 
-    for (const pkg of res) {
-      if (pkg.thumbnail) {
-        const file = await this.fileManagerRepository.findOne({
-          where: { id: pkg.thumbnail },
-        });
-        (pkg as any).thumbnail = file;
-      }
-    }
-
     return res;
   }
 
@@ -363,29 +354,6 @@ export class PackageService {
           included: pkg.transportation.duringIncluded,
         },
       };
-      if (pkg.thumbnail) {
-        const file = await this.fileManagerRepository.findOne({
-          where: {
-            id: pkg.thumbnail,
-          },
-        });
-        (pkg as any).thumbnail = file;
-      }
-      if (pkg.itinerary.length) {
-        for (const day of pkg.itinerary) {
-          if (day.images.length) {
-            for (let i = 0; i < day.images.length; i++) {
-              const imageId = day.images[i];
-              const file = await this.fileManagerRepository.findOne({
-                where: {
-                  id: imageId,
-                },
-              });
-              (day as any).images[i] = file;
-            }
-          }
-        }
-      }
       (pkg as any).transportation = transformedTransportation;
     }
 
@@ -395,7 +363,16 @@ export class PackageService {
   async update(
     id: string,
     updatePackageDto: PackageFormData,
+    files: Express.Multer.File[],
   ): Promise<Package> {
+    console.log(
+      '🚀 ~ package.service.ts:368 ~ PackageService ~ update ~ files:',
+      files,
+    );
+    console.log(
+      '🚀 ~ package.service.ts:368 ~ PackageService ~ update ~ updatePackageDto:',
+      updatePackageDto,
+    );
     const {
       cancellationPolicy,
       cancellationStructure,
@@ -417,6 +394,23 @@ export class PackageService {
     await queryRunner.startTransaction();
 
     try {
+      const pkg = await queryRunner.manager.findOne(Package, { where: { id } });
+
+      const pkgFile = files.find((val) => val.fieldname === 'thumbnail');
+
+      if (pkgFile) {
+        if (pkg?.thumbnail) {
+          await this.fileManagerService.remove(pkg?.thumbnail);
+        }
+
+        const fileData = await this.fileManagerService.uploadOneFile(
+          { relatedId: id, relatedType: RelatedType.PACKAGE },
+          pkgFile,
+        );
+
+        rest.thumbnail = fileData.id;
+      }
+
       const cleanedData = {
         ...rest,
         // Convert empty strings to undefined for date fields
@@ -432,10 +426,7 @@ export class PackageService {
         destination: rest.destination === '' ? undefined : rest.destination,
         duration: rest.duration === '' ? undefined : rest.duration,
         description: rest.description === '' ? undefined : rest.description,
-        thumbnail:
-          rest.thumbnail === ''
-            ? undefined
-            : rest.thumbnail?.replace('/file-manager/serve/', ''),
+        thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail,
       };
 
       // Update main package
@@ -635,5 +626,157 @@ export class PackageService {
         packageId: id,
       },
     });
+  }
+
+  async validatePackageForPublishing(id: string) {
+    const packageData = await this.findOne(id);
+    if (!packageData) {
+      throw new NotFoundException('Package not found');
+    }
+
+    const errors: string[] = [];
+
+    // Check basic required fields
+    if (!packageData.name || packageData.name.trim() === '') {
+      errors.push('Package name is required');
+    }
+    if (!packageData.destination || packageData.destination.trim() === '') {
+      errors.push('Destination is required');
+    }
+    if (!packageData.duration || packageData.duration.trim() === '') {
+      errors.push('Duration is required');
+    }
+    if (!packageData.description || packageData.description.trim() === '') {
+      errors.push('Description is required');
+    }
+    if (!packageData.price || packageData.price <= 0) {
+      errors.push('Valid price is required');
+    }
+    if (!packageData.maxGuests || packageData.maxGuests <= 0) {
+      errors.push('Valid maximum guests count is required');
+    }
+    if (!packageData.startDate) {
+      errors.push('Start date is required');
+    }
+    if (!packageData.endDate) {
+      errors.push('End date is required');
+    }
+    if (!packageData.difficulty) {
+      errors.push('Difficulty level is required');
+    }
+    if (!packageData.category) {
+      errors.push('Category is required');
+    }
+
+    // Check related entities
+    const inclusions = await this.inclusionRepository.find({
+      where: { packageId: id },
+    });
+    if (inclusions.length === 0) {
+      errors.push('At least one inclusion is required');
+    }
+
+    const exclusions = await this.exclusionRepository.find({
+      where: { packageId: id },
+    });
+    if (exclusions.length === 0) {
+      errors.push('At least one exclusion is required');
+    }
+
+    const itinerary = await this.itineraryDayRepository.find({
+      where: { packageId: id },
+    });
+    if (itinerary.length === 0) {
+      errors.push('At least one itinerary day is required');
+    }
+
+    const paymentStructure = await this.paymentMilestoneRepository.find({
+      where: { packageId: id },
+    });
+    if (paymentStructure.length === 0) {
+      errors.push('Payment structure is required');
+    } else {
+      const totalPercentage = paymentStructure.reduce(
+        (sum, milestone) => sum + (milestone.percentage || 0),
+        0,
+      );
+      if (totalPercentage !== 100) {
+        errors.push('Payment structure must total exactly 100%');
+      }
+    }
+
+    const cancellationStructure = await this.cancellationTierRepository.find({
+      where: { packageId: id },
+    });
+    if (cancellationStructure.length === 0) {
+      errors.push('Cancellation structure is required');
+    }
+
+    const cancellationPolicy = await this.cancellationPolicyRepository.find({
+      where: { packageId: id },
+    });
+    if (cancellationPolicy.length === 0) {
+      errors.push('Cancellation policy is required');
+    }
+
+    const documentRequirements = await this.documentRequirementRepository.find({
+      where: { packageId: id },
+    });
+    if (documentRequirements.length === 0) {
+      errors.push('Document requirements are required');
+    }
+
+    const transportation = await this.transportationRepository.findOne({
+      where: { packageId: id },
+    });
+    if (!transportation) {
+      errors.push('Transportation details are required');
+    }
+
+    const mealsBreakdown = await this.mealsBreakdownRepository.findOne({
+      where: { packageId: id },
+    });
+    if (!mealsBreakdown) {
+      errors.push('Meals breakdown is required');
+    }
+
+    const packageLocation = await this.packageLocationRepository.findOne({
+      where: { packageId: id },
+    });
+    if (!packageLocation) {
+      errors.push('Package location details are required');
+    }
+
+    const preTripChecklist = await this.checklistItemRepository.find({
+      where: { packageId: id },
+    });
+    if (preTripChecklist.length === 0) {
+      errors.push('Pre-trip checklist is required');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      packageData,
+    };
+  }
+
+  async publishPackage(id: string) {
+    const validation = await this.validatePackageForPublishing(id);
+
+    if (!validation.isValid) {
+      throw new HttpException(
+        {
+          message: 'Package validation failed',
+          errors: validation.errors,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Update package status to published
+    await this.packageRepository.update(id, { status: 'published' });
+
+    return this.findOne(id);
   }
 }
