@@ -365,14 +365,6 @@ export class PackageService {
     updatePackageDto: PackageFormData,
     files: Express.Multer.File[],
   ): Promise<Package> {
-    console.log(
-      '🚀 ~ package.service.ts:368 ~ PackageService ~ update ~ files:',
-      files,
-    );
-    console.log(
-      '🚀 ~ package.service.ts:368 ~ PackageService ~ update ~ updatePackageDto:',
-      updatePackageDto,
-    );
     const {
       cancellationPolicy,
       cancellationStructure,
@@ -511,14 +503,41 @@ export class PackageService {
       if (itinerary) {
         const itineraryData = JSON.parse(itinerary) as ItineraryDay[];
 
-        for (const day of itineraryData) {
+        for (let dayIndex = 0; dayIndex < itineraryData.length; dayIndex++) {
+          const day = itineraryData[dayIndex];
+
+          // Filter only files that belong to this day
+          const dayImageFiles = files.filter((val) =>
+            val.fieldname.startsWith(`itinerary[${dayIndex}].images`),
+          );
+
+          let images: string[] = [];
+
+          // Handle existing images (if any are preserved)
+          if (day.images && Array.isArray(day.images)) {
+            // Filter out any non-string values and keep only valid image IDs
+            images = day.images.filter(
+              (img) => typeof img === 'string' && img.trim() !== '',
+            );
+          }
+
+          // Upload new images if any
+          if (dayImageFiles.length > 0) {
+            const filesData = await this.fileManagerService.upload(
+              { relatedId: id, relatedType: RelatedType.PACKAGE },
+              dayImageFiles,
+            );
+
+            const newImageIds = filesData.map((val) => val.id);
+            images = [...images, ...newImageIds];
+          }
+
           const entity = this.itineraryDayRepository.create({
             ...day,
-            images: day.images?.map((image) =>
-              image?.replace('/file-manager/serve/', ''),
-            ),
+            images: images.length > 0 ? images : undefined,
             packageId: id,
           });
+
           await queryRunner.manager.save(entity);
         }
       }

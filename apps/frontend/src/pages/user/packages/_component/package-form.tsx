@@ -204,6 +204,9 @@ export function PackageForm({
 	const [itineraryPreviewUrls, setItineraryPreviewUrls] = useState<
 		Record<number, string[]>
 	>({});
+	const [existingItineraryImages, setExistingItineraryImages] = useState<
+		Record<number, string[]>
+	>({});
 	const [newInclusion, setNewInclusion] = useState("");
 	const [newExclusion, setNewExclusion] = useState("");
 	const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -244,11 +247,20 @@ export function PackageForm({
 				backendData.exclusions?.map((exc: string | { item: string }) =>
 					typeof exc === "object" ? exc?.item : exc
 				) || [],
-			itinerary: backendData.itinerary?.map((iti) => {
+			itinerary: backendData.itinerary?.map((iti, index) => {
 				const { images, ...rest } = iti;
-				console.log("🚀 ~ package-form.tsx:208 ~ PackageForm ~ images:", images);
-
-				return rest;
+				// Store existing images for later use
+				if (images && Array.isArray(images)) {
+					setExistingItineraryImages((prev) => ({
+						...prev,
+						[index]: images,
+					}));
+				}
+				// Return without images since we handle them separately
+				return {
+					...rest,
+					images: [], // Clear images from form data since we handle them separately
+				};
 			}),
 			paymentStructure: backendData.paymentStructure?.map((pay) => {
 				return {
@@ -306,6 +318,12 @@ export function PackageForm({
 	});
 
 	useEffect(() => {
+		// Reset state when switching between edit and create modes
+		if (!isEditing) {
+			setItineraryPreviewUrls({});
+			setExistingItineraryImages({});
+		}
+
 		if (isEditing && packageId) {
 			const loadPackage = async () => {
 				try {
@@ -333,24 +351,23 @@ export function PackageForm({
 
 								if (itinerary.images) {
 									const urls: string[] = [];
+									const imageIds: string[] = [];
 
 									for (const img of itinerary.images) {
 										const url = getFileUrl(getServeFileUrl(img));
 										urls.push(url);
+										imageIds.push(img);
 									}
 
-									setItineraryPreviewUrls((prev) => {
-										const existing = prev[dayIndex] || [];
-										// merge and remove duplicates
-										const merged = Array.from(
-											new Set([...existing, ...urls])
-										);
+									setItineraryPreviewUrls((prev) => ({
+										...prev,
+										[dayIndex]: urls,
+									}));
 
-										return {
-											...prev,
-											[dayIndex]: merged,
-										};
-									});
+									setExistingItineraryImages((prev) => ({
+										...prev,
+										[dayIndex]: imageIds,
+									}));
 								}
 							}
 						}
@@ -416,15 +433,37 @@ export function PackageForm({
 
 	const removeDayImage = async (dayIndex: number, imageIndex: number) => {
 		try {
+			const currentUrls = itineraryPreviewUrls[dayIndex] || [];
+			const currentExistingImages = existingItineraryImages[dayIndex] || [];
+			const currentFormImages =
+				form.getValues(`itinerary.${dayIndex}.images`) || [];
+
+			// Determine if we're removing an existing image or a new one
+			const isExistingImage = imageIndex < currentExistingImages.length;
+
+			if (isExistingImage) {
+				// Remove from existing images
+				const newExistingImages = currentExistingImages.filter(
+					(_, idx) => idx !== imageIndex
+				);
+				setExistingItineraryImages((prev) => ({
+					...prev,
+					[dayIndex]: newExistingImages,
+				}));
+			} else {
+				// Remove from new images (adjust index for new images array)
+				const newImageIndex = imageIndex - currentExistingImages.length;
+				const newFormImages = currentFormImages.filter(
+					(_, idx) => idx !== newImageIndex
+				);
+				form.setValue(`itinerary.${dayIndex}.images`, newFormImages);
+			}
+
+			// Update preview URLs
 			setItineraryPreviewUrls((prev) => ({
 				...prev,
-				[dayIndex]: prev[dayIndex]?.filter((_, idx) => idx !== imageIndex) || [],
+				[dayIndex]: currentUrls.filter((_, idx) => idx !== imageIndex),
 			}));
-
-			// Update form
-			const formImages = form.getValues(`itinerary.${dayIndex}.images`);
-			const newImages = formImages?.filter((_, i) => i !== imageIndex);
-			form.setValue(`itinerary.${dayIndex}.images`, newImages);
 		} catch (error) {
 			console.log(error);
 			toast.error("Failed to remove image");
@@ -530,18 +569,18 @@ export function PackageForm({
 	};
 
 	const packageFormDataToFormData = (data: PackageFormData): FormData => {
-		console.log(
-			"🚀 ~ package-form.tsx:533 ~ packageFormDataToFormData ~ data:",
-			data
-		);
 		const formData = new FormData();
+
+		console.log("Form data being sent:", {
+			itinerary: data.itinerary,
+			existingImages: existingItineraryImages,
+			previewUrls: itineraryPreviewUrls,
+		});
 
 		const appendIfDefined = (
 			key: string,
 			value?: null | File | string | number | string[] | object
 		) => {
-			console.log("🚀 ~ package-form.tsx:540 ~ appendIfDefined ~ value:", value);
-			console.log("🚀 ~ package-form.tsx:540 ~ appendIfDefined ~ key:", key);
 			if (value !== undefined && value !== null) {
 				// If it's a File, append directly
 				if (value instanceof File) {
@@ -582,26 +621,26 @@ export function PackageForm({
 		appendIfDefined("packageLocation", data.packageLocation);
 		appendIfDefined("cancellationPolicy", data.cancellationPolicy);
 
-		const itineraryData = data.itinerary?.map((val) => {
+		// Handle itinerary with existing and new images
+		const itineraryData = data.itinerary?.map((val, dayIndex) => {
 			const { images, ...rest } = val;
-			console.log(
-				"🚀 ~ package-form.tsx:525 ~ packageFormDataToFormData ~ images:",
-				images
-			);
 
-			return rest;
+			// Combine existing images with new images
+			const existingImages = existingItineraryImages[dayIndex] || [];
+			const newImages = images || [];
+
+			return {
+				...rest,
+				images: [...existingImages, ...newImages],
+			};
 		});
-		console.log(
-			"🚀 ~ package-form.tsx:594 ~ packageFormDataToFormData ~ itineraryData:",
-			itineraryData
-		);
 
 		appendIfDefined("itinerary", itineraryData);
 
-		// Special case: itinerary with image arrays
+		// Special case: itinerary with new image files
 		if (data.itinerary) {
 			data.itinerary.forEach((day, idx) => {
-				// Append images separately so backend can parse as files
+				// Append only new image files separately so backend can parse as files
 				if (day.images) {
 					day.images.forEach((file, fileIdx) => {
 						if (file instanceof File) {
@@ -619,7 +658,6 @@ export function PackageForm({
 		setIsLoading(true);
 		try {
 			const formData = packageFormDataToFormData(data);
-			console.log("🚀 ~ package-form.tsx:612 ~ onSubmit ~ formData:", formData);
 
 			if (isEditing && packageId) {
 				const response = await axiosInstance.patch(
@@ -653,7 +691,6 @@ export function PackageForm({
 				}
 			}
 		} catch (error) {
-			console.error("Package submission error:", error);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			if ((error as any)?.response?.data?.message) {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -696,10 +733,6 @@ export function PackageForm({
 	const handleSaveAsDraft = async () => {
 		// For draft, bypass validation and submit directly
 		const formData = form.getValues();
-		console.log(
-			"🚀 ~ package-form.tsx:689 ~ handleSaveAsDraft ~ formData:",
-			formData
-		);
 		await onSubmit(formData, "draft");
 	};
 
@@ -753,13 +786,13 @@ export function PackageForm({
 					<div className="px-4 sm:px-6 lg:px-8 py-8">
 						{/* Validation Errors Display */}
 						{validationErrors.length > 0 && (
-							<Card className="mb-6 border-red-200 bg-red-50">
+							<Card className="mb-6 bg-transparent border-red-400">
 								<CardHeader>
-									<CardTitle className="text-red-800 flex items-center gap-2">
+									<CardTitle className="text-red-400 flex items-center gap-2">
 										<AlertCircle className="w-5 h-5" />
 										Validation Errors
 									</CardTitle>
-									<CardDescription className="text-red-700">
+									<CardDescription className="text-red-400">
 										Please fix the following issues before publishing:
 									</CardDescription>
 								</CardHeader>
@@ -770,7 +803,7 @@ export function PackageForm({
 												key={index}
 												className="flex items-start gap-2 text-red-700"
 											>
-												<span className="text-red-500 mt-1">
+												<span className="text-red-400 mt-1">
 													•
 												</span>
 												<span>{error}</span>
@@ -1085,17 +1118,30 @@ export function PackageForm({
 											</div>
 											<Button
 												type="button"
-												onClick={() =>
+												onClick={() => {
+													const newDayIndex =
+														itineraryFields.length;
 													appendItinerary({
-														day: itineraryFields.length + 1,
+														day: newDayIndex + 1,
 														title: "",
 														description: "",
 														activities: [""],
 														meals: [],
 														accommodation: "",
 														images: [],
-													})
-												}
+													});
+													// Initialize empty arrays for the new day
+													setItineraryPreviewUrls((prev) => ({
+														...prev,
+														[newDayIndex]: [],
+													}));
+													setExistingItineraryImages(
+														(prev) => ({
+															...prev,
+															[newDayIndex]: [],
+														})
+													);
+												}}
 												size="sm"
 											>
 												<Plus className="w-4 h-4 mr-2" />
@@ -1118,9 +1164,32 @@ export function PackageForm({
 															type="button"
 															variant="ghost"
 															size="sm"
-															onClick={() =>
-																removeItinerary(dayIndex)
-															}
+															onClick={() => {
+																removeItinerary(dayIndex);
+																// Clean up state for removed day
+																setItineraryPreviewUrls(
+																	(prev) => {
+																		const newState = {
+																			...prev,
+																		};
+																		delete newState[
+																			dayIndex
+																		];
+																		return newState;
+																	}
+																);
+																setExistingItineraryImages(
+																	(prev) => {
+																		const newState = {
+																			...prev,
+																		};
+																		delete newState[
+																			dayIndex
+																		];
+																		return newState;
+																	}
+																);
+															}}
 														>
 															<Trash2 className="w-4 h-4" />
 														</Button>
@@ -1140,10 +1209,14 @@ export function PackageForm({
 															>
 																<img
 																	src={url}
-																	alt={`test`}
+																	alt={`Day ${
+																		dayIndex + 1
+																	} image ${
+																		imageIndex + 1
+																	}`}
 																	width={150}
 																	height={100}
-																	className="rounded-lg object-cover border h-full"
+																	className="rounded-lg object-cover border w-full h-full"
 																/>
 																<Button
 																	type="button"
