@@ -716,9 +716,10 @@ export class PackageService {
       errors.push('Payment structure is required');
     } else {
       const totalPercentage = paymentStructure.reduce(
-        (sum, milestone) => sum + (milestone.percentage || 0),
+        (sum, milestone) => sum + Number(milestone.percentage || 0),
         0,
       );
+
       if (totalPercentage !== 100) {
         errors.push('Payment structure must total exactly 100%');
       }

@@ -23,8 +23,8 @@ export interface IItinerary {
 export interface ICancellationStructure {
 	id: string;
 	timeframe?: string;
-	percentage?: number;
-	description?: number;
+	percentage?: string;
+	description?: string;
 	packageId?: string;
 }
 
@@ -45,9 +45,9 @@ export interface IPreTripChecklist {
 }
 
 export interface IPaymentStructure {
-	name: string;
-	percentage: string;
-	description: string;
+	name?: string;
+	percentage?: string;
+	description?: string;
 	dueDate:
 		| "30_days_before"
 		| "2_weeks_before"
@@ -81,7 +81,7 @@ export interface IPackages {
 	packageLocation?: PackageLocation;
 	itinerary?: IItinerary[];
 	paymentStructure?: IPaymentStructure[];
-	cancellationStructure?: CancellationTier[];
+	cancellationStructure?: ICancellationStructure[];
 	documentRequirements?: DocumentRequirement[];
 	mealsBreakdown?: MealsBreakdown;
 	transportation?: Transportation;

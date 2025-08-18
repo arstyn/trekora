@@ -265,7 +265,13 @@ export function PackageForm({
 			paymentStructure: backendData.paymentStructure?.map((pay) => {
 				return {
 					...pay,
-					percentage: parseInt(pay.percentage),
+					percentage: parseInt(pay.percentage ?? "0"),
+				};
+			}),
+			cancellationStructure: backendData.cancellationStructure?.map((can) => {
+				return {
+					...can,
+					percentage: parseInt(can.percentage ?? "0"),
 				};
 			}),
 			cancellationPolicy: backendData.cancellationPolicy?.map((can) => can.text),
@@ -733,6 +739,7 @@ export function PackageForm({
 	const handleSaveAsDraft = async () => {
 		// For draft, bypass validation and submit directly
 		const formData = form.getValues();
+		formData.status = "draft";
 		await onSubmit(formData, "draft");
 	};
 
@@ -747,6 +754,7 @@ export function PackageForm({
 		}
 
 		// If validation passes, proceed with publishing
+		data.status = "published";
 		await onSubmit(data, "published");
 	};
 
