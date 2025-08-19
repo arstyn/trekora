@@ -103,7 +103,7 @@ export class BookingService {
 	static async getPackages(): Promise<
 		Array<{ id: string; name: string; price: number }>
 	> {
-		const response = await axiosInstance.get("/packages");
+		const response = await axiosInstance.get("/packages?status=published");
 		return response.data;
 	}
 
