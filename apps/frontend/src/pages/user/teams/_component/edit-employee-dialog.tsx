@@ -48,6 +48,9 @@ const formSchema = z.object({
 	dateOfBirth: z.date().optional(),
 	gender: z.enum(["male", "female", "other"]).optional(),
 	nationality: z.string().optional(),
+	experience: z.string().optional(),
+	specialization: z.string().optional(),
+	additional_info: z.string().optional(),
 	maritalStatus: z.enum(["single", "married"]).optional(),
 	joinDate: z.date({ error: "Join date is required" }),
 	avatar: z.string().optional(),
@@ -102,6 +105,9 @@ export function EditEmployeeDialog({
 						: undefined,
 					gender: employee.gender ?? undefined,
 					nationality: employee.nationality ?? "",
+					experience: employee.experience ?? "",
+					specialization: employee.specialization ?? "",
+					additional_info: employee.additional_info ?? "",
 					maritalStatus: employee.maritalStatus ?? undefined,
 					joinDate: employee.joinDate
 						? new Date(employee.joinDate)
@@ -120,6 +126,9 @@ export function EditEmployeeDialog({
 					dateOfBirth: undefined,
 					gender: undefined,
 					nationality: "",
+					experience: "",
+					specialization: "",
+					additional_info: "",
 					maritalStatus: undefined,
 					joinDate: new Date(),
 					avatar: "",
@@ -155,6 +164,9 @@ export function EditEmployeeDialog({
 					: undefined,
 				gender: data.gender,
 				nationality: data.nationality,
+				experience: data.experience,
+				specialization: data.specialization,
+				additional_info: data.additional_info,
 				maritalStatus: data.maritalStatus,
 				// emergencyContacts: data.emergencyContacts,
 			};
@@ -591,6 +603,52 @@ export function EditEmployeeDialog({
 										<FormLabel>Nationality</FormLabel>
 										<FormControl>
 											<Input placeholder="Nationality" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="experience"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Experience</FormLabel>
+										<FormControl>
+											<Input placeholder="Experience" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="specialization"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Specialization</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="Specialization"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="additional_info"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Additional Info</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="Additional Info"
+												{...field}
+											/>
 										</FormControl>
 										<FormMessage />
 									</FormItem>

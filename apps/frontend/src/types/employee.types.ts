@@ -47,6 +47,9 @@ export interface IEmployee {
 	dateOfBirth?: Date;
 	gender?: "male" | "female" | "other";
 	nationality?: string;
+	experience?: string;
+	specialization?: string;
+	additional_info?: string;
 	maritalStatus?: "single" | "married";
 	joinDate?: Date;
 	avatar: string;

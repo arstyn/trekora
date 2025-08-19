@@ -13,6 +13,9 @@ export class IEmployeeCreateDTO {
   gender?: string;
   nationality?: string;
   maritalStatus?: string;
+  experience?: string;
+  specialization?: string;
+  additional_info?: string;
   organizationId?: string;
   emergencyContactName?: {
     name: string;

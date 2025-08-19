@@ -21,6 +21,7 @@ import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { CoordinatorModal } from "./_component/coordinator-modal";
 import { PassengerModal } from "./_component/passenger-modal";
+import NAText from "@/components/na-text";
 
 export default function BatchDetailsPage() {
 	const { id } = useParams<{ id: string }>();
@@ -217,26 +218,28 @@ export default function BatchDetailsPage() {
 										}
 									>
 										<TableCell className="font-medium">
-											{coordinator.name}
+											{coordinator.name || <NAText />}
 										</TableCell>
 										<TableCell>
 											<Badge variant="outline">
-												{coordinator.role.name}
+												{coordinator.role.name || <NAText />}
 											</Badge>
 										</TableCell>
 										<TableCell>
 											<div className="space-y-1">
 												<div className="flex items-center gap-1 text-sm">
 													<Phone className="w-3 h-3" />
-													{coordinator.phone}
+													{coordinator.phone || <NAText />}
 												</div>
 												<div className="flex items-center gap-1 text-sm">
 													<Mail className="w-3 h-3" />
-													{coordinator.email}
+													{coordinator.email || <NAText />}
 												</div>
 											</div>
 										</TableCell>
-										<TableCell>coordinator.experience</TableCell>
+										<TableCell>
+											{coordinator.experience || <NAText />}
+										</TableCell>
 									</TableRow>
 								))}
 						</TableBody>

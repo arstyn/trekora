@@ -95,14 +95,26 @@ export function ViewEmployeeDialog({
 									label="Address"
 									value={display(employee.address)}
 								/>
-							</div>
-
-							<div className="space-y-3">
 								<Detail
 									label="Date of Birth"
 									value={display(formattedDOB)}
 								/>
 								<Detail label="Gender" value={display(employee.gender)} />
+							</div>
+
+							<div className="space-y-3">
+								<Detail
+									label="Nationality"
+									value={display(employee.nationality)}
+								/>
+								<Detail
+									label="Experience"
+									value={display(employee.experience)}
+								/>
+								<Detail
+									label="Additional Info"
+									value={display(employee.additional_info)}
+								/>
 								<Detail
 									label="Nationality"
 									value={display(employee.nationality)}

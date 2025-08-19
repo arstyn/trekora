@@ -36,6 +36,10 @@ export class EmployeeService {
       dateOfBirth,
       ...rest
     } = employeeData;
+    console.log(
+      '🚀 ~ employee.service.ts:39 ~ EmployeeService ~ create ~ rest:',
+      rest,
+    );
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -134,6 +138,10 @@ export class EmployeeService {
       avatar,
       ...rest
     } = updateData;
+    console.log(
+      '🚀 ~ employee.service.ts:141 ~ EmployeeService ~ update ~ rest:',
+      rest,
+    );
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();

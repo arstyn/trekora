@@ -1,3 +1,4 @@
+import NAText from "@/components/na-text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,7 +33,9 @@ export function CoordinatorModal({
 					<div className="space-y-4">
 						<div className="flex items-center justify-between">
 							<h3 className="font-semibold">Role</h3>
-							<Badge variant="outline">{coordinator.role.name}</Badge>
+							<Badge variant="outline">
+								{coordinator.role.name || <NAText />}
+							</Badge>
 						</div>
 
 						<div className="grid grid-cols-1 gap-3">
@@ -40,7 +43,9 @@ export function CoordinatorModal({
 								<Phone className="w-4 h-4 text-muted-foreground" />
 								<div>
 									<p className="text-sm text-muted-foreground">Phone</p>
-									<p className="font-medium">{coordinator.phone}</p>
+									<p className="font-medium">
+										{coordinator.phone || <NAText />}
+									</p>
 								</div>
 							</div>
 
@@ -48,7 +53,9 @@ export function CoordinatorModal({
 								<Mail className="w-4 h-4 text-muted-foreground" />
 								<div>
 									<p className="text-sm text-muted-foreground">Email</p>
-									<p className="font-medium">{coordinator.email}</p>
+									<p className="font-medium">
+										{coordinator.email || <NAText />}
+									</p>
 								</div>
 							</div>
 
@@ -58,7 +65,9 @@ export function CoordinatorModal({
 									<p className="text-sm text-muted-foreground">
 										Experience
 									</p>
-									<p className="font-medium">coordinator.experience</p>
+									<p className="font-medium">
+										{coordinator.experience || <NAText />}
+									</p>
 								</div>
 							</div>
 
@@ -69,7 +78,7 @@ export function CoordinatorModal({
 										Specialization
 									</p>
 									<p className="font-medium">
-										coordinator.specialization
+										{coordinator.specialization || <NAText />}
 									</p>
 								</div>
 							</div>
@@ -80,9 +89,7 @@ export function CoordinatorModal({
 					<div className="p-4 bg-muted/50 rounded-lg">
 						<h4 className="font-medium mb-2">Additional Information</h4>
 						<p className="text-sm text-muted-foreground">
-							Experienced coordinator.type.toLowerCase() with expertise in{" "}
-							coordinator.specialization.toLowerCase(). Available for
-							emergency contact during the tour duration.
+							{coordinator.additional_info || <NAText />}
 						</p>
 					</div>
 

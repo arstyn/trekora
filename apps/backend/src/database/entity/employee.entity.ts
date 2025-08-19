@@ -74,6 +74,15 @@ export class Employee {
   @Column({ type: 'varchar', nullable: true, name: 'phone' })
   phone?: string;
 
+  @Column({ type: 'varchar', nullable: true, name: 'experience' })
+  experience?: string;
+
+  @Column({ type: 'varchar', nullable: true, name: 'specialization' })
+  specialization?: string;
+
+  @Column({ type: 'varchar', nullable: true, name: 'additional_info' })
+  additional_info?: string;
+
   @Column({ type: 'varchar', nullable: true, name: 'email' })
   email?: string;
 
@@ -97,6 +106,16 @@ export class Employee {
 
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updatedAt: Date;
+
+  @Column({ type: 'uuid', nullable: true })
+  createdById?: string;
+
+  @ManyToOne(() => User, (createdBy) => createdBy.id, {
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn()
+  createdBy?: User;
 
   @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive: boolean;
