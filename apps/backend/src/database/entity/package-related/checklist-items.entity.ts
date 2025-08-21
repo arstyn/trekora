@@ -22,9 +22,6 @@ export class ChecklistItem {
   @Column({ nullable: true })
   dueDate: string;
 
-  @Column({ default: false })
-  completed: boolean;
-
   @Column({ nullable: true })
   packageId: string;
 

@@ -53,10 +53,6 @@ export class BatchesService {
       where: { id },
       relations: ['package', 'coordinators', 'coordinators.role', 'passengers'],
     });
-    console.log(
-      '🚀 ~ batches.service.ts:56 ~ BatchesService ~ findOne ~ batch:',
-      batch,
-    );
     if (!batch) throw new NotFoundException('Batch not found');
     return batch;
   }
