@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
-import { BookingPayment, PaymentStatus } from 'src/database/entity/booking-payment.entity';
+import {
+  BookingPayment,
+  PaymentStatus,
+} from 'src/database/entity/booking-payment.entity';
 import { BookingPassenger } from 'src/database/entity/booking-passenger.entity';
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { Customer } from 'src/database/entity/customer.entity';
@@ -112,6 +119,13 @@ export class BookingService {
         }),
       );
       await queryRunner.manager.save(passengers);
+
+      // Add passengers to batch
+      await queryRunner.manager
+        .createQueryBuilder()
+        .relation(Batch, 'passengers')
+        .of(batch.id) // which batch
+        .add(passengers); // which passengers to link
 
       // Create initial payment if provided
       if (createBookingDto.initialPayment && advancePaid > 0) {
@@ -286,8 +300,11 @@ export class BookingService {
 
       // Update balance amount if total amount changed
       if (bookingUpdate.totalAmount !== undefined) {
-        const newBalanceAmount = bookingUpdate.totalAmount - booking.advancePaid;
-        await queryRunner.manager.update(Booking, id, { balanceAmount: newBalanceAmount });
+        const newBalanceAmount =
+          bookingUpdate.totalAmount - booking.advancePaid;
+        await queryRunner.manager.update(Booking, id, {
+          balanceAmount: newBalanceAmount,
+        });
       }
 
       await queryRunner.commitTransaction();
@@ -396,7 +413,9 @@ export class BookingService {
       .addSelect('SUM(booking.balanceAmount)', 'pendingPayments')
       .addSelect('SUM(booking.numberOfPassengers)', 'totalPassengers')
       .where('booking.organizationId = :organizationId', { organizationId })
-      .andWhere('booking.status != :status', { status: BookingStatus.CANCELLED })
+      .andWhere('booking.status != :status', {
+        status: BookingStatus.CANCELLED,
+      })
       .getRawOne();
 
     return {
@@ -422,7 +441,7 @@ export class BookingService {
     const today = new Date();
     const year = today.getFullYear().toString().slice(-2);
     const month = (today.getMonth() + 1).toString().padStart(2, '0');
-    
+
     const count = await this.bookingRepository.count({
       where: { organizationId },
     });
@@ -430,4 +449,4 @@ export class BookingService {
     const sequence = (count + 1).toString().padStart(4, '0');
     return `BK${year}${month}${sequence}`;
   }
-} 
+}
