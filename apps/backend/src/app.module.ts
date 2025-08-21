@@ -29,6 +29,7 @@ import { BatchesModule } from './modules/batches/batches.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ImportModule } from './modules/import/import.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -62,7 +63,8 @@ import { ImportModule } from './modules/import/import.module';
     BatchesModule,
     BookingModule,
     PaymentModule,
-    ImportModule
+    ImportModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

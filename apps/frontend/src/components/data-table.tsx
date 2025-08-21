@@ -1,55 +1,3 @@
-import {
-	DndContext,
-	KeyboardSensor,
-	MouseSensor,
-	TouchSensor,
-	closestCenter,
-	useSensor,
-	useSensors,
-	type DragEndEvent,
-	type UniqueIdentifier,
-} from "@dnd-kit/core";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import {
-	SortableContext,
-	arrayMove,
-	useSortable,
-	verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
-	type ColumnDef,
-	type ColumnFiltersState,
-	type Row,
-	type SortingState,
-	type VisibilityState,
-	flexRender,
-	getCoreRowModel,
-	getFacetedRowModel,
-	getFacetedUniqueValues,
-	getFilteredRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
-} from "@tanstack/react-table";
-import {
-	CheckCircle2Icon,
-	ChevronDownIcon,
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	ChevronsLeftIcon,
-	ChevronsRightIcon,
-	ColumnsIcon,
-	GripVerticalIcon,
-	LoaderIcon,
-	MoreVerticalIcon,
-	PlusIcon,
-	TrendingUpIcon,
-} from "lucide-react";
-import * as React from "react";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { toast } from "sonner";
-import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -97,6 +45,59 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { SectionData } from "@/services/dashboard.service";
+import { DashboardService } from "@/services/dashboard.service";
+import {
+	DndContext,
+	type DragEndEvent,
+	KeyboardSensor,
+	MouseSensor,
+	TouchSensor,
+	type UniqueIdentifier,
+	closestCenter,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+	SortableContext,
+	arrayMove,
+	useSortable,
+	verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+	type ColumnDef,
+	type ColumnFiltersState,
+	type Row,
+	type SortingState,
+	type VisibilityState,
+	flexRender,
+	getCoreRowModel,
+	getFacetedRowModel,
+	getFacetedUniqueValues,
+	getFilteredRowModel,
+	getPaginationRowModel,
+	getSortedRowModel,
+	useReactTable,
+} from "@tanstack/react-table";
+import {
+	CheckCircle2Icon,
+	ChevronDownIcon,
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	ChevronsLeftIcon,
+	ChevronsRightIcon,
+	ColumnsIcon,
+	GripVerticalIcon,
+	LoaderIcon,
+	MoreVerticalIcon,
+	TrendingUpIcon,
+} from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+import { toast } from "sonner";
+import { z } from "zod";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const schema = z.object({
@@ -331,24 +332,45 @@ function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
 	);
 }
 
-export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[] }) {
-	const [data, setData] = React.useState(() => initialData);
-	const [rowSelection, setRowSelection] = React.useState({});
-	const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-	const [sorting, setSorting] = React.useState<SortingState>([]);
-	const [pagination, setPagination] = React.useState({
+export function DataTable() {
+	const [data, setData] = useState<SectionData[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		const fetchSectionData = async () => {
+			try {
+				setLoading(true);
+				const sectionData = await DashboardService.getSectionData();
+				setData(sectionData);
+			} catch (err) {
+				setError(
+					err instanceof Error ? err.message : "Failed to fetch section data"
+				);
+				// Fallback to initial data if API fails
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchSectionData();
+	}, []);
+	const [rowSelection, setRowSelection] = useState({});
+	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+	const [sorting, setSorting] = useState<SortingState>([]);
+	const [pagination, setPagination] = useState({
 		pageIndex: 0,
 		pageSize: 10,
 	});
-	const sortableId = React.useId();
+	const sortableId = useId();
 	const sensors = useSensors(
 		useSensor(MouseSensor, {}),
 		useSensor(TouchSensor, {}),
 		useSensor(KeyboardSensor, {})
 	);
 
-	const dataIds = React.useMemo<UniqueIdentifier[]>(
+	const dataIds = useMemo<UniqueIdentifier[]>(
 		() => data?.map(({ id }) => id) || [],
 		[data]
 	);
@@ -390,12 +412,15 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
 	}
 
 	return (
-		<Tabs defaultValue="outline" className="flex w-full flex-col justify-start gap-6">
+		<Tabs
+			defaultValue="latest-bookings"
+			className="flex w-full flex-col justify-start gap-6"
+		>
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<Label htmlFor="view-selector" className="sr-only">
 					View
 				</Label>
-				<Select defaultValue="outline">
+				<Select defaultValue="latest-bookings">
 					<SelectTrigger
 						className="@4xl/main:hidden flex w-fit"
 						id="view-selector"
@@ -403,25 +428,23 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
 						<SelectValue placeholder="Select a view" />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="outline">Outline</SelectItem>
-						<SelectItem value="past-performance">Past Performance</SelectItem>
-						<SelectItem value="key-personnel">Key Personnel</SelectItem>
-						<SelectItem value="focus-documents">Focus Documents</SelectItem>
+						<SelectItem value="latest-bookings">Latest Bookings</SelectItem>
+						<SelectItem value="latest-leads">Latest Leads</SelectItem>
+						<SelectItem value="fast-filling-batches">
+							Fast Filling Batches
+						</SelectItem>
+						<SelectItem value="best-performing-packages">
+							Best Performing Packages
+						</SelectItem>
 					</SelectContent>
 				</Select>
 				<TabsList className="@4xl/main:flex hidden">
-					<TabsTrigger value="outline">Outline</TabsTrigger>
-					<TabsTrigger value="past-performance" className="gap-1">
-						Past Performance{" "}
-						<Badge
-							variant="secondary"
-							className="flex h-5 w-5 items-center justify-center rounded-full bg-muted-foreground/30"
-						>
-							3
-						</Badge>
+					<TabsTrigger value="latest-bookings">Latest Bookings</TabsTrigger>
+					<TabsTrigger value="latest-leads" className="gap-1">
+						Latest Leads
 					</TabsTrigger>
-					<TabsTrigger value="key-personnel" className="gap-1">
-						Key Personnel{" "}
+					<TabsTrigger value="fast-filling-batches" className="gap-1">
+						Fast Filling Batches
 						<Badge
 							variant="secondary"
 							className="flex h-5 w-5 items-center justify-center rounded-full bg-muted-foreground/30"
@@ -429,7 +452,9 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
 							2
 						</Badge>
 					</TabsTrigger>
-					<TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
+					<TabsTrigger value="best-performing-packages">
+						Best Performing Packages
+					</TabsTrigger>
 				</TabsList>
 				<div className="flex items-center gap-2">
 					<DropdownMenu>
@@ -467,71 +492,80 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
 								})}
 						</DropdownMenuContent>
 					</DropdownMenu>
-					<Button variant="outline" size="sm">
-						<PlusIcon />
-						<span className="hidden lg:inline">Add Section</span>
-					</Button>
 				</div>
 			</div>
 			<TabsContent
-				value="outline"
+				value="latest-bookings"
 				className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
 			>
-				<div className="overflow-hidden rounded-lg border">
-					<DndContext
-						collisionDetection={closestCenter}
-						modifiers={[restrictToVerticalAxis]}
-						onDragEnd={handleDragEnd}
-						sensors={sensors}
-						id={sortableId}
-					>
-						<Table>
-							<TableHeader className="sticky top-0 z-10 bg-muted">
-								{table.getHeaderGroups().map((headerGroup) => (
-									<TableRow key={headerGroup.id}>
-										{headerGroup.headers.map((header) => {
-											return (
-												<TableHead
-													key={header.id}
-													colSpan={header.colSpan}
-												>
-													{header.isPlaceholder
-														? null
-														: flexRender(
-																header.column.columnDef
-																	.header,
-																header.getContext()
-															)}
-												</TableHead>
-											);
-										})}
-									</TableRow>
-								))}
-							</TableHeader>
-							<TableBody className="**:data-[slot=table-cell]:first:w-8">
-								{table.getRowModel().rows?.length ? (
-									<SortableContext
-										items={dataIds}
-										strategy={verticalListSortingStrategy}
-									>
-										{table.getRowModel().rows.map((row) => (
-											<DraggableRow key={row.id} row={row} />
-										))}
-									</SortableContext>
-								) : (
-									<TableRow>
-										<TableCell
-											colSpan={columns.length}
-											className="h-24 text-center"
+				{loading ? (
+					<div className="flex items-center justify-center py-8">
+						<div className="text-center">
+							<div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+							<p className="text-muted-foreground">Loading sections...</p>
+						</div>
+					</div>
+				) : error ? (
+					<div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-destructive">
+						{error}
+					</div>
+				) : (
+					<div className="overflow-hidden rounded-lg border">
+						<DndContext
+							collisionDetection={closestCenter}
+							modifiers={[restrictToVerticalAxis]}
+							onDragEnd={handleDragEnd}
+							sensors={sensors}
+							id={sortableId}
+						>
+							<Table>
+								<TableHeader className="sticky top-0 z-10 bg-muted">
+									{table.getHeaderGroups().map((headerGroup) => (
+										<TableRow key={headerGroup.id}>
+											{headerGroup.headers.map((header) => {
+												return (
+													<TableHead
+														key={header.id}
+														colSpan={header.colSpan}
+													>
+														{header.isPlaceholder
+															? null
+															: flexRender(
+																	header.column
+																		.columnDef.header,
+																	header.getContext()
+															  )}
+													</TableHead>
+												);
+											})}
+										</TableRow>
+									))}
+								</TableHeader>
+								<TableBody className="**:data-[slot=table-cell]:first:w-8">
+									{table.getRowModel().rows?.length ? (
+										<SortableContext
+											items={dataIds}
+											strategy={verticalListSortingStrategy}
 										>
-											No results.
-										</TableCell>
-									</TableRow>
-								)}
-							</TableBody>
-						</Table>
-					</DndContext>
-				</div>
+											{table.getRowModel().rows.map((row) => (
+												<DraggableRow key={row.id} row={row} />
+											))}
+										</SortableContext>
+									) : (
+										<TableRow>
+											<TableCell
+												colSpan={columns.length}
+												className="h-24 text-center"
+											>
+												No results.
+											</TableCell>
+										</TableRow>
+									)}
+								</TableBody>
+							</Table>
+						</DndContext>
+					</div>
+				)}
 				<div className="flex items-center justify-between px-4">
 					<div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
 						{table.getFilteredSelectedRowModel().rows.length} of{" "}
@@ -615,13 +649,19 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
 					</div>
 				</div>
 			</TabsContent>
-			<TabsContent value="past-performance" className="flex flex-col px-4 lg:px-6">
+			<TabsContent value="latest-leads" className="flex flex-col px-4 lg:px-6">
 				<div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
 			</TabsContent>
-			<TabsContent value="key-personnel" className="flex flex-col px-4 lg:px-6">
+			<TabsContent
+				value="fast-filling-batches"
+				className="flex flex-col px-4 lg:px-6"
+			>
 				<div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
 			</TabsContent>
-			<TabsContent value="focus-documents" className="flex flex-col px-4 lg:px-6">
+			<TabsContent
+				value="best-performing-packages"
+				className="flex flex-col px-4 lg:px-6"
+			>
 				<div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
 			</TabsContent>
 		</Tabs>
