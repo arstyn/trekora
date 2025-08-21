@@ -12,6 +12,10 @@ import {
   ChartData,
   DashboardService,
   DashboardStats,
+  LatestBooking,
+  LatestLead,
+  FastFillingBatch,
+  BestPerformingPackage,
 } from './dashboard.service';
 
 @Controller('api/dashboard')
@@ -35,5 +39,44 @@ export class DashboardController {
   ): Promise<ChartData[]> {
     const organizationId = req.user.organizationId;
     return this.dashboardService.getChartData(organizationId, days);
+  }
+
+  @Get('latest-bookings')
+  async getLatestBookings(
+    @Request() req: ApiRequestJWT,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+  ): Promise<LatestBooking[]> {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getLatestBookings(organizationId, limit);
+  }
+
+  @Get('latest-leads')
+  async getLatestLeads(
+    @Request() req: ApiRequestJWT,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+  ): Promise<LatestLead[]> {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getLatestLeads(organizationId, limit);
+  }
+
+  @Get('fast-filling-batches')
+  async getFastFillingBatches(
+    @Request() req: ApiRequestJWT,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+  ): Promise<FastFillingBatch[]> {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getFastFillingBatches(organizationId, limit);
+  }
+
+  @Get('best-performing-packages')
+  async getBestPerformingPackages(
+    @Request() req: ApiRequestJWT,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+  ): Promise<BestPerformingPackage[]> {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getBestPerformingPackages(
+      organizationId,
+      limit,
+    );
   }
 }

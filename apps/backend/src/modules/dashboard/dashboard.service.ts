@@ -5,6 +5,8 @@ import { BookingPayment } from '../../database/entity/booking-payment.entity';
 import { Booking } from '../../database/entity/booking.entity';
 import { Customer } from '../../database/entity/customer.entity';
 import { Lead } from '../../database/entity/lead.entity';
+import { Batch } from '../../database/entity/batch.entity';
+import { Package } from '../../database/entity/package-related/package.entity';
 
 export interface DashboardStats {
   totalRevenue: number;
@@ -22,6 +24,51 @@ export interface ChartData {
   bookings: number;
 }
 
+export interface LatestBooking {
+  id: string;
+  bookingNumber: string;
+  customerName: string;
+  packageName: string;
+  totalAmount: number;
+  status: string;
+  createdAt: Date;
+  numberOfPassengers: number;
+}
+
+export interface LatestLead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  status: string;
+  createdAt: Date;
+  notes: string;
+}
+
+export interface FastFillingBatch {
+  id: string;
+  packageName: string;
+  destination: string;
+  startDate: Date;
+  endDate: Date;
+  totalSeats: number;
+  bookedSeats: number;
+  fillPercentage: number;
+  status: string;
+}
+
+export interface BestPerformingPackage {
+  id: string;
+  name: string;
+  destination: string;
+  category: string;
+  totalBookings: number;
+  totalRevenue: number;
+  averageRating: number;
+  status: string;
+}
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -33,6 +80,10 @@ export class DashboardService {
     private customerRepository: Repository<Customer>,
     @InjectRepository(BookingPayment)
     private paymentRepository: Repository<BookingPayment>,
+    @InjectRepository(Batch)
+    private batchRepository: Repository<Batch>,
+    @InjectRepository(Package)
+    private packageRepository: Repository<Package>,
   ) {}
 
   async getDashboardStats(organizationId: string): Promise<DashboardStats> {
@@ -175,6 +226,145 @@ export class DashboardService {
       leads: counts.leads,
       bookings: counts.bookings,
     }));
+  }
+
+  async getLatestBookings(
+    organizationId: string,
+    limit: number = 10,
+  ): Promise<LatestBooking[]> {
+    return this.bookingRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.customer', 'customer')
+      .leftJoinAndSelect('booking.package', 'package')
+      .select([
+        'booking.id',
+        'booking.bookingNumber',
+        'booking.totalAmount',
+        'booking.status',
+        'booking.createdAt',
+        'booking.numberOfPassengers',
+        'customer.name',
+        'package.name',
+      ])
+      .where('booking.organization_id = :organizationId', { organizationId })
+      .orderBy('booking.createdAt', 'DESC')
+      .limit(limit)
+      .getRawMany()
+      .then((results) =>
+        results.map((result) => ({
+          id: result.booking_id,
+          bookingNumber: result.booking_bookingNumber,
+          customerName: result.customer_name,
+          packageName: result.package_name,
+          totalAmount: parseFloat(result.booking_totalAmount),
+          status: result.booking_status,
+          createdAt: result.booking_createdAt,
+          numberOfPassengers: result.booking_numberOfPassengers,
+        })),
+      );
+  }
+
+  async getLatestLeads(
+    organizationId: string,
+    limit: number = 10,
+  ): Promise<LatestLead[]> {
+    return this.leadRepository
+      .createQueryBuilder('lead')
+      .select([
+        'lead.id',
+        'lead.name',
+        'lead.email',
+        'lead.phone',
+        'lead.company',
+        'lead.status',
+        'lead.createdAt',
+        'lead.notes',
+      ])
+      .where('lead.organization_id = :organizationId', { organizationId })
+      .orderBy('lead.createdAt', 'DESC')
+      .limit(limit)
+      .getMany();
+  }
+
+  async getFastFillingBatches(
+    organizationId: string,
+    limit: number = 10,
+  ): Promise<FastFillingBatch[]> {
+    return this.batchRepository
+      .createQueryBuilder('batch')
+      .leftJoinAndSelect('batch.package', 'package')
+      .select([
+        'batch.id',
+        'batch.startDate',
+        'batch.endDate',
+        'batch.totalSeats',
+        'batch.bookedSeats',
+        'batch.status',
+        'package.name',
+        'package.destination',
+      ])
+      .where('batch.organization_id = :organizationId', { organizationId })
+      .andWhere('batch.status = :status', { status: 'active' })
+      .addSelect(
+        '(batch.bookedSeats / batch.totalSeats * 100)',
+        'fillPercentage',
+      )
+      .orderBy('fillPercentage', 'DESC')
+      .limit(limit)
+      .getRawMany()
+      .then((results) =>
+        results.map((result) => ({
+          id: result.batch_id,
+          packageName: result.package_name,
+          destination: result.package_destination,
+          startDate: result.batch_startDate,
+          endDate: result.batch_endDate,
+          totalSeats: result.batch_totalSeats,
+          bookedSeats: result.batch_bookedSeats,
+          fillPercentage:
+            Math.round(parseFloat(result.fillPercentage) * 100) / 100,
+          status: result.batch_status,
+        })),
+      );
+  }
+
+  async getBestPerformingPackages(
+    organizationId: string,
+    limit: number = 10,
+  ): Promise<BestPerformingPackage[]> {
+    return this.packageRepository
+      .createQueryBuilder('package')
+      .leftJoin('package.bookings', 'booking')
+      .leftJoin('booking.payments', 'payment')
+      .select([
+        'package.id',
+        'package.name',
+        'package.destination',
+        'package.category',
+        'package.status',
+      ])
+      .addSelect('COUNT(DISTINCT booking.id)', 'totalBookings')
+      .addSelect('COALESCE(SUM(payment.amount), 0)', 'totalRevenue')
+      .addSelect('0', 'averageRating') // Default rating since it doesn't exist yet
+      .where('package.organization_id = :organizationId', { organizationId })
+      .andWhere('package.status = :status', { status: 'published' })
+      .groupBy('package.id')
+      .orderBy('totalBookings', 'DESC')
+      .addOrderBy('totalRevenue', 'DESC')
+      .limit(limit)
+      .getRawMany()
+      .then((results) =>
+        results.map((result) => ({
+          id: result.package_id,
+          name: result.package_name,
+          destination: result.package_destination,
+          category: result.package_category,
+          totalBookings: parseInt(result.totalBookings),
+          totalRevenue: parseFloat(result.totalRevenue),
+          averageRating: 0, // Default rating
+          status: result.package_status,
+        })),
+      );
   }
 
   private async getRevenueForPeriod(
