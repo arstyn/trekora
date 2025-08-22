@@ -22,6 +22,7 @@ import { MealsBreakdown } from './meals-breakdowns.entity';
 import { PackageLocation } from './package-locations.entity';
 import { PaymentMilestone } from './payment-milestones.entity';
 import { Transportation } from './transportations.entity';
+import { Booking } from '../booking.entity';
 
 @Entity('packages')
 export class Package {
@@ -175,4 +176,7 @@ export class Package {
 
   @UpdateDateColumn({ name: 'updated_at', nullable: true })
   updatedAt: Date;
+
+  @OneToMany(() => Booking, (booking) => booking.package)
+  bookings: Booking[];
 }

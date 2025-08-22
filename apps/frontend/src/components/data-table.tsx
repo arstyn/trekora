@@ -167,7 +167,9 @@ export function DataTable() {
 											</Badge>
 										</TableCell>
 										<TableCell>
-											{formatDate(booking.createdAt)}
+											{booking.createdAt
+												? formatDate(booking.createdAt)
+												: ""}
 										</TableCell>
 									</TableRow>
 								))
@@ -221,7 +223,9 @@ export function DataTable() {
 											</Badge>
 										</TableCell>
 										<TableCell>
-											{formatDate(lead.createdAt)}
+											{lead.createdAt
+												? formatDate(lead.createdAt)
+												: ""}
 										</TableCell>
 										<TableCell
 											className="max-w-xs truncate"
@@ -270,9 +274,15 @@ export function DataTable() {
 										</TableCell>
 										<TableCell>{batch.destination}</TableCell>
 										<TableCell>
-											{formatDate(batch.startDate)}
+											{batch.startDate
+												? formatDate(batch.startDate)
+												: ""}
 										</TableCell>
-										<TableCell>{formatDate(batch.endDate)}</TableCell>
+										<TableCell>
+											{batch.endDate
+												? formatDate(batch.endDate)
+												: ""}
+										</TableCell>
 										<TableCell>
 											{batch.bookedSeats}/{batch.totalSeats}
 										</TableCell>

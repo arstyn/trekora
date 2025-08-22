@@ -207,25 +207,27 @@ export class DashboardService {
 
     // Fill in actual data
     leads.forEach((item) => {
-      const dateStr = item.date;
+      const dateStr = new Date(item.date).toISOString().split('T')[0];
       if (dateMap.has(dateStr)) {
         dateMap.get(dateStr)!.leads = parseInt(item.count);
       }
     });
 
     bookings.forEach((item) => {
-      const dateStr = item.date;
+      const dateStr = new Date(item.date).toISOString().split('T')[0];
       if (dateMap.has(dateStr)) {
         dateMap.get(dateStr)!.bookings = parseInt(item.count);
       }
     });
 
     // Convert to array format
-    return Array.from(dateMap.entries()).map(([date, counts]) => ({
+    const data = Array.from(dateMap.entries()).map(([date, counts]) => ({
       date,
       leads: counts.leads,
       bookings: counts.bookings,
     }));
+
+    return data;
   }
 
   async getLatestBookings(
@@ -306,10 +308,10 @@ export class DashboardService {
       .where('batch.organization_id = :organizationId', { organizationId })
       .andWhere('batch.status = :status', { status: 'active' })
       .addSelect(
-        '(batch.bookedSeats / batch.totalSeats * 100)',
+        '(batch.booked_seats::decimal / NULLIF(batch.total_seats, 0) * 100)',
         'fillPercentage',
       )
-      .orderBy('fillPercentage', 'DESC')
+      .orderBy('"fillPercentage"', 'DESC')
       .limit(limit)
       .getRawMany()
       .then((results) =>
@@ -334,8 +336,8 @@ export class DashboardService {
   ): Promise<BestPerformingPackage[]> {
     return this.packageRepository
       .createQueryBuilder('package')
-      .leftJoin('package.bookings', 'booking')
-      .leftJoin('booking.payments', 'payment')
+      .leftJoin('package.bookings', 'booking') // use relation from entity
+      .leftJoin('booking.payments', 'payment') // use relation from entity
       .select([
         'package.id',
         'package.name',
@@ -345,12 +347,12 @@ export class DashboardService {
       ])
       .addSelect('COUNT(DISTINCT booking.id)', 'totalBookings')
       .addSelect('COALESCE(SUM(payment.amount), 0)', 'totalRevenue')
-      .addSelect('0', 'averageRating') // Default rating since it doesn't exist yet
-      .where('package.organization_id = :organizationId', { organizationId })
+      .addSelect('0', 'averageRating')
+      .where('package.organizationId = :organizationId', { organizationId })
       .andWhere('package.status = :status', { status: 'published' })
       .groupBy('package.id')
-      .orderBy('totalBookings', 'DESC')
-      .addOrderBy('totalRevenue', 'DESC')
+      .orderBy('"totalBookings"', 'DESC')
+      .addOrderBy('"totalRevenue"', 'DESC')
       .limit(limit)
       .getRawMany()
       .then((results) =>
@@ -361,7 +363,7 @@ export class DashboardService {
           category: result.package_category,
           totalBookings: parseInt(result.totalBookings),
           totalRevenue: parseFloat(result.totalRevenue),
-          averageRating: 0, // Default rating
+          averageRating: 0,
           status: result.package_status,
         })),
       );
