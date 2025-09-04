@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, DollarSign, Upload, Users, Loader2, AlertCircle, Search } from "lucide-react";
+import { Calendar, DollarSign, Upload, Users, Loader2, AlertCircle, Search, Plus, X, Check, CheckCircle, XCircle } from "lucide-react";
 import type React from "react";
 import { useState, useEffect } from "react";
 import BookingService from "@/services/booking.service";
@@ -26,6 +26,23 @@ import type {
 } from "@/types/booking.types";
 import type { IBatches } from "@/types/batches.types";
 import { toast } from "sonner";
+
+// Enhanced passenger interface to include checklist
+interface EnhancedBookingPassenger extends IBookingPassenger {
+	checklist: {
+		id: string;
+		item: string;
+		completed: boolean;
+	}[];
+}
+
+// Group checklist item interface
+interface GroupChecklistItem {
+	id: string;
+	item: string;
+	completed: boolean;
+	mandatory: boolean;
+}
 
 interface CreateBookingDialogProps {
 	open: boolean;
@@ -48,6 +65,40 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 	const [customerSearch, setCustomerSearch] = useState("");
 	const [showCustomerResults, setShowCustomerResults] = useState(false);
 	
+	// Group checklist state
+	const [groupChecklist, setGroupChecklist] = useState<GroupChecklistItem[]>([
+		// {
+		// 	id: 'gc-1',
+		// 	item: 'Group leader assigned and briefed',
+		// 	completed: false,
+		// 	mandatory: true
+		// },
+		// {
+		// 	id: 'gc-2',
+		// 	item: 'Emergency contact list compiled',
+		// 	completed: false,
+		// 	mandatory: true
+		// },
+		// {
+		// 	id: 'gc-3',
+		// 	item: 'Group WhatsApp created and all members added',
+		// 	completed: false,
+		// 	mandatory: true
+		// },
+		// {
+		// 	id: 'gc-4',
+		// 	item: 'Travel insurance verified for all passengers',
+		// 	completed: false,
+		// 	mandatory: true
+		// },
+		// {
+		// 	id: 'gc-5',
+		// 	item: 'Meeting point and time communicated',
+		// 	completed: false,
+		// 	mandatory: true
+		// }
+	]);
+	
 	const [formData, setFormData] = useState<{
 		// Customer Details
 		customerId: string;
@@ -61,7 +112,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		numberOfPassengers: number;
 
 		// Passenger Details
-		passengers: IBookingPassenger[];
+		passengers: EnhancedBookingPassenger[];
 
 		// Payment Details
 		totalAmount: number;
@@ -88,6 +139,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 				phone: "",
 				emergencyContact: "",
 				specialRequirements: "",
+				checklist: [],
 			},
 		],
 		totalAmount: 0,
@@ -168,6 +220,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 					phone: "",
 					emergencyContact: "",
 					specialRequirements: "",
+					checklist: [],
 				}
 		);
 		setFormData((prev) => ({
@@ -178,10 +231,107 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		}));
 	};
 
-	const updatePassenger = (index: number, field: keyof IBookingPassenger, value: string | number) => {
+	const updatePassenger = (index: number, field: keyof EnhancedBookingPassenger, value: string | number) => {
 		const newPassengers = [...formData.passengers];
 		newPassengers[index] = { ...newPassengers[index], [field]: value };
 		setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+	};
+
+	// Individual checklist functions
+	const addChecklistItem = (passengerIndex: number, item: string) => {
+		if (!item.trim()) return;
+		
+		const newPassengers = [...formData.passengers];
+		const newChecklistItem = {
+			id: Date.now().toString(),
+			item: item.trim(),
+			completed: false
+		};
+		
+		newPassengers[passengerIndex] = {
+			...newPassengers[passengerIndex],
+			checklist: [...newPassengers[passengerIndex].checklist, newChecklistItem]
+		};
+		
+		setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+	};
+
+	const removeChecklistItem = (passengerIndex: number, itemId: string) => {
+		const newPassengers = [...formData.passengers];
+		newPassengers[passengerIndex] = {
+			...newPassengers[passengerIndex],
+			checklist: newPassengers[passengerIndex].checklist.filter(item => item.id !== itemId)
+		};
+		
+		setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+	};
+
+	const toggleChecklistItem = (passengerIndex: number, itemId: string) => {
+		const newPassengers = [...formData.passengers];
+		newPassengers[passengerIndex] = {
+			...newPassengers[passengerIndex],
+			checklist: newPassengers[passengerIndex].checklist.map(item =>
+				item.id === itemId ? { ...item, completed: !item.completed } : item
+			)
+		};
+		
+		setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+	};
+
+	// Group checklist functions
+	const toggleGroupChecklistItem = (itemId: string) => {
+		setGroupChecklist(prev => 
+			prev.map(item =>
+				item.id === itemId ? { ...item, completed: !item.completed } : item
+			)
+		);
+	};
+
+	const addGroupChecklistItem = (item: string, mandatory: boolean = false) => {
+		if (!item.trim()) return;
+		
+		const newItem: GroupChecklistItem = {
+			id: `gc-${Date.now()}`,
+			item: item.trim(),
+			completed: false,
+			mandatory
+		};
+		
+		setGroupChecklist(prev => [...prev, newItem]);
+	};
+
+	const removeGroupChecklistItem = (itemId: string) => {
+		// Prevent removal of default mandatory items
+		const defaultIds = ['gc-1', 'gc-2', 'gc-3', 'gc-4', 'gc-5'];
+		if (defaultIds.includes(itemId)) {
+			toast.error('Cannot remove default mandatory items');
+			return;
+		}
+		
+		setGroupChecklist(prev => prev.filter(item => item.id !== itemId));
+	};
+
+	// Check if group can proceed (all mandatory items completed)
+	const canGroupProceed = () => {
+		const mandatoryItems = groupChecklist.filter(item => item.mandatory);
+		return mandatoryItems.every(item => item.completed);
+	};
+
+	// Get group checklist completion stats
+	const getGroupChecklistStats = () => {
+		const total = groupChecklist.length;
+		const completed = groupChecklist.filter(item => item.completed).length;
+		const mandatoryTotal = groupChecklist.filter(item => item.mandatory).length;
+		const mandatoryCompleted = groupChecklist.filter(item => item.mandatory && item.completed).length;
+		
+		return {
+			total,
+			completed,
+			mandatoryTotal,
+			mandatoryCompleted,
+			completionPercentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+			mandatoryPercentage: mandatoryTotal > 0 ? Math.round((mandatoryCompleted / mandatoryTotal) * 100) : 0
+		};
 	};
 
 	const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,9 +369,25 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		
+		// Check if group checklist is complete
+		if (!canGroupProceed()) {
+			setError('The gourp should have a checklist to proceed.');
+			return;
+		}
+		
 		try {
 			setLoading(true);
 			setError(null);
+
+			// Convert enhanced passengers back to regular passengers for API
+			const regularPassengers: IBookingPassenger[] = formData.passengers.map(passenger => ({
+				fullName: passenger.fullName,
+				age: passenger.age,
+				email: passenger.email,
+				phone: passenger.phone,
+				emergencyContact: passenger.emergencyContact,
+				specialRequirements: passenger.specialRequirements,
+			}));
 
 			// Prepare booking data
 			const bookingData: ICreateBookingRequest = {
@@ -231,7 +397,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 				numberOfPassengers: formData.numberOfPassengers,
 				totalAmount: formData.totalAmount,
 				specialRequests: formData.specialRequests,
-				passengers: formData.passengers,
+				passengers: regularPassengers,
 				initialPayment: formData.advanceAmount > 0 ? {
 					amount: formData.advanceAmount,
 					paymentMethod: formData.paymentMethod as PaymentMethod,
@@ -300,6 +466,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 					phone: "",
 					emergencyContact: "",
 					specialRequirements: "",
+					checklist: [],
 				},
 			],
 			totalAmount: 0,
@@ -309,6 +476,39 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 			paymentScreenshot: null,
 			specialRequests: "",
 		});
+		// Reset group checklist
+		// setGroupChecklist([
+		// 	{
+		// 		id: 'gc-1',
+		// 		item: 'Group leader assigned and briefed',
+		// 		completed: false,
+		// 		mandatory: true
+		// 	},
+		// 	{
+		// 		id: 'gc-2',
+		// 		item: 'Emergency contact list compiled',
+		// 		completed: false,
+		// 		mandatory: true
+		// 	},
+		// 	{
+		// 		id: 'gc-3',
+		// 		item: 'Group WhatsApp created and all members added',
+		// 		completed: false,
+		// 		mandatory: true
+		// 	},
+		// 	{
+		// 		id: 'gc-4',
+		// 		item: 'Travel insurance verified for all passengers',
+		// 		completed: false,
+		// 		mandatory: true
+		// 	},
+		// 	{
+		// 		id: 'gc-5',
+		// 		item: 'Meeting point and time communicated',
+		// 		completed: false,
+		// 		mandatory: true
+		// 	}
+		// ]);
 		setCustomerSearch("");
 		setError(null);
 	};
@@ -332,7 +532,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		}
 		
 		setError(null);
-		setStep((prev) => Math.min(prev + 1, 4));
+		setStep((prev) => Math.min(prev + 1, 5)); // Now 5 steps instead of 4
 	};
 	
 	const prevStep = () => {
@@ -340,11 +540,195 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		setStep((prev) => Math.max(prev - 1, 1));
 	};
 
+	// Component for individual checklist management
+	const ChecklistManager = ({ passengerIndex }: { passengerIndex: number }) => {
+		const [newItem, setNewItem] = useState("");
+		const passenger = formData.passengers[passengerIndex];
+
+		const handleAddItem = () => {
+			if (newItem.trim()) {
+				addChecklistItem(passengerIndex, newItem);
+				setNewItem("");
+			}
+		};
+
+		const handleKeyPress = (e: React.KeyboardEvent) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				handleAddItem();
+			}
+		};
+
+		return (
+			<div className="space-y-3">
+				<Label>Individual Travel Checklist</Label>
+				
+				{/* Add new item */}
+				<div className="flex gap-2">
+					<Input
+						value={newItem}
+						onChange={(e) => setNewItem(e.target.value)}
+						placeholder="Add checklist item (e.g., Passport, Medicines, etc.)"
+						onKeyPress={handleKeyPress}
+						className="flex-1"
+					/>
+					<Button 
+						type="button" 
+						onClick={handleAddItem}
+						size="sm"
+						disabled={!newItem.trim()}
+					>
+						<Plus className="w-4 h-4" />
+					</Button>
+				</div>
+
+				{/* Checklist items */}
+				{passenger.checklist.length > 0 && (
+					<div className="space-y-2 max-h-40 overflow-y-auto">
+						{passenger.checklist.map((item) => (
+							<div
+								key={item.id}
+								className={`flex items-center gap-2 p-2 rounded-lg border ${
+									item.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+								}`}
+							>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={() => toggleChecklistItem(passengerIndex, item.id)}
+									className={`p-1 h-6 w-6 rounded ${
+										item.completed 
+											? 'bg-green-500 text-white hover:bg-green-600' 
+											: 'border-2 border-gray-300 hover:border-gray-400'
+									}`}
+								>
+									{item.completed && <Check className="w-3 h-3" />}
+								</Button>
+								<span
+									className={`flex-1 text-sm ${
+										item.completed 
+											? 'line-through text-green-700' 
+											: 'text-gray-900'
+									}`}
+								>
+									{item.item}
+								</span>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={() => removeChecklistItem(passengerIndex, item.id)}
+									className="p-1 h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
+								>
+									<X className="w-3 h-3" />
+								</Button>
+							</div>
+						))}
+					</div>
+				)}
+
+				{passenger.checklist.length === 0 && (
+					<p className="text-sm text-muted-foreground">
+						No individual checklist items added yet. Add items to help track personal travel preparations.
+					</p>
+				)}
+			</div>
+		);
+	};
+
+	// Component for group checklist management
+	const GroupChecklistManager = () => {
+  const [newItem, setNewItem] = useState("");
+  const [newItemMandatory, setNewItemMandatory] = useState(false);
+
+  const handleAddItem = () => {
+    if (newItem.trim()) {
+      addGroupChecklistItem(newItem, newItemMandatory);
+      setNewItem("");
+      setNewItemMandatory(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddItem();
+    }
+  };
+
+  const canProceed = groupChecklist.length > 0; // ✅ only requirement
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <p className="text-sm text-muted-foreground mt-1">
+          Add at least one checklist item for travelers.
+        </p>
+      </div>
+
+      {/* Add new item */}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <Input
+            value={newItem}
+            onChange={(e) => setNewItem(e.target.value)}
+            placeholder="Add checklist item..."
+            onKeyPress={handleKeyPress}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            onClick={handleAddItem}
+            size="sm"
+            disabled={!newItem.trim()}
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+       
+      </div>
+
+      {/* Checklist items */}
+      <div className="space-y-2 p max-h-60 overflow-y-auto ">
+        {groupChecklist.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200"
+          >
+            <div className="flex-1">
+              <span className="text-sm text-white-900">{item.item}</span>
+              {item.mandatory && (
+                <Badge variant="destructive" className="ml-2 text-xs">
+                  Mandatory
+                </Badge>
+              )}
+            </div>
+            {!["gc-1", "gc-2", "gc-3", "gc-4", "gc-5"].includes(item.id) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeGroupChecklistItem(item.id)}
+                className="p-1 h-6 w-6 text-500 hover:text-red-700 hover:bg-red-50"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+
+    
+    </div>
+  );
+};
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
-					<DialogTitle>Create New Booking - Step {step} of 4</DialogTitle>
+					<DialogTitle>Create New Booking - Step {step} of 5</DialogTitle>
 				</DialogHeader>
 
 				{error && (
@@ -666,14 +1050,33 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 													rows={2}
 												/>
 											</div>
+											
+											{/* Individual Checklist Section */}
+											<div className="border-t pt-4">
+												<ChecklistManager passengerIndex={index} />
+											</div>
 										</div>
 									))}
 								</CardContent>
 							</Card>
 						)}
 
-						{/* Step 4: Payment Details */}
+						{/* Step 4: Group Checklist (New Step) */}
 						{step === 4 && (
+							<Card>
+								<CardHeader>
+									<CardTitle className="text-lg">
+										Group Checklist
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<GroupChecklistManager />
+								</CardContent>
+							</Card>
+						)}
+
+						{/* Step 5: Payment Details (Previously Step 4) */}
+						{step === 5 && (
 							<Card>
 								<CardHeader>
 									<CardTitle className="text-lg">
@@ -834,6 +1237,30 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 											</div>
 										</div>
 									)}
+
+									
+									{/* Group checklist status on final step */}
+									<div className={`p-3 rounded-lg border ${
+										canGroupProceed() 
+											? 'bg-green-50 border-green-300' 
+											: 'bg-gray-50 border-gray-300'
+									}`}>
+										<div className="flex items-center gap-2">
+											{canGroupProceed() ? (
+												<CheckCircle className="w-5 h-5 text-green-600" />
+											) : (
+												<AlertCircle className="w-5 h-5 text-gray-600" />
+											)}
+											<span className={`font-medium ${
+												canGroupProceed() ? 'text-green-700' : 'text-gray-700'
+											}`}>
+												{canGroupProceed() 
+													? `Group checklist ready (${groupChecklist.length} items added)` 
+													: 'Add at least one group checklist item to proceed'
+												}
+											</span>
+										</div>
+									</div>
 								</CardContent>
 							</Card>
 						)}
@@ -864,7 +1291,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 								>
 									Cancel
 								</Button>
-								{step < 4 ? (
+								{step < 5 ? (
 									<Button 
 										type="button" 
 										onClick={nextStep}
@@ -875,7 +1302,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 								) : (
 									<Button 
 										type="submit" 
-										disabled={loading}
+										disabled={loading || !canGroupProceed()}
 									>
 										{loading ? (
 											<>

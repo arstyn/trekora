@@ -44,7 +44,7 @@ export default function BatchDetailsPage() {
 				if (error instanceof Error) {
 					toast.error(error.message);
 				} else {
-					toast.error("Failed to load batches");
+					toast.error("Failed to load batches");	
 				}
 			}
 		};
@@ -268,6 +268,7 @@ export default function BatchDetailsPage() {
 								<TableHead>Age</TableHead>
 								<TableHead>Emergency Contact</TableHead>
 								<TableHead>Checklist Status</TableHead>
+								
 							</TableRow>
 						</TableHeader>
 						<TableBody>
