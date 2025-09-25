@@ -2,7 +2,7 @@ import { IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateN
 import { Type } from 'class-transformer';
 import { BookingStatus } from 'src/database/entity/booking.entity';
 import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
-
+import { CreateBookingChecklistDto, ChecklistItemResponseDto } from './checklist-dto';
 export class CreatePassengerDto {
   @IsString()
   fullName: string;
@@ -28,6 +28,7 @@ export class CreatePassengerDto {
 
   @IsOptional()
   additionalInfo?: Record<string, any>;
+  checklist: Record<string, any>[];
 }
 
 export class CreatePaymentDto {
@@ -89,9 +90,13 @@ export class CreateBookingDto {
   passengers: CreatePassengerDto[];
 
   @IsOptional()
+
   @ValidateNested()
   @Type(() => CreatePaymentDto)
   initialPayment?: CreatePaymentDto;
+  @IsOptional()
+  groupChecklist?: CreateBookingChecklistDto[];
+  passenger: CreateBookingChecklistDto[];
 }
 
 export class UpdateBookingDto {
@@ -161,9 +166,23 @@ export class BookingSummaryDto {
   createdAt: Date;
 }
 
+export class BookingPassengerResponseDto {
+  id: string;
+  fullName: string;
+  age: number;
+  email?: string;
+  phone?: string;
+  emergencyContact: string;
+  specialRequirements?: string;
+  checklist?: ChecklistItemResponseDto[];
+}
+
 export class BookingResponseDto {
   id: string;
   bookingNumber: string;
+
+  passengers: BookingPassengerResponseDto[];
+  groupChecklist?: ChecklistItemResponseDto[];
   customer: {
     id: string;
     name: string;
@@ -191,15 +210,7 @@ export class BookingResponseDto {
   balanceAmount: number;
   status: BookingStatus;
   specialRequests?: string;
-  passengers: {
-    id: string;
-    fullName: string;
-    age: number;
-    email?: string;
-    phone?: string;
-    emergencyContact: string;
-    specialRequirements?: string;
-  }[];
+
   payments: {
     id: string;
     amount: number;

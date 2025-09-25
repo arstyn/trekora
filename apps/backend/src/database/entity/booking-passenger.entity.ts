@@ -39,6 +39,9 @@ export class BookingPassenger {
   @ManyToOne(() => Booking, (booking) => booking.passengers, {
     onDelete: 'CASCADE',
   })
+   @ManyToOne(() => Booking, (booking) => booking.checklists, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'booking_id' })
   booking: Booking;
 } 
