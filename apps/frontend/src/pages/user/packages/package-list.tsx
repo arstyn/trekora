@@ -303,16 +303,6 @@ export default function Packages() {
 											{pkg.maxGuests} people
 										</span>
 									</div>
-									<div className="flex items-center justify-between text-sm">
-										<span className="">Starting:</span>
-										<span className="font-medium">
-											{pkg.startDate
-												? new Date(
-														pkg.startDate
-												  ).toLocaleDateString()
-												: ""}
-										</span>
-									</div>
 								</div>
 
 								<div className="flex items-center justify-between">

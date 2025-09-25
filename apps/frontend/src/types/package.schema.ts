@@ -23,7 +23,7 @@ export interface IItinerary {
 export interface ICancellationStructure {
 	id: string;
 	timeframe?: string;
-	percentage?: string;
+	amount?: number;
 	description?: string;
 	packageId?: string;
 }
@@ -46,7 +46,7 @@ export interface IPreTripChecklist {
 
 export interface IPaymentStructure {
 	name?: string;
-	percentage?: string;
+	amount?: number;
 	description?: string;
 	dueDate:
 		| "30_days_before"
@@ -64,9 +64,6 @@ export interface IPackages {
 	price?: string;
 	description?: string;
 	maxGuests?: number;
-	startDate?: string;
-	endDate?: string;
-	difficulty?: "easy" | "moderate" | "challenging" | "extreme";
 	category?: "adventure" | "cultural" | "relaxation" | "wildlife" | "luxury" | "budget";
 	status?: "draft" | "published";
 	thumbnail?: string;
@@ -89,7 +86,7 @@ export interface IPackages {
 
 export const paymentMilestoneSchema = z.object({
 	name: z.string().optional(),
-	percentage: z.number().min(0).max(100).optional(),
+	amount: z.number().min(0).optional(),
 	description: z.string().optional(),
 	dueDate: z
 		.enum([
@@ -104,7 +101,7 @@ export const paymentMilestoneSchema = z.object({
 
 export const cancellationTierSchema = z.object({
 	timeframe: z.string().optional(),
-	percentage: z.number().min(0).max(100).optional(),
+	amount: z.number().min(0).optional(),
 	description: z.string().optional(),
 });
 
@@ -169,43 +166,45 @@ export const packageLocationSchema = z.object({
 	state: z.string().optional(),
 });
 
-export const packageFormSchema = z.object({
-	name: z.string().optional(),
-	destination: z.string().optional(),
-	duration: z.string().optional(),
-	price: z.number().optional(),
-	description: z.string().optional(),
-	maxGuests: z.number().optional(),
-	startDate: z.string().optional(),
-	endDate: z.string().optional(),
-	difficulty: z.enum(["easy", "moderate", "challenging", "extreme"]).optional(),
-	category: z
-		.enum(["adventure", "cultural", "relaxation", "wildlife", "luxury", "budget"])
-		.optional(),
-	status: z.enum(["draft", "published"]).optional(),
-	thumbnail: z.file().optional(),
-	inclusions: z.array(z.string()).optional(),
-	exclusions: z.array(z.string()).optional(),
-	itinerary: z.array(itineraryDaySchema).optional(),
-	paymentStructure: z
-		.array(paymentMilestoneSchema)
-		.optional()
-		.refine(
-			(milestones) =>
-				!milestones ||
-				milestones.reduce((sum, m) => sum + (m.percentage ?? 0), 0) === 100,
-			{
-				message: "Payment structure must total exactly 100%",
-			}
-		),
-	cancellationStructure: z.array(cancellationTierSchema).optional(),
-	mealsBreakdown: mealsBreakdownSchema.optional(),
-	transportation: transportationSchema.optional(),
-	documentRequirements: z.array(documentRequirementSchema).optional(),
-	preTripChecklist: z.array(checklistItemSchema).optional(),
-	packageLocation: packageLocationSchema.optional(),
-	cancellationPolicy: z.array(z.string()).optional(),
-});
+export const packageFormSchema = z
+	.object({
+		name: z.string().optional(),
+		destination: z.string().optional(),
+		duration: z.string().optional(),
+		price: z.number().optional(),
+		description: z.string().optional(),
+		maxGuests: z.number().optional(),
+		category: z
+			.enum(["adventure", "cultural", "relaxation", "wildlife", "luxury", "budget"])
+			.optional(),
+		status: z.enum(["draft", "published"]).optional(),
+		thumbnail: z.file().optional(),
+		inclusions: z.array(z.string()).optional(),
+		exclusions: z.array(z.string()).optional(),
+		itinerary: z.array(itineraryDaySchema).optional(),
+		paymentStructure: z.array(paymentMilestoneSchema).optional(),
+		cancellationStructure: z.array(cancellationTierSchema).optional(),
+		mealsBreakdown: mealsBreakdownSchema.optional(),
+		transportation: transportationSchema.optional(),
+		documentRequirements: z.array(documentRequirementSchema).optional(),
+		preTripChecklist: z.array(checklistItemSchema).optional(),
+		packageLocation: packageLocationSchema.optional(),
+		cancellationPolicy: z.array(z.string()).optional(),
+	})
+	.refine(
+		(data) => {
+			if (!data.paymentStructure || !data.price) return true;
+			const totalAmount = data.paymentStructure.reduce(
+				(sum, milestone) => sum + (milestone.amount ?? 0),
+				0
+			);
+			return totalAmount === data.price;
+		},
+		{
+			message: "Payment structure amounts must total exactly the package price",
+			path: ["paymentStructure"],
+		}
+	);
 
 export type PackageFormData = z.infer<typeof packageFormSchema>;
 export type PaymentMilestone = z.infer<typeof paymentMilestoneSchema>;

@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -34,6 +41,7 @@ export default function BatchDetailsPage() {
 		null
 	);
 	const [packageCheckList, setPackageCheckList] = useState<ICheckList[]>();
+	const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
 	useEffect(() => {
 		const getBranch = async () => {
@@ -44,7 +52,7 @@ export default function BatchDetailsPage() {
 				if (error instanceof Error) {
 					toast.error(error.message);
 				} else {
-					toast.error("Failed to load batches");	
+					toast.error("Failed to load batches");
 				}
 			}
 		};
@@ -75,6 +83,25 @@ export default function BatchDetailsPage() {
 		getChecklist();
 	}, [batch]);
 
+	const handleStatusUpdate = async (newStatus: string) => {
+		if (!batch || newStatus === batch.status) return;
+
+		setIsUpdatingStatus(true);
+		try {
+			await axiosInstance.patch(`/batches/${id}`, { status: newStatus });
+			setBatch((prev) => (prev ? { ...prev, status: newStatus } : prev));
+			toast.success("Batch status updated successfully");
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to update batch status");
+			}
+		} finally {
+			setIsUpdatingStatus(false);
+		}
+	};
+
 	const getStatusBadge = (status: string) => {
 		switch (status) {
 			case "active":
@@ -99,6 +126,22 @@ export default function BatchDetailsPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					{batch && getStatusBadge(batch.status)}
+					<div className="flex items-center gap-2">
+						<Select
+							value={batch?.status}
+							onValueChange={handleStatusUpdate}
+							disabled={isUpdatingStatus}
+						>
+							<SelectTrigger className="w-32">
+								<SelectValue placeholder="Status" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="upcoming">Upcoming</SelectItem>
+								<SelectItem value="active">Active</SelectItem>
+								<SelectItem value="completed">Completed</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
 					<NavLink to={`/batches/edit/${id}`}>
 						<Button>
 							<Edit className="w-4 h-4 mr-2" />
@@ -268,7 +311,6 @@ export default function BatchDetailsPage() {
 								<TableHead>Age</TableHead>
 								<TableHead>Emergency Contact</TableHead>
 								<TableHead>Checklist Status</TableHead>
-								
 							</TableRow>
 						</TableHeader>
 						<TableBody>

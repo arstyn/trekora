@@ -8,9 +8,6 @@ export interface IPackages {
   price?: string;
   description?: string;
   maxGuests?: number;
-  startDate?: Date;
-  endDate?: Date;
-  difficulty?: 'easy' | 'moderate' | 'challenging' | 'extreme';
   category?: 'documents' | 'booking' | 'preparation' | 'communication';
   status?: 'draft' | 'published';
   thumbnail?: string;
@@ -23,7 +20,7 @@ export interface IPackages {
 
 export const paymentMilestoneSchema = z.object({
   name: z.string().optional(),
-  percentage: z.number().min(0).max(100).optional(),
+  amount: z.number().min(0).optional(),
   description: z.string().optional(),
   dueDate: z
     .enum([
@@ -38,7 +35,7 @@ export const paymentMilestoneSchema = z.object({
 
 export const cancellationTierSchema = z.object({
   timeframe: z.string().optional(),
-  percentage: z.number().min(0).max(100).optional(),
+  amount: z.number().min(0).optional(),
   description: z.string().optional(),
 });
 
@@ -112,9 +109,6 @@ export const packageFormSchema = z.object({
   price: z.number().optional(),
   description: z.string().optional(),
   maxGuests: z.number().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  difficulty: z.enum(['easy', 'moderate', 'challenging', 'extreme']).optional(),
   category: z
     .enum([
       'adventure',
