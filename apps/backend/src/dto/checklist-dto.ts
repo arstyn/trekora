@@ -1,6 +1,6 @@
 
 import { IsString, IsBoolean, IsOptional, IsEnum, IsUUID, IsNumber, MaxLength } from 'class-validator';
-import { ChecklistType } from '../database/entity/booking-checklist-entityA';
+import { ChecklistType } from 'src/database/entity/booking-checklist.entity';
 
 export class CreateChecklistItemDto {
   @IsString()

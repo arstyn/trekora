@@ -174,7 +174,7 @@ export class BookingPassengerResponseDto {
   phone?: string;
   emergencyContact: string;
   specialRequirements?: string;
-  checklist?: ChecklistItemResponseDto[];
+  checklist?: undefined | ChecklistItemResponseDto[];
 }
 
 export class BookingResponseDto {

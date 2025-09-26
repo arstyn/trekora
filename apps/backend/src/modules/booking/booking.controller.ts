@@ -23,7 +23,8 @@ import {
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { BookingStatus } from 'src/database/entity/booking.entity';
-import { ChecklistType } from 'src/database/entity/booking-checklist-entity';
+import { ChecklistType } from 'src/database/entity/booking-checklist.entity';
+
 
 @UseGuards(AuthGuard)
 @Controller('api/bookings')
