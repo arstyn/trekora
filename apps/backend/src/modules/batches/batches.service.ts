@@ -152,9 +152,10 @@ export class BatchesService {
         organization_id: organizationId,
       })
       .andWhere(
-        '(batch.booked_seats::float / NULLIF(batch.total_seats, 0)) >= 0.8 OR (batch.total_seats - batch.booked_seats) <= 5',
+        '(batch.booked_seats::float / NULLIF(batch.total_seats, 0)) >= 0.8 AND (batch.booked_seats::float / NULLIF(batch.total_seats, 0)) < 1.0 OR (batch.total_seats - batch.booked_seats) <= 5 AND (batch.total_seats - batch.booked_seats) > 0',
       )
       .orderBy('batch.startDate', 'ASC')
+      .limit(5)
       .getMany();
 
     // Optional: Add fillRate to each result (computed on the fly)
