@@ -3,33 +3,40 @@ import { config } from 'dotenv';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
 import configuration from '../../config/configuration';
+import { Batch } from '../entity/batch.entity';
+import { Branch } from '../entity/branch.entity';
+import { Customer } from '../entity/customer.entity';
 import { Department } from '../entity/department.entity';
 import { Employee, EmployeeStatus } from '../entity/employee.entity';
+import { FileManager, RelatedType } from '../entity/file-manager.entity';
+import { Lead } from '../entity/lead.entity';
 import { Organization } from '../entity/organization.entity';
+import { CancellationPolicy } from '../entity/package-related/cancellation-policies.entity';
+import { CancellationTier } from '../entity/package-related/cancellation-tiers.entity';
+import { ChecklistItem } from '../entity/package-related/checklist-items.entity';
+import { DocumentRequirement } from '../entity/package-related/document-requirements.entity';
+import { Exclusion } from '../entity/package-related/exclusions.entity';
+import { Inclusion } from '../entity/package-related/inclusions.entity';
+import { ItineraryDay } from '../entity/package-related/itinerary-days.entity';
+import { MealsBreakdown } from '../entity/package-related/meals-breakdowns.entity';
+import { PackageLocation } from '../entity/package-related/package-locations.entity';
+import { Package } from '../entity/package-related/package.entity';
+import { PaymentMilestone } from '../entity/package-related/payment-milestones.entity';
+import { Transportation } from '../entity/package-related/transportations.entity';
 import { Role } from '../entity/role.entity';
 import { UserNotificationType } from '../entity/user-notification-type.entity';
-import { UserNotification } from '../entity/user-notification.entity';
 import { User } from '../entity/user.entity';
-import { Branch } from '../entity/branch.entity';
-import { Package } from '../entity/package-related/package.entity';
-import { Inclusion } from '../entity/package-related/inclusions.entity';
-import { Exclusion } from '../entity/package-related/exclusions.entity';
-import { Batch } from '../entity/batch.entity';
-import { FileManager } from '../entity/file-manager.entity';
-import { Lead } from '../entity/lead.entity';
-import { Customer } from '../entity/customer.entity';
+import { batches } from './batch.seed';
+import { branches } from './branch.seed';
+import { customers } from './customer.seed';
 import { departments } from './department.seed';
+import { additionalEmployees } from './employee.seed';
+import { leads } from './lead.seed';
 import { organizations } from './organization.seed';
+import { packages } from './package.seed';
 import { roles } from './role.seed';
 import { userNotificationType } from './user-notification-type.seed';
 import { users } from './user.seed';
-import { additionalEmployees } from './employee.seed';
-import { branches } from './branch.seed';
-import { packages } from './package.seed';
-import { batches } from './batch.seed';
-import { packageImages } from './file-manager.seed';
-import { leads } from './lead.seed';
-import { customers } from './customer.seed';
 
 config();
 
@@ -266,7 +273,7 @@ async function seed() {
       console.log('Branch created:', savedBranch.id);
     }
 
-    // Create packages with inclusions and exclusions
+    // Create packages with all related entities
     console.log('Seeding packages...');
     for (const packageData of packages) {
       const org = await queryRunner.manager.findOne(Organization, {
@@ -289,12 +296,24 @@ async function seed() {
         maxGuests: packageData.maxGuests,
         category: packageData.category,
         status: packageData.status,
-        thumbnail: packageData.thumbnail,
         organizationId: org.id,
       });
 
       const savedPackage = await queryRunner.manager.save(pkg);
       console.log('Package created:', savedPackage.id);
+
+      const fileManager = queryRunner.manager.create(FileManager, {
+        filename: packageData.thumbnail,
+        relatedId: savedPackage.id,
+        relatedType: RelatedType.PACKAGE,
+        url: `./uploads/package/${packageData.thumbnail}`,
+      });
+
+      const savedFileManager = await queryRunner.manager.save(fileManager);
+
+      await queryRunner.manager.update(Package, savedPackage.id, {
+        thumbnail: savedFileManager.id,
+      });
 
       // Create inclusions
       for (const inclusionItem of packageData.inclusions) {
@@ -312,6 +331,170 @@ async function seed() {
           packageId: savedPackage.id,
         });
         await queryRunner.manager.save(exclusion);
+      }
+
+      // Create payment structure
+      if (packageData.paymentStructure) {
+        for (const payment of packageData.paymentStructure) {
+          const paymentMilestone = queryRunner.manager.create(
+            PaymentMilestone,
+            {
+              name: payment.name,
+              amount: payment.amount,
+              description: payment.description,
+              dueDate: payment.dueDate,
+              packageId: savedPackage.id,
+            },
+          );
+          await queryRunner.manager.save(paymentMilestone);
+        }
+      }
+
+      // Create cancellation structure
+      if (packageData.cancellationStructure) {
+        for (const tier of packageData.cancellationStructure) {
+          const cancellationTier = queryRunner.manager.create(
+            CancellationTier,
+            {
+              timeframe: tier.timeframe,
+              amount: tier.amount,
+              description: tier.description,
+              packageId: savedPackage.id,
+            },
+          );
+          await queryRunner.manager.save(cancellationTier);
+        }
+      }
+
+      // Create cancellation policy
+      if (packageData.cancellationPolicy) {
+        for (const policy of packageData.cancellationPolicy) {
+          const cancellationPolicy = queryRunner.manager.create(
+            CancellationPolicy,
+            {
+              text: policy,
+              packageId: savedPackage.id,
+            },
+          );
+          await queryRunner.manager.save(cancellationPolicy);
+        }
+      }
+
+      // Create document requirements
+      if (packageData.documentRequirements) {
+        for (const doc of packageData.documentRequirements) {
+          const documentRequirement = queryRunner.manager.create(
+            DocumentRequirement,
+            {
+              name: doc.name,
+              description: doc.description,
+              mandatory: doc.mandatory,
+              applicableFor: doc.applicableFor,
+              packageId: savedPackage.id,
+            },
+          );
+          await queryRunner.manager.save(documentRequirement);
+        }
+      }
+
+      // Create pre-trip checklist
+      if (packageData.preTripChecklist) {
+        for (const item of packageData.preTripChecklist) {
+          const checklistItem = queryRunner.manager.create(ChecklistItem, {
+            task: item.task,
+            description: item.description,
+            category: item.category,
+            dueDate: item.dueDate,
+            packageId: savedPackage.id,
+          });
+          await queryRunner.manager.save(checklistItem);
+        }
+      }
+
+      // Create meals breakdown
+      if (packageData.mealsBreakdown) {
+        const mealsBreakdown = queryRunner.manager.create(MealsBreakdown, {
+          breakfast: packageData.mealsBreakdown.breakfast,
+          lunch: packageData.mealsBreakdown.lunch,
+          dinner: packageData.mealsBreakdown.dinner,
+          packageId: savedPackage.id,
+        });
+        await queryRunner.manager.save(mealsBreakdown);
+      }
+
+      // Create package location
+      if (packageData.packageLocation) {
+        const packageLocation = queryRunner.manager.create(PackageLocation, {
+          type: packageData.packageLocation.type as 'international' | 'local',
+          country: packageData.packageLocation.country,
+          state: packageData.packageLocation.state || undefined,
+          packageId: savedPackage.id,
+        });
+        await queryRunner.manager.save(packageLocation);
+      }
+
+      // Create transportation
+      if (packageData.transportation) {
+        const transportation = queryRunner.manager.create(Transportation, {
+          toMode: packageData.transportation.toDestination?.mode || undefined,
+          toDetails:
+            packageData.transportation.toDestination?.details || undefined,
+          toIncluded:
+            packageData.transportation.toDestination?.included || false,
+          fromMode:
+            packageData.transportation.fromDestination?.mode || undefined,
+          fromDetails:
+            packageData.transportation.fromDestination?.details || undefined,
+          fromIncluded:
+            packageData.transportation.fromDestination?.included || false,
+          duringMode: packageData.transportation.duringTrip?.mode || undefined,
+          duringDetails:
+            packageData.transportation.duringTrip?.details || undefined,
+          duringIncluded:
+            packageData.transportation.duringTrip?.included || false,
+          packageId: savedPackage.id,
+        });
+        await queryRunner.manager.save(transportation);
+      }
+
+      // Create itinerary
+      if (packageData.itinerary) {
+        for (const day of packageData.itinerary) {
+          const itineraryDay = queryRunner.manager.create(ItineraryDay, {
+            day: day.day,
+            title: day.title,
+            description: day.description,
+            activities: day.activities,
+            meals: day.meals,
+            accommodation: day.accommodation,
+            packageId: savedPackage.id,
+          });
+
+          let images: string[] = [];
+          const savedItinerary = await queryRunner.manager.save(itineraryDay);
+
+          for (const itineraryImage of day.images) {
+            const fileManager = queryRunner.manager.create(FileManager, {
+              filename: itineraryImage,
+              relatedId: savedItinerary.id,
+              relatedType: RelatedType.ITINERARY,
+              url: `./uploads/itinerary/${itineraryImage}`,
+            });
+
+            const savedFileManager =
+              await queryRunner.manager.save(fileManager);
+
+            console.log('Package image created:', savedFileManager.id);
+
+            if (savedFileManager) {
+              images.push(savedFileManager.id);
+            }
+          }
+
+          await queryRunner.manager.update(ItineraryDay, savedItinerary.id, {
+            images: images,
+          });
+        }
       }
     }
 
@@ -350,34 +533,6 @@ async function seed() {
 
       const savedBatch = await queryRunner.manager.save(batch);
       console.log('Batch created:', savedBatch.id);
-    }
-
-    // Create FileManager records for package images
-    console.log('Seeding package images...');
-    for (const imageData of packageImages) {
-      const pkg = await queryRunner.manager.findOne(Package, {
-        where: { name: imageData.packageName },
-      });
-
-      if (!pkg) {
-        console.log(`Package not found: ${imageData.packageName}`);
-        continue;
-      }
-
-      const fileManager = queryRunner.manager.create(FileManager, {
-        filename: imageData.filename,
-        relatedId: pkg.id,
-        relatedType: imageData.relatedType,
-        url: `./uploads/package/${imageData.filePath}`,
-      });
-
-      const savedFileManager = await queryRunner.manager.save(fileManager);
-      console.log('Package image created:', savedFileManager.id);
-
-      // Update package thumbnail to use the FileManager ID
-      await queryRunner.manager.update(Package, pkg.id, {
-        thumbnail: savedFileManager.id,
-      });
     }
 
     // Create leads
