@@ -179,7 +179,8 @@ export class BookingService {
     return bookings.map((booking) => ({
       id: booking.id,
       bookingNumber: booking.bookingNumber,
-      customerName: booking.customer.name,
+      customerName:
+        booking.customer.firstName + ' ' + booking.customer.lastName,
       customerEmail: booking.customer.email,
       packageName: booking.package.name,
       batchStartDate: booking.batch.startDate,
@@ -214,7 +215,7 @@ export class BookingService {
       bookingNumber: booking.bookingNumber,
       customer: {
         id: booking.customer.id,
-        name: booking.customer.name,
+        name: booking.customer.firstName + ' ' + booking.customer.lastName,
         email: booking.customer.email,
         phone: booking.customer.phone,
         address: booking.customer.address,

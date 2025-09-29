@@ -603,18 +603,148 @@ async function seed() {
       const randomUser = users[Math.floor(Math.random() * users.length)];
 
       const customer = queryRunner.manager.create(Customer, {
-        name: customerData.name,
+        // Personal Details
+        firstName: customerData.firstName,
+        lastName: customerData.lastName,
+        middleName: customerData.middleName,
+        dateOfBirth: new Date(customerData.dateOfBirth),
+        gender: customerData.gender,
+
+        // Contact Information
         email: customerData.email,
         phone: customerData.phone,
+        alternativePhone: customerData.alternativePhone,
         address: customerData.address,
-        status: customerData.status,
+
+        // Emergency Contact
+        emergencyContactName: customerData.emergencyContactName,
+        emergencyContactPhone: customerData.emergencyContactPhone,
+        emergencyContactRelation: customerData.emergencyContactRelation,
+
+        // Passport Details
+        passportNumber: customerData.passportNumber,
+        passportExpiryDate: customerData.passportExpiryDate
+          ? new Date(customerData.passportExpiryDate)
+          : undefined,
+        passportIssueDate: customerData.passportIssueDate
+          ? new Date(customerData.passportIssueDate)
+          : undefined,
+        passportCountry: customerData.passportCountry,
+
+        // ID Documents
+        voterId: customerData.voterId,
+        aadhaarId: customerData.aadhaarId,
+
+        // Relatives Information
+        relatives: customerData.relatives,
+
+        // Travel Preferences
+        dietaryRestrictions: customerData.dietaryRestrictions,
+        medicalConditions: customerData.medicalConditions,
+        specialRequests: customerData.specialRequests,
+
+        // Additional Information
         notes: customerData.notes,
+
+        // System Fields
         organizationId: org.id,
         createdById: randomUser.id,
       });
 
       const savedCustomer = await queryRunner.manager.save(customer);
       console.log('Customer created:', savedCustomer.id);
+
+      // Handle profile photo file
+      if (customerData.profilePhoto) {
+        const profilePhotoFile = queryRunner.manager.create(FileManager, {
+          filename: customerData.profilePhoto,
+          relatedId: savedCustomer.id,
+          relatedType: RelatedType.CUSTOMER,
+          url: `./uploads/customer/profile/${customerData.profilePhoto}`,
+        });
+        const savedProfilePhoto =
+          await queryRunner.manager.save(profilePhotoFile);
+
+        await queryRunner.manager.update(Customer, savedCustomer.id, {
+          profilePhoto: savedProfilePhoto.id,
+        });
+        console.log('Customer profile photo created:', savedProfilePhoto.id);
+      }
+
+      // Handle passport photos
+      if (
+        customerData.passportPhotos &&
+        customerData.passportPhotos.length > 0
+      ) {
+        const passportPhotoIds: string[] = [];
+        for (const passportPhoto of customerData.passportPhotos) {
+          const passportPhotoFile = queryRunner.manager.create(FileManager, {
+            filename: passportPhoto,
+            relatedId: savedCustomer.id,
+            relatedType: RelatedType.CUSTOMER,
+            url: `./uploads/customer/passport/${passportPhoto}`,
+          });
+          const savedPassportPhoto =
+            await queryRunner.manager.save(passportPhotoFile);
+          passportPhotoIds.push(savedPassportPhoto.id);
+          console.log(
+            'Customer passport photo created:',
+            savedPassportPhoto.id,
+          );
+        }
+
+        await queryRunner.manager.update(Customer, savedCustomer.id, {
+          passportPhotos: passportPhotoIds,
+        });
+      }
+
+      // Handle voter ID photos
+      if (customerData.voterIdPhotos && customerData.voterIdPhotos.length > 0) {
+        const voterIdPhotoIds: string[] = [];
+        for (const voterIdPhoto of customerData.voterIdPhotos) {
+          const voterIdPhotoFile = queryRunner.manager.create(FileManager, {
+            filename: voterIdPhoto,
+            relatedId: savedCustomer.id,
+            relatedType: RelatedType.CUSTOMER,
+            url: `./uploads/customer/voter-id/${voterIdPhoto}`,
+          });
+          const savedVoterIdPhoto =
+            await queryRunner.manager.save(voterIdPhotoFile);
+          voterIdPhotoIds.push(savedVoterIdPhoto.id);
+          console.log('Customer voter ID photo created:', savedVoterIdPhoto.id);
+        }
+
+        await queryRunner.manager.update(Customer, savedCustomer.id, {
+          voterIdPhotos: voterIdPhotoIds,
+        });
+      }
+
+      // Handle Aadhaar ID photos
+      if (
+        customerData.aadhaarIdPhotos &&
+        customerData.aadhaarIdPhotos.length > 0
+      ) {
+        const aadhaarIdPhotoIds: string[] = [];
+        for (const aadhaarIdPhoto of customerData.aadhaarIdPhotos) {
+          const aadhaarIdPhotoFile = queryRunner.manager.create(FileManager, {
+            filename: aadhaarIdPhoto,
+            relatedId: savedCustomer.id,
+            relatedType: RelatedType.CUSTOMER,
+            url: `./uploads/customer/aadhaar-id/${aadhaarIdPhoto}`,
+          });
+          const savedAadhaarIdPhoto =
+            await queryRunner.manager.save(aadhaarIdPhotoFile);
+          aadhaarIdPhotoIds.push(savedAadhaarIdPhoto.id);
+          console.log(
+            'Customer Aadhaar ID photo created:',
+            savedAadhaarIdPhoto.id,
+          );
+        }
+
+        await queryRunner.manager.update(Customer, savedCustomer.id, {
+          aadhaarIdPhotos: aadhaarIdPhotoIds,
+        });
+      }
     }
 
     await queryRunner.commitTransaction();

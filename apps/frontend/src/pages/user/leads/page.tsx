@@ -5,7 +5,6 @@ import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import CustomerForm from "../customers/_component/customer-form";
 import { KanbanBoard } from "./_components/kanban-board";
 import { CreateLeadModal } from "./_components/lead-create-modal";
 import { LeadFilter } from "./_components/lead-filter";
@@ -13,6 +12,7 @@ import { LeadTable } from "./_components/lead-table";
 import { ViewLeadDialog } from "./_components/lead-view-modal";
 import { ViewToggle } from "./_components/view-toggle";
 import type { ICustomer } from "@/types/customer.type";
+import EnhancedCustomerForm from "../customers/_component/enhanced-customer-form";
 
 export function Leads() {
 	const navigate = useNavigate();
@@ -242,7 +242,10 @@ export function Leads() {
 			/>
 
 			{openCustomerCreateModal && (
-				<CustomerForm onCancel={handleOnCancel} onSave={handleSaveCustomer} />
+				<EnhancedCustomerForm
+					onCancel={handleOnCancel}
+					onSave={handleSaveCustomer}
+				/>
 			)}
 		</div>
 	);

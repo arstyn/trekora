@@ -1,19 +1,31 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BookingPayment, PaymentStatus, PaymentType } from 'src/database/entity/booking-payment.entity';
+import {
+  BookingPayment,
+  PaymentStatus,
+  PaymentType,
+} from 'src/database/entity/booking-payment.entity';
 import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
-import { FileManager, RelatedType } from 'src/database/entity/file-manager.entity';
-import { 
-  CreatePaymentDto, 
-  UpdatePaymentDto, 
-  PaymentFilterDto, 
-  PaymentStatsDto, 
-  OverduePaymentDto, 
-  PaymentResponseDto, 
+import {
+  FileManager,
+  RelatedType,
+} from 'src/database/entity/file-manager.entity';
+import {
+  CreatePaymentDto,
+  UpdatePaymentDto,
+  PaymentFilterDto,
+  PaymentStatsDto,
+  OverduePaymentDto,
+  PaymentResponseDto,
   PaymentListResponseDto,
   BookingSearchDto,
-  BookingForPaymentDto
+  BookingForPaymentDto,
 } from 'src/dto/payment.dto';
 import { FileManagerService } from '../file-manager/file-manager.service';
 
@@ -39,14 +51,14 @@ export class PaymentService {
       .leftJoinAndSelect('booking.package', 'package')
       .where('booking.organizationId = :organizationId', { organizationId })
       .andWhere('booking.balanceAmount > 0')
-      .andWhere('booking.status != :cancelledStatus', { 
-        cancelledStatus: BookingStatus.CANCELLED 
+      .andWhere('booking.status != :cancelledStatus', {
+        cancelledStatus: BookingStatus.CANCELLED,
       });
 
     if (search) {
       query.andWhere(
         '(booking.bookingNumber ILIKE :search OR customer.name ILIKE :search OR package.name ILIKE :search)',
-        { search: `%${search}%` }
+        { search: `%${search}%` },
       );
     }
 
@@ -55,12 +67,12 @@ export class PaymentService {
 
     const [bookings, total] = await query.getManyAndCount();
 
-    const data = bookings.map(booking => ({
+    const data = bookings.map((booking) => ({
       id: booking.id,
       bookingNumber: booking.bookingNumber,
       customer: {
         id: booking.customer.id,
-        name: booking.customer.name,
+        name: booking.customer.firstName + ' ' + booking.customer.lastName,
         email: booking.customer.email,
       },
       package: {
@@ -83,9 +95,9 @@ export class PaymentService {
   ): Promise<PaymentResponseDto> {
     // Validate booking exists and belongs to organization
     const booking = await this.bookingRepository.findOne({
-      where: { 
+      where: {
         id: createPaymentDto.bookingId,
-        organizationId 
+        organizationId,
       },
       relations: ['customer', 'package', 'batch'],
     });
@@ -98,7 +110,9 @@ export class PaymentService {
     if (createPaymentDto.paymentType !== PaymentType.REFUND) {
       const maxAmount = booking.balanceAmount;
       if (createPaymentDto.amount > maxAmount) {
-        throw new BadRequestException(`Payment amount cannot exceed balance amount of ${maxAmount}`);
+        throw new BadRequestException(
+          `Payment amount cannot exceed balance amount of ${maxAmount}`,
+        );
       }
     }
 
@@ -121,7 +135,10 @@ export class PaymentService {
     const savedPayment = await this.paymentRepository.save(payment);
 
     // Update booking amounts if payment is completed
-    if (savedPayment.status === PaymentStatus.COMPLETED && createPaymentDto.paymentType !== PaymentType.REFUND) {
+    if (
+      savedPayment.status === PaymentStatus.COMPLETED &&
+      createPaymentDto.paymentType !== PaymentType.REFUND
+    ) {
       const newAdvancePaid = booking.advancePaid + createPaymentDto.amount;
       const newBalanceAmount = booking.totalAmount - newAdvancePaid;
 
@@ -170,7 +187,9 @@ export class PaymentService {
     }
 
     if (paymentMethod) {
-      query.andWhere('payment.paymentMethod = :paymentMethod', { paymentMethod });
+      query.andWhere('payment.paymentMethod = :paymentMethod', {
+        paymentMethod,
+      });
     }
 
     if (fromDate && toDate) {
@@ -183,7 +202,7 @@ export class PaymentService {
     if (search) {
       query.andWhere(
         '(customer.name ILIKE :search OR booking.bookingNumber ILIKE :search OR payment.paymentReference ILIKE :search OR payment.transactionId ILIKE :search)',
-        { search: `%${search}%` }
+        { search: `%${search}%` },
       );
     }
 
@@ -199,7 +218,7 @@ export class PaymentService {
     const [payments, total] = await query.getManyAndCount();
 
     return {
-      data: payments.map(payment => this.transformToResponseDto(payment)),
+      data: payments.map((payment) => this.transformToResponseDto(payment)),
       pagination: {
         page,
         limit,
@@ -209,15 +228,19 @@ export class PaymentService {
     };
   }
 
-  async findOne(id: string, organizationId: string, includeReceipts: boolean = false): Promise<PaymentResponseDto> {
+  async findOne(
+    id: string,
+    organizationId: string,
+    includeReceipts: boolean = false,
+  ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
       relations: [
         'booking',
-        'booking.customer', 
-        'booking.package', 
+        'booking.customer',
+        'booking.package',
         'booking.batch',
-        'recordedBy'
+        'recordedBy',
       ],
     });
 
@@ -229,7 +252,10 @@ export class PaymentService {
 
     // Include receipt files if requested
     if (includeReceipts) {
-      const receiptFiles = await this.fileManagerService.findByRelatedEntity(id, RelatedType.PAYMENT);
+      const receiptFiles = await this.fileManagerService.findByRelatedEntity(
+        id,
+        RelatedType.PAYMENT,
+      );
       (paymentDto as any).receiptFiles = receiptFiles;
     }
 
@@ -251,14 +277,20 @@ export class PaymentService {
     }
 
     // Prevent editing completed/refunded payments for certain fields
-    if (payment.status === PaymentStatus.COMPLETED || payment.status === PaymentStatus.REFUNDED) {
+    if (
+      payment.status === PaymentStatus.COMPLETED ||
+      payment.status === PaymentStatus.REFUNDED
+    ) {
       const restrictedFields = ['amount', 'paymentMethod', 'paymentType'];
-      const hasRestrictedChanges = restrictedFields.some(field => 
-        field in updatePaymentDto && updatePaymentDto[field] !== undefined
+      const hasRestrictedChanges = restrictedFields.some(
+        (field) =>
+          field in updatePaymentDto && updatePaymentDto[field] !== undefined,
       );
-      
+
       if (hasRestrictedChanges) {
-        throw new BadRequestException('Cannot modify amount, method, or type of completed/refunded payments');
+        throw new BadRequestException(
+          'Cannot modify amount, method, or type of completed/refunded payments',
+        );
       }
     }
 
@@ -277,7 +309,9 @@ export class PaymentService {
     }
 
     if (payment.status === PaymentStatus.COMPLETED) {
-      throw new BadRequestException('Cannot delete completed payments. Mark as refunded instead.');
+      throw new BadRequestException(
+        'Cannot delete completed payments. Mark as refunded instead.',
+      );
     }
 
     await this.paymentRepository.remove(payment);
@@ -297,17 +331,46 @@ export class PaymentService {
       refundedResult,
       archivedResult,
     ] = await Promise.all([
-      query.select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
-      query.clone().andWhere('payment.status = :status', { status: PaymentStatus.PENDING })
-           .select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
-      query.clone().andWhere('payment.status = :status', { status: PaymentStatus.COMPLETED })
-           .select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
-      query.clone().andWhere('payment.status = :status', { status: PaymentStatus.FAILED })
-           .select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
-      query.clone().andWhere('payment.status = :status', { status: PaymentStatus.REFUNDED })
-           .select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
-      query.clone().andWhere('payment.status = :status', { status: PaymentStatus.ARCHIVED })
-           .select('COUNT(*)', 'count').addSelect('SUM(payment.amount)', 'sum').getRawOne(),
+      query
+        .select('COUNT(*)', 'count')
+        .addSelect('SUM(payment.amount)', 'sum')
+        .getRawOne(),
+      query
+        .clone()
+        .andWhere('payment.status = :status', { status: PaymentStatus.PENDING })
+        .select('COUNT(*)', 'count')
+        .addSelect('SUM(payment.amount)', 'sum')
+        .getRawOne(),
+      query
+        .clone()
+        .andWhere('payment.status = :status', {
+          status: PaymentStatus.COMPLETED,
+        })
+        .select('COUNT(*)', 'count')
+        .addSelect('SUM(payment.amount)', 'sum')
+        .getRawOne(),
+      query
+        .clone()
+        .andWhere('payment.status = :status', { status: PaymentStatus.FAILED })
+        .select('COUNT(*)', 'count')
+        .addSelect('SUM(payment.amount)', 'sum')
+        .getRawOne(),
+      query
+        .clone()
+        .andWhere('payment.status = :status', {
+          status: PaymentStatus.REFUNDED,
+        })
+        .select('COUNT(*)', 'count')
+        .addSelect('SUM(payment.amount)', 'sum')
+        .getRawOne(),
+      query
+        .clone()
+        .andWhere('payment.status = :status', {
+          status: PaymentStatus.ARCHIVED,
+        })
+        .select('COUNT(*)', 'count')
+        .addSelect('SUM(payment.amount)', 'sum')
+        .getRawOne(),
     ]);
 
     return {
@@ -326,7 +389,9 @@ export class PaymentService {
     };
   }
 
-  async getOverduePayments(organizationId: string): Promise<OverduePaymentDto[]> {
+  async getOverduePayments(
+    organizationId: string,
+  ): Promise<OverduePaymentDto[]> {
     const bookings = await this.bookingRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.customer', 'customer')
@@ -334,29 +399,38 @@ export class PaymentService {
       .leftJoinAndSelect('booking.batch', 'batch')
       .where('booking.organizationId = :organizationId', { organizationId })
       .andWhere('booking.balanceAmount > 0')
-      .andWhere('booking.status != :cancelledStatus', { cancelledStatus: BookingStatus.CANCELLED })
+      .andWhere('booking.status != :cancelledStatus', {
+        cancelledStatus: BookingStatus.CANCELLED,
+      })
       .andWhere('batch.startDate < :currentDate', { currentDate: new Date() })
       .getMany();
 
-    return bookings.map(booking => {
-      const daysOverdue = Math.floor(
-        (new Date().getTime() - booking.batch.startDate.getTime()) / (1000 * 3600 * 24)
-      );
+    return bookings
+      .map((booking) => {
+        const daysOverdue = Math.floor(
+          (new Date().getTime() - booking.batch.startDate.getTime()) /
+            (1000 * 3600 * 24),
+        );
 
-      return {
-        bookingId: booking.id,
-        bookingNumber: booking.bookingNumber,
-        customerName: booking.customer.name,
-        customerEmail: booking.customer.email,
-        packageName: booking.package.name,
-        dueAmount: booking.balanceAmount,
-        dueDate: booking.batch.startDate,
-        daysOverdue,
-      };
-    }).filter(payment => payment.daysOverdue > 0);
+        return {
+          bookingId: booking.id,
+          bookingNumber: booking.bookingNumber,
+          customerName:
+            booking.customer.firstName + ' ' + booking.customer.lastName,
+          customerEmail: booking.customer.email,
+          packageName: booking.package.name,
+          dueAmount: booking.balanceAmount,
+          dueDate: booking.batch.startDate,
+          daysOverdue,
+        };
+      })
+      .filter((payment) => payment.daysOverdue > 0);
   }
 
-  async markAsCompleted(id: string, organizationId: string): Promise<PaymentResponseDto> {
+  async markAsCompleted(
+    id: string,
+    organizationId: string,
+  ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
       relations: ['booking'],
@@ -367,13 +441,18 @@ export class PaymentService {
     }
 
     if (payment.status !== PaymentStatus.PENDING) {
-      throw new BadRequestException('Only pending payments can be marked as completed');
+      throw new BadRequestException(
+        'Only pending payments can be marked as completed',
+      );
     }
 
     // Update booking amounts
     const booking = payment.booking;
-    const newAdvancePaid = parseFloat(booking.advancePaid.toString()) + parseFloat(payment.amount.toString());
-    const newBalanceAmount = parseFloat(booking.totalAmount.toString()) - newAdvancePaid;
+    const newAdvancePaid =
+      parseFloat(booking.advancePaid.toString()) +
+      parseFloat(payment.amount.toString());
+    const newBalanceAmount =
+      parseFloat(booking.totalAmount.toString()) - newAdvancePaid;
 
     await Promise.all([
       this.paymentRepository.update(id, { status: PaymentStatus.COMPLETED }),
@@ -386,7 +465,10 @@ export class PaymentService {
     return this.findOne(id, organizationId);
   }
 
-  async markAsFailed(id: string, organizationId: string): Promise<PaymentResponseDto> {
+  async markAsFailed(
+    id: string,
+    organizationId: string,
+  ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
       relations: ['booking'],
@@ -400,7 +482,10 @@ export class PaymentService {
     return this.findOne(id, organizationId);
   }
 
-  async markAsArchived(id: string, organizationId: string): Promise<PaymentResponseDto> {
+  async markAsArchived(
+    id: string,
+    organizationId: string,
+  ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
       relations: ['booking'],
@@ -411,7 +496,9 @@ export class PaymentService {
     }
 
     if (payment.status === PaymentStatus.PENDING) {
-      throw new BadRequestException('Cannot archive pending payments. Complete or fail them first.');
+      throw new BadRequestException(
+        'Cannot archive pending payments. Complete or fail them first.',
+      );
     }
 
     await this.paymentRepository.update(id, { status: PaymentStatus.ARCHIVED });
@@ -433,12 +520,19 @@ export class PaymentService {
     }
 
     // Validate file types for payment receipts
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'application/pdf',
+    ];
     const maxFileSize = 5 * 1024 * 1024; // 5MB
 
     for (const file of files) {
       if (!allowedMimeTypes.includes(file.mimetype)) {
-        throw new BadRequestException('Only images (JPEG, JPG, PNG) and PDF files are allowed for payment receipts');
+        throw new BadRequestException(
+          'Only images (JPEG, JPG, PNG) and PDF files are allowed for payment receipts',
+        );
       }
       if (file.size > maxFileSize) {
         throw new BadRequestException('File size cannot exceed 5MB');
@@ -462,22 +556,26 @@ export class PaymentService {
     file: Express.Multer.File,
     organizationId: string,
   ): Promise<FileManager> {
-    const files = await this.uploadReceiptFiles(paymentId, [file], organizationId);
+    const files = await this.uploadReceiptFiles(
+      paymentId,
+      [file],
+      organizationId,
+    );
     return files[0];
   }
 
   /**
    * Get all receipt files for a payment
    */
-  async getPaymentReceiptFiles(
-    paymentId: string,
-    organizationId: string,
-  ){
+  async getPaymentReceiptFiles(paymentId: string, organizationId: string) {
     // Verify payment exists and user has access
     await this.findOne(paymentId, organizationId);
 
     // Get all files related to this payment using the new method
-    return this.fileManagerService.findByRelatedEntity(paymentId, RelatedType.PAYMENT);
+    return this.fileManagerService.findByRelatedEntity(
+      paymentId,
+      RelatedType.PAYMENT,
+    );
   }
 
   /**
@@ -493,7 +591,11 @@ export class PaymentService {
 
     // Verify file belongs to this payment
     const file = await this.fileManagerService.findOne(fileId);
-    if (!file || file.relatedId !== paymentId || file.relatedType !== RelatedType.PAYMENT) {
+    if (
+      !file ||
+      file.relatedId !== paymentId ||
+      file.relatedType !== RelatedType.PAYMENT
+    ) {
       throw new NotFoundException('Receipt file not found or access denied');
     }
 
@@ -513,44 +615,47 @@ export class PaymentService {
       notes: payment.notes,
       receiptFilePath: payment.receiptFilePath,
       paymentDetails: payment.paymentDetails,
-      
+
       booking: {
         id: payment.booking.id,
         bookingNumber: payment.booking.bookingNumber,
         totalAmount: payment.booking.totalAmount,
         advancePaid: payment.booking.advancePaid,
         balanceAmount: payment.booking.balanceAmount,
-        
+
         customer: {
           id: payment.booking.customer.id,
-          name: payment.booking.customer.name,
+          name:
+            payment.booking.customer.firstName +
+            ' ' +
+            payment.booking.customer.lastName,
           email: payment.booking.customer.email,
           phone: payment.booking.customer.phone,
         },
-        
+
         package: {
           id: payment.booking.package.id,
           name: payment.booking.package.name,
           destination: payment.booking.package.destination,
           duration: payment.booking.package.duration,
         },
-        
+
         batch: {
           id: payment.booking.batch.id,
           startDate: payment.booking.batch.startDate,
           endDate: payment.booking.batch.endDate,
         },
       },
-      
+
       recordedBy: {
         id: payment.recordedBy.id,
         firstName: payment.recordedBy.name?.split(' ')[0] || '',
         lastName: payment.recordedBy.name?.split(' ')[1] || '',
         email: payment.recordedBy.email,
       },
-      
+
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,
     };
   }
-} 
+}

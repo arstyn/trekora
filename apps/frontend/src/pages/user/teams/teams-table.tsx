@@ -50,6 +50,7 @@ import {
 	UserPlus,
 } from "lucide-react";
 import { useLayoutEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ActivateDialog } from "./_component/activate-modal";
 import { AddEmployeeModal } from "./_component/add-employee-modal";
@@ -59,6 +60,9 @@ import { ViewEmployeeDialog } from "./_component/view-employee-dialog";
 import type { IRole } from "@/types/role.types";
 
 export function TeamsPage() {
+	const navigate = useNavigate();
+	const location = useLocation();
+
 	const [employees, setEmployees] = useState<IEmployee[]>([]);
 	const [departments, setDepartments] = useState<IDepartment[]>([]);
 	const [roles, setRoles] = useState<IRole[]>([]);
@@ -116,6 +120,21 @@ export function TeamsPage() {
 		getDepartments();
 		getRoles();
 	}, []);
+
+	// Handle URL parameters for selected employee
+	useLayoutEffect(() => {
+		const searchParams = new URLSearchParams(location.search);
+		const employeeId = searchParams.get("selected");
+		if (employeeId) {
+			const foundEmployee = employees.find((e) => e.id === employeeId);
+			if (foundEmployee) {
+				setSelectedEmployee(foundEmployee);
+				setIsViewDialogOpen(true);
+			}
+		} else {
+			setSelectedEmployee(null);
+		}
+	}, [location.search, employees]);
 
 	// Define the columns for the table
 	const columns: ColumnDef<IEmployee>[] = [
@@ -239,7 +258,7 @@ export function TeamsPage() {
 
 				return (
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
+						<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
 							<Button variant="ghost" className="h-8 w-8 p-0">
 								<span className="sr-only">Open menu</span>
 								<MoreHorizontal className="h-4 w-4" />
@@ -248,19 +267,26 @@ export function TeamsPage() {
 						<DropdownMenuContent align="end">
 							<DropdownMenuLabel>Actions</DropdownMenuLabel>
 							<DropdownMenuItem
-								onClick={() => handleViewEmployee(employee)}
+								onClick={(e) => {
+									e.stopPropagation();
+									handleViewEmployee(employee);
+								}}
 							>
 								View details
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => handleEditEmployee(employee)}
+								onClick={(e) => {
+									e.stopPropagation();
+									handleEditEmployee(employee);
+								}}
 							>
 								Edit details
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
 								className="text-green-600"
-								onClick={() => {
+								onClick={(e) => {
+									e.stopPropagation();
 									setActivateEmployee(employee);
 									setIsActivateDialogOpen(true);
 								}}
@@ -269,7 +295,10 @@ export function TeamsPage() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								className="text-red-600"
-								onClick={() => handleDeactivateEmployee(employee)}
+								onClick={(e) => {
+									e.stopPropagation();
+									handleDeactivateEmployee(employee);
+								}}
 								disabled={employee.status === "terminated"}
 							>
 								Terminate
@@ -315,6 +344,11 @@ export function TeamsPage() {
 					: employee
 			)
 		);
+	};
+
+	// Handle employee row click
+	const handleEmployeeClick = (employee: IEmployee) => {
+		navigate(`?selected=${employee.id}`);
 	};
 
 	// Handle viewing an employee
@@ -443,7 +477,9 @@ export function TeamsPage() {
 							table.getRowModel().rows.map((row) => (
 								<TableRow
 									key={row.id}
+									className="cursor-pointer"
 									data-state={row.getIsSelected() && "selected"}
+									onClick={() => handleEmployeeClick(row.original)}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>
@@ -486,7 +522,10 @@ export function TeamsPage() {
 					open={isViewDialogOpen}
 					onOpenChange={(open) => {
 						setIsViewDialogOpen(open);
-						setSelectedEmployee(null);
+						if (!open) {
+							setSelectedEmployee(null);
+							navigate("?");
+						}
 					}}
 					employee={selectedEmployee}
 					onEdit={(employee) => handleEditEmployee(employee)}
@@ -498,7 +537,10 @@ export function TeamsPage() {
 					open={isEditDialogOpen}
 					onOpenChange={(open) => {
 						setIsEditDialogOpen(open);
-						setSelectedEmployee(null);
+						if (!open) {
+							setSelectedEmployee(null);
+							navigate("?");
+						}
 					}}
 					employee={selectedEmployee}
 					onUpdateEmployee={handleUpdateEmployee}
@@ -510,7 +552,13 @@ export function TeamsPage() {
 			{selectedEmployee && (
 				<DeactivateDialog
 					open={isDeactivateDialogOpen}
-					onOpenChange={setIsDeactivateDialogOpen}
+					onOpenChange={(open) => {
+						setIsDeactivateDialogOpen(open);
+						if (!open) {
+							setSelectedEmployee(null);
+							navigate("?");
+						}
+					}}
 					employee={selectedEmployee}
 					onDeactivate={handleDeactivate}
 				/>

@@ -9,7 +9,10 @@ import {
   Param,
   Query,
   Request,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from '../../dto/create-customer';
 import { Customer } from '../../database/entity/customer.entity';
@@ -23,14 +26,17 @@ export class CustomerController {
 
   //Creating Customers
   @Post()
+  @UseInterceptors(FilesInterceptor('files', 20))
   async create(
     @Body() data: CreateCustomerDto,
     @Request() req: ApiRequestJWT,
+    @UploadedFiles() files: Express.Multer.File[],
   ): Promise<Customer> {
     return this.customerService.createCustomer(
       data,
       req.user.userId,
       req.user.organizationId,
+      files || [],
     );
   }
 
@@ -48,15 +54,17 @@ export class CustomerController {
   //Getting Single Data
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Customer | null> {
-    return this.customerService.findOne(id); // +id converts string to number
+    return this.customerService.findOneWithFiles(id);
   }
   //Updating data
   @Put(':id')
+  @UseInterceptors(FilesInterceptor('files', 20))
   async update(
     @Param('id') id: string,
-    @Body() updatedData: Partial<Customer>,
+    @Body() updatedData: Partial<CreateCustomerDto>,
+    @UploadedFiles() files: Express.Multer.File[],
   ): Promise<Customer | null> {
-    return this.customerService.update(id, updatedData);
+    return this.customerService.update(id, updatedData, files || []);
   }
   //Delete Customer
   @Delete(':id')
