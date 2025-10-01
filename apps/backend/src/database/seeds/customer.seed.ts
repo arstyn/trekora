@@ -41,7 +41,7 @@ export const customers = [
     organizationDomain: 'acme.com',
     profilePhoto: 'alice_johnson_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
   },
   {
@@ -78,7 +78,7 @@ export const customers = [
     organizationDomain: 'globex.co',
     profilePhoto: 'bob_smith_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -115,7 +115,7 @@ export const customers = [
     organizationDomain: 'initech.org',
     profilePhoto: 'carol_williams_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -164,7 +164,7 @@ export const customers = [
     organizationDomain: 'umbrella.com',
     profilePhoto: 'david_brown_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -201,7 +201,7 @@ export const customers = [
     organizationDomain: 'acme.com',
     profilePhoto: 'eva_davis_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -238,7 +238,7 @@ export const customers = [
     organizationDomain: 'globex.co',
     profilePhoto: 'frank_miller_profile.webp',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -275,7 +275,7 @@ export const customers = [
     organizationDomain: 'initech.org',
     profilePhoto: 'grace_wilson_profile.webp',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -318,7 +318,7 @@ export const customers = [
     organizationDomain: 'umbrella.com',
     profilePhoto: 'henry_moore_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -355,7 +355,7 @@ export const customers = [
     organizationDomain: 'acme.com',
     profilePhoto: 'iris_taylor_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -392,7 +392,7 @@ export const customers = [
     organizationDomain: 'globex.co',
     profilePhoto: 'jack_anderson_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -429,7 +429,7 @@ export const customers = [
     organizationDomain: 'initech.org',
     profilePhoto: 'karen_thomas_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -466,7 +466,7 @@ export const customers = [
     organizationDomain: 'umbrella.com',
     profilePhoto: 'larry_jackson_profile.webp',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -503,7 +503,7 @@ export const customers = [
     organizationDomain: 'acme.com',
     profilePhoto: 'mary_white_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -540,7 +540,7 @@ export const customers = [
     organizationDomain: 'globex.co',
     profilePhoto: 'nick_harris_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -577,7 +577,7 @@ export const customers = [
     organizationDomain: 'initech.org',
     profilePhoto: 'olivia_martin_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -614,7 +614,7 @@ export const customers = [
     organizationDomain: 'umbrella.com',
     profilePhoto: 'paul_thompson_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -651,7 +651,7 @@ export const customers = [
     organizationDomain: 'acme.com',
     profilePhoto: 'quinn_garcia_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -694,7 +694,7 @@ export const customers = [
     organizationDomain: 'globex.co',
     profilePhoto: 'rachel_martinez_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -731,7 +731,7 @@ export const customers = [
     organizationDomain: 'initech.org',
     profilePhoto: 'steve_robinson_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
@@ -768,7 +768,7 @@ export const customers = [
     organizationDomain: 'umbrella.com',
     profilePhoto: 'tina_clark_profile.jpg',
     passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpg'],
+    voterIdPhotos: ['voter_id.jpeg'],
     aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
 ];
