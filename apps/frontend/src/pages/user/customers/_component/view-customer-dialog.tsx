@@ -1,13 +1,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import type { ICustomer } from "@/types/customer.type";
-import { format } from "date-fns";
 import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
 import { getFileUrl } from "@/lib/utils";
+import type { ICustomer } from "@/types/customer.type";
+import { format } from "date-fns";
+import { Eye } from "lucide-react";
 import { useState } from "react";
-import { Eye, X } from "lucide-react";
 
 type ViewCustomerDialogProps = {
 	open: boolean;
@@ -58,12 +58,6 @@ export function ViewCustomerDialog({
 	const openImageModal = (imageUrl: string) => {
 		setSelectedImage(imageUrl);
 		setImageModalOpen(true);
-	};
-
-	// Helper function to close image modal
-	const closeImageModal = () => {
-		setImageModalOpen(false);
-		setSelectedImage(null);
 	};
 
 	return (
@@ -373,17 +367,7 @@ export function ViewCustomerDialog({
 			<Dialog open={imageModalOpen} onOpenChange={setImageModalOpen}>
 				<DialogContent className="max-w-4xl max-h-[90vh] p-0">
 					<DialogHeader className="p-6 pb-0">
-						<DialogTitle className="flex items-center justify-between">
-							Document Image
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={closeImageModal}
-								className="h-8 w-8 p-0"
-							>
-								<X className="h-4 w-4" />
-							</Button>
-						</DialogTitle>
+						<DialogTitle>Document Image</DialogTitle>
 					</DialogHeader>
 					<div className="p-6 pt-0">
 						{selectedImage && (
@@ -436,7 +420,7 @@ function ImageGallery({ images, onImageClick }: ImageGalleryProps) {
 							className="w-full h-full object-cover"
 						/>
 					</div>
-					<div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+					<div className="absolute inset-0 group-hover:bg-black/40 transition-all duration-200 rounded-lg flex items-center justify-center">
 						<Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
 					</div>
 					<Badge
