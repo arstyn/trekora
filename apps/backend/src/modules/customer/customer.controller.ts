@@ -67,8 +67,11 @@ export class CustomerController {
   }
 
   @Get('search')
-  async search(@Query('q') query: string): Promise<Customer[]> {
-    return this.customerService.search(query || '');
+  async search(
+    @Query('q') query: string,
+    @Request() req: ApiRequestJWT,
+  ): Promise<Customer[]> {
+    return this.customerService.search(query || '', req.user.organizationId);
   }
 
   //Getting Single Data

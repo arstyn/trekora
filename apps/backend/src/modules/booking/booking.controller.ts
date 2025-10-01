@@ -25,7 +25,6 @@ import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { BookingStatus } from 'src/database/entity/booking.entity';
 import { ChecklistType } from 'src/database/entity/booking-checklist.entity';
 
-
 @UseGuards(AuthGuard)
 @Controller('api/bookings')
 export class BookingController {
@@ -58,35 +57,58 @@ export class BookingController {
     );
   }
 
-  // @Get('stats')
-  // getStats(@Request() req: ApiRequestJWT) {
-  //   return this.bookingService.getStats(req.user.organizationId);
-  // }
-
-  // @Get('recent')
-  // getRecentBookings(
-  //   @Request() req: ApiRequestJWT,
-  //   @Query('limit') limit?: number,
-  // ) {
-  //   return this.bookingService.getRecentBookings(
-  //     req.user.organizationId,
-  //     limit,
-  //   );
-  // }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.bookingService.findOne(id);
+  @Get('stats')
+  getStats(@Request() req: ApiRequestJWT) {
+    return this.bookingService.getStats(req.user.organizationId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
-    return this.bookingService.update(id, updateBookingDto);
+  @Get('recent')
+  getRecentBookings(
+    @Request() req: ApiRequestJWT,
+    @Query('limit') limit?: number,
+  ) {
+    return this.bookingService.getRecentBookings(
+      req.user.organizationId,
+      limit,
+    );
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.bookingService.remove(id);
+  // Checklist endpoints (must come before :id routes)
+  @Post(':id/checklist')
+  addChecklistItem(
+    @Param('id') bookingId: string,
+    @Body() createChecklistDto: CreateChecklistItemDto,
+  ) {
+    return this.bookingService.addChecklistItem(bookingId, createChecklistDto);
+  }
+
+  @Get(':id/checklist/stats')
+  getChecklistStats(
+    @Param('id') bookingId: string,
+    @Query('type') type?: ChecklistType,
+  ) {
+    return this.bookingService.getChecklistStats(bookingId, type);
+  }
+
+  @Patch('checklist/:checklistId')
+  updateChecklistItem(
+    @Param('checklistId') checklistId: string,
+    @Body() updateChecklistDto: UpdateChecklistItemDto,
+  ) {
+    return this.bookingService.updateChecklistItem(
+      checklistId,
+      updateChecklistDto,
+    );
+  }
+
+  @Delete('checklist/:checklistId')
+  deleteChecklistItem(@Param('checklistId') checklistId: string) {
+    return this.bookingService.deleteChecklistItem(checklistId);
+  }
+
+  @Patch('checklist/:checklistId/toggle')
+  toggleChecklistItem(@Param('checklistId') checklistId: string) {
+    return this.bookingService.toggleChecklistItem(checklistId);
   }
 
   @Post(':id/payments')
@@ -102,38 +124,18 @@ export class BookingController {
     );
   }
 
-  // Checklist endpoints
-  @Post(':id/checklist')
-  addChecklistItem(
-    @Param('id') bookingId: string,
-    @Body() createChecklistDto: CreateChecklistItemDto,
-  ) {
-    return this.bookingService.addChecklistItem(bookingId, createChecklistDto);
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.bookingService.findOne(id);
   }
 
-  @Patch('checklist/:checklistId')
-  updateChecklistItem(
-    @Param('checklistId') checklistId: string,
-    @Body() updateChecklistDto: UpdateChecklistItemDto,
-  ) {
-    return this.bookingService.updateChecklistItem(checklistId, updateChecklistDto);
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
+    return this.bookingService.update(id, updateBookingDto);
   }
 
-  @Delete('checklist/:checklistId')
-  deleteChecklistItem(@Param('checklistId') checklistId: string) {
-    return this.bookingService.deleteChecklistItem(checklistId);
-  }
-
-  @Patch('checklist/:checklistId/toggle')
-  toggleChecklistItem(@Param('checklistId') checklistId: string) {
-    return this.bookingService.toggleChecklistItem(checklistId);
-  }
-
-  @Get(':id/checklist/stats')
-  getChecklistStats(
-    @Param('id') bookingId: string,
-    @Query('type') type?: ChecklistType,
-  ) {
-    return this.bookingService.getChecklistStats(bookingId, type);
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.bookingService.remove(id);
   }
 }

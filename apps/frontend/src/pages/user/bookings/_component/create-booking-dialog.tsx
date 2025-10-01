@@ -13,7 +13,19 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, DollarSign, Upload, Users, Loader2, AlertCircle, Search, Plus, X, Check, CheckCircle } from "lucide-react";
+import {
+	Calendar,
+	DollarSign,
+	Upload,
+	Users,
+	Loader2,
+	AlertCircle,
+	Search,
+	Plus,
+	X,
+	Check,
+	CheckCircle,
+} from "lucide-react";
 import type React from "react";
 import { useState, useEffect } from "react";
 import BookingService from "@/services/booking.service";
@@ -23,11 +35,10 @@ import type {
 	PaymentMethod,
 	IPackage,
 	ICustomer,
-	IBooking
+	IBooking,
 } from "@/types/booking.types";
 import type { IBatches } from "@/types/batches.types";
 import { toast } from "sonner";
-
 
 interface EnhancedBookingPassenger extends IBookingPassenger {
 	checklist: {
@@ -37,7 +48,6 @@ interface EnhancedBookingPassenger extends IBookingPassenger {
 		mandatory: boolean;
 	}[];
 }
-
 
 interface GroupChecklistItem {
 	id: string;
@@ -52,13 +62,16 @@ interface CreateBookingDialogProps {
 	onBookingCreated?: () => void;
 }
 
-export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: CreateBookingDialogProps) {
+export function CreateBookingDialog({
+	open,
+	onOpenChange,
+	onBookingCreated,
+}: CreateBookingDialogProps) {
 	const [step, setStep] = useState(1);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
-
 
 	const [packages, setPackages] = useState<IPackage[]>([]);
 	const [customers, setCustomers] = useState<ICustomer[]>([]);
@@ -71,18 +84,15 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 	const [groupChecklist, setGroupChecklist] = useState<GroupChecklistItem[]>([]);
 
 	const [formData, setFormData] = useState<{
-
 		customerId: string;
 		customerName: string;
 		customerEmail: string;
 		customerPhone: string;
 
-		
 		packageId: string;
 		batchId: string;
 		numberOfPassengers: number;
 
-		
 		passengers: EnhancedBookingPassenger[];
 
 		// Payment Details
@@ -132,13 +142,11 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 	const loadInitialData = async () => {
 		try {
 			setLoadingData(true);
-			const [packagesData] = await Promise.all([
-				BookingService.getPackages(),
-			]);
+			const [packagesData] = await Promise.all([BookingService.getPackages()]);
 			setPackages(packagesData);
 		} catch (err) {
-			console.error('Error loading initial data:', err);
-			setError('Failed to load packages. Please try again.');
+			console.error("Error loading initial data:", err);
+			setError("Failed to load packages. Please try again.");
 		} finally {
 			setLoadingData(false);
 		}
@@ -155,7 +163,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 			setCustomers(results);
 			setShowCustomerResults(true);
 		} catch (err) {
-			console.error('Error searching customers:', err);
+			console.error("Error searching customers:", err);
 		}
 	};
 
@@ -171,8 +179,8 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 			const batches = await BookingService.getAvailableBatches(packageId);
 			setAvailableBatches(batches);
 		} catch (err) {
-			console.error('Error loading batches:', err);
-			setError('Failed to load available batches.');
+			console.error("Error loading batches:", err);
+			setError("Failed to load available batches.");
 		}
 	};
 
@@ -201,7 +209,11 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		}));
 	};
 
-	const updatePassenger = (index: number, field: keyof EnhancedBookingPassenger, value: string | number) => {
+	const updatePassenger = (
+		index: number,
+		field: keyof EnhancedBookingPassenger,
+		value: string | number
+	) => {
 		const newPassengers = [...formData.passengers];
 		newPassengers[index] = { ...newPassengers[index], [field]: value };
 		setFormData((prev) => ({ ...prev, passengers: newPassengers }));
@@ -214,31 +226,37 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		// If booking is already created, call API
 		if (createdBookingId) {
 			try {
-				const checklistItem = await BookingService.addChecklistItem(createdBookingId, {
-					item: item.trim(),
-					completed: false,
-					mandatory: false,
-					type: 'INDIVIDUAL',
-					passengerId: formData.passengers[passengerIndex].id, // Assuming passenger has ID after booking creation
-					sortOrder: formData.passengers[passengerIndex].checklist.length
-				});
+				const checklistItem = await BookingService.addChecklistItem(
+					createdBookingId,
+					{
+						item: item.trim(),
+						completed: false,
+						mandatory: false,
+						type: "INDIVIDUAL",
+						passengerId: formData.passengers[passengerIndex].id, // Assuming passenger has ID after booking creation
+						sortOrder: formData.passengers[passengerIndex].checklist.length,
+					}
+				);
 
 				const newPassengers = [...formData.passengers];
 				newPassengers[passengerIndex] = {
 					...newPassengers[passengerIndex],
-					checklist: [...newPassengers[passengerIndex].checklist, {
-						id: checklistItem.id,
-						item: checklistItem.item,
-						completed: checklistItem.completed,
-						mandatory: checklistItem.mandatory
-					}]
+					checklist: [
+						...newPassengers[passengerIndex].checklist,
+						{
+							id: checklistItem.id,
+							item: checklistItem.item,
+							completed: checklistItem.completed,
+							mandatory: checklistItem.mandatory,
+						},
+					],
 				};
 
 				setFormData((prev) => ({ ...prev, passengers: newPassengers }));
-				toast.success('Checklist item added successfully');
+				toast.success("Checklist item added successfully");
 			} catch (error) {
-				console.error('Error adding checklist item:', error);
-				toast.error('Failed to add checklist item');
+				console.error("Error adding checklist item:", error);
+				toast.error("Failed to add checklist item");
 			}
 		} else {
 			// Before booking creation, just update local state
@@ -247,12 +265,12 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 				id: Date.now().toString(),
 				item: item.trim(),
 				completed: false,
-				mandatory: false
+				mandatory: false,
 			};
 
 			newPassengers[passengerIndex] = {
 				...newPassengers[passengerIndex],
-				checklist: [...newPassengers[passengerIndex].checklist, newChecklistItem]
+				checklist: [...newPassengers[passengerIndex].checklist, newChecklistItem],
 			};
 
 			setFormData((prev) => ({ ...prev, passengers: newPassengers }));
@@ -261,13 +279,13 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 
 	const removeChecklistItem = async (passengerIndex: number, itemId: string) => {
 		// If booking is created and item has a real API ID, call API
-		if (createdBookingId && !itemId.startsWith('temp-')) {
+		if (createdBookingId && !itemId.startsWith("temp-")) {
 			try {
 				await BookingService.deleteChecklistItem(itemId);
-				toast.success('Checklist item removed');
+				toast.success("Checklist item removed");
 			} catch (error) {
-				console.error('Error removing checklist item:', error);
-				toast.error('Failed to remove checklist item');
+				console.error("Error removing checklist item:", error);
+				toast.error("Failed to remove checklist item");
 				return;
 			}
 		}
@@ -275,7 +293,9 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		const newPassengers = [...formData.passengers];
 		newPassengers[passengerIndex] = {
 			...newPassengers[passengerIndex],
-			checklist: newPassengers[passengerIndex].checklist.filter(item => item.id !== itemId)
+			checklist: newPassengers[passengerIndex].checklist.filter(
+				(item) => item.id !== itemId
+			),
 		};
 
 		setFormData((prev) => ({ ...prev, passengers: newPassengers }));
@@ -283,33 +303,33 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 
 	const toggleChecklistItem = async (passengerIndex: number, itemId: string) => {
 		// If booking is created and item has a real API ID, call API
-		if (createdBookingId && !itemId.startsWith('temp-')) {
+		if (createdBookingId && !itemId.startsWith("temp-")) {
 			try {
 				const updatedItem = await BookingService.toggleChecklistItem(itemId);
 
 				const newPassengers = [...formData.passengers];
 				newPassengers[passengerIndex] = {
 					...newPassengers[passengerIndex],
-					checklist: newPassengers[passengerIndex].checklist.map(item =>
+					checklist: newPassengers[passengerIndex].checklist.map((item) =>
 						item.id === itemId
 							? { ...item, completed: updatedItem.completed }
 							: item
-					)
+					),
 				};
 
 				setFormData((prev) => ({ ...prev, passengers: newPassengers }));
 			} catch (error) {
-				console.error('Error toggling checklist item:', error);
-				toast.error('Failed to update checklist item');
+				console.error("Error toggling checklist item:", error);
+				toast.error("Failed to update checklist item");
 			}
 		} else {
 			// Before booking creation or temporary items, just update local state
 			const newPassengers = [...formData.passengers];
 			newPassengers[passengerIndex] = {
 				...newPassengers[passengerIndex],
-				checklist: newPassengers[passengerIndex].checklist.map(item =>
+				checklist: newPassengers[passengerIndex].checklist.map((item) =>
 					item.id === itemId ? { ...item, completed: !item.completed } : item
-				)
+				),
 			};
 
 			setFormData((prev) => ({ ...prev, passengers: newPassengers }));
@@ -319,25 +339,25 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 	// Group checklist functions (with API integration)
 	const toggleGroupChecklistItem = async (itemId: string) => {
 		// If booking is created and item has a real API ID, call API
-		if (createdBookingId && !itemId.startsWith('temp-')) {
+		if (createdBookingId && !itemId.startsWith("temp-")) {
 			try {
 				const updatedItem = await BookingService.toggleChecklistItem(itemId);
 
-				setGroupChecklist(prev =>
-					prev.map(item =>
+				setGroupChecklist((prev) =>
+					prev.map((item) =>
 						item.id === itemId
 							? { ...item, completed: updatedItem.completed }
 							: item
 					)
 				);
 			} catch (error) {
-				console.error('Error toggling group checklist item:', error);
-				toast.error('Failed to update checklist item');
+				console.error("Error toggling group checklist item:", error);
+				toast.error("Failed to update checklist item");
 			}
 		} else {
 			// Before booking creation or temporary items, just update local state
-			setGroupChecklist(prev =>
-				prev.map(item =>
+			setGroupChecklist((prev) =>
+				prev.map((item) =>
 					item.id === itemId ? { ...item, completed: !item.completed } : item
 				)
 			);
@@ -350,26 +370,29 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		// If booking is created, call API
 		if (createdBookingId) {
 			try {
-				const checklistItem = await BookingService.addChecklistItem(createdBookingId, {
-					item: item.trim(),
-					completed: false,
-					mandatory,
-					type: 'GROUP',
-					sortOrder: groupChecklist.length
-				});
+				const checklistItem = await BookingService.addChecklistItem(
+					createdBookingId,
+					{
+						item: item.trim(),
+						completed: false,
+						mandatory,
+						type: "GROUP",
+						sortOrder: groupChecklist.length,
+					}
+				);
 
 				const newItem: GroupChecklistItem = {
 					id: checklistItem.id,
 					item: checklistItem.item,
 					completed: checklistItem.completed,
-					mandatory: checklistItem.mandatory
+					mandatory: checklistItem.mandatory,
 				};
 
-				setGroupChecklist(prev => [...prev, newItem]);
-				toast.success('Group checklist item added successfully');
+				setGroupChecklist((prev) => [...prev, newItem]);
+				toast.success("Group checklist item added successfully");
 			} catch (error) {
-				console.error('Error adding group checklist item:', error);
-				toast.error('Failed to add group checklist item');
+				console.error("Error adding group checklist item:", error);
+				toast.error("Failed to add group checklist item");
 			}
 		} else {
 			// Before booking creation, just update local state
@@ -377,27 +400,27 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 				id: `temp-${Date.now()}`,
 				item: item.trim(),
 				completed: false,
-				mandatory
+				mandatory,
 			};
 
-			setGroupChecklist(prev => [...prev, newItem]);
+			setGroupChecklist((prev) => [...prev, newItem]);
 		}
 	};
 
 	const removeGroupChecklistItem = async (itemId: string) => {
 		// If booking is created and item has a real API ID, call API
-		if (createdBookingId && !itemId.startsWith('temp-')) {
+		if (createdBookingId && !itemId.startsWith("temp-")) {
 			try {
 				await BookingService.deleteChecklistItem(itemId);
-				toast.success('Group checklist item removed');
+				toast.success("Group checklist item removed");
 			} catch (error) {
-				console.error('Error removing group checklist item:', error);
-				toast.error('Failed to remove checklist item');
+				console.error("Error removing group checklist item:", error);
+				toast.error("Failed to remove checklist item");
 				return;
 			}
 		}
 
-		setGroupChecklist(prev => prev.filter(item => item.id !== itemId));
+		setGroupChecklist((prev) => prev.filter((item) => item.id !== itemId));
 	};
 
 	// Check if group can proceed (at least one item)
@@ -405,33 +428,21 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		return groupChecklist.length > 0;
 	};
 
-	// Get group checklist completion stats
-	const getGroupChecklistStats = () => {
-		const total = groupChecklist.length;
-		const completed = groupChecklist.filter(item => item.completed).length;
-		const mandatoryTotal = groupChecklist.filter(item => item.mandatory).length;
-		const mandatoryCompleted = groupChecklist.filter(item => item.mandatory && item.completed).length;
-
-		return {
-			total,
-			completed,
-			mandatoryTotal,
-			mandatoryCompleted,
-			completionPercentage: total > 0 ? Math.round((completed / total) * 100) : 0,
-			mandatoryPercentage: mandatoryTotal > 0 ? Math.round((mandatoryCompleted / mandatoryTotal) * 100) : 0
-		};
-	};
-
 	const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		if (file) {
 			if (file.size > 5 * 1024 * 1024) {
-				setError('File size must be less than 5MB');
+				setError("File size must be less than 5MB");
 				return;
 			}
-			const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+			const allowedTypes = [
+				"image/jpeg",
+				"image/png",
+				"image/jpg",
+				"application/pdf",
+			];
 			if (!allowedTypes.includes(file.type)) {
-				setError('File must be an image (JPEG, PNG) or PDF');
+				setError("File must be an image (JPEG, PNG) or PDF");
 				return;
 			}
 
@@ -440,7 +451,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 	};
 
 	const handleCustomerSelect = (customer: ICustomer) => {
-		setFormData(prev => ({
+		setFormData((prev) => ({
 			...prev,
 			customerId: customer.id,
 			customerName: customer.name,
@@ -453,40 +464,46 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 
 	const createChecklistItems = async (bookingId: string, booking: IBooking) => {
 		try {
-			
 			for (let i = 0; i < groupChecklist.length; i++) {
 				const groupItem = groupChecklist[i];
-				if (groupItem.id.startsWith('temp-')) {
+				if (groupItem.id.startsWith("temp-")) {
 					await BookingService.addChecklistItem(bookingId, {
 						item: groupItem.item,
 						completed: groupItem.completed,
 						mandatory: groupItem.mandatory,
-						type: 'GROUP',
-						sortOrder: i
+						type: "GROUP",
+						sortOrder: i,
 					});
 				}
 			}
-			for (let passengerIndex = 0; passengerIndex < formData.passengers.length; passengerIndex++) {
+			for (
+				let passengerIndex = 0;
+				passengerIndex < formData.passengers.length;
+				passengerIndex++
+			) {
 				const passenger = formData.passengers[passengerIndex];
-				const bookingPassenger = booking.passengers[passengerIndex]; 
+				const bookingPassenger = booking.passengers[passengerIndex];
 
 				for (let i = 0; i < passenger.checklist.length; i++) {
 					const checklistItem = passenger.checklist[i];
-					if (checklistItem.id.toString().startsWith('temp-') || !checklistItem.id.match(/^\d+$/)) {
+					if (
+						checklistItem.id.toString().startsWith("temp-") ||
+						!checklistItem.id.match(/^\d+$/)
+					) {
 						await BookingService.addChecklistItem(bookingId, {
 							item: checklistItem.item,
 							completed: checklistItem.completed,
 							mandatory: checklistItem.mandatory,
-							type: 'INDIVIDUAL',
+							type: "INDIVIDUAL",
 							passengerId: bookingPassenger.id,
-							sortOrder: i
+							sortOrder: i,
 						});
 					}
 				}
 			}
 		} catch (error) {
-			console.error('Error creating checklist items:', error);
-			toast.error('Booking created but some checklist items could not be added');
+			console.error("Error creating checklist items:", error);
+			toast.error("Booking created but some checklist items could not be added");
 		}
 	};
 
@@ -494,7 +511,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		e.preventDefault();
 
 		if (!canGroupProceed()) {
-			setError('Please add at least one group checklist item to proceed.');
+			setError("Please add at least one group checklist item to proceed.");
 			return;
 		}
 
@@ -502,15 +519,16 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 			setLoading(true);
 			setError(null);
 
-			
-			const regularPassengers: IBookingPassenger[] = formData.passengers.map(passenger => ({
-				fullName: passenger.fullName,
-				age: passenger.age,
-				email: passenger.email,
-				phone: passenger.phone,
-				emergencyContact: passenger.emergencyContact,
-				specialRequirements: passenger.specialRequirements,
-			}));
+			const regularPassengers: IBookingPassenger[] = formData.passengers.map(
+				(passenger) => ({
+					fullName: passenger.fullName,
+					age: passenger.age,
+					email: passenger.email,
+					phone: passenger.phone,
+					emergencyContact: passenger.emergencyContact,
+					specialRequirements: passenger.specialRequirements,
+				})
+			);
 
 			const bookingData: ICreateBookingRequest = {
 				customerId: formData.customerId,
@@ -520,22 +538,27 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 				totalAmount: formData.totalAmount,
 				specialRequests: formData.specialRequests,
 				passengers: regularPassengers,
-				initialPayment: formData.advanceAmount > 0 ? {
-					amount: formData.advanceAmount,
-					paymentMethod: formData.paymentMethod as PaymentMethod,
-					paymentReference: formData.paymentReference,
-					notes: "Initial payment",
-				} : undefined,
+				initialPayment:
+					formData.advanceAmount > 0
+						? {
+								amount: formData.advanceAmount,
+								paymentMethod: formData.paymentMethod as PaymentMethod,
+								paymentReference: formData.paymentReference,
+								notes: "Initial payment",
+						  }
+						: undefined,
 			};
 
 			const validation = BookingService.validateBookingData(bookingData);
 			if (!validation.isValid) {
-				setError(validation.errors.join(', '));
+				setError(validation.errors.join(", "));
 				return;
 			}
 
 			if (formData.paymentScreenshot) {
-				const uploadResult = await BookingService.uploadFile(formData.paymentScreenshot);
+				const uploadResult = await BookingService.uploadFile(
+					formData.paymentScreenshot
+				);
 				if (bookingData.initialPayment) {
 					bookingData.initialPayment.filePath = uploadResult.filePath;
 				}
@@ -546,8 +569,10 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 
 			await createChecklistItems(createdBooking.id, createdBooking);
 
-			toast.success('Booking created successfully', {
-				description: `Booking ${BookingService.formatBookingNumber(createdBooking.bookingNumber)} has been created with checklist items.`,
+			toast.success("Booking created successfully", {
+				description: `Booking ${BookingService.formatBookingNumber(
+					createdBooking.bookingNumber
+				)} has been created with checklist items.`,
 			});
 
 			resetForm();
@@ -556,10 +581,13 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 			if (onBookingCreated) {
 				onBookingCreated();
 			}
-
 		} catch (err) {
-			console.error('Error creating booking:', err);
-			setError((err as any)?.response?.data?.message || 'Failed to create booking. Please try again.');
+			console.error("Error creating booking:", err);
+			setError(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				(err as any)?.response?.data?.message ||
+					"Failed to create booking. Please try again."
+			);
 		} finally {
 			setLoading(false);
 		}
@@ -601,17 +629,19 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 
 	const nextStep = () => {
 		if (step === 1 && !formData.customerId) {
-			setError('Please select a customer');
+			setError("Please select a customer");
 			return;
 		}
 		if (step === 2 && (!formData.packageId || !formData.batchId)) {
-			setError('Please select both package and batch');
+			setError("Please select both package and batch");
 			return;
 		}
 		if (step === 3) {
-			const invalidPassengers = formData.passengers.some(p => !p.fullName || !p.age || !p.emergencyContact);
+			const invalidPassengers = formData.passengers.some(
+				(p) => !p.fullName || !p.age || !p.emergencyContact
+			);
 			if (invalidPassengers) {
-				setError('Please fill in all required passenger details');
+				setError("Please fill in all required passenger details");
 				return;
 			}
 		}
@@ -637,7 +667,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		};
 
 		const handleKeyPress = (e: React.KeyboardEvent) => {
-			if (e.key === 'Enter') {
+			if (e.key === "Enter") {
 				e.preventDefault();
 				handleAddItem();
 			}
@@ -672,26 +702,33 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 						{passenger.checklist.map((item) => (
 							<div
 								key={item.id}
-								className={`flex items-center gap-2 p-2 rounded-lg border ${item.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
-									}`}
+								className={`flex items-center gap-2 p-2 rounded-lg border ${
+									item.completed
+										? "bg-green-50 border-green-200"
+										: "bg-gray-50 border-gray-200"
+								}`}
 							>
 								<Button
 									type="button"
 									variant="ghost"
 									size="sm"
-									onClick={() => toggleChecklistItem(passengerIndex, item.id)}
-									className={`p-1 h-6 w-6 rounded ${item.completed
-											? 'bg-green-500 text-white hover:bg-green-600'
-											: 'border-2 border-gray-300 hover:border-gray-400'
-										}`}
+									onClick={() =>
+										toggleChecklistItem(passengerIndex, item.id)
+									}
+									className={`p-1 h-6 w-6 rounded ${
+										item.completed
+											? "bg-green-500 text-white hover:bg-green-600"
+											: "border-2 border-gray-300 hover:border-gray-400"
+									}`}
 								>
 									{item.completed && <Check className="w-3 h-3" />}
 								</Button>
 								<span
-									className={`flex-1 text-sm ${item.completed
-											? 'line-through text-green-700'
-											: 'text-gray-900'
-										}`}
+									className={`flex-1 text-sm ${
+										item.completed
+											? "line-through text-green-700"
+											: "text-gray-900"
+									}`}
 								>
 									{item.item}
 								</span>
@@ -704,7 +741,9 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 									type="button"
 									variant="ghost"
 									size="sm"
-									onClick={() => removeChecklistItem(passengerIndex, item.id)}
+									onClick={() =>
+										removeChecklistItem(passengerIndex, item.id)
+									}
 									className="p-1 h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
 								>
 									<X className="w-3 h-3" />
@@ -716,7 +755,8 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 
 				{passenger.checklist.length === 0 && (
 					<p className="text-sm text-muted-foreground">
-						No individual checklist items added yet. Add items to help track personal travel preparations.
+						No individual checklist items added yet. Add items to help track
+						personal travel preparations.
 					</p>
 				)}
 			</div>
@@ -778,7 +818,10 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 							onChange={(e) => setNewItemMandatory(e.target.checked)}
 							className="rounded"
 						/>
-						<label htmlFor="mandatory" className="text-sm text-muted-foreground">
+						<label
+							htmlFor="mandatory"
+							className="text-sm text-muted-foreground"
+						>
 							Mark as mandatory
 						</label>
 					</div>
@@ -796,18 +839,22 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 								variant="ghost"
 								size="sm"
 								onClick={() => toggleGroupChecklistItem(item.id)}
-								className={`p-1 h-6 w-6 rounded ${item.completed
-										? 'bg-green-500 text-white hover:bg-green-600'
-										: 'border-2 border-gray-300 hover:border-gray-400'
-									}`}
+								className={`p-1 h-6 w-6 rounded ${
+									item.completed
+										? "bg-green-500 text-white hover:bg-green-600"
+										: "border-2 border-gray-300 hover:border-gray-400"
+								}`}
 							>
 								{item.completed && <Check className="w-3 h-3" />}
 							</Button>
 							<div className="flex-1">
-								<span className={`text-sm ${item.completed
-										? 'line-through text-green-700'
-										: 'text-gray-900'
-									}`}>
+								<span
+									className={`text-sm ${
+										item.completed
+											? "line-through text-green-700"
+											: "text-gray-900"
+									}`}
+								>
 									{item.item}
 								</span>
 								{item.mandatory && (
@@ -831,7 +878,8 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 
 				{groupChecklist.length === 0 && (
 					<p className="text-sm text-muted-foreground">
-						No group checklist items added yet. Add items to help track group preparations.
+						No group checklist items added yet. Add items to help track group
+						preparations.
 					</p>
 				)}
 			</div>
@@ -871,7 +919,9 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 								</CardHeader>
 								<CardContent className="space-y-4">
 									<div>
-										<Label htmlFor="customerSearch">Search Customer *</Label>
+										<Label htmlFor="customerSearch">
+											Search Customer *
+										</Label>
 										<div className="relative mt-2">
 											<Input
 												id="customerSearch"
@@ -892,11 +942,16 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 													<div
 														key={customer.id}
 														className="p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
-														onClick={() => handleCustomerSelect(customer)}
+														onClick={() =>
+															handleCustomerSelect(customer)
+														}
 													>
-														<div className="font-medium">{customer.name}</div>
+														<div className="font-medium">
+															{customer.name}
+														</div>
 														<div className="text-sm text-muted-foreground">
-															{customer.email} • {customer.phone}
+															{customer.email} •{" "}
+															{customer.phone}
 														</div>
 													</div>
 												))}
@@ -905,11 +960,22 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 									</div>
 									{formData.customerId && (
 										<div className="p-4 bg-muted/50 rounded-lg">
-											<h4 className="font-medium mb-2">Selected Customer:</h4>
+											<h4 className="font-medium mb-2">
+												Selected Customer:
+											</h4>
 											<div className="space-y-1">
-												<p><strong>Name:</strong> {formData.customerName}</p>
-												<p><strong>Email:</strong> {formData.customerEmail}</p>
-												<p><strong>Phone:</strong> {formData.customerPhone}</p>
+												<p>
+													<strong>Name:</strong>{" "}
+													{formData.customerName}
+												</p>
+												<p>
+													<strong>Email:</strong>{" "}
+													{formData.customerEmail}
+												</p>
+												<p>
+													<strong>Phone:</strong>{" "}
+													{formData.customerPhone}
+												</p>
 											</div>
 										</div>
 									)}
@@ -928,16 +994,23 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 									</CardHeader>
 									<CardContent className="space-y-4">
 										<div>
-											<Label htmlFor="package" className="mb-2">Select Package *</Label>
+											<Label htmlFor="package" className="mb-2">
+												Select Package *
+											</Label>
 											<Select
 												value={formData.packageId}
 												onValueChange={(value) => {
-													const pkg = packages.find(p => p.id === value);
+													const pkg = packages.find(
+														(p) => p.id === value
+													);
 													setFormData((prev) => ({
 														...prev,
 														packageId: value,
 														batchId: "",
-														totalAmount: pkg ? pkg.price * prev.numberOfPassengers : 0,
+														totalAmount: pkg
+															? pkg.price *
+															  prev.numberOfPassengers
+															: 0,
 													}));
 												}}
 											>
@@ -950,7 +1023,10 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 															key={pkg.id}
 															value={pkg.id}
 														>
-															{pkg.name} - {BookingService.formatCurrency(pkg.price)}
+															{pkg.name} -{" "}
+															{BookingService.formatCurrency(
+																pkg.price
+															)}
 														</SelectItem>
 													))}
 												</SelectContent>
@@ -964,10 +1040,12 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 													{availableBatches.map((batch) => (
 														<div
 															key={batch.id}
-															className={`p-4 border rounded-lg cursor-pointer transition-colors ${formData.batchId === batch.id
+															className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+																formData.batchId ===
+																batch.id
 																	? "border-primary bg-primary/5"
 																	: "hover:bg-muted/50"
-																}`}
+															}`}
 															onClick={() =>
 																setFormData((prev) => ({
 																	...prev,
@@ -980,21 +1058,38 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 																	<Calendar className="w-4 h-4" />
 																	<div>
 																		<p className="font-medium">
-																			{new Date(batch.startDate).toLocaleDateString()} - {new Date(batch.endDate).toLocaleDateString()}
+																			{new Date(
+																				batch.startDate
+																			).toLocaleDateString()}{" "}
+																			-{" "}
+																			{new Date(
+																				batch.endDate
+																			).toLocaleDateString()}
 																		</p>
 																		<p className="text-sm text-muted-foreground">
-																			{batch.totalSeats - batch.bookedSeats} seats available out of {batch.totalSeats}
+																			{batch.totalSeats -
+																				batch.bookedSeats}{" "}
+																			seats
+																			available out
+																			of{" "}
+																			{
+																				batch.totalSeats
+																			}
 																		</p>
 																	</div>
 																</div>
 																<Badge
 																	variant={
-																		(batch.totalSeats - batch.bookedSeats) > 5
+																		batch.totalSeats -
+																			batch.bookedSeats >
+																		5
 																			? "default"
 																			: "secondary"
 																	}
 																>
-																	{batch.totalSeats - batch.bookedSeats} Available
+																	{batch.totalSeats -
+																		batch.bookedSeats}{" "}
+																	Available
 																</Badge>
 															</div>
 														</div>
@@ -1005,13 +1100,18 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 
 										{formData.batchId && (
 											<div>
-												<Label htmlFor="passengers" className="mb-2">
+												<Label
+													htmlFor="passengers"
+													className="mb-2"
+												>
 													Number of Passengers *
 												</Label>
 												<Select
 													value={formData.numberOfPassengers.toString()}
 													onValueChange={(value) =>
-														updatePassengerCount(Number.parseInt(value))
+														updatePassengerCount(
+															Number.parseInt(value)
+														)
 													}
 												>
 													<SelectTrigger>
@@ -1021,16 +1121,22 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 														{Array.from(
 															{
 																length: Math.min(
-																	selectedBatch ? selectedBatch.totalSeats - selectedBatch.bookedSeats : 1,
+																	selectedBatch
+																		? selectedBatch.totalSeats -
+																				selectedBatch.bookedSeats
+																		: 1,
 																	10
 																),
 															},
 															(_, i) => (
 																<SelectItem
 																	key={i + 1}
-																	value={(i + 1).toString()}
+																	value={(
+																		i + 1
+																	).toString()}
 																>
-																	{i + 1} Passenger{i > 0 ? "s" : ""}
+																	{i + 1} Passenger
+																	{i > 0 ? "s" : ""}
 																</SelectItem>
 															)
 														)}
@@ -1046,7 +1152,9 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 														Total Amount:
 													</span>
 													<span className="text-xl font-bold">
-														{BookingService.formatCurrency(formData.totalAmount)}
+														{BookingService.formatCurrency(
+															formData.totalAmount
+														)}
 													</span>
 												</div>
 											</div>
@@ -1098,7 +1206,9 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 															updatePassenger(
 																index,
 																"age",
-																Number.parseInt(e.target.value) || 0
+																Number.parseInt(
+																	e.target.value
+																) || 0
 															)
 														}
 														required
@@ -1165,7 +1275,9 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 
 											{/* Individual Checklist Section */}
 											<div className="border-t pt-4">
-												<ChecklistManager passengerIndex={index} />
+												<ChecklistManager
+													passengerIndex={index}
+												/>
 											</div>
 										</div>
 									))}
@@ -1202,7 +1314,9 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 											<div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
 												<DollarSign className="w-4 h-4" />
 												<span className="font-bold">
-													{BookingService.formatCurrency(formData.totalAmount)}
+													{BookingService.formatCurrency(
+														formData.totalAmount
+													)}
 												</span>
 											</div>
 										</div>
@@ -1219,7 +1333,10 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 												onChange={(e) =>
 													setFormData((prev) => ({
 														...prev,
-														advanceAmount: Number.parseInt(e.target.value) || 0,
+														advanceAmount:
+															Number.parseInt(
+																e.target.value
+															) || 0,
 													}))
 												}
 											/>
@@ -1238,7 +1355,8 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 														onValueChange={(value) =>
 															setFormData((prev) => ({
 																...prev,
-																paymentMethod: value as PaymentMethod,
+																paymentMethod:
+																	value as PaymentMethod,
 															}))
 														}
 													>
@@ -1255,9 +1373,15 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 															<SelectItem value="debit_card">
 																Debit Card
 															</SelectItem>
-															<SelectItem value="cash">Cash</SelectItem>
-															<SelectItem value="upi">UPI</SelectItem>
-															<SelectItem value="other">Other</SelectItem>
+															<SelectItem value="cash">
+																Cash
+															</SelectItem>
+															<SelectItem value="upi">
+																UPI
+															</SelectItem>
+															<SelectItem value="other">
+																Other
+															</SelectItem>
 														</SelectContent>
 													</Select>
 												</div>
@@ -1271,7 +1395,8 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 														onChange={(e) =>
 															setFormData((prev) => ({
 																...prev,
-																paymentReference: e.target.value,
+																paymentReference:
+																	e.target.value,
 															}))
 														}
 														placeholder="Transaction ID, Check number, etc."
@@ -1289,7 +1414,9 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 															<Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
 															<p className="text-sm text-muted-foreground">
 																{formData.paymentScreenshot
-																	? formData.paymentScreenshot.name
+																	? formData
+																			.paymentScreenshot
+																			.name
 																	: "Click to upload payment proof (Max 5MB)"}
 															</p>
 														</div>
@@ -1329,13 +1456,17 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 												<div className="flex justify-between">
 													<span>Total Amount:</span>
 													<span className="font-medium">
-														{BookingService.formatCurrency(formData.totalAmount)}
+														{BookingService.formatCurrency(
+															formData.totalAmount
+														)}
 													</span>
 												</div>
 												<div className="flex justify-between">
 													<span>Advance Payment:</span>
 													<span className="font-medium">
-														{BookingService.formatCurrency(formData.advanceAmount)}
+														{BookingService.formatCurrency(
+															formData.advanceAmount
+														)}
 													</span>
 												</div>
 												<div className="flex justify-between border-t pt-2">
@@ -1343,7 +1474,10 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 														Balance Amount:
 													</span>
 													<span className="font-bold">
-														{BookingService.formatCurrency(formData.totalAmount - formData.advanceAmount)}
+														{BookingService.formatCurrency(
+															formData.totalAmount -
+																formData.advanceAmount
+														)}
 													</span>
 												</div>
 											</div>
@@ -1351,22 +1485,29 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 									)}
 
 									{/* Group checklist status on final step */}
-									<div className={`p-3 rounded-lg border ${canGroupProceed()
-											? 'bg-green-50 border-green-300'
-											: 'bg-gray-50 border-gray-300'
-										}`}>
+									<div
+										className={`p-3 rounded-lg border ${
+											canGroupProceed()
+												? "bg-green-50 border-green-300"
+												: "bg-gray-50 border-gray-300"
+										}`}
+									>
 										<div className="flex items-center gap-2">
 											{canGroupProceed() ? (
 												<CheckCircle className="w-5 h-5 text-green-600" />
 											) : (
 												<AlertCircle className="w-5 h-5 text-gray-600" />
 											)}
-											<span className={`font-medium ${canGroupProceed() ? 'text-green-700' : 'text-gray-700'
-												}`}>
+											<span
+												className={`font-medium ${
+													canGroupProceed()
+														? "text-green-700"
+														: "text-gray-700"
+												}`}
+											>
 												{canGroupProceed()
 													? `Group checklist ready (${groupChecklist.length} items added)`
-													: 'Add at least one group checklist item to proceed'
-												}
+													: "Add at least one group checklist item to proceed"}
 											</span>
 										</div>
 									</div>

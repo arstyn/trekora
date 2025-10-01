@@ -12,7 +12,10 @@ import {
 } from 'src/database/entity/booking-payment.entity';
 import { BookingPassenger } from 'src/database/entity/booking-passenger.entity';
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
-import { BookingChecklist, ChecklistType } from 'src/database/entity/booking-checklist.entity';
+import {
+  BookingChecklist,
+  ChecklistType,
+} from 'src/database/entity/booking-checklist.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
 import { Batch } from 'src/database/entity/batch.entity';
@@ -134,38 +137,43 @@ export class BookingService {
           specialRequirements: passengerDto.specialRequirements,
           bookingId: savedBooking.id,
         });
-        
+
         const savedPassenger = await queryRunner.manager.save(passenger);
         savedPassengers.push(savedPassenger);
 
         // Create individual checklists for this passenger
         if (passengerDto.checklist && passengerDto.checklist.length > 0) {
-          const individualChecklists = passengerDto.checklist.map((checklistItem, index) =>
-            queryRunner.manager.create(BookingChecklist, {
-              item: checklistItem.item,
-              completed: checklistItem.completed || false,
-              mandatory: checklistItem.mandatory || false,
-              type: ChecklistType.INDIVIDUAL,
-              bookingId: savedBooking.id,
-              passengerId: savedPassenger.id,
-              sortOrder: index,
-            }),
+          const individualChecklists = passengerDto.checklist.map(
+            (checklistItem, index) =>
+              queryRunner.manager.create(BookingChecklist, {
+                item: checklistItem.item,
+                completed: checklistItem.completed || false,
+                mandatory: checklistItem.mandatory || false,
+                type: ChecklistType.INDIVIDUAL,
+                bookingId: savedBooking.id,
+                passengerId: savedPassenger.id,
+                sortOrder: index,
+              }),
           );
           await queryRunner.manager.save(individualChecklists);
         }
       }
 
       // Create group checklist items
-      if (createBookingDto.groupChecklist && createBookingDto.groupChecklist.length > 0) {
-        const groupChecklists = createBookingDto.groupChecklist.map((checklistItem, index) =>
-          queryRunner.manager.create(BookingChecklist, {
-            item: checklistItem.item,
-            completed: checklistItem.completed || false,
-            mandatory: checklistItem.mandatory || false,
-            type: ChecklistType.GROUP,
-            bookingId: savedBooking.id,
-            sortOrder: index,
-          }),
+      if (
+        createBookingDto.groupChecklist &&
+        createBookingDto.groupChecklist.length > 0
+      ) {
+        const groupChecklists = createBookingDto.groupChecklist.map(
+          (checklistItem, index) =>
+            queryRunner.manager.create(BookingChecklist, {
+              item: checklistItem.item,
+              completed: checklistItem.completed || false,
+              mandatory: checklistItem.mandatory || false,
+              type: ChecklistType.GROUP,
+              bookingId: savedBooking.id,
+              sortOrder: index,
+            }),
         );
         await queryRunner.manager.save(groupChecklists);
       }
@@ -251,7 +259,6 @@ export class BookingService {
         'package',
         'batch',
         'passengers',
-        'passengers.checklists',
         'checklists',
         'payments',
         'documents',
@@ -292,38 +299,47 @@ export class BookingService {
       balanceAmount: booking.balanceAmount,
       status: booking.status,
       specialRequests: booking.specialRequests,
-      passengers: booking.passengers.map((passenger): BookingPassengerResponseDto => ({
-        id: passenger.id,
-        fullName: passenger.fullName,
-        age: passenger.age,
-        email: passenger.email,
-        phone: passenger.phone,
-        emergencyContact: passenger.emergencyContact,
-        specialRequirements: passenger.specialRequirements,
-        checklist: passenger.additionalInfo?.map((item): ChecklistItemResponseDto => ({
-          id: item.id,
-          item: item.item,
-          completed: item.completed,
-          mandatory: item.mandatory,
-          type: item.type,
-          passengerId: item.passengerId,
-          sortOrder: item.sortOrder,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        })) || [],
-      })),
-      groupChecklist: booking.checklists?.filter(item => item.type === ChecklistType.GROUP)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((item): ChecklistItemResponseDto => ({
-          id: item.id,
-          item: item.item,
-          completed: item.completed,
-          mandatory: item.mandatory,
-          type: item.type,
-          sortOrder: item.sortOrder,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        })) || [],
+      passengers: booking.passengers.map(
+        (passenger): BookingPassengerResponseDto => ({
+          id: passenger.id,
+          fullName: passenger.fullName,
+          age: passenger.age,
+          email: passenger.email,
+          phone: passenger.phone,
+          emergencyContact: passenger.emergencyContact,
+          specialRequirements: passenger.specialRequirements,
+          checklist:
+            passenger.additionalInfo?.map(
+              (item): ChecklistItemResponseDto => ({
+                id: item.id,
+                item: item.item,
+                completed: item.completed,
+                mandatory: item.mandatory,
+                type: item.type,
+                passengerId: item.passengerId,
+                sortOrder: item.sortOrder,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+              }),
+            ) || [],
+        }),
+      ),
+      groupChecklist:
+        booking.checklists
+          ?.filter((item) => item.type === ChecklistType.GROUP)
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map(
+            (item): ChecklistItemResponseDto => ({
+              id: item.id,
+              item: item.item,
+              completed: item.completed,
+              mandatory: item.mandatory,
+              type: item.type,
+              sortOrder: item.sortOrder,
+              createdAt: item.createdAt,
+              updatedAt: item.updatedAt,
+            }),
+          ) || [],
       payments: booking.payments.map((payment) => ({
         id: payment.id,
         amount: payment.amount,
@@ -527,7 +543,10 @@ export class BookingService {
     }
 
     // Validate passenger exists if it's an individual checklist item
-    if (createChecklistDto.type === ChecklistType.INDIVIDUAL && createChecklistDto.passengerId) {
+    if (
+      createChecklistDto.type === ChecklistType.INDIVIDUAL &&
+      createChecklistDto.passengerId
+    ) {
       const passenger = await this.passengerRepository.findOne({
         where: { id: createChecklistDto.passengerId, bookingId },
       });
@@ -597,7 +616,10 @@ export class BookingService {
     }
   }
 
-  async getChecklistStats(bookingId: string, type?: ChecklistType): Promise<ChecklistStatsDto> {
+  async getChecklistStats(
+    bookingId: string,
+    type?: ChecklistType,
+  ): Promise<ChecklistStatsDto> {
     const queryBuilder = this.checklistRepository
       .createQueryBuilder('checklist')
       .where('checklist.bookingId = :bookingId', { bookingId });
@@ -609,17 +631,23 @@ export class BookingService {
     const items = await queryBuilder.getMany();
 
     const totalItems = items.length;
-    const completedItems = items.filter(item => item.completed).length;
-    const mandatoryItems = items.filter(item => item.mandatory).length;
-    const completedMandatoryItems = items.filter(item => item.mandatory && item.completed).length;
+    const completedItems = items.filter((item) => item.completed).length;
+    const mandatoryItems = items.filter((item) => item.mandatory).length;
+    const completedMandatoryItems = items.filter(
+      (item) => item.mandatory && item.completed,
+    ).length;
 
     return {
       totalItems,
       completedItems,
       mandatoryItems,
       completedMandatoryItems,
-      completionPercentage: totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0,
-      mandatoryCompletionPercentage: mandatoryItems > 0 ? Math.round((completedMandatoryItems / mandatoryItems) * 100) : 0,
+      completionPercentage:
+        totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0,
+      mandatoryCompletionPercentage:
+        mandatoryItems > 0
+          ? Math.round((completedMandatoryItems / mandatoryItems) * 100)
+          : 0,
     };
   }
 
@@ -636,7 +664,9 @@ export class BookingService {
       completed: !checklistItem.completed,
     });
 
-    return this.updateChecklistItem(id, { completed: !checklistItem.completed });
+    return this.updateChecklistItem(id, {
+      completed: !checklistItem.completed,
+    });
   }
 
   private async generateBookingNumber(organizationId: string): Promise<string> {

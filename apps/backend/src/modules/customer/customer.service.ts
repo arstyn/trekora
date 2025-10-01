@@ -206,14 +206,14 @@ export class CustomerService {
     await this.customerRepository.delete(id);
   }
 
-  async search(query: string): Promise<Customer[]> {
+  async search(query: string, organizationId: string): Promise<Customer[]> {
     return this.customerRepository.find({
       where: [
-        { firstName: ILike(`%${query}%`) },
-        { lastName: ILike(`%${query}%`) },
-        { email: ILike(`%${query}%`) },
-        { phone: ILike(`%${query}%`) },
-        { passportNumber: ILike(`%${query}%`) },
+        { firstName: ILike(`%${query}%`), organizationId },
+        { lastName: ILike(`%${query}%`), organizationId },
+        { email: ILike(`%${query}%`), organizationId },
+        { phone: ILike(`%${query}%`), organizationId },
+        { passportNumber: ILike(`%${query}%`), organizationId },
       ],
     });
   }
