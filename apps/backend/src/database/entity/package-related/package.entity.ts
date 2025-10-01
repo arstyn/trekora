@@ -47,19 +47,6 @@ export class Package {
   @Column({ nullable: true })
   maxGuests: number;
 
-  @Column('date', { nullable: true })
-  startDate: Date;
-
-  @Column('date', { nullable: true })
-  endDate: Date;
-
-  @Column({
-    type: 'enum',
-    enum: ['easy', 'moderate', 'challenging', 'extreme'],
-    nullable: true,
-  })
-  difficulty: string;
-
   @Column({
     type: 'enum',
     enum: [

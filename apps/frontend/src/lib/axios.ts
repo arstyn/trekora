@@ -2,10 +2,11 @@
 import axios, { type AxiosInstance } from "axios";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+const AXIOS_TIMEOUT = import.meta.env.AXIOS_TIMEOUT || "30000";
 
 const axiosInstance: AxiosInstance = axios.create({
 	baseURL: BASE_URL,
-	timeout: 10000,
+	timeout: parseInt(AXIOS_TIMEOUT),
 	headers: {
 		"Content-Type": "application/json",
 	},

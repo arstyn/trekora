@@ -88,14 +88,6 @@ export class PackageService {
       const cleanedData = {
         ...rest,
         id: randomUUID(),
-        startDate:
-          rest.startDate === '' || rest.startDate === undefined
-            ? undefined
-            : rest.startDate,
-        endDate:
-          rest.endDate === '' || rest.endDate === undefined
-            ? undefined
-            : rest.endDate,
         destination: rest.destination === '' ? undefined : rest.destination,
         duration: rest.duration === '' ? undefined : rest.duration,
         description: rest.description === '' ? undefined : rest.description,
@@ -308,7 +300,6 @@ export class PackageService {
         'price',
         'description',
         'maxGuests',
-        'startDate',
         'thumbnail',
         'status',
       ],
@@ -405,15 +396,6 @@ export class PackageService {
 
       const cleanedData = {
         ...rest,
-        // Convert empty strings to undefined for date fields
-        startDate:
-          rest.startDate === '' || rest.startDate === undefined
-            ? undefined
-            : rest.startDate,
-        endDate:
-          rest.endDate === '' || rest.endDate === undefined
-            ? undefined
-            : rest.endDate,
         // Convert empty strings to undefined for optional fields
         destination: rest.destination === '' ? undefined : rest.destination,
         duration: rest.duration === '' ? undefined : rest.duration,
@@ -674,15 +656,6 @@ export class PackageService {
     if (!packageData.maxGuests || packageData.maxGuests <= 0) {
       errors.push('Valid maximum guests count is required');
     }
-    if (!packageData.startDate) {
-      errors.push('Start date is required');
-    }
-    if (!packageData.endDate) {
-      errors.push('End date is required');
-    }
-    if (!packageData.difficulty) {
-      errors.push('Difficulty level is required');
-    }
     if (!packageData.category) {
       errors.push('Category is required');
     }
@@ -712,16 +685,21 @@ export class PackageService {
     const paymentStructure = await this.paymentMilestoneRepository.find({
       where: { packageId: id },
     });
+
     if (paymentStructure.length === 0) {
       errors.push('Payment structure is required');
     } else {
-      const totalPercentage = paymentStructure.reduce(
-        (sum, milestone) => sum + Number(milestone.percentage || 0),
+      const totalAmount = paymentStructure.reduce(
+        (sum, milestone) => sum + Number(milestone.amount || 0),
         0,
       );
 
-      if (totalPercentage !== 100) {
-        errors.push('Payment structure must total exactly 100%');
+      const packagePrice = Number(packageData.price);
+
+      if (totalAmount !== packagePrice) {
+        errors.push(
+          `Payment structure must total exactly the package price. Current total: ${totalAmount}, Package price: ${packagePrice}`,
+        );
       }
     }
 

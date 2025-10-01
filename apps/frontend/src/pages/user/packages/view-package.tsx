@@ -153,15 +153,6 @@ export default function ViewPackagePage() {
 											{packageData.maxGuests || "Not set"}
 										</div>
 									</div>
-									<div className="text-center p-4 bg-primary/10 rounded-lg">
-										<MapPin className="w-8 h-8 text-primary mx-auto mb-2" />
-										<div className="text-sm text-muted-foreground">
-											Difficulty
-										</div>
-										<div className="font-semibold capitalize">
-											{packageData.difficulty || "Not set"}
-										</div>
-									</div>
 								</div>
 							</CardContent>
 						</Card>
@@ -320,7 +311,7 @@ export default function ViewPackagePage() {
 													</div>
 													<div className="text-right">
 														<div className="text-2xl font-bold text-primary">
-															{milestone?.percentage || 0}%
+															₹{milestone?.amount || 0}
 														</div>
 														<div className="text-sm  capitalize">
 															{milestone?.dueDate?.replace(
@@ -373,7 +364,7 @@ export default function ViewPackagePage() {
 														</p>
 													</div>
 													<Badge variant="outline">
-														{tier?.percentage || 0}% fee
+														₹{tier?.amount || 0} fee
 													</Badge>
 												</div>
 											)
@@ -769,26 +760,6 @@ export default function ViewPackagePage() {
 									<span className="text-sm ">Category:</span>
 									<span className="text-sm font-medium capitalize">
 										{packageData.category || "Not set"}
-									</span>
-								</div>
-								<div className="flex justify-between">
-									<span className="text-sm ">Start Date:</span>
-									<span className="text-sm font-medium">
-										{packageData.startDate
-											? new Date(
-													packageData.startDate
-											  ).toLocaleDateString()
-											: "Not set"}
-									</span>
-								</div>
-								<div className="flex justify-between">
-									<span className="text-sm ">End Date:</span>
-									<span className="text-sm font-medium">
-										{packageData.endDate
-											? new Date(
-													packageData.endDate
-											  ).toLocaleDateString()
-											: "Not set"}
 									</span>
 								</div>
 							</CardContent>

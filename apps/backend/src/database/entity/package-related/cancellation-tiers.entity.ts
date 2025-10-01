@@ -9,8 +9,8 @@ export class CancellationTier {
   @Column({ nullable: true })
   timeframe: string;
 
-  @Column('decimal', { precision: 5, scale: 2, nullable: true })
-  percentage: number;
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  amount: number;
 
   @Column('text', { nullable: true })
   description: string;

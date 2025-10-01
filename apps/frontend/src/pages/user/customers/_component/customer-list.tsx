@@ -1,3 +1,4 @@
+import DataTableFooter from "@/components/data-table-footer";
 import NAText from "@/components/na-text";
 import {
 	AlertDialog,
@@ -11,13 +12,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -33,25 +27,124 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type { ICustomer } from "@/types/customer.type";
-import { Edit, MoreHorizontal, Trash2 } from "lucide-react";
+import {
+	type ColumnDef,
+	type SortingState,
+	flexRender,
+	getCoreRowModel,
+	getPaginationRowModel,
+	getSortedRowModel,
+	useReactTable,
+} from "@tanstack/react-table";
+import { MoreHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
+import { getFileUrl } from "@/lib/utils";
 
 interface CustomerListProps {
 	customers: ICustomer[];
-	onSelect: (customer: ICustomer) => void;
 	onDelete: (customerId: string) => void;
+	onCustomerClick: (customer: ICustomer) => void;
 }
 
 export default function CustomerList({
 	customers,
-	onSelect,
 	onDelete,
+	onCustomerClick,
 }: CustomerListProps) {
 	const [customerToDelete, setCustomerToDelete] = useState<ICustomer | null>(null);
+	const [sorting, setSorting] = useState<SortingState>([]);
 
-	const confirmDelete = (customer: ICustomer) => {
-		setCustomerToDelete(customer);
-	};
+	const columns: ColumnDef<ICustomer>[] = [
+		{
+			accessorKey: "firstName",
+			header: "Name",
+			cell: ({ row }) => (
+				<div className="flex items-center gap-2">
+					<img
+						src={(() => {
+							if (row.original.profilePhoto) {
+								return getFileUrl(
+									getServeFileUrl(row.original.profilePhoto)
+								);
+							}
+							return "/placeholder.svg";
+						})()}
+						alt="Profile"
+						className="w-8 h-8 rounded-full object-cover"
+					/>
+
+					<span className="font-medium">
+						{row.original.firstName} {row.original.lastName}
+					</span>
+				</div>
+			),
+		},
+		{
+			accessorKey: "email",
+			header: "Email",
+			cell: ({ row }) => row.original.email || <NAText />,
+		},
+		{
+			accessorKey: "phone",
+			header: "Phone",
+			cell: ({ row }) => row.original.phone || <NAText />,
+		},
+		{
+			accessorKey: "passportNumber",
+			header: "Passport",
+			cell: ({ row }) => row.original.passportNumber || <NAText />,
+		},
+		{
+			accessorKey: "gender",
+			header: "Gender",
+			cell: ({ row }) => (
+				<Badge variant="outline" className="capitalize">
+					{row.original.gender?.replace("_", " ")}
+				</Badge>
+			),
+		},
+		{
+			id: "actions",
+			header: "",
+			cell: ({ row }) => {
+				const customer = row.original;
+				return (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+							<Button variant="ghost" className="h-8 w-8 p-0">
+								<span className="sr-only">Open menu</span>
+								<MoreHorizontal className="h-4 w-4" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem
+								onClick={(e) => {
+									e.stopPropagation();
+									setCustomerToDelete(customer);
+								}}
+							>
+								<Trash2 className="mr-2 h-4 w-4" />
+								Delete
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				);
+			},
+		},
+	];
+
+	const table = useReactTable({
+		data: customers,
+		columns,
+		getCoreRowModel: getCoreRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+		onSortingChange: setSorting,
+		getSortedRowModel: getSortedRowModel(),
+		state: {
+			sorting,
+		},
+	});
 
 	const handleDelete = () => {
 		if (customerToDelete?.id) {
@@ -61,113 +154,81 @@ export default function CustomerList({
 	};
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Customers</CardTitle>
-				<CardDescription>
-					Manage your travel agency customers and their information.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
+		<div className="space-y-4">
+			<div className="overflow-x-auto rounded-lg border">
 				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Name</TableHead>
-							<TableHead>Email</TableHead>
-							<TableHead>Phone</TableHead>
-							<TableHead>Status</TableHead>
-							<TableHead className="text-right">Actions</TableHead>
-						</TableRow>
+					<TableHeader className="bg-muted">
+						{table.getHeaderGroups().map((headerGroup) => (
+							<TableRow key={headerGroup.id}>
+								{headerGroup.headers.map((header) => (
+									<TableHead key={header.id}>
+										{header.isPlaceholder
+											? null
+											: flexRender(
+													header.column.columnDef.header,
+													header.getContext()
+											  )}
+									</TableHead>
+								))}
+							</TableRow>
+						))}
 					</TableHeader>
 					<TableBody>
-						{customers.length === 0 ? (
+						{table.getRowModel().rows.length ? (
+							table.getRowModel().rows.map((row) => (
+								<TableRow
+									key={row.id}
+									className="cursor-pointer"
+									onClick={() => onCustomerClick(row.original)}
+								>
+									{row.getVisibleCells().map((cell) => (
+										<TableCell key={cell.id}>
+											{flexRender(
+												cell.column.columnDef.cell,
+												cell.getContext()
+											)}
+										</TableCell>
+									))}
+								</TableRow>
+							))
+						) : (
 							<TableRow>
 								<TableCell
-									colSpan={5}
-									className="text-center text-muted-foreground py-20"
+									colSpan={columns.length}
+									className="h-24 text-center"
 								>
 									No customers found. Add a new customer to get started.
 								</TableCell>
 							</TableRow>
-						) : (
-							customers.map((customer) => (
-								<TableRow key={customer.id}>
-									<TableCell className="font-medium">
-										{customer.name}
-									</TableCell>
-									<TableCell>{customer.email || <NAText />}</TableCell>
-									<TableCell>{customer.phone || <NAText />}</TableCell>
-									<TableCell>
-										<Badge
-											variant={
-												customer.status === "active"
-													? "default"
-													: "secondary"
-											}
-											className="capitalize"
-										>
-											{customer.status}
-										</Badge>
-									</TableCell>
-									<TableCell className="text-right">
-										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<Button variant="ghost" size="icon">
-													<MoreHorizontal className="h-4 w-4" />
-													<span className="sr-only">
-														Open menu
-													</span>
-												</Button>
-											</DropdownMenuTrigger>
-											<DropdownMenuContent align="end">
-												<DropdownMenuItem
-													onClick={() => onSelect(customer)}
-												>
-													<Edit className="mr-2 h-4 w-4" />
-													Edit
-												</DropdownMenuItem>
-												<DropdownMenuItem
-													onClick={() =>
-														confirmDelete(customer)
-													}
-												>
-													<Trash2 className="mr-2 h-4 w-4" />
-													Delete
-												</DropdownMenuItem>
-											</DropdownMenuContent>
-										</DropdownMenu>
-									</TableCell>
-								</TableRow>
-							))
 						)}
 					</TableBody>
 				</Table>
+			</div>
+			<DataTableFooter table={table} />
 
-				<AlertDialog
-					open={!!customerToDelete}
-					onOpenChange={(open) => !open && setCustomerToDelete(null)}
-				>
-					<AlertDialogContent>
-						<AlertDialogHeader>
-							<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-							<AlertDialogDescription>
-								This will permanently delete the customer and cancel all
-								their associated itineraries. This action cannot be
-								undone.
-							</AlertDialogDescription>
-						</AlertDialogHeader>
-						<AlertDialogFooter>
-							<AlertDialogCancel>Cancel</AlertDialogCancel>
-							<AlertDialogAction
-								onClick={handleDelete}
-								className="bg-destructive text-destructive-foreground"
-							>
-								Delete
-							</AlertDialogAction>
-						</AlertDialogFooter>
-					</AlertDialogContent>
-				</AlertDialog>
-			</CardContent>
-		</Card>
+			<AlertDialog
+				open={!!customerToDelete}
+				onOpenChange={(open) => !open && setCustomerToDelete(null)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will permanently delete the customer and cancel all their
+							associated itineraries. This action cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={handleDelete}
+							className="bg-destructive text-destructive-foreground"
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</div>
 	);
 }

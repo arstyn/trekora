@@ -1,21 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosInstance from "@/lib/axios";
-import type { Group, ICustomer } from "@/types/customer.type";
-import { MapPin, PlusCircle, Search, Users } from "lucide-react";
+import type { ICustomer } from "@/types/customer.type";
+import { PlusCircle, Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import CustomerForm from "./_component/customer-form";
+import { useLocation, useNavigate } from "react-router-dom";
 import CustomerList from "./_component/customer-list";
-import GroupManagement from "./_component/group-management";
+import EnhancedCustomerForm from "./_component/enhanced-customer-form";
+import { ViewCustomerDialog } from "./_component/view-customer-dialog";
 
 export default function CustomerManagement() {
+	const navigate = useNavigate();
+	const location = useLocation();
+
 	const [customers, setCustomers] = useState<ICustomer[]>([]);
-	const [groups, setGroups] = useState<Group[]>([]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
 	const [isAddingCustomer, setIsAddingCustomer] = useState(false);
-	const [activeTab, setActiveTab] = useState("customers");
+	const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
 	useEffect(() => {
 		const fetchCustomers = async () => {
@@ -27,28 +30,44 @@ export default function CustomerManagement() {
 		fetchCustomers();
 	}, []);
 
+	useEffect(() => {
+		const searchParams = new URLSearchParams(location.search);
+		const customerId = searchParams.get("selected");
+		if (customerId) {
+			const foundCustomer = customers.find((c) => c.id === customerId);
+			if (foundCustomer) {
+				setSelectedCustomer(foundCustomer);
+				setIsViewDialogOpen(true);
+				setIsAddingCustomer(false);
+			}
+		} else {
+			setSelectedCustomer(null);
+			setIsViewDialogOpen(false);
+		}
+	}, [location.search, customers]);
+
 	const filteredCustomers = customers.filter(
 		(customer) =>
-			customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			customer.email?.toLowerCase().includes(searchQuery.toLowerCase())
+			customer.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			customer.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			customer.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			customer.passportNumber?.toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
 	const handleAddCustomer = async (newCustomer: ICustomer) => {
-		await axiosInstance.post<ICustomer>("/customers", newCustomer);
-
-		setCustomers([...customers, { ...newCustomer, id: Date.now().toString() }]);
+		// The enhanced form handles the API call internally
+		setCustomers([...customers, newCustomer]);
 		setIsAddingCustomer(false);
 	};
 
 	const handleUpdateCustomer = async (updatedCustomer: ICustomer) => {
-		await axiosInstance.put<ICustomer>(
-			`/customers/${updatedCustomer.id}`,
-			updatedCustomer
-		);
+		// The enhanced form handles the API call internally
 		setCustomers(
 			customers.map((c) => (c.id === updatedCustomer.id ? updatedCustomer : c))
 		);
 		setSelectedCustomer(null);
+		setIsEditDialogOpen(false);
 	};
 
 	const handleDeleteCustomer = async (customerId: string) => {
@@ -56,98 +75,71 @@ export default function CustomerManagement() {
 
 		setCustomers(customers.filter((c) => c.id !== customerId));
 
-		setGroups(
-			groups.map((group) => ({
-				...group,
-				memberIds: group.memberIds.filter((id) => id !== customerId),
-			}))
-		);
-
 		setSelectedCustomer(null);
+		setIsViewDialogOpen(false);
+		setIsEditDialogOpen(false);
 	};
 
-	const handleAddGroup = (newGroup: Group) => {
-		setGroups([...groups, { ...newGroup, id: Date.now().toString() }]);
+	const handleCustomerClick = (customer: ICustomer) => {
+		navigate(`?selected=${customer.id}`);
 	};
 
-	const handleUpdateGroup = (updatedGroup: Group) => {
-		setGroups(groups.map((g) => (g.id === updatedGroup.id ? updatedGroup : g)));
-	};
-
-	const handleDeleteGroup = (groupId: string) => {
-		setGroups(groups.filter((g) => g.id !== groupId));
+	const handleEditCustomer = (customer: ICustomer) => {
+		setSelectedCustomer(customer);
+		setIsViewDialogOpen(false);
+		setIsEditDialogOpen(true);
 	};
 
 	return (
 		<div className="px-6 pt-6 space-y-6">
-			<div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-				<div>
-					<h1 className="text-2xl font-bold tracking-tight">Trekora</h1>
-					<p className="text-muted-foreground">
-						Your dream place to manage customers, itineraries, and groups.
-					</p>
+			<div className="flex items-center justify-between  space-x-2">
+				<div className="relative">
+					<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+					<Input
+						type="search"
+						placeholder="Search customers..."
+						className="w-full pl-8 md:w-[200px] lg:w-[300px]"
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+					/>
 				</div>
-				<div className="flex items-center space-x-2">
-					<div className="relative">
-						<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-						<Input
-							type="search"
-							placeholder="Search customers..."
-							className="w-full pl-8 md:w-[200px] lg:w-[300px]"
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-						/>
-					</div>
-					<Button onClick={() => setIsAddingCustomer(true)}>
-						<PlusCircle className="mr-2 h-4 w-4" />
-						Add Customer
-					</Button>
-				</div>
+				<Button onClick={() => setIsAddingCustomer(true)} size="sm">
+					<PlusCircle className="mr-2 h-4 w-4" />
+					Add Customer
+				</Button>
 			</div>
 
-			<Tabs defaultValue="customers" value={activeTab} onValueChange={setActiveTab}>
-				<TabsList>
-					<TabsTrigger value="customers">
-						<Users className="mr-2 h-4 w-4" />
-						Customers
-					</TabsTrigger>
-					<TabsTrigger value="groups">
-						<MapPin className="mr-2 h-4 w-4" />
-						Groups
-					</TabsTrigger>
-				</TabsList>
-
-				<TabsContent value="customers" className="space-y-4">
-					<CustomerList
-						customers={filteredCustomers}
-						onSelect={setSelectedCustomer}
-						onDelete={handleDeleteCustomer}
-					/>
-				</TabsContent>
-
-				<TabsContent value="groups" className="space-y-4">
-					<GroupManagement
-						groups={groups}
-						customers={customers}
-						onAdd={handleAddGroup}
-						onUpdate={handleUpdateGroup}
-						onDelete={handleDeleteGroup}
-					/>
-				</TabsContent>
-			</Tabs>
+			<CustomerList
+				customers={filteredCustomers}
+				onDelete={handleDeleteCustomer}
+				onCustomerClick={handleCustomerClick}
+			/>
 
 			{isAddingCustomer && (
-				<CustomerForm
+				<EnhancedCustomerForm
 					onSave={handleAddCustomer}
 					onCancel={() => setIsAddingCustomer(false)}
 				/>
 			)}
 
-			{selectedCustomer && (
-				<CustomerForm
+			{/* View Customer Dialog */}
+			<ViewCustomerDialog
+				open={isViewDialogOpen}
+				onOpenChange={setIsViewDialogOpen}
+				customer={selectedCustomer}
+				onEdit={handleEditCustomer}
+			/>
+
+			{/* Edit Customer Dialog */}
+			{isEditDialogOpen && selectedCustomer && (
+				<EnhancedCustomerForm
 					customer={selectedCustomer}
 					onSave={handleUpdateCustomer}
-					onCancel={() => setSelectedCustomer(null)}
+					onCancel={() => {
+						setIsEditDialogOpen(false);
+						setSelectedCustomer(null);
+						navigate("?");
+					}}
 				/>
 			)}
 		</div>

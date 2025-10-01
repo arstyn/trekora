@@ -76,9 +76,6 @@ const defaultValues: PackageFormData = {
 	price: 0,
 	description: "",
 	maxGuests: 0,
-	startDate: undefined,
-	endDate: undefined,
-	difficulty: "easy",
 	category: "adventure",
 	inclusions: [],
 	exclusions: [],
@@ -98,19 +95,19 @@ const defaultValues: PackageFormData = {
 	paymentStructure: [
 		{
 			name: "Booking Advance",
-			percentage: 10,
+			amount: 0,
 			description: "Initial booking amount",
 			dueDate: "booking",
 		},
 		{
 			name: "Confirmation",
-			percentage: 40,
+			amount: 0,
 			description: "Confirmation payment",
 			dueDate: "30_days_before",
 		},
 		{
 			name: "Pre-departure",
-			percentage: 50,
+			amount: 0,
 			description: "Final payment",
 			dueDate: "2_weeks_before",
 		},
@@ -118,22 +115,22 @@ const defaultValues: PackageFormData = {
 	cancellationStructure: [
 		{
 			timeframe: "30+ days before",
-			percentage: 10,
+			amount: 0,
 			description: "Minimal cancellation fee",
 		},
 		{
 			timeframe: "15-29 days before",
-			percentage: 25,
+			amount: 0,
 			description: "Standard cancellation fee",
 		},
 		{
 			timeframe: "7-14 days before",
-			percentage: 50,
+			amount: 0,
 			description: "High cancellation fee",
 		},
 		{
 			timeframe: "Less than 7 days",
-			percentage: 100,
+			amount: 0,
 			description: "No refund",
 		},
 	],
@@ -265,13 +262,13 @@ export function PackageForm({
 			paymentStructure: backendData.paymentStructure?.map((pay) => {
 				return {
 					...pay,
-					percentage: parseInt(pay.percentage ?? "0"),
+					amount: parseFloat(pay.amount?.toString() ?? "0"),
 				};
 			}),
 			cancellationStructure: backendData.cancellationStructure?.map((can) => {
 				return {
 					...can,
-					percentage: parseInt(can.percentage ?? "0"),
+					amount: parseFloat(can.amount?.toString() ?? "0"),
 				};
 			}),
 			cancellationPolicy: backendData.cancellationPolicy?.map((can) => can.text),
@@ -610,9 +607,6 @@ export function PackageForm({
 		appendIfDefined("price", data.price);
 		appendIfDefined("description", data.description);
 		appendIfDefined("maxGuests", data.maxGuests);
-		appendIfDefined("startDate", data.startDate);
-		appendIfDefined("endDate", data.endDate);
-		appendIfDefined("difficulty", data.difficulty);
 		appendIfDefined("category", data.category);
 		appendIfDefined("status", data.status);
 		appendIfDefined("thumbnail", data.thumbnail);
@@ -758,11 +752,11 @@ export function PackageForm({
 		await onSubmit(data, "published");
 	};
 
-	const getTotalPaymentPercentage = () => {
+	const getTotalPaymentAmount = () => {
 		const paymentStructure = form.watch("paymentStructure") || [];
 		return paymentStructure.reduce(
-			(total: number, milestone: { percentage?: number }) =>
-				total + (milestone?.percentage ?? 0),
+			(total: number, milestone: { amount?: number }) =>
+				total + (milestone?.amount ?? 0),
 			0
 		);
 	};
@@ -994,77 +988,6 @@ export function PackageForm({
 																}
 															/>
 														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-										</div>
-
-										<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-											<FormField
-												control={form.control}
-												name="startDate"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>Start Date</FormLabel>
-														<FormControl>
-															<Input
-																type="date"
-																{...field}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-											<FormField
-												control={form.control}
-												name="endDate"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>End Date</FormLabel>
-														<FormControl>
-															<Input
-																type="date"
-																{...field}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-											<FormField
-												control={form.control}
-												name="difficulty"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>
-															Difficulty Level
-														</FormLabel>
-														<Select
-															onValueChange={field.onChange}
-															defaultValue={field.value}
-														>
-															<FormControl>
-																<SelectTrigger>
-																	<SelectValue placeholder="Select difficulty" />
-																</SelectTrigger>
-															</FormControl>
-															<SelectContent>
-																<SelectItem value="easy">
-																	Easy
-																</SelectItem>
-																<SelectItem value="moderate">
-																	Moderate
-																</SelectItem>
-																<SelectItem value="challenging">
-																	Challenging
-																</SelectItem>
-																<SelectItem value="extreme">
-																	Extreme
-																</SelectItem>
-															</SelectContent>
-														</Select>
 														<FormMessage />
 													</FormItem>
 												)}
@@ -1461,8 +1384,7 @@ export function PackageForm({
 											<div>
 												<CardTitle>Payment Structure</CardTitle>
 												<CardDescription>
-													Define payment milestones and
-													percentages
+													Define payment milestones and amounts
 												</CardDescription>
 											</div>
 											<Button
@@ -1470,7 +1392,7 @@ export function PackageForm({
 												onClick={() =>
 													appendPayment({
 														name: "",
-														percentage: 0,
+														amount: 0,
 														description: "",
 														dueDate: "booking",
 													})
@@ -1485,16 +1407,17 @@ export function PackageForm({
 									<CardContent className="space-y-4">
 										<div className="flex justify-between items-center p-3  rounded-lg">
 											<span className="font-medium">
-												Total Payment Percentage:
+												Total Payment Amount:
 											</span>
 											<Badge
 												variant={
-													getTotalPaymentPercentage() === 100
+													getTotalPaymentAmount() ===
+													form.watch("price")
 														? "default"
 														: "destructive"
 												}
 											>
-												{getTotalPaymentPercentage()}%
+												₹{getTotalPaymentAmount().toFixed(2)}
 											</Badge>
 										</div>
 
@@ -1542,22 +1465,22 @@ export function PackageForm({
 													/>
 													<FormField
 														control={form.control}
-														name={`paymentStructure.${index}.percentage`}
+														name={`paymentStructure.${index}.amount`}
 														render={({ field }) => (
 															<FormItem>
 																<FormLabel>
-																	Percentage
+																	Amount (₹)
 																</FormLabel>
 																<FormControl>
 																	<Input
 																		type="number"
 																		min="0"
-																		max="100"
-																		placeholder="10"
+																		step="0.01"
+																		placeholder="0.00"
 																		{...field}
 																		onChange={(e) =>
 																			field.onChange(
-																				Number.parseInt(
+																				Number.parseFloat(
 																					e
 																						.target
 																						.value
@@ -1656,7 +1579,7 @@ export function PackageForm({
 												onClick={() =>
 													appendCancellation({
 														timeframe: "",
-														percentage: 0,
+														amount: 0,
 														description: "",
 													})
 												}
@@ -1712,22 +1635,22 @@ export function PackageForm({
 													/>
 													<FormField
 														control={form.control}
-														name={`cancellationStructure.${index}.percentage`}
+														name={`cancellationStructure.${index}.amount`}
 														render={({ field }) => (
 															<FormItem>
 																<FormLabel>
-																	Cancellation Fee (%)
+																	Cancellation Fee (₹)
 																</FormLabel>
 																<FormControl>
 																	<Input
 																		type="number"
 																		min="0"
-																		max="100"
-																		placeholder="10"
+																		step="0.01"
+																		placeholder="0.00"
 																		{...field}
 																		onChange={(e) =>
 																			field.onChange(
-																				Number.parseInt(
+																				Number.parseFloat(
 																					e
 																						.target
 																						.value
@@ -2829,7 +2752,8 @@ export function PackageForm({
 											disabled={
 												isLoading ||
 												isValidating ||
-												getTotalPaymentPercentage() !== 100
+												getTotalPaymentAmount() !==
+													form.watch("price")
 											}
 										>
 											{isValidating ? (
@@ -2843,10 +2767,11 @@ export function PackageForm({
 												? "Update & Publish"
 												: "Publish Package"}
 										</Button>
-										{getTotalPaymentPercentage() !== 100 && (
+										{getTotalPaymentAmount() !==
+											form.watch("price") && (
 											<p className="text-sm text-red-500 mt-2">
-												Payment structure must total exactly 100%
-												to publish
+												Payment structure must total exactly ₹
+												{form.watch("price") || 0} to publish
 											</p>
 										)}
 									</CardContent>
@@ -2990,7 +2915,7 @@ export function PackageForm({
 											<span className="text-sm ">Price:</span>
 											<span className="text-sm font-medium">
 												{form.watch("price")
-													? `$${form.watch("price")}`
+													? `₹${form.watch("price")}`
 													: "Not set"}
 											</span>
 										</div>
@@ -3014,12 +2939,13 @@ export function PackageForm({
 											</span>
 											<Badge
 												variant={
-													getTotalPaymentPercentage() === 100
+													getTotalPaymentAmount() ===
+													form.watch("price")
 														? "default"
 														: "destructive"
 												}
 											>
-												{getTotalPaymentPercentage()}%
+												₹{getTotalPaymentAmount().toFixed(2)}
 											</Badge>
 										</div>
 										<div className="flex justify-between">
