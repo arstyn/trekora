@@ -425,13 +425,10 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 	const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		if (file) {
-			// Validate file size (max 5MB)
 			if (file.size > 5 * 1024 * 1024) {
 				setError('File size must be less than 5MB');
 				return;
 			}
-
-			// Validate file type
 			const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
 			if (!allowedTypes.includes(file.type)) {
 				setError('File must be an image (JPEG, PNG) or PDF');
@@ -454,13 +451,12 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		setShowCustomerResults(false);
 	};
 
-	// Create checklist items after booking creation
 	const createChecklistItems = async (bookingId: string, booking: IBooking) => {
 		try {
-			// Create group checklist items
+			
 			for (let i = 0; i < groupChecklist.length; i++) {
 				const groupItem = groupChecklist[i];
-				if (groupItem.id.startsWith('temp-')) { // Only create temporary items
+				if (groupItem.id.startsWith('temp-')) {
 					await BookingService.addChecklistItem(bookingId, {
 						item: groupItem.item,
 						completed: groupItem.completed,
@@ -470,11 +466,9 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 					});
 				}
 			}
-
-			// Create individual checklist items
 			for (let passengerIndex = 0; passengerIndex < formData.passengers.length; passengerIndex++) {
 				const passenger = formData.passengers[passengerIndex];
-				const bookingPassenger = booking.passengers[passengerIndex]; // Get the created passenger with ID
+				const bookingPassenger = booking.passengers[passengerIndex]; 
 
 				for (let i = 0; i < passenger.checklist.length; i++) {
 					const checklistItem = passenger.checklist[i];
@@ -499,7 +493,6 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		// Check if group checklist has at least one item
 		if (!canGroupProceed()) {
 			setError('Please add at least one group checklist item to proceed.');
 			return;
@@ -509,7 +502,7 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 			setLoading(true);
 			setError(null);
 
-			// Convert enhanced passengers back to regular passengers for API
+			
 			const regularPassengers: IBookingPassenger[] = formData.passengers.map(passenger => ({
 				fullName: passenger.fullName,
 				age: passenger.age,
@@ -519,7 +512,6 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 				specialRequirements: passenger.specialRequirements,
 			}));
 
-			// Prepare booking data (without checklist initially)
 			const bookingData: ICreateBookingRequest = {
 				customerId: formData.customerId,
 				packageId: formData.packageId,
@@ -536,14 +528,12 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 				} : undefined,
 			};
 
-			// Validate data
 			const validation = BookingService.validateBookingData(bookingData);
 			if (!validation.isValid) {
 				setError(validation.errors.join(', '));
 				return;
 			}
 
-			// Upload payment screenshot if provided
 			if (formData.paymentScreenshot) {
 				const uploadResult = await BookingService.uploadFile(formData.paymentScreenshot);
 				if (bookingData.initialPayment) {
@@ -551,22 +541,18 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 				}
 			}
 
-			// Create booking
 			const createdBooking = await BookingService.createBooking(bookingData);
 			setCreatedBookingId(createdBooking.id);
 
-			// Create checklist items after booking creation
 			await createChecklistItems(createdBooking.id, createdBooking);
 
 			toast.success('Booking created successfully', {
 				description: `Booking ${BookingService.formatBookingNumber(createdBooking.bookingNumber)} has been created with checklist items.`,
 			});
 
-			// Reset form and close dialog
 			resetForm();
 			onOpenChange(false);
 
-			// Notify parent component
 			if (onBookingCreated) {
 				onBookingCreated();
 			}
@@ -614,7 +600,6 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 	};
 
 	const nextStep = () => {
-		// Basic validation before proceeding to next step
 		if (step === 1 && !formData.customerId) {
 			setError('Please select a customer');
 			return;
@@ -640,7 +625,6 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 		setStep((prev) => Math.max(prev - 1, 1));
 	};
 
-	// Component for individual checklist management
 	const ChecklistManager = ({ passengerIndex }: { passengerIndex: number }) => {
 		const [newItem, setNewItem] = useState("");
 		const passenger = formData.passengers[passengerIndex];
@@ -919,7 +903,6 @@ export function CreateBookingDialog({ open, onOpenChange, onBookingCreated }: Cr
 											</div>
 										)}
 									</div>
-
 									{formData.customerId && (
 										<div className="p-4 bg-muted/50 rounded-lg">
 											<h4 className="font-medium mb-2">Selected Customer:</h4>
