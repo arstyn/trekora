@@ -125,7 +125,12 @@ export default function CustomerManagement() {
 			{/* View Customer Dialog */}
 			<ViewCustomerDialog
 				open={isViewDialogOpen}
-				onOpenChange={setIsViewDialogOpen}
+				onOpenChange={(open) => {
+					setIsViewDialogOpen(open);
+					if (!open) {
+						navigate("?");
+					}
+				}}
 				customer={selectedCustomer}
 				onEdit={handleEditCustomer}
 			/>
