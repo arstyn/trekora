@@ -40,15 +40,9 @@ export const customers = [
     notes: 'Regular customer, prefers luxury accommodations',
     organizationDomain: 'acme.com',
     profilePhoto: 'alice_johnson_profile.jpg',
-    passportPhotos: [
-      'alice_johnson_passport_page1.jpg',
-      'alice_johnson_passport_page2.jpg',
-    ],
-    voterIdPhotos: ['alice_johnson_voter_id.jpg'],
-    aadhaarIdPhotos: [
-      'alice_johnson_aadhaar_front.png',
-      'alice_johnson_aadhaar_back.png',
-    ],
+    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
+    voterIdPhotos: ['voter_id.jpg'],
+    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
   },
   {
     firstName: 'Bob',
@@ -83,15 +77,9 @@ export const customers = [
     notes: 'Adventure enthusiast, interested in extreme sports',
     organizationDomain: 'globex.co',
     profilePhoto: 'bob_smith_profile.jpg',
-    passportPhotos: [
-      'bob_smith_passport_page1.jpg',
-      'bob_smith_passport_page2.jpg',
-    ],
-    voterIdPhotos: ['bob_smith_voter_id.jpg'],
-    aadhaarIdPhotos: [
-      'bob_smith_aadhaar_front.jpg',
-      'bob_smith_aadhaar_back.jpg',
-    ],
+    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
+    voterIdPhotos: ['voter_id.jpg'],
+    aadhaarIdPhotos: ['aadhaar_front.jpg', 'aadhaar_back.jpg'],
   },
   {
     firstName: 'Carol',
