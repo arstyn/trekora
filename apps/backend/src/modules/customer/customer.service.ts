@@ -116,6 +116,7 @@ export class CustomerService {
 
     return fileUploads;
   }
+
   async findAll(organizationId: string): Promise<Customer[]> {
     return this.customerRepository.find({
       where: {
@@ -123,9 +124,11 @@ export class CustomerService {
       },
     });
   }
+
   async findOne(id: string): Promise<Customer | null> {
     return this.customerRepository.findOne({ where: { id } });
   }
+
   async update(
     id: string,
     updateData: Partial<CreateCustomerDto>,
