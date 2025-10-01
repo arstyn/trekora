@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitMigration1756200391913 implements MigrationInterface {
-    name = 'InitMigration1756200391913'
+export class InitMigration1759360311406 implements MigrationInterface {
+    name = 'InitMigration1759360311406'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "organization" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying, "domain" character varying, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_active" boolean NOT NULL DEFAULT true, "size" character varying, "industry" character varying, "description" character varying, CONSTRAINT "PK_472c1f99a32def1b0abb219cd67" PRIMARY KEY ("id"))`);
@@ -19,18 +19,17 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "reminder" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "type" character varying(50) NOT NULL, "entity_type" character varying(50) NOT NULL, "entity_id" uuid NOT NULL, "created_by_id" uuid NOT NULL, "organization_id" uuid NOT NULL, "note" text, "remind_at" TIMESTAMP NOT NULL, "repeat" "public"."reminder_repeat_enum" NOT NULL DEFAULT 'none', "repeat_options" jsonb, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_9ec029d17cb8dece186b9221ede" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_71eb306b6f361e548572b1cf32" ON "reminder" ("entity_type") `);
         await queryRunner.query(`CREATE INDEX "IDX_1b09a69ba1d35c67f008ff69ca" ON "reminder" ("entity_id") `);
+        await queryRunner.query(`CREATE TABLE "notification" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "user_id" uuid NOT NULL, "message" character varying NOT NULL, "is_read" boolean NOT NULL DEFAULT false, "reminder_id" character varying, "created_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_705b6c7cdf9b2c2ff7ac7872cb7" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "import_templates" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying NOT NULL, "description" text, "entityType" character varying NOT NULL, "columns" json NOT NULL, "isActive" boolean NOT NULL DEFAULT true, "organizationId" uuid NOT NULL, "createdBy" uuid NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_a47e7a2d8919d644fcd6347109e" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "lead" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying NOT NULL, "email" character varying, "phone" character varying, "company" character varying, "created_by_id" uuid, "organization_id" uuid NOT NULL, "notes" text, "status" character varying NOT NULL DEFAULT 'new', "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_ca96c1888f7dcfccab72b72fffa" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "lead_update" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "text" text NOT NULL, "lead_id" uuid NOT NULL, "created_by_id" uuid NOT NULL, "type" character varying(50) NOT NULL DEFAULT 'note', "metadata" jsonb, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_04fa22daae3c13ddc69c15ede82" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "notification" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "user_id" uuid NOT NULL, "message" character varying NOT NULL, "is_read" boolean NOT NULL DEFAULT false, "reminder_id" character varying, "created_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_705b6c7cdf9b2c2ff7ac7872cb7" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "import_history" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "success" boolean NOT NULL, "totalRows" integer NOT NULL, "importedRows" integer NOT NULL, "failedRows" integer NOT NULL, "errors" json NOT NULL, "message" text NOT NULL, "entityType" character varying NOT NULL, "fileName" character varying, "organizationId" uuid NOT NULL, "createdBy" uuid NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_18a2e880c124ce5283b6ca6fc98" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "import_templates" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying NOT NULL, "description" text, "entityType" character varying NOT NULL, "columns" json NOT NULL, "isActive" boolean NOT NULL DEFAULT true, "organizationId" uuid NOT NULL, "createdBy" uuid NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_a47e7a2d8919d644fcd6347109e" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "group" ("id" SERIAL NOT NULL, "name" character varying NOT NULL, "description" character varying, CONSTRAINT "PK_256aa0fda9b1de1a73ee0b7106b" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TYPE "public"."file_manager_relatedtype_enum" AS ENUM('na', 'package', 'customer', 'employee', 'department', 'organization', 'user', 'itinerary', 'lead', 'lead-updates', 'payment')`);
-        await queryRunner.query(`CREATE TABLE "file_manager" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "filename" character varying NOT NULL, "relatedId" character varying NOT NULL, "relatedType" "public"."file_manager_relatedtype_enum" NOT NULL DEFAULT 'na', "url" character varying NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_737201044e826a80ade8f858d81" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TYPE "public"."customer_status_enum" AS ENUM('active', 'inactive', 'pending')`);
-        await queryRunner.query(`CREATE TABLE "customer" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying NOT NULL, "email" character varying NOT NULL, "phone" character varying NOT NULL, "address" character varying NOT NULL, "status" "public"."customer_status_enum" NOT NULL DEFAULT 'pending', "notes" character varying, "created_by_id" uuid, "organization_id" uuid, "created_at" TIMESTAMP DEFAULT now(), "updated_at" TIMESTAMP DEFAULT now(), CONSTRAINT "UQ_fdb2f3ad8115da4c7718109a6eb" UNIQUE ("email"), CONSTRAINT "PK_a7a13f4cacb744524e44dfdad32" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TYPE "public"."customer_gender_enum" AS ENUM('male', 'female', 'other', 'prefer_not_to_say')`);
+        await queryRunner.query(`CREATE TABLE "customer" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "first_name" character varying NOT NULL, "last_name" character varying NOT NULL, "middle_name" character varying, "date_of_birth" date NOT NULL, "gender" "public"."customer_gender_enum" NOT NULL, "profile_photo" character varying, "email" character varying NOT NULL, "phone" character varying NOT NULL, "alternative_phone" character varying, "address" character varying NOT NULL, "emergency_contact_name" character varying, "emergency_contact_phone" character varying, "emergency_contact_relation" character varying, "passport_number" character varying, "passport_expiry_date" date, "passport_issue_date" date, "passport_country" character varying, "passport_photos" json, "voter_id" character varying, "voter_id_photos" json, "aadhaar_id" character varying, "aadhaar_id_photos" json, "relatives" json, "dietary_restrictions" text, "medical_conditions" text, "special_requests" text, "notes" text, "created_by_id" uuid, "organization_id" uuid, "created_at" TIMESTAMP DEFAULT now(), "updated_at" TIMESTAMP DEFAULT now(), CONSTRAINT "UQ_fdb2f3ad8115da4c7718109a6eb" UNIQUE ("email"), CONSTRAINT "PK_a7a13f4cacb744524e44dfdad32" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "booking_passengers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "full_name" character varying NOT NULL, "age" integer NOT NULL, "email" character varying, "phone" character varying, "emergency_contact" character varying NOT NULL, "special_requirements" text, "additional_info" jsonb, "booking_id" uuid NOT NULL, CONSTRAINT "PK_cc75ac043d2aee4cca8907ae5d7" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "cancellation_policies" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "text" text, "packageId" uuid, CONSTRAINT "PK_325e14a8f8003ef85146eecfc57" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "cancellation_tiers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "timeframe" character varying, "percentage" numeric(5,2), "description" text, "packageId" uuid, CONSTRAINT "PK_d5790c16e27143613e0297c2015" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "cancellation_tiers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "timeframe" character varying, "amount" numeric(10,2), "description" text, "packageId" uuid, CONSTRAINT "PK_d5790c16e27143613e0297c2015" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."checklist_items_category_enum" AS ENUM('documents', 'booking', 'preparation', 'communication')`);
         await queryRunner.query(`CREATE TABLE "checklist_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "task" character varying, "description" text, "category" "public"."checklist_items_category_enum", "dueDate" character varying, "packageId" uuid, CONSTRAINT "PK_bae00945a1d4789bd648e583e29" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."document_requirements_applicablefor_enum" AS ENUM('adults', 'children', 'all')`);
@@ -40,12 +39,11 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "itinerary_days" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "day" integer, "title" character varying, "description" text, "activities" text, "meals" text, "accommodation" character varying, "images" text, "packageId" uuid, CONSTRAINT "PK_209d9b73d8e2e2ceb3aef130b37" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "meals_breakdowns" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "breakfast" text, "lunch" text, "dinner" text, "packageId" uuid, CONSTRAINT "REL_038ffcd4d91bb711c4e36ff303" UNIQUE ("packageId"), CONSTRAINT "PK_0d39d25807fd3815f5a631184f7" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "package_locations" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "type" character varying, "country" character varying, "state" character varying, "packageId" uuid, CONSTRAINT "REL_44e82dd5332ff06ff5bae4aca7" UNIQUE ("packageId"), CONSTRAINT "PK_5de9d3ca5a1bd7a66c72e218fab" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "payment_milestones" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying, "percentage" numeric(5,2), "description" text, "dueDate" character varying, "packageId" uuid, CONSTRAINT "PK_4c0f5e58e9668a999e7f96151af" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "payment_milestones" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying, "amount" numeric(10,2), "description" text, "dueDate" character varying, "packageId" uuid, CONSTRAINT "PK_4c0f5e58e9668a999e7f96151af" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "transportations" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "toMode" character varying, "toDetails" character varying, "toIncluded" boolean NOT NULL DEFAULT false, "fromMode" character varying, "fromDetails" character varying, "fromIncluded" boolean NOT NULL DEFAULT false, "duringMode" character varying, "duringDetails" character varying, "duringIncluded" boolean NOT NULL DEFAULT false, "packageId" uuid, CONSTRAINT "REL_2e0d65158ae1d3a017790dc3a2" UNIQUE ("packageId"), CONSTRAINT "PK_aa9196e984236b169ea172479a6" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TYPE "public"."packages_difficulty_enum" AS ENUM('easy', 'moderate', 'challenging', 'extreme')`);
         await queryRunner.query(`CREATE TYPE "public"."packages_category_enum" AS ENUM('adventure', 'cultural', 'relaxation', 'wildlife', 'luxury', 'budget')`);
         await queryRunner.query(`CREATE TYPE "public"."packages_status_enum" AS ENUM('draft', 'published')`);
-        await queryRunner.query(`CREATE TABLE "packages" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying, "destination" character varying, "duration" character varying, "price" numeric(10,2), "description" text, "maxGuests" integer, "startDate" date, "endDate" date, "difficulty" "public"."packages_difficulty_enum", "category" "public"."packages_category_enum", "status" "public"."packages_status_enum" DEFAULT 'draft', "thumbnail" character varying, "createdById" uuid, "organizationId" uuid, "created_at" TIMESTAMP DEFAULT now(), "updated_at" TIMESTAMP DEFAULT now(), CONSTRAINT "PK_020801f620e21f943ead9311c98" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "packages" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying, "destination" character varying, "duration" character varying, "price" numeric(10,2), "description" text, "maxGuests" integer, "category" "public"."packages_category_enum", "status" "public"."packages_status_enum" DEFAULT 'draft', "thumbnail" character varying, "createdById" uuid, "organizationId" uuid, "created_at" TIMESTAMP DEFAULT now(), "updated_at" TIMESTAMP DEFAULT now(), CONSTRAINT "PK_020801f620e21f943ead9311c98" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "batch" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "start_date" date NOT NULL, "end_date" date NOT NULL, "total_seats" integer NOT NULL, "booked_seats" integer DEFAULT '0', "status" character varying NOT NULL, "organization_id" uuid NOT NULL, "package_id" uuid NOT NULL, CONSTRAINT "PK_57da3b830b57bec1fd329dcaf43" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."booking_payments_payment_type_enum" AS ENUM('advance', 'balance', 'partial', 'refund')`);
         await queryRunner.query(`CREATE TYPE "public"."booking_payments_paymentmethod_enum" AS ENUM('bank_transfer', 'credit_card', 'debit_card', 'cash', 'upi', 'other')`);
@@ -53,9 +51,12 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "booking_payments" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "amount" numeric(10,2) NOT NULL, "payment_type" "public"."booking_payments_payment_type_enum" NOT NULL DEFAULT 'advance', "paymentMethod" "public"."booking_payments_paymentmethod_enum" NOT NULL, "status" "public"."booking_payments_status_enum" NOT NULL DEFAULT 'pending', "payment_reference" character varying, "transaction_id" character varying, "payment_date" date, "notes" text, "receipt_file_path" character varying, "payment_details" jsonb, "booking_id" uuid NOT NULL, "recorded_by_id" uuid NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_4f54ffc7dfddb70234fb53a97a9" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."booking_documents_documenttype_enum" AS ENUM('booking_confirmation', 'payment_receipt', 'travel_itinerary', 'passport_copy', 'visa_copy', 'insurance_document', 'other')`);
         await queryRunner.query(`CREATE TABLE "booking_documents" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "file_name" character varying NOT NULL, "original_name" character varying NOT NULL, "file_path" character varying NOT NULL, "file_size" integer NOT NULL, "mime_type" character varying NOT NULL, "documentType" "public"."booking_documents_documenttype_enum" NOT NULL DEFAULT 'other', "description" text, "booking_id" uuid NOT NULL, "uploaded_by_id" uuid NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_0730e01a4beb91b961b2a5e76f6" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TYPE "public"."booking_checklists_type_enum" AS ENUM('group', 'individual')`);
+        await queryRunner.query(`CREATE TABLE "booking_checklists" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "item" character varying(500) NOT NULL, "completed" boolean NOT NULL DEFAULT false, "mandatory" boolean NOT NULL DEFAULT false, "type" "public"."booking_checklists_type_enum" NOT NULL, "bookingId" uuid NOT NULL, "passengerId" uuid, "sortOrder" integer NOT NULL DEFAULT '0', "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_561f65a6a7ea0eaa9350e0321b5" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."bookings_status_enum" AS ENUM('pending', 'confirmed', 'cancelled', 'completed')`);
         await queryRunner.query(`CREATE TABLE "bookings" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "booking_number" character varying NOT NULL, "customer_id" uuid NOT NULL, "package_id" uuid NOT NULL, "batch_id" uuid NOT NULL, "number_of_passengers" integer NOT NULL, "total_amount" numeric(10,2) NOT NULL, "advance_paid" numeric(10,2) NOT NULL DEFAULT '0', "balance_amount" numeric(10,2) NOT NULL, "status" "public"."bookings_status_enum" NOT NULL DEFAULT 'pending', "special_requests" text, "additional_details" jsonb, "created_by_id" uuid NOT NULL, "organization_id" uuid NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_84168a5f562072cc602bc6ac821" UNIQUE ("booking_number"), CONSTRAINT "PK_bee6805982cc1e248e94ce94957" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "booking_passengers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "full_name" character varying NOT NULL, "age" integer NOT NULL, "email" character varying, "phone" character varying, "emergency_contact" character varying NOT NULL, "special_requirements" text, "additional_info" jsonb, "booking_id" uuid NOT NULL, CONSTRAINT "PK_cc75ac043d2aee4cca8907ae5d7" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TYPE "public"."file_manager_relatedtype_enum" AS ENUM('na', 'package', 'customer', 'employee', 'department', 'organization', 'user', 'itinerary', 'lead', 'lead-updates', 'payment')`);
+        await queryRunner.query(`CREATE TABLE "file_manager" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "filename" character varying NOT NULL, "relatedId" character varying NOT NULL, "relatedType" "public"."file_manager_relatedtype_enum" NOT NULL DEFAULT 'na', "url" character varying NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_737201044e826a80ade8f858d81" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "batch_coordinators" ("batchId" uuid NOT NULL, "employeeId" uuid NOT NULL, CONSTRAINT "PK_ea014943938e62dec8576cff324" PRIMARY KEY ("batchId", "employeeId"))`);
         await queryRunner.query(`CREATE INDEX "IDX_08626ad212783d6b0fc7d3f513" ON "batch_coordinators" ("batchId") `);
         await queryRunner.query(`CREATE INDEX "IDX_d68a1efe3667f2bfeb01b93730" ON "batch_coordinators" ("employeeId") `);
@@ -78,17 +79,18 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "user_invite" ADD CONSTRAINT "FK_139c9176bc718b9e836851652a0" FOREIGN KEY ("employee_id") REFERENCES "employee"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "reminder" ADD CONSTRAINT "FK_e14c17d6003eb7b57ba292a905b" FOREIGN KEY ("created_by_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "reminder" ADD CONSTRAINT "FK_234994333887746bb8e9da50227" FOREIGN KEY ("organization_id") REFERENCES "organization"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "notification" ADD CONSTRAINT "FK_928b7aa1754e08e1ed7052cb9d8" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "import_templates" ADD CONSTRAINT "FK_8bd73a1739211d4245637139a1e" FOREIGN KEY ("organizationId") REFERENCES "organization"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "import_templates" ADD CONSTRAINT "FK_164e488c510a93859d591388f9d" FOREIGN KEY ("createdBy") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "lead" ADD CONSTRAINT "FK_b53c58ebaa79dd4b8a611c7c42f" FOREIGN KEY ("created_by_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "lead" ADD CONSTRAINT "FK_c2264888ac9339b12768d966da8" FOREIGN KEY ("organization_id") REFERENCES "organization"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "lead_update" ADD CONSTRAINT "FK_600b267449fad40e0f135205afe" FOREIGN KEY ("lead_id") REFERENCES "lead"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "lead_update" ADD CONSTRAINT "FK_9d8412bb9cbbac67083cdb121b1" FOREIGN KEY ("created_by_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "notification" ADD CONSTRAINT "FK_928b7aa1754e08e1ed7052cb9d8" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "import_history" ADD CONSTRAINT "FK_71cdae429e95acc9911205fd6ec" FOREIGN KEY ("organizationId") REFERENCES "organization"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "import_history" ADD CONSTRAINT "FK_aba8a73b613296c11d8f41e0ebc" FOREIGN KEY ("createdBy") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "import_templates" ADD CONSTRAINT "FK_8bd73a1739211d4245637139a1e" FOREIGN KEY ("organizationId") REFERENCES "organization"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "import_templates" ADD CONSTRAINT "FK_164e488c510a93859d591388f9d" FOREIGN KEY ("createdBy") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "customer" ADD CONSTRAINT "FK_4ffb356b370e38bdf5502ce44df" FOREIGN KEY ("created_by_id") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "customer" ADD CONSTRAINT "FK_f59a476121c4fe9ea136699a95d" FOREIGN KEY ("organization_id") REFERENCES "organization"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "booking_passengers" ADD CONSTRAINT "FK_1e2d37c7eb82f4017a9a4a06bc8" FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "cancellation_policies" ADD CONSTRAINT "FK_3d7697fa4872ca571f1c63d7f23" FOREIGN KEY ("packageId") REFERENCES "packages"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "cancellation_tiers" ADD CONSTRAINT "FK_5ac9df41946608c0e524ac3cdba" FOREIGN KEY ("packageId") REFERENCES "packages"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "checklist_items" ADD CONSTRAINT "FK_5e5d30b7e402798ef0dcbff6c7d" FOREIGN KEY ("packageId") REFERENCES "packages"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
@@ -108,12 +110,13 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "booking_payments" ADD CONSTRAINT "FK_4939aad83daac5e7c0756cb308b" FOREIGN KEY ("recorded_by_id") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "booking_documents" ADD CONSTRAINT "FK_b4cd5c837329d17508808dc0938" FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "booking_documents" ADD CONSTRAINT "FK_e02a0906cc18af4e45507f1c656" FOREIGN KEY ("uploaded_by_id") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "booking_checklists" ADD CONSTRAINT "FK_659c97bca215479d341e44096ec" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "booking_checklists" ADD CONSTRAINT "FK_8add578648fac04da66bf93dcb6" FOREIGN KEY ("passengerId") REFERENCES "booking_passengers"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "bookings" ADD CONSTRAINT "FK_8e21b7ae33e7b0673270de4146f" FOREIGN KEY ("customer_id") REFERENCES "customer"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "bookings" ADD CONSTRAINT "FK_402873fd6596d556781ac5d8ae4" FOREIGN KEY ("package_id") REFERENCES "packages"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "bookings" ADD CONSTRAINT "FK_bfe433b9d4bd27eb45ee01274c0" FOREIGN KEY ("batch_id") REFERENCES "batch"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "bookings" ADD CONSTRAINT "FK_2ab7f927262f1f56d6f45bca107" FOREIGN KEY ("created_by_id") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "bookings" ADD CONSTRAINT "FK_1b3f0fcfa5c68dffbfd47cbb103" FOREIGN KEY ("organization_id") REFERENCES "organization"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "booking_passengers" ADD CONSTRAINT "FK_1e2d37c7eb82f4017a9a4a06bc8" FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "batch_coordinators" ADD CONSTRAINT "FK_08626ad212783d6b0fc7d3f513f" FOREIGN KEY ("batchId") REFERENCES "batch"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
         await queryRunner.query(`ALTER TABLE "batch_coordinators" ADD CONSTRAINT "FK_d68a1efe3667f2bfeb01b937303" FOREIGN KEY ("employeeId") REFERENCES "employee"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
         await queryRunner.query(`ALTER TABLE "batch_passengers" ADD CONSTRAINT "FK_e87d0380e13e11f53e121e8739a" FOREIGN KEY ("batchId") REFERENCES "batch"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
@@ -125,12 +128,13 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "batch_passengers" DROP CONSTRAINT "FK_e87d0380e13e11f53e121e8739a"`);
         await queryRunner.query(`ALTER TABLE "batch_coordinators" DROP CONSTRAINT "FK_d68a1efe3667f2bfeb01b937303"`);
         await queryRunner.query(`ALTER TABLE "batch_coordinators" DROP CONSTRAINT "FK_08626ad212783d6b0fc7d3f513f"`);
-        await queryRunner.query(`ALTER TABLE "booking_passengers" DROP CONSTRAINT "FK_1e2d37c7eb82f4017a9a4a06bc8"`);
         await queryRunner.query(`ALTER TABLE "bookings" DROP CONSTRAINT "FK_1b3f0fcfa5c68dffbfd47cbb103"`);
         await queryRunner.query(`ALTER TABLE "bookings" DROP CONSTRAINT "FK_2ab7f927262f1f56d6f45bca107"`);
         await queryRunner.query(`ALTER TABLE "bookings" DROP CONSTRAINT "FK_bfe433b9d4bd27eb45ee01274c0"`);
         await queryRunner.query(`ALTER TABLE "bookings" DROP CONSTRAINT "FK_402873fd6596d556781ac5d8ae4"`);
         await queryRunner.query(`ALTER TABLE "bookings" DROP CONSTRAINT "FK_8e21b7ae33e7b0673270de4146f"`);
+        await queryRunner.query(`ALTER TABLE "booking_checklists" DROP CONSTRAINT "FK_8add578648fac04da66bf93dcb6"`);
+        await queryRunner.query(`ALTER TABLE "booking_checklists" DROP CONSTRAINT "FK_659c97bca215479d341e44096ec"`);
         await queryRunner.query(`ALTER TABLE "booking_documents" DROP CONSTRAINT "FK_e02a0906cc18af4e45507f1c656"`);
         await queryRunner.query(`ALTER TABLE "booking_documents" DROP CONSTRAINT "FK_b4cd5c837329d17508808dc0938"`);
         await queryRunner.query(`ALTER TABLE "booking_payments" DROP CONSTRAINT "FK_4939aad83daac5e7c0756cb308b"`);
@@ -150,17 +154,18 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "checklist_items" DROP CONSTRAINT "FK_5e5d30b7e402798ef0dcbff6c7d"`);
         await queryRunner.query(`ALTER TABLE "cancellation_tiers" DROP CONSTRAINT "FK_5ac9df41946608c0e524ac3cdba"`);
         await queryRunner.query(`ALTER TABLE "cancellation_policies" DROP CONSTRAINT "FK_3d7697fa4872ca571f1c63d7f23"`);
+        await queryRunner.query(`ALTER TABLE "booking_passengers" DROP CONSTRAINT "FK_1e2d37c7eb82f4017a9a4a06bc8"`);
         await queryRunner.query(`ALTER TABLE "customer" DROP CONSTRAINT "FK_f59a476121c4fe9ea136699a95d"`);
         await queryRunner.query(`ALTER TABLE "customer" DROP CONSTRAINT "FK_4ffb356b370e38bdf5502ce44df"`);
-        await queryRunner.query(`ALTER TABLE "import_templates" DROP CONSTRAINT "FK_164e488c510a93859d591388f9d"`);
-        await queryRunner.query(`ALTER TABLE "import_templates" DROP CONSTRAINT "FK_8bd73a1739211d4245637139a1e"`);
         await queryRunner.query(`ALTER TABLE "import_history" DROP CONSTRAINT "FK_aba8a73b613296c11d8f41e0ebc"`);
         await queryRunner.query(`ALTER TABLE "import_history" DROP CONSTRAINT "FK_71cdae429e95acc9911205fd6ec"`);
-        await queryRunner.query(`ALTER TABLE "notification" DROP CONSTRAINT "FK_928b7aa1754e08e1ed7052cb9d8"`);
         await queryRunner.query(`ALTER TABLE "lead_update" DROP CONSTRAINT "FK_9d8412bb9cbbac67083cdb121b1"`);
         await queryRunner.query(`ALTER TABLE "lead_update" DROP CONSTRAINT "FK_600b267449fad40e0f135205afe"`);
         await queryRunner.query(`ALTER TABLE "lead" DROP CONSTRAINT "FK_c2264888ac9339b12768d966da8"`);
         await queryRunner.query(`ALTER TABLE "lead" DROP CONSTRAINT "FK_b53c58ebaa79dd4b8a611c7c42f"`);
+        await queryRunner.query(`ALTER TABLE "import_templates" DROP CONSTRAINT "FK_164e488c510a93859d591388f9d"`);
+        await queryRunner.query(`ALTER TABLE "import_templates" DROP CONSTRAINT "FK_8bd73a1739211d4245637139a1e"`);
+        await queryRunner.query(`ALTER TABLE "notification" DROP CONSTRAINT "FK_928b7aa1754e08e1ed7052cb9d8"`);
         await queryRunner.query(`ALTER TABLE "reminder" DROP CONSTRAINT "FK_234994333887746bb8e9da50227"`);
         await queryRunner.query(`ALTER TABLE "reminder" DROP CONSTRAINT "FK_e14c17d6003eb7b57ba292a905b"`);
         await queryRunner.query(`ALTER TABLE "user_invite" DROP CONSTRAINT "FK_139c9176bc718b9e836851652a0"`);
@@ -183,9 +188,12 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`DROP INDEX "public"."IDX_d68a1efe3667f2bfeb01b93730"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_08626ad212783d6b0fc7d3f513"`);
         await queryRunner.query(`DROP TABLE "batch_coordinators"`);
-        await queryRunner.query(`DROP TABLE "booking_passengers"`);
+        await queryRunner.query(`DROP TABLE "file_manager"`);
+        await queryRunner.query(`DROP TYPE "public"."file_manager_relatedtype_enum"`);
         await queryRunner.query(`DROP TABLE "bookings"`);
         await queryRunner.query(`DROP TYPE "public"."bookings_status_enum"`);
+        await queryRunner.query(`DROP TABLE "booking_checklists"`);
+        await queryRunner.query(`DROP TYPE "public"."booking_checklists_type_enum"`);
         await queryRunner.query(`DROP TABLE "booking_documents"`);
         await queryRunner.query(`DROP TYPE "public"."booking_documents_documenttype_enum"`);
         await queryRunner.query(`DROP TABLE "booking_payments"`);
@@ -196,7 +204,6 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`DROP TABLE "packages"`);
         await queryRunner.query(`DROP TYPE "public"."packages_status_enum"`);
         await queryRunner.query(`DROP TYPE "public"."packages_category_enum"`);
-        await queryRunner.query(`DROP TYPE "public"."packages_difficulty_enum"`);
         await queryRunner.query(`DROP TABLE "transportations"`);
         await queryRunner.query(`DROP TABLE "payment_milestones"`);
         await queryRunner.query(`DROP TABLE "package_locations"`);
@@ -210,16 +217,15 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`DROP TYPE "public"."checklist_items_category_enum"`);
         await queryRunner.query(`DROP TABLE "cancellation_tiers"`);
         await queryRunner.query(`DROP TABLE "cancellation_policies"`);
+        await queryRunner.query(`DROP TABLE "booking_passengers"`);
         await queryRunner.query(`DROP TABLE "customer"`);
-        await queryRunner.query(`DROP TYPE "public"."customer_status_enum"`);
-        await queryRunner.query(`DROP TABLE "file_manager"`);
-        await queryRunner.query(`DROP TYPE "public"."file_manager_relatedtype_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."customer_gender_enum"`);
         await queryRunner.query(`DROP TABLE "group"`);
-        await queryRunner.query(`DROP TABLE "import_templates"`);
         await queryRunner.query(`DROP TABLE "import_history"`);
-        await queryRunner.query(`DROP TABLE "notification"`);
         await queryRunner.query(`DROP TABLE "lead_update"`);
         await queryRunner.query(`DROP TABLE "lead"`);
+        await queryRunner.query(`DROP TABLE "import_templates"`);
+        await queryRunner.query(`DROP TABLE "notification"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_1b09a69ba1d35c67f008ff69ca"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_71eb306b6f361e548572b1cf32"`);
         await queryRunner.query(`DROP TABLE "reminder"`);

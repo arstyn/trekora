@@ -10,6 +10,18 @@ export type PaymentMethod =
 
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 
+// Checklist item interface for both individual and group checklists
+export interface IChecklistItem {
+	id: string;
+	item: string;
+	completed: boolean;
+}
+
+// Group checklist item with mandatory flag
+export interface IGroupChecklistItem extends IChecklistItem {
+	mandatory: boolean;
+}
+
 export interface IBookingPassenger {
 	id?: string;
 	fullName: string;
@@ -21,6 +33,7 @@ export interface IBookingPassenger {
 	additionalInfo?: object;
 	bookingId?: string;
 	booking?: IBooking;
+	checklist?: IChecklistItem[]; // Individual passenger checklist
 }
 
 export interface IBookingPayment {
@@ -75,6 +88,7 @@ export interface IBooking {
 	specialRequests?: string;
 	passengers: IBookingPassenger[];
 	payments: IBookingPayment[];
+	groupChecklist?: IGroupChecklistItem[]; // Group-level checklist items
 	createdAt: string;
 	updatedAt: string;
 }
@@ -105,6 +119,7 @@ export interface ICreateBookingRequest {
 	specialRequests?: string;
 	passengers: IBookingPassenger[];
 	initialPayment?: Omit<IBookingPayment, "id" | "status">;
+	groupChecklist?: IGroupChecklistItem[]; // Group-level checklist items
 }
 
 // For updating bookings
@@ -113,6 +128,7 @@ export interface IUpdateBookingRequest {
 	totalAmount?: number;
 	specialRequests?: string;
 	passengers?: IBookingPassenger[];
+	groupChecklist?: IGroupChecklistItem[]; // Allow updating group checklist
 }
 
 // Dashboard statistics

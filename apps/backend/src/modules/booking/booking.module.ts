@@ -10,6 +10,7 @@ import { Batch } from 'src/database/entity/batch.entity';
 import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
 import { JwtModule } from '@nestjs/jwt';
+import { BookingChecklist } from 'src/database/entity/booking-checklist.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { JwtModule } from '@nestjs/jwt';
       BookingPayment,
       BookingPassenger,
       BookingDocument,
+      BookingChecklist,
       Customer,
       Package,
       Batch,
@@ -26,6 +28,6 @@ import { JwtModule } from '@nestjs/jwt';
   ],
   controllers: [BookingController],
   providers: [BookingService],
-  exports: [BookingService],
+  exports: [BookingService], 
 })
-export class BookingModule {} 
+export class BookingModule {}

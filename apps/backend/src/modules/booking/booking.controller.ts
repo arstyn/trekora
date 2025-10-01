@@ -16,9 +16,14 @@ import {
   UpdateBookingDto,
   CreatePaymentDto,
 } from 'src/dto/booking.dto';
+import {
+  CreateChecklistItemDto,
+  UpdateChecklistItemDto,
+} from 'src/dto/checklist-dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { BookingStatus } from 'src/database/entity/booking.entity';
+import { ChecklistType } from 'src/database/entity/booking-checklist.entity';
 
 @UseGuards(AuthGuard)
 @Controller('api/bookings')
@@ -68,19 +73,42 @@ export class BookingController {
     );
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.bookingService.findOne(id);
+  // Checklist endpoints (must come before :id routes)
+  @Post(':id/checklist')
+  addChecklistItem(
+    @Param('id') bookingId: string,
+    @Body() createChecklistDto: CreateChecklistItemDto,
+  ) {
+    return this.bookingService.addChecklistItem(bookingId, createChecklistDto);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
-    return this.bookingService.update(id, updateBookingDto);
+  @Get(':id/checklist/stats')
+  getChecklistStats(
+    @Param('id') bookingId: string,
+    @Query('type') type?: ChecklistType,
+  ) {
+    return this.bookingService.getChecklistStats(bookingId, type);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.bookingService.remove(id);
+  @Patch('checklist/:checklistId')
+  updateChecklistItem(
+    @Param('checklistId') checklistId: string,
+    @Body() updateChecklistDto: UpdateChecklistItemDto,
+  ) {
+    return this.bookingService.updateChecklistItem(
+      checklistId,
+      updateChecklistDto,
+    );
+  }
+
+  @Delete('checklist/:checklistId')
+  deleteChecklistItem(@Param('checklistId') checklistId: string) {
+    return this.bookingService.deleteChecklistItem(checklistId);
+  }
+
+  @Patch('checklist/:checklistId/toggle')
+  toggleChecklistItem(@Param('checklistId') checklistId: string) {
+    return this.bookingService.toggleChecklistItem(checklistId);
   }
 
   @Post(':id/payments')
@@ -95,4 +123,19 @@ export class BookingController {
       req.user.userId,
     );
   }
-} 
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.bookingService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
+    return this.bookingService.update(id, updateBookingDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.bookingService.remove(id);
+  }
+}

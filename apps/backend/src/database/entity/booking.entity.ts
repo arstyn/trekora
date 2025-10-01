@@ -16,6 +16,9 @@ import { User } from './user.entity';
 import { BookingPayment } from './booking-payment.entity';
 import { BookingPassenger } from './booking-passenger.entity';
 import { BookingDocument } from './booking-document.entity';
+import { BookingChecklist } from './booking-checklist.entity';
+
+
 
 export enum BookingStatus {
   PENDING = 'pending',
@@ -95,6 +98,11 @@ export class Booking {
   })
   documents: BookingDocument[];
 
+  @OneToMany(() => BookingChecklist, (checklist) => checklist.booking, {
+    cascade: true,
+  })
+  checklists: BookingChecklist[];
+
   @Column({ type: 'uuid', name: 'created_by_id' })
   createdById: string;
 
@@ -114,4 +122,4 @@ export class Booking {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-} 
+}

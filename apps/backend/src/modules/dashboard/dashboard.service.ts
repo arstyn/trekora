@@ -245,7 +245,8 @@ export class DashboardService {
         'booking.status',
         'booking.createdAt',
         'booking.numberOfPassengers',
-        'customer.name',
+        'customer.firstName',
+        'customer.lastName',
         'package.name',
       ])
       .where('booking.organization_id = :organizationId', { organizationId })
@@ -256,7 +257,8 @@ export class DashboardService {
         results.map((result) => ({
           id: result.booking_id,
           bookingNumber: result.booking_bookingNumber,
-          customerName: result.customer_name,
+          customerName:
+            result.customer_firstName + ' ' + result.customer_lastName,
           packageName: result.package_name,
           totalAmount: parseFloat(result.booking_totalAmount),
           status: result.booking_status,

@@ -2,6 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
 import { getFileUrl } from "@/lib/utils";
 import type { ICustomer } from "@/types/customer.type";
@@ -69,7 +70,7 @@ export function ViewCustomerDialog({
 					</DialogTitle>
 				</DialogHeader>
 
-				<div className="space-y-6 overflow-y-auto max-h-[70vh]">
+				<ScrollArea className="space-y-6 max-h-[70vh] pr-4">
 					{/* Header with profile photo and basic info */}
 					<div className="flex items-center border-b pb-4">
 						<Avatar className="h-16 w-16">
@@ -102,7 +103,7 @@ export function ViewCustomerDialog({
 
 					{/* Personal Information */}
 					<div className="space-y-4">
-						<h4 className="text-lg font-semibold text-primary">
+						<h4 className="text-lg font-semibold text-primary mt-5">
 							Personal Information
 						</h4>
 						<div className="grid grid-cols-2 gap-6">
@@ -143,7 +144,7 @@ export function ViewCustomerDialog({
 						customer.emergencyContactPhone ||
 						customer.emergencyContactRelation) && (
 						<div className="space-y-4">
-							<h4 className="text-lg font-semibold text-primary">
+							<h4 className="text-lg font-semibold text-primary mt-5">
 								Emergency Contact
 							</h4>
 							<div className="grid grid-cols-2 gap-6">
@@ -174,7 +175,7 @@ export function ViewCustomerDialog({
 						customer.passportExpiryDate ||
 						customer.passportPhotos?.length) && (
 						<div className="space-y-4">
-							<h4 className="text-lg font-semibold text-primary">
+							<h4 className="text-lg font-semibold text-primary mt-5">
 								Passport Information
 							</h4>
 							<div className="grid grid-cols-2 gap-6">
@@ -221,7 +222,7 @@ export function ViewCustomerDialog({
 						customer.aadhaarIdPhotos?.length ||
 						customer.voterIdPhotos?.length) && (
 						<div className="space-y-4">
-							<h4 className="text-lg font-semibold text-primary">
+							<h4 className="text-lg font-semibold text-primary mt-5">
 								ID Documents
 							</h4>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -280,7 +281,7 @@ export function ViewCustomerDialog({
 						customer.medicalConditions ||
 						customer.specialRequests) && (
 						<div className="space-y-4">
-							<h4 className="text-lg font-semibold text-primary">
+							<h4 className="text-lg font-semibold text-primary mt-5">
 								Travel Preferences
 							</h4>
 							<div className="space-y-3">
@@ -303,7 +304,7 @@ export function ViewCustomerDialog({
 					{/* Relatives */}
 					{customer.relatives && customer.relatives.length > 0 && (
 						<div className="space-y-4">
-							<h4 className="text-lg font-semibold text-primary">
+							<h4 className="text-lg font-semibold text-primary mt-5">
 								Relatives
 							</h4>
 							<div className="space-y-3">
@@ -336,7 +337,7 @@ export function ViewCustomerDialog({
 					{/* Additional Notes */}
 					{customer.notes && (
 						<div className="space-y-4">
-							<h4 className="text-lg font-semibold text-primary">
+							<h4 className="text-lg font-semibold text-primary mt-5">
 								Additional Notes
 							</h4>
 							<div className="space-y-3">
@@ -344,7 +345,7 @@ export function ViewCustomerDialog({
 							</div>
 						</div>
 					)}
-				</div>
+				</ScrollArea>
 
 				<div className="pt-4 pr-4 flex justify-end gap-2 border-t">
 					<Button variant="outline" onClick={() => onOpenChange(false)}>

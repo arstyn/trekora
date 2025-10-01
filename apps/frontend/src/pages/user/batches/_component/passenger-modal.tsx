@@ -5,8 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Edit, Info, Mail, MoreVertical, Phone, Plus, Save, Trash2, User, X } from "lucide-react";
+import { AlertCircle, Edit, Mail, MoreVertical, Phone, Plus, Save, Trash2, User, X } from "lucide-react";
 import { useState } from "react";
+import type { ICheckList } from "@/types/checklist.types";
 
 interface PassengerModalProps {
 	passenger: any;

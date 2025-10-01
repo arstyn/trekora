@@ -12,7 +12,7 @@ import {
   UseInterceptors,
   UploadedFiles,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from '../../dto/create-customer';
 import { Customer } from '../../database/entity/customer.entity';
@@ -26,17 +26,37 @@ export class CustomerController {
 
   //Creating Customers
   @Post()
-  @UseInterceptors(FilesInterceptor('files', 20))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'profilePhoto', maxCount: 1 },
+      { name: 'passportPhotos', maxCount: 10 },
+      { name: 'voterIdPhotos', maxCount: 10 },
+      { name: 'aadhaarIdPhotos', maxCount: 10 },
+    ]),
+  )
   async create(
     @Body() data: CreateCustomerDto,
     @Request() req: ApiRequestJWT,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles()
+    files: {
+      profilePhoto?: Express.Multer.File[];
+      passportPhotos?: Express.Multer.File[];
+      voterIdPhotos?: Express.Multer.File[];
+      aadhaarIdPhotos?: Express.Multer.File[];
+    },
   ): Promise<Customer> {
+    // Flatten all files into a single array for the service
+    const allFiles: Express.Multer.File[] = [];
+    if (files.profilePhoto) allFiles.push(...files.profilePhoto);
+    if (files.passportPhotos) allFiles.push(...files.passportPhotos);
+    if (files.voterIdPhotos) allFiles.push(...files.voterIdPhotos);
+    if (files.aadhaarIdPhotos) allFiles.push(...files.aadhaarIdPhotos);
+
     return this.customerService.createCustomer(
       data,
       req.user.userId,
       req.user.organizationId,
-      files || [],
+      allFiles,
     );
   }
 
@@ -47,8 +67,11 @@ export class CustomerController {
   }
 
   @Get('search')
-  async search(@Query('q') query: string): Promise<Customer[]> {
-    return this.customerService.search(query || '');
+  async search(
+    @Query('q') query: string,
+    @Request() req: ApiRequestJWT,
+  ): Promise<Customer[]> {
+    return this.customerService.search(query || '', req.user.organizationId);
   }
 
   //Getting Single Data
@@ -58,13 +81,33 @@ export class CustomerController {
   }
   //Updating data
   @Put(':id')
-  @UseInterceptors(FilesInterceptor('files', 20))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'profilePhoto', maxCount: 1 },
+      { name: 'passportPhotos', maxCount: 10 },
+      { name: 'voterIdPhotos', maxCount: 10 },
+      { name: 'aadhaarIdPhotos', maxCount: 10 },
+    ]),
+  )
   async update(
     @Param('id') id: string,
     @Body() updatedData: Partial<CreateCustomerDto>,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles()
+    files: {
+      profilePhoto?: Express.Multer.File[];
+      passportPhotos?: Express.Multer.File[];
+      voterIdPhotos?: Express.Multer.File[];
+      aadhaarIdPhotos?: Express.Multer.File[];
+    },
   ): Promise<Customer | null> {
-    return this.customerService.update(id, updatedData, files || []);
+    // Flatten all files into a single array for the service
+    const allFiles: Express.Multer.File[] = [];
+    if (files?.profilePhoto) allFiles.push(...files.profilePhoto);
+    if (files?.passportPhotos) allFiles.push(...files.passportPhotos);
+    if (files?.voterIdPhotos) allFiles.push(...files.voterIdPhotos);
+    if (files?.aadhaarIdPhotos) allFiles.push(...files.aadhaarIdPhotos);
+
+    return this.customerService.update(id, updatedData, allFiles);
   }
   //Delete Customer
   @Delete(':id')

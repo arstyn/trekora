@@ -41,4 +41,4 @@ export class BookingPassenger {
   })
   @JoinColumn({ name: 'booking_id' })
   booking: Booking;
-} 
+}

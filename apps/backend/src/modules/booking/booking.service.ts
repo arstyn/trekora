@@ -12,6 +12,10 @@ import {
 } from 'src/database/entity/booking-payment.entity';
 import { BookingPassenger } from 'src/database/entity/booking-passenger.entity';
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
+import {
+  BookingChecklist,
+  ChecklistType,
+} from 'src/database/entity/booking-checklist.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
 import { Batch } from 'src/database/entity/batch.entity';
@@ -22,7 +26,14 @@ import {
   BookingSummaryDto,
   BookingResponseDto,
   CreatePaymentDto,
+  BookingPassengerResponseDto,
 } from 'src/dto/booking.dto';
+import {
+  CreateChecklistItemDto,
+  UpdateChecklistItemDto,
+  ChecklistItemResponseDto,
+  ChecklistStatsDto,
+} from 'src/dto/checklist-dto';
 
 @Injectable()
 export class BookingService {
@@ -35,6 +46,8 @@ export class BookingService {
     private passengerRepository: Repository<BookingPassenger>,
     @InjectRepository(BookingDocument)
     private documentRepository: Repository<BookingDocument>,
+    @InjectRepository(BookingChecklist)
+    private checklistRepository: Repository<BookingChecklist>,
     @InjectRepository(Customer)
     private customerRepository: Repository<Customer>,
     @InjectRepository(Package)
@@ -111,21 +124,66 @@ export class BookingService {
 
       const savedBooking = await queryRunner.manager.save(booking);
 
-      // Create passengers
-      const passengers = createBookingDto.passengers.map((passengerDto) =>
-        queryRunner.manager.create(BookingPassenger, {
-          ...passengerDto,
+      // Create passengers with individual checklists
+      const savedPassengers: BookingPassenger[] = [];
+      for (let i = 0; i < createBookingDto.passengers.length; i++) {
+        const passengerDto = createBookingDto.passengers[i];
+        const passenger = queryRunner.manager.create(BookingPassenger, {
+          fullName: passengerDto.fullName,
+          age: passengerDto.age,
+          email: passengerDto.email,
+          phone: passengerDto.phone,
+          emergencyContact: passengerDto.emergencyContact,
+          specialRequirements: passengerDto.specialRequirements,
           bookingId: savedBooking.id,
-        }),
-      );
-      await queryRunner.manager.save(passengers);
+        });
+
+        const savedPassenger = await queryRunner.manager.save(passenger);
+        savedPassengers.push(savedPassenger);
+
+        // Create individual checklists for this passenger
+        if (passengerDto.checklist && passengerDto.checklist.length > 0) {
+          const individualChecklists = passengerDto.checklist.map(
+            (checklistItem, index) =>
+              queryRunner.manager.create(BookingChecklist, {
+                item: checklistItem.item,
+                completed: checklistItem.completed || false,
+                mandatory: checklistItem.mandatory || false,
+                type: ChecklistType.INDIVIDUAL,
+                bookingId: savedBooking.id,
+                passengerId: savedPassenger.id,
+                sortOrder: index,
+              }),
+          );
+          await queryRunner.manager.save(individualChecklists);
+        }
+      }
+
+      // Create group checklist items
+      if (
+        createBookingDto.groupChecklist &&
+        createBookingDto.groupChecklist.length > 0
+      ) {
+        const groupChecklists = createBookingDto.groupChecklist.map(
+          (checklistItem, index) =>
+            queryRunner.manager.create(BookingChecklist, {
+              item: checklistItem.item,
+              completed: checklistItem.completed || false,
+              mandatory: checklistItem.mandatory || false,
+              type: ChecklistType.GROUP,
+              bookingId: savedBooking.id,
+              sortOrder: index,
+            }),
+        );
+        await queryRunner.manager.save(groupChecklists);
+      }
 
       // Add passengers to batch
       await queryRunner.manager
         .createQueryBuilder()
         .relation(Batch, 'passengers')
-        .of(batch.id) // which batch
-        .add(passengers); // which passengers to link
+        .of(batch.id)
+        .add(savedPassengers);
 
       // Create initial payment if provided
       if (createBookingDto.initialPayment && advancePaid > 0) {
@@ -201,6 +259,7 @@ export class BookingService {
         'package',
         'batch',
         'passengers',
+        'checklists',
         'payments',
         'documents',
       ],
@@ -240,15 +299,47 @@ export class BookingService {
       balanceAmount: booking.balanceAmount,
       status: booking.status,
       specialRequests: booking.specialRequests,
-      passengers: booking.passengers.map((passenger) => ({
-        id: passenger.id,
-        fullName: passenger.fullName,
-        age: passenger.age,
-        email: passenger.email,
-        phone: passenger.phone,
-        emergencyContact: passenger.emergencyContact,
-        specialRequirements: passenger.specialRequirements,
-      })),
+      passengers: booking.passengers.map(
+        (passenger): BookingPassengerResponseDto => ({
+          id: passenger.id,
+          fullName: passenger.fullName,
+          age: passenger.age,
+          email: passenger.email,
+          phone: passenger.phone,
+          emergencyContact: passenger.emergencyContact,
+          specialRequirements: passenger.specialRequirements,
+          checklist:
+            passenger.additionalInfo?.map(
+              (item): ChecklistItemResponseDto => ({
+                id: item.id,
+                item: item.item,
+                completed: item.completed,
+                mandatory: item.mandatory,
+                type: item.type,
+                passengerId: item.passengerId,
+                sortOrder: item.sortOrder,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+              }),
+            ) || [],
+        }),
+      ),
+      groupChecklist:
+        booking.checklists
+          ?.filter((item) => item.type === ChecklistType.GROUP)
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map(
+            (item): ChecklistItemResponseDto => ({
+              id: item.id,
+              item: item.item,
+              completed: item.completed,
+              mandatory: item.mandatory,
+              type: item.type,
+              sortOrder: item.sortOrder,
+              createdAt: item.createdAt,
+              updatedAt: item.updatedAt,
+            }),
+          ) || [],
       payments: booking.payments.map((payment) => ({
         id: payment.id,
         amount: payment.amount,
@@ -268,7 +359,7 @@ export class BookingService {
   ): Promise<BookingResponseDto> {
     const booking = await this.bookingRepository.findOne({
       where: { id },
-      relations: ['passengers'],
+      relations: ['passengers', 'batch'],
     });
 
     if (!booking) {
@@ -339,7 +430,7 @@ export class BookingService {
         bookedSeats: booking.batch.bookedSeats - booking.numberOfPassengers,
       });
 
-      // Delete booking (cascades to passengers, payments, documents)
+      // Delete booking (cascades to passengers, payments, documents, checklists)
       await queryRunner.manager.delete(Booking, id);
 
       await queryRunner.commitTransaction();
@@ -436,6 +527,146 @@ export class BookingService {
     limit = 5,
   ): Promise<BookingSummaryDto[]> {
     return this.findAll(organizationId, undefined, limit, 0);
+  }
+
+  // Checklist-specific methods
+  async addChecklistItem(
+    bookingId: string,
+    createChecklistDto: CreateChecklistItemDto,
+  ): Promise<ChecklistItemResponseDto> {
+    const booking = await this.bookingRepository.findOne({
+      where: { id: bookingId },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    // Validate passenger exists if it's an individual checklist item
+    if (
+      createChecklistDto.type === ChecklistType.INDIVIDUAL &&
+      createChecklistDto.passengerId
+    ) {
+      const passenger = await this.passengerRepository.findOne({
+        where: { id: createChecklistDto.passengerId, bookingId },
+      });
+      if (!passenger) {
+        throw new NotFoundException('Passenger not found');
+      }
+    }
+
+    const checklistItem = this.checklistRepository.create({
+      ...createChecklistDto,
+      bookingId,
+    });
+
+    const savedItem = await this.checklistRepository.save(checklistItem);
+
+    return {
+      id: savedItem.id,
+      item: savedItem.item,
+      completed: savedItem.completed,
+      mandatory: savedItem.mandatory,
+      type: savedItem.type,
+      passengerId: savedItem.passengerId,
+      sortOrder: savedItem.sortOrder,
+      createdAt: savedItem.createdAt,
+      updatedAt: savedItem.updatedAt,
+    };
+  }
+
+  async updateChecklistItem(
+    id: string,
+    updateChecklistDto: UpdateChecklistItemDto,
+  ): Promise<ChecklistItemResponseDto> {
+    const checklistItem = await this.checklistRepository.findOne({
+      where: { id },
+    });
+
+    if (!checklistItem) {
+      throw new NotFoundException('Checklist item not found');
+    }
+
+    await this.checklistRepository.update(id, updateChecklistDto);
+    const updatedItem = await this.checklistRepository.findOne({
+      where: { id },
+    });
+
+    if (!updatedItem) {
+      throw new NotFoundException('Checklist item not found after update');
+    }
+
+    return {
+      id: updatedItem.id,
+      item: updatedItem.item,
+      completed: updatedItem.completed,
+      mandatory: updatedItem.mandatory,
+      type: updatedItem.type,
+      passengerId: updatedItem.passengerId,
+      sortOrder: updatedItem.sortOrder,
+      createdAt: updatedItem.createdAt,
+      updatedAt: updatedItem.updatedAt,
+    };
+  }
+
+  async deleteChecklistItem(id: string): Promise<void> {
+    const result = await this.checklistRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException('Checklist item not found');
+    }
+  }
+
+  async getChecklistStats(
+    bookingId: string,
+    type?: ChecklistType,
+  ): Promise<ChecklistStatsDto> {
+    const queryBuilder = this.checklistRepository
+      .createQueryBuilder('checklist')
+      .where('checklist.bookingId = :bookingId', { bookingId });
+
+    if (type) {
+      queryBuilder.andWhere('checklist.type = :type', { type });
+    }
+
+    const items = await queryBuilder.getMany();
+
+    const totalItems = items.length;
+    const completedItems = items.filter((item) => item.completed).length;
+    const mandatoryItems = items.filter((item) => item.mandatory).length;
+    const completedMandatoryItems = items.filter(
+      (item) => item.mandatory && item.completed,
+    ).length;
+
+    return {
+      totalItems,
+      completedItems,
+      mandatoryItems,
+      completedMandatoryItems,
+      completionPercentage:
+        totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0,
+      mandatoryCompletionPercentage:
+        mandatoryItems > 0
+          ? Math.round((completedMandatoryItems / mandatoryItems) * 100)
+          : 0,
+    };
+  }
+
+  async toggleChecklistItem(id: string): Promise<ChecklistItemResponseDto> {
+    const checklistItem = await this.checklistRepository.findOne({
+      where: { id },
+    });
+
+    if (!checklistItem) {
+      throw new NotFoundException('Checklist item not found');
+    }
+
+    await this.checklistRepository.update(id, {
+      completed: !checklistItem.completed,
+    });
+
+    return this.updateChecklistItem(id, {
+      completed: !checklistItem.completed,
+    });
   }
 
   private async generateBookingNumber(organizationId: string): Promise<string> {
