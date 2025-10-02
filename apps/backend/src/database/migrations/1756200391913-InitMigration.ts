@@ -57,6 +57,7 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "bookings" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "booking_number" character varying NOT NULL, "customer_id" uuid NOT NULL, "package_id" uuid NOT NULL, "batch_id" uuid NOT NULL, "number_of_passengers" integer NOT NULL, "total_amount" numeric(10,2) NOT NULL, "advance_paid" numeric(10,2) NOT NULL DEFAULT '0', "balance_amount" numeric(10,2) NOT NULL, "status" "public"."bookings_status_enum" NOT NULL DEFAULT 'pending', "special_requests" text, "additional_details" jsonb, "created_by_id" uuid NOT NULL, "organization_id" uuid NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_84168a5f562072cc602bc6ac821" UNIQUE ("booking_number"), CONSTRAINT "PK_bee6805982cc1e248e94ce94957" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "booking_passengers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "full_name" character varying NOT NULL, "age" integer NOT NULL, "email" character varying, "phone" character varying, "emergency_contact" character varying NOT NULL, "special_requirements" text, "additional_info" jsonb, "booking_id" uuid NOT NULL, CONSTRAINT "PK_cc75ac043d2aee4cca8907ae5d7" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "batch_coordinators" ("batchId" uuid NOT NULL, "employeeId" uuid NOT NULL, CONSTRAINT "PK_ea014943938e62dec8576cff324" PRIMARY KEY ("batchId", "employeeId"))`);
+        await queryRunner.query(`CREATE TABLE "booking_requests" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(),"created_at" TIMESTAMP NOT NULL DEFAULT now(),"updated_at" TIMESTAMP NOT NULL DEFAULT now(),"created_by" uuid,"organization_id" uuid,"customer_id" uuid,"package_id" uuid,"batch_id" uuid,"approved_by" uuid,CONSTRAINT "PK_booking_requests_id" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_08626ad212783d6b0fc7d3f513" ON "batch_coordinators" ("batchId") `);
         await queryRunner.query(`CREATE INDEX "IDX_d68a1efe3667f2bfeb01b93730" ON "batch_coordinators" ("employeeId") `);
         await queryRunner.query(`CREATE TABLE "batch_passengers" ("batchId" uuid NOT NULL, "passengerId" uuid NOT NULL, CONSTRAINT "PK_4eb95d6e6d3acb8c4e6ec6aee1d" PRIMARY KEY ("batchId", "passengerId"))`);
@@ -235,6 +236,7 @@ export class InitMigration1756200391913 implements MigrationInterface {
         await queryRunner.query(`DROP TABLE "user"`);
         await queryRunner.query(`DROP TABLE "role"`);
         await queryRunner.query(`DROP TABLE "organization"`);
+        await queryRunner.query(`DROP TABLE "booking_requests"`);
     }
 
 }
