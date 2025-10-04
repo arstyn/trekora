@@ -49,14 +49,14 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import type { Customer, Itinerary } from "@/types/customer.type";
+import type { ICustomer, Itinerary } from "@/types/customer.type";
 import { Edit, MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 
 interface ItineraryViewProps {
 	itineraries: Itinerary[];
-	customers: Customer[];
+	customers: ICustomer[];
 	onAdd: (itinerary: Itinerary) => void;
 	onUpdate: (itinerary: Itinerary) => void;
 	onDelete: (itineraryId: string) => void;
@@ -144,7 +144,9 @@ export default function ItineraryView({
 
 	const getCustomerName = (customerId: string) => {
 		const customer = customers.find((c) => c.id === customerId);
-		return customer ? customer.name : "Unknown Customer";
+		return customer
+			? customer.firstName + " " + customer.lastName
+			: "Unknown Customer";
 	};
 
 	const getStatusBadgeVariant = (status: string) => {
@@ -295,9 +297,11 @@ export default function ItineraryView({
 											{customers.map((customer) => (
 												<SelectItem
 													key={customer.id}
-													value={customer.id}
+													value={customer.id || ""}
 												>
-													{customer.name}
+													{customer.firstName +
+														" " +
+														customer.lastName}
 												</SelectItem>
 											))}
 										</SelectContent>

@@ -117,12 +117,44 @@ export class CustomerService {
     return fileUploads;
   }
 
-  async findAll(organizationId: string): Promise<Customer[]> {
-    return this.customerRepository.find({
-      where: {
-        organizationId,
-      },
-    });
+  async findAll(
+    organizationId: string,
+    limit: number = 10,
+    offset: number = 0,
+    search?: string,
+  ): Promise<{
+    customers: Customer[];
+    total: number;
+    hasMore: boolean;
+  }> {
+    const queryBuilder = this.customerRepository
+      .createQueryBuilder('customer')
+      .where('customer.organizationId = :organizationId', { organizationId });
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    // Get total count
+    const total = await queryBuilder.getCount();
+
+    // Get paginated results
+    const customers = await queryBuilder
+      .orderBy('customer.createdAt', 'DESC')
+      .limit(limit)
+      .offset(offset)
+      .getMany();
+
+    const hasMore = offset + limit < total;
+
+    return {
+      customers,
+      total,
+      hasMore,
+    };
   }
 
   async findOne(id: string): Promise<Customer | null> {
@@ -206,15 +238,40 @@ export class CustomerService {
     await this.customerRepository.delete(id);
   }
 
-  async search(query: string, organizationId: string): Promise<Customer[]> {
-    return this.customerRepository.find({
-      where: [
-        { firstName: ILike(`%${query}%`), organizationId },
-        { lastName: ILike(`%${query}%`), organizationId },
-        { email: ILike(`%${query}%`), organizationId },
-        { phone: ILike(`%${query}%`), organizationId },
-        { passportNumber: ILike(`%${query}%`), organizationId },
-      ],
-    });
+  async search(
+    query: string,
+    organizationId: string,
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<{
+    customers: Customer[];
+    total: number;
+    hasMore: boolean;
+  }> {
+    const queryBuilder = this.customerRepository
+      .createQueryBuilder('customer')
+      .where('customer.organizationId = :organizationId', { organizationId })
+      .andWhere(
+        '(customer.firstName ILIKE :query OR customer.lastName ILIKE :query OR customer.email ILIKE :query OR customer.phone ILIKE :query OR customer.passportNumber ILIKE :query)',
+        { query: `%${query}%` },
+      );
+
+    // Get total count
+    const total = await queryBuilder.getCount();
+
+    // Get paginated results
+    const customers = await queryBuilder
+      .orderBy('customer.createdAt', 'DESC')
+      .limit(limit)
+      .offset(offset)
+      .getMany();
+
+    const hasMore = offset + limit < total;
+
+    return {
+      customers,
+      total,
+      hasMore,
+    };
   }
 }

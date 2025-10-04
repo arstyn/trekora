@@ -22,9 +22,13 @@ export default function CustomerManagement() {
 
 	useEffect(() => {
 		const fetchCustomers = async () => {
-			const res = await axiosInstance.get<ICustomer[]>("/customers");
+			const res = await axiosInstance.get<{
+				customers: ICustomer[];
+				hasMore: boolean;
+				total: number;
+			}>("/customers");
 			if (res && res.data) {
-				setCustomers(res.data);
+				setCustomers(res.data.customers);
 			}
 		};
 		fetchCustomers();

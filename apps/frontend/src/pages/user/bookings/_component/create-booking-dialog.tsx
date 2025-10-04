@@ -1,6 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +19,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Calendar,
 	DollarSign,
@@ -25,6 +34,9 @@ import {
 	X,
 	Check,
 	CheckCircle,
+	CheckCircle2,
+	Package,
+	UserPlus,
 } from "lucide-react";
 import type React from "react";
 import { useState, useEffect } from "react";
@@ -67,21 +79,65 @@ export function CreateBookingDialog({
 	onOpenChange,
 	onBookingCreated,
 }: CreateBookingDialogProps) {
-	const [step, setStep] = useState(1);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-
+	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
-
 	const [packages, setPackages] = useState<IPackage[]>([]);
 	const [customers, setCustomers] = useState<ICustomer[]>([]);
 	const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
 	const [loadingData, setLoadingData] = useState(false);
-
 	const [customerSearch, setCustomerSearch] = useState("");
-	const [showCustomerResults, setShowCustomerResults] = useState(false);
-
+	const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
+	const [customerPagination, setCustomerPagination] = useState({
+		offset: 0,
+		limit: 10,
+		hasMore: true,
+		total: 0,
+	});
+	const [loadingCustomers, setLoadingCustomers] = useState(false);
 	const [groupChecklist, setGroupChecklist] = useState<GroupChecklistItem[]>([]);
+
+	// Form validation
+	const validateForm = () => {
+		const newErrors: Record<string, string> = {};
+
+		if (!formData.customerId) newErrors.customerId = "Please select a customer";
+		if (!formData.packageId) newErrors.packageId = "Please select a tour package";
+		if (!formData.batchId) newErrors.batchId = "Please select a batch";
+		if (!formData.numberOfPassengers || formData.numberOfPassengers < 1) {
+			newErrors.numberOfPassengers = "Please select number of passengers";
+		}
+		if (formData.advanceAmount > 0 && !formData.paymentMethod) {
+			newErrors.paymentMethod =
+				"Please select a payment method for advance payment";
+		}
+
+		// Validate passenger details
+		const invalidPassengers = formData.passengers.some((p, index) => {
+			if (!p.fullName) {
+				newErrors[`passenger_${index}_name`] = "Full name is required";
+				return true;
+			}
+			if (!p.age || p.age < 1) {
+				newErrors[`passenger_${index}_age`] = "Valid age is required";
+				return true;
+			}
+			if (!p.emergencyContact) {
+				newErrors[`passenger_${index}_emergency`] =
+					"Emergency contact is required";
+				return true;
+			}
+			return false;
+		});
+
+		if (invalidPassengers) {
+			newErrors.passengers = "Please fill in all required passenger details";
+		}
+
+		setErrors(newErrors);
+		return Object.keys(newErrors).length === 0;
+	};
 
 	const [formData, setFormData] = useState<{
 		customerId: string;
@@ -142,28 +198,104 @@ export function CreateBookingDialog({
 	const loadInitialData = async () => {
 		try {
 			setLoadingData(true);
-			const [packagesData] = await Promise.all([BookingService.getPackages()]);
+			const [packagesData, customersData] = await Promise.all([
+				BookingService.getPackages(),
+				BookingService.getCustomers({ limit: 10, offset: 0 }),
+			]);
 			setPackages(packagesData);
+			setCustomers(customersData.customers);
+			setCustomerPagination({
+				offset: 10,
+				limit: 10,
+				hasMore: customersData.hasMore,
+				total: customersData.total,
+			});
 		} catch (err) {
 			console.error("Error loading initial data:", err);
-			setError("Failed to load packages. Please try again.");
+			setError("Failed to load data. Please try again.");
 		} finally {
 			setLoadingData(false);
 		}
 	};
 
-	const searchCustomers = async (query: string) => {
+	const searchCustomers = async (query: string, reset = true) => {
 		if (query.length < 2) {
-			setCustomers([]);
+			// Reset to initial customers if search is too short
+			if (reset) {
+				await loadInitialCustomers();
+			}
 			return;
 		}
 
 		try {
-			const results = await BookingService.searchCustomers(query);
-			setCustomers(results);
-			setShowCustomerResults(true);
+			setLoadingCustomers(true);
+			const results = await BookingService.searchCustomers(query, {
+				limit: 10,
+				offset: reset ? 0 : customerPagination.offset,
+			});
+
+			if (reset) {
+				setCustomers(results.customers);
+				setCustomerPagination({
+					offset: 10,
+					limit: 10,
+					hasMore: results.hasMore,
+					total: results.total,
+				});
+			} else {
+				setCustomers((prev) => [...prev, ...results.customers]);
+				setCustomerPagination((prev) => ({
+					...prev,
+					offset: prev.offset + 10,
+					hasMore: results.hasMore,
+				}));
+			}
 		} catch (err) {
 			console.error("Error searching customers:", err);
+		} finally {
+			setLoadingCustomers(false);
+		}
+	};
+
+	const loadInitialCustomers = async () => {
+		try {
+			setLoadingCustomers(true);
+			const results = await BookingService.getCustomers({ limit: 10, offset: 0 });
+			setCustomers(results.customers);
+			setCustomerPagination({
+				offset: 10,
+				limit: 10,
+				hasMore: results.hasMore,
+				total: results.total,
+			});
+		} catch (err) {
+			console.error("Error loading customers:", err);
+		} finally {
+			setLoadingCustomers(false);
+		}
+	};
+
+	const loadMoreCustomers = async () => {
+		if (loadingCustomers || !customerPagination.hasMore) return;
+
+		try {
+			setLoadingCustomers(true);
+			const results = await BookingService.getCustomers({
+				limit: 10,
+				offset: customerPagination.offset,
+				search: customerSearch || undefined,
+			});
+
+			setCustomers((prev) => [...prev, ...results.customers]);
+			setCustomerPagination((prev) => ({
+				...prev,
+				offset: prev.offset + 10,
+				hasMore: results.hasMore,
+			}));
+		} catch (err) {
+			console.error("Error loading more customers:", err);
+		} finally {
+			setLoadingCustomers(false);
 		}
 	};
 
@@ -459,7 +591,14 @@ export function CreateBookingDialog({
 			customerPhone: customer.phone,
 		}));
 		setCustomerSearch(customer.name);
-		setShowCustomerResults(false);
+		setCustomerPopoverOpen(false);
+		// Clear any existing customer selection errors
+		if (errors.customerId) {
+			setErrors((prev) => ({
+				...prev,
+				customerId: "",
+			}));
+		}
 	};
 
 	const createChecklistItems = async (bookingId: string, booking: IBooking) => {
@@ -509,6 +648,11 @@ export function CreateBookingDialog({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+
+		if (!validateForm()) {
+			setError("Please fix the errors before submitting");
+			return;
+		}
 
 		if (!canGroupProceed()) {
 			setError("Please add at least one group checklist item to proceed.");
@@ -594,7 +738,6 @@ export function CreateBookingDialog({
 	};
 
 	const resetForm = () => {
-		setStep(1);
 		setCreatedBookingId(null);
 		setFormData({
 			customerId: "",
@@ -624,35 +767,16 @@ export function CreateBookingDialog({
 		});
 		setGroupChecklist([]);
 		setCustomerSearch("");
+		setCustomerPopoverOpen(false);
+		setCustomerPagination({
+			offset: 0,
+			limit: 10,
+			hasMore: true,
+			total: 0,
+		});
+		setLoadingCustomers(false);
 		setError(null);
-	};
-
-	const nextStep = () => {
-		if (step === 1 && !formData.customerId) {
-			setError("Please select a customer");
-			return;
-		}
-		if (step === 2 && (!formData.packageId || !formData.batchId)) {
-			setError("Please select both package and batch");
-			return;
-		}
-		if (step === 3) {
-			const invalidPassengers = formData.passengers.some(
-				(p) => !p.fullName || !p.age || !p.emergencyContact
-			);
-			if (invalidPassengers) {
-				setError("Please fill in all required passenger details");
-				return;
-			}
-		}
-
-		setError(null);
-		setStep((prev) => Math.min(prev + 1, 5));
-	};
-
-	const prevStep = () => {
-		setError(null);
-		setStep((prev) => Math.max(prev - 1, 1));
+		setErrors({});
 	};
 
 	const ChecklistManager = ({ passengerIndex }: { passengerIndex: number }) => {
@@ -828,7 +952,7 @@ export function CreateBookingDialog({
 				</div>
 
 				{/* Checklist items */}
-				<div className="space-y-2 max-h-60 overflow-y-auto">
+				<div className="space-y-2 max-h-60 overflow-y-auto mb-5">
 					{groupChecklist.map((item) => (
 						<div
 							key={item.id}
@@ -847,12 +971,12 @@ export function CreateBookingDialog({
 							>
 								{item.completed && <Check className="w-3 h-3" />}
 							</Button>
-							<div className="flex-1">
+							<div className="flex-1 ">
 								<span
 									className={`text-sm ${
 										item.completed
 											? "line-through text-green-700"
-											: "text-gray-900"
+											: "text-primary"
 									}`}
 								>
 									{item.item}
@@ -875,695 +999,1032 @@ export function CreateBookingDialog({
 						</div>
 					))}
 				</div>
-
-				{groupChecklist.length === 0 && (
-					<p className="text-sm text-muted-foreground">
-						No group checklist items added yet. Add items to help track group
-						preparations.
-					</p>
-				)}
 			</div>
 		);
 	};
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle>Create New Booking - Step {step} of 5</DialogTitle>
+			<DialogContent className="min-w-7xl w-full overflow-hidden p-0">
+				<DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+					<DialogTitle className="flex items-center gap-2 text-xl">
+						<Plus className="h-5 w-5 text-primary" />
+						Create New Booking
+					</DialogTitle>
 				</DialogHeader>
 
-				{error && (
-					<Alert variant="destructive">
-						<AlertCircle className="h-4 w-4" />
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-				)}
-
 				{loadingData ? (
-					<div className="flex items-center justify-center py-8">
-						<div className="flex items-center gap-2">
+					<div className="flex items-center justify-center py-12 flex-1">
+						<div className="flex items-center gap-2 text-muted-foreground">
 							<Loader2 className="h-4 w-4 animate-spin" />
-							<span>Loading data...</span>
+							Loading data...
 						</div>
 					</div>
 				) : (
-					<form onSubmit={handleSubmit} className="space-y-6">
-						{/* Step 1: Customer Selection */}
-						{step === 1 && (
-							<Card>
-								<CardHeader>
-									<CardTitle className="text-lg">
-										Customer Selection
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div>
-										<Label htmlFor="customerSearch">
-											Search Customer *
-										</Label>
-										<div className="relative mt-2">
-											<Input
-												id="customerSearch"
-												value={customerSearch}
-												onChange={(e) => {
-													setCustomerSearch(e.target.value);
-													searchCustomers(e.target.value);
-												}}
-												placeholder="Type customer name or email to search..."
-												className="pr-10"
-											/>
-											<Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-										</div>
+					<form onSubmit={handleSubmit} className="flex flex-col flex-1 p-0">
+						{error && (
+							<div className="px-5 pt-5">
+								<Alert variant="destructive">
+									<AlertCircle className="h-4 w-4" />
+									<AlertDescription>{error}</AlertDescription>
+								</Alert>
+							</div>
+						)}
+						<ScrollArea className="px-5 pb-5 pt-1 max-h-[70vh]">
+							{/* Main Grid Layout */}
+							<div className="grid grid-cols-2 gap-5">
+								{/* Customer Selection */}
+								<Card className="border-0 shadow-sm">
+									<CardHeader className="pb-3">
+										<CardTitle className="flex items-center gap-2 text-base font-semibold">
+											<Users className="h-4 w-4 text-primary" />
+											Customer Selection
+										</CardTitle>
+										<CardDescription className="text-sm">
+											Search and select a customer for this booking
+										</CardDescription>
+									</CardHeader>
+									<CardContent className="pt-0">
+										<div className="space-y-4">
+											{/* Customer Search */}
+											<div className="space-y-2">
+												<Label className="text-sm font-medium">
+													Search Customer
+												</Label>
+												<Popover
+													open={customerPopoverOpen}
+													onOpenChange={setCustomerPopoverOpen}
+												>
+													<PopoverTrigger asChild>
+														<Button
+															variant="outline"
+															role="combobox"
+															className={`w-full justify-between ${
+																errors.customerId
+																	? "border-destructive"
+																	: ""
+															}`}
+														>
+															<span className="flex items-center gap-2">
+																<UserPlus className="h-4 w-4" />
+																{formData.customerName ||
+																	"Select a customer"}
+															</span>
+														</Button>
+													</PopoverTrigger>
+													<PopoverContent
+														className="w-[400px] p-0"
+														align="start"
+													>
+														<div className="p-3 border-b">
+															<div className="relative">
+																<Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+																<Input
+																	placeholder="Search customers..."
+																	value={customerSearch}
+																	onChange={(e) => {
+																		setCustomerSearch(
+																			e.target.value
+																		);
+																		searchCustomers(
+																			e.target.value
+																		);
+																	}}
+																	className="pl-8"
+																/>
+															</div>
+														</div>
+														<ScrollArea
+															className="max-h-60"
+															onScrollCapture={(e) => {
+																const {
+																	scrollTop,
+																	scrollHeight,
+																	clientHeight,
+																} = e.currentTarget;
+																if (
+																	scrollHeight -
+																		scrollTop <=
+																	clientHeight + 10
+																) {
+																	loadMoreCustomers();
+																}
+															}}
+														>
+															<div className="p-2">
+																{customers.length > 0 ? (
+																	<div className="space-y-1">
+																		{customers.map(
+																			(
+																				customer
+																			) => (
+																				<div
+																					key={
+																						customer.id
+																					}
+																					className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer"
+																					onClick={() => {
+																						handleCustomerSelect(
+																							customer
+																						);
+																						if (
+																							errors.customerId
+																						) {
+																							setErrors(
+																								(
+																									prev
+																								) => ({
+																									...prev,
+																									customerId:
+																										"",
+																								})
+																							);
+																						}
+																					}}
+																				>
+																					<Checkbox
+																						checked={
+																							formData.customerId ===
+																							customer.id
+																						}
+																						onCheckedChange={() => {
+																							handleCustomerSelect(
+																								customer
+																							);
+																							if (
+																								errors.customerId
+																							) {
+																								setErrors(
+																									(
+																										prev
+																									) => ({
+																										...prev,
+																										customerId:
+																											"",
+																									})
+																								);
+																							}
+																						}}
+																					/>
+																					<div className="flex-1 min-w-0">
+																						<p className="text-sm font-medium truncate">
+																							{
+																								customer.name
+																							}
+																						</p>
+																						<p className="text-xs text-muted-foreground">
+																							{
+																								customer.email
+																							}{" "}
+																							•{" "}
+																							{
+																								customer.phone
+																							}
+																						</p>
+																					</div>
+																				</div>
+																			)
+																		)}
 
-										{showCustomerResults && customers.length > 0 && (
-											<div className="mt-2 border rounded-md max-h-48 overflow-y-auto">
-												{customers.map((customer) => (
-													<div
-														key={customer.id}
-														className="p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
-														onClick={() =>
-															handleCustomerSelect(customer)
+																		{/* Loading indicator */}
+																		{loadingCustomers && (
+																			<div className="flex items-center justify-center py-4">
+																				<Loader2 className="h-4 w-4 animate-spin mr-2" />
+																				<span className="text-sm text-muted-foreground">
+																					Loading
+																					more
+																					customers...
+																				</span>
+																			</div>
+																		)}
+
+																		{/* End of list indicator */}
+																		{!customerPagination.hasMore &&
+																			customers.length >
+																				0 && (
+																				<div className="text-center py-2 text-xs text-muted-foreground">
+																					No
+																					more
+																					customers
+																					to
+																					load
+																				</div>
+																			)}
+																	</div>
+																) : (
+																	<div className="text-center py-4 text-muted-foreground">
+																		{loadingCustomers ? (
+																			<div className="flex items-center justify-center">
+																				<Loader2 className="h-4 w-4 animate-spin mr-2" />
+																				Loading
+																				customers...
+																			</div>
+																		) : (
+																			"No customers found"
+																		)}
+																	</div>
+																)}
+															</div>
+														</ScrollArea>
+													</PopoverContent>
+												</Popover>
+												{errors.customerId && (
+													<Alert
+														variant="destructive"
+														className="py-2"
+													>
+														<AlertCircle className="h-4 w-4" />
+														<AlertDescription>
+															{errors.customerId}
+														</AlertDescription>
+													</Alert>
+												)}
+											</div>
+
+											{/* Selected Customer Details */}
+											{formData.customerId && (
+												<div className="mt-4 p-4 bg-muted/30 rounded-lg border">
+													<div className="flex items-start gap-3">
+														<div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+															<Users className="h-5 w-5 text-primary" />
+														</div>
+														<div className="flex-1 min-w-0">
+															<h4 className="font-semibold text-sm mb-1">
+																{formData.customerName}
+															</h4>
+															<p className="text-xs text-muted-foreground mb-2">
+																{formData.customerEmail}
+															</p>
+															<div className="flex flex-wrap gap-2">
+																<Badge
+																	variant="secondary"
+																	className="text-xs"
+																>
+																	Phone:{" "}
+																	{
+																		formData.customerPhone
+																	}
+																</Badge>
+															</div>
+														</div>
+													</div>
+												</div>
+											)}
+										</div>
+									</CardContent>
+								</Card>
+
+								{/* Package Selection */}
+								<Card className="border-0 shadow-sm">
+									<CardHeader className="pb-3">
+										<CardTitle className="flex items-center gap-2 text-base font-semibold">
+											<Package className="h-4 w-4 text-primary" />
+											Tour Package
+										</CardTitle>
+										<CardDescription className="text-sm">
+											Select the tour package for this booking
+										</CardDescription>
+									</CardHeader>
+									<CardContent className="pt-0">
+										<div className="space-y-4">
+											<div className="space-y-2">
+												<Label className="text-sm font-medium">
+													Select Package
+												</Label>
+												<Select
+													value={formData.packageId}
+													onValueChange={(value) => {
+														const pkg = packages.find(
+															(p) => p.id === value
+														);
+														setFormData((prev) => ({
+															...prev,
+															packageId: value,
+															batchId: "",
+															totalAmount: pkg
+																? pkg.price *
+																  prev.numberOfPassengers
+																: 0,
+														}));
+														if (errors.packageId) {
+															setErrors((prev) => ({
+																...prev,
+																packageId: "",
+															}));
+														}
+													}}
+												>
+													<SelectTrigger
+														className={
+															errors.packageId
+																? "border-destructive"
+																: ""
 														}
 													>
-														<div className="font-medium">
-															{customer.name}
+														<SelectValue placeholder="Choose a package" />
+													</SelectTrigger>
+													<SelectContent>
+														{packages.map((pkg) => (
+															<SelectItem
+																key={pkg.id}
+																value={pkg.id}
+															>
+																{pkg.name} -{" "}
+																{BookingService.formatCurrency(
+																	pkg.price
+																)}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												{errors.packageId && (
+													<Alert
+														variant="destructive"
+														className="py-2"
+													>
+														<AlertCircle className="h-4 w-4" />
+														<AlertDescription>
+															{errors.packageId}
+														</AlertDescription>
+													</Alert>
+												)}
+											</div>
+
+											{/* Selected Package Details */}
+											{(() => {
+												const selectedPackage = packages.find(
+													(pkg) => pkg.id === formData.packageId
+												);
+												return (
+													selectedPackage && (
+														<div className="mt-4 p-4 bg-muted/30 rounded-lg border">
+															<div className="flex items-start gap-3">
+																<div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+																	<Package className="h-5 w-5 text-primary" />
+																</div>
+																<div className="flex-1 min-w-0">
+																	<h4 className="font-semibold text-sm mb-1">
+																		{
+																			selectedPackage.name
+																		}
+																	</h4>
+																	<p className="text-xs text-muted-foreground mb-2">
+																		{selectedPackage.description ||
+																			"No description available"}
+																	</p>
+																	<div className="flex flex-wrap gap-2">
+																		{selectedPackage.duration && (
+																			<Badge
+																				variant="secondary"
+																				className="text-xs"
+																			>
+																				Duration:{" "}
+																				{
+																					selectedPackage.duration
+																				}{" "}
+																				days
+																			</Badge>
+																		)}
+																		{selectedPackage.price && (
+																			<Badge
+																				variant="secondary"
+																				className="text-xs"
+																			>
+																				Price: ₹
+																				{
+																					selectedPackage.price
+																				}
+																			</Badge>
+																		)}
+																	</div>
+																</div>
+															</div>
 														</div>
-														<div className="text-sm text-muted-foreground">
-															{customer.email} •{" "}
-															{customer.phone}
+													)
+												);
+											})()}
+										</div>
+									</CardContent>
+								</Card>
+							</div>
+
+							{/* Right Column */}
+							<div className="space-y-5">
+								{/* Batch Selection */}
+								{formData.packageId && (
+									<Card className="border-0 shadow-sm">
+										<CardHeader className="pb-3">
+											<CardTitle className="flex items-center gap-2 text-base font-semibold">
+												<Calendar className="h-4 w-4 text-primary" />
+												Available Batches
+											</CardTitle>
+											<CardDescription className="text-sm">
+												Select a batch for your travel dates
+											</CardDescription>
+										</CardHeader>
+										<CardContent className="pt-0">
+											<div className="grid gap-3">
+												{availableBatches.map((batch) => (
+													<div
+														key={batch.id}
+														className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+															formData.batchId === batch.id
+																? "border-primary bg-primary/5"
+																: "hover:bg-muted/50"
+														} ${
+															errors.batchId
+																? "border-destructive"
+																: ""
+														}`}
+														onClick={() => {
+															setFormData((prev) => ({
+																...prev,
+																batchId: batch.id,
+															}));
+															if (errors.batchId) {
+																setErrors((prev) => ({
+																	...prev,
+																	batchId: "",
+																}));
+															}
+														}}
+													>
+														<div className="flex items-center justify-between">
+															<div className="flex items-center gap-3">
+																<Calendar className="w-4 h-4" />
+																<div>
+																	<p className="font-medium">
+																		{new Date(
+																			batch.startDate
+																		).toLocaleDateString()}{" "}
+																		-{" "}
+																		{new Date(
+																			batch.endDate
+																		).toLocaleDateString()}
+																	</p>
+																	<p className="text-sm text-muted-foreground">
+																		{batch.totalSeats -
+																			batch.bookedSeats}{" "}
+																		seats available
+																		out of{" "}
+																		{batch.totalSeats}
+																	</p>
+																</div>
+															</div>
+															<Badge
+																variant={
+																	batch.totalSeats -
+																		batch.bookedSeats >
+																	5
+																		? "default"
+																		: "secondary"
+																}
+															>
+																{batch.totalSeats -
+																	batch.bookedSeats}{" "}
+																Available
+															</Badge>
 														</div>
 													</div>
 												))}
 											</div>
-										)}
-									</div>
-									{formData.customerId && (
-										<div className="p-4 bg-muted/50 rounded-lg">
-											<h4 className="font-medium mb-2">
-												Selected Customer:
-											</h4>
-											<div className="space-y-1">
-												<p>
-													<strong>Name:</strong>{" "}
-													{formData.customerName}
-												</p>
-												<p>
-													<strong>Email:</strong>{" "}
-													{formData.customerEmail}
-												</p>
-												<p>
-													<strong>Phone:</strong>{" "}
-													{formData.customerPhone}
-												</p>
-											</div>
-										</div>
-									)}
-								</CardContent>
-							</Card>
-						)}
+											{errors.batchId && (
+												<Alert
+													variant="destructive"
+													className="py-2 mt-3"
+												>
+													<AlertCircle className="h-4 w-4" />
+													<AlertDescription>
+														{errors.batchId}
+													</AlertDescription>
+												</Alert>
+											)}
+										</CardContent>
+									</Card>
+								)}
 
-						{/* Step 2: Package & Batch Selection */}
-						{step === 2 && (
-							<div className="space-y-6">
-								<Card>
-									<CardHeader>
-										<CardTitle className="text-lg">
-											Package & Batch Selection
-										</CardTitle>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div>
-											<Label htmlFor="package" className="mb-2">
-												Select Package *
-											</Label>
-											<Select
-												value={formData.packageId}
-												onValueChange={(value) => {
-													const pkg = packages.find(
-														(p) => p.id === value
-													);
-													setFormData((prev) => ({
-														...prev,
-														packageId: value,
-														batchId: "",
-														totalAmount: pkg
-															? pkg.price *
-															  prev.numberOfPassengers
-															: 0,
-													}));
-												}}
-											>
-												<SelectTrigger>
-													<SelectValue placeholder="Choose a package" />
-												</SelectTrigger>
-												<SelectContent>
-													{packages.map((pkg) => (
-														<SelectItem
-															key={pkg.id}
-															value={pkg.id}
-														>
-															{pkg.name} -{" "}
-															{BookingService.formatCurrency(
-																pkg.price
-															)}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-										</div>
-
-										{formData.packageId && (
-											<div>
-												<Label>Available Batches</Label>
-												<div className="grid gap-3 mt-2">
-													{availableBatches.map((batch) => (
-														<div
-															key={batch.id}
-															className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-																formData.batchId ===
-																batch.id
-																	? "border-primary bg-primary/5"
-																	: "hover:bg-muted/50"
-															}`}
-															onClick={() =>
-																setFormData((prev) => ({
+								{/* Passenger Count & Total Amount */}
+								{formData.batchId && (
+									<Card className="border-0 shadow-sm">
+										<CardHeader className="pb-3">
+											<CardTitle className="flex items-center gap-2 text-base font-semibold">
+												<Users className="h-4 w-4 text-primary" />
+												Passenger Count & Pricing
+											</CardTitle>
+											<CardDescription className="text-sm">
+												Select number of passengers and view total
+												amount
+											</CardDescription>
+										</CardHeader>
+										<CardContent className="pt-0">
+											<div className="space-y-4">
+												<div className="space-y-2">
+													<Label className="text-sm font-medium">
+														Number of Passengers
+													</Label>
+													<Select
+														value={formData.numberOfPassengers.toString()}
+														onValueChange={(value) => {
+															updatePassengerCount(
+																Number.parseInt(value)
+															);
+															if (
+																errors.numberOfPassengers
+															) {
+																setErrors((prev) => ({
 																	...prev,
-																	batchId: batch.id,
-																}))
+																	numberOfPassengers:
+																		"",
+																}));
+															}
+														}}
+													>
+														<SelectTrigger
+															className={
+																errors.numberOfPassengers
+																	? "border-destructive"
+																	: ""
 															}
 														>
-															<div className="flex items-center justify-between">
-																<div className="flex items-center gap-3">
-																	<Calendar className="w-4 h-4" />
-																	<div>
-																		<p className="font-medium">
-																			{new Date(
-																				batch.startDate
-																			).toLocaleDateString()}{" "}
-																			-{" "}
-																			{new Date(
-																				batch.endDate
-																			).toLocaleDateString()}
-																		</p>
-																		<p className="text-sm text-muted-foreground">
-																			{batch.totalSeats -
-																				batch.bookedSeats}{" "}
-																			seats
-																			available out
-																			of{" "}
-																			{
-																				batch.totalSeats
-																			}
-																		</p>
-																	</div>
-																</div>
-																<Badge
-																	variant={
-																		batch.totalSeats -
-																			batch.bookedSeats >
-																		5
-																			? "default"
-																			: "secondary"
-																	}
-																>
-																	{batch.totalSeats -
-																		batch.bookedSeats}{" "}
-																	Available
-																</Badge>
-															</div>
+															<SelectValue />
+														</SelectTrigger>
+														<SelectContent>
+															{Array.from(
+																{
+																	length: Math.min(
+																		selectedBatch
+																			? selectedBatch.totalSeats -
+																					selectedBatch.bookedSeats
+																			: 1,
+																		10
+																	),
+																},
+																(_, i) => (
+																	<SelectItem
+																		key={i + 1}
+																		value={(
+																			i + 1
+																		).toString()}
+																	>
+																		{i + 1} Passenger
+																		{i > 0 ? "s" : ""}
+																	</SelectItem>
+																)
+															)}
+														</SelectContent>
+													</Select>
+													{errors.numberOfPassengers && (
+														<Alert
+															variant="destructive"
+															className="py-2"
+														>
+															<AlertCircle className="h-4 w-4" />
+															<AlertDescription>
+																{
+																	errors.numberOfPassengers
+																}
+															</AlertDescription>
+														</Alert>
+													)}
+												</div>
+
+												{formData.totalAmount > 0 && (
+													<div className="p-4 bg-muted/30 rounded-lg border">
+														<div className="flex items-center justify-between">
+															<span className="font-medium">
+																Total Amount:
+															</span>
+															<span className="text-xl font-bold">
+																{BookingService.formatCurrency(
+																	formData.totalAmount
+																)}
+															</span>
 														</div>
-													))}
+													</div>
+												)}
+											</div>
+										</CardContent>
+									</Card>
+								)}
+							</div>
+
+							{/* Passenger Details */}
+							<div className="mt-5">
+								<Card>
+									<CardHeader>
+										<CardTitle className="text-lg flex items-center gap-2">
+											<Users className="h-5 w-5 text-primary" />
+											Passenger Details
+										</CardTitle>
+									</CardHeader>
+									<CardContent className="space-y-6">
+										{formData.passengers.map((passenger, index) => (
+											<div
+												key={index}
+												className="p-4 border rounded-lg space-y-4"
+											>
+												<h4 className="font-medium flex items-center gap-2">
+													<Users className="w-4 h-4" />
+													Passenger {index + 1}
+												</h4>
+												<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+													<div className="space-y-2">
+														<Label>Full Name *</Label>
+														<Input
+															value={passenger.fullName}
+															onChange={(e) =>
+																updatePassenger(
+																	index,
+																	"fullName",
+																	e.target.value
+																)
+															}
+															required
+														/>
+													</div>
+													<div className="space-y-2">
+														<Label>Age *</Label>
+														<Input
+															type="number"
+															value={passenger.age || ""}
+															onChange={(e) =>
+																updatePassenger(
+																	index,
+																	"age",
+																	Number.parseInt(
+																		e.target.value
+																	) || 0
+																)
+															}
+															required
+														/>
+													</div>
+													<div className="space-y-2">
+														<Label>Email</Label>
+														<Input
+															type="email"
+															value={passenger.email}
+															onChange={(e) =>
+																updatePassenger(
+																	index,
+																	"email",
+																	e.target.value
+																)
+															}
+														/>
+													</div>
+													<div className="space-y-2">
+														<Label>Phone</Label>
+														<Input
+															value={passenger.phone}
+															onChange={(e) =>
+																updatePassenger(
+																	index,
+																	"phone",
+																	e.target.value
+																)
+															}
+														/>
+													</div>
+												</div>
+												<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+													<div className="space-y-2">
+														<Label>Emergency Contact *</Label>
+														<Input
+															value={
+																passenger.emergencyContact
+															}
+															onChange={(e) =>
+																updatePassenger(
+																	index,
+																	"emergencyContact",
+																	e.target.value
+																)
+															}
+															placeholder="Name and phone number"
+															required
+														/>
+													</div>
+													<div className="space-y-2">
+														<Label>
+															Special Requirements
+														</Label>
+														<Textarea
+															value={
+																passenger.specialRequirements
+															}
+															onChange={(e) =>
+																updatePassenger(
+																	index,
+																	"specialRequirements",
+																	e.target.value
+																)
+															}
+															placeholder="Dietary restrictions, medical conditions, etc."
+															rows={2}
+														/>
+													</div>
+												</div>
+
+												{/* Individual Checklist Section */}
+												<div className="border-t pt-4">
+													<ChecklistManager
+														passengerIndex={index}
+													/>
 												</div>
 											</div>
-										)}
-
-										{formData.batchId && (
-											<div>
-												<Label
-													htmlFor="passengers"
-													className="mb-2"
-												>
-													Number of Passengers *
-												</Label>
-												<Select
-													value={formData.numberOfPassengers.toString()}
-													onValueChange={(value) =>
-														updatePassengerCount(
-															Number.parseInt(value)
-														)
-													}
-												>
-													<SelectTrigger>
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
-														{Array.from(
-															{
-																length: Math.min(
-																	selectedBatch
-																		? selectedBatch.totalSeats -
-																				selectedBatch.bookedSeats
-																		: 1,
-																	10
-																),
-															},
-															(_, i) => (
-																<SelectItem
-																	key={i + 1}
-																	value={(
-																		i + 1
-																	).toString()}
-																>
-																	{i + 1} Passenger
-																	{i > 0 ? "s" : ""}
-																</SelectItem>
-															)
-														)}
-													</SelectContent>
-												</Select>
-											</div>
-										)}
-
-										{formData.totalAmount > 0 && (
-											<div className="p-4 bg-muted/50 rounded-lg">
-												<div className="flex items-center justify-between">
-													<span className="font-medium">
-														Total Amount:
-													</span>
-													<span className="text-xl font-bold">
-														{BookingService.formatCurrency(
-															formData.totalAmount
-														)}
-													</span>
-												</div>
-											</div>
-										)}
+										))}
 									</CardContent>
 								</Card>
 							</div>
-						)}
 
-						{/* Step 3: Passenger Details */}
-						{step === 3 && (
-							<Card>
-								<CardHeader>
-									<CardTitle className="text-lg">
-										Passenger Details
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-6">
-									{formData.passengers.map((passenger, index) => (
-										<div
-											key={index}
-											className="p-4 border rounded-lg space-y-4"
-										>
-											<h4 className="font-medium flex items-center gap-2">
-												<Users className="w-4 h-4" />
-												Passenger {index + 1}
-											</h4>
-											<div className="grid grid-cols-2 gap-4">
-												<div className="space-y-2">
-													<Label>Full Name *</Label>
-													<Input
-														value={passenger.fullName}
-														onChange={(e) =>
-															updatePassenger(
-																index,
-																"fullName",
-																e.target.value
-															)
-														}
-														required
-													/>
-												</div>
-												<div className="space-y-2">
-													<Label>Age *</Label>
-													<Input
-														type="number"
-														value={passenger.age || ""}
-														onChange={(e) =>
-															updatePassenger(
-																index,
-																"age",
-																Number.parseInt(
-																	e.target.value
-																) || 0
-															)
-														}
-														required
-													/>
-												</div>
-												<div className="space-y-2">
-													<Label>Email</Label>
-													<Input
-														type="email"
-														value={passenger.email}
-														onChange={(e) =>
-															updatePassenger(
-																index,
-																"email",
-																e.target.value
-															)
-														}
-													/>
-												</div>
-												<div className="space-y-2">
-													<Label>Phone</Label>
-													<Input
-														value={passenger.phone}
-														onChange={(e) =>
-															updatePassenger(
-																index,
-																"phone",
-																e.target.value
-															)
-														}
-													/>
-												</div>
-											</div>
-											<div className="space-y-2">
-												<Label>Emergency Contact *</Label>
-												<Input
-													value={passenger.emergencyContact}
-													onChange={(e) =>
-														updatePassenger(
-															index,
-															"emergencyContact",
-															e.target.value
-														)
-													}
-													placeholder="Name and phone number"
-													required
-												/>
-											</div>
-											<div className="space-y-2">
-												<Label>Special Requirements</Label>
-												<Textarea
-													value={passenger.specialRequirements}
-													onChange={(e) =>
-														updatePassenger(
-															index,
-															"specialRequirements",
-															e.target.value
-														)
-													}
-													placeholder="Dietary restrictions, medical conditions, etc."
-													rows={2}
-												/>
-											</div>
-
-											{/* Individual Checklist Section */}
-											<div className="border-t pt-4">
-												<ChecklistManager
-													passengerIndex={index}
-												/>
-											</div>
-										</div>
-									))}
-								</CardContent>
-							</Card>
-						)}
-
-						{/* Step 4: Group Checklist */}
-						{step === 4 && (
-							<Card>
-								<CardHeader>
-									<CardTitle className="text-lg">
-										Group Checklist
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<GroupChecklistManager />
-								</CardContent>
-							</Card>
-						)}
-
-						{/* Step 5: Payment Details */}
-						{step === 5 && (
-							<Card>
-								<CardHeader>
-									<CardTitle className="text-lg">
-										Payment Information
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div className="grid grid-cols-2 gap-4">
-										<div>
-											<Label>Total Amount</Label>
-											<div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
-												<DollarSign className="w-4 h-4" />
-												<span className="font-bold">
-													{BookingService.formatCurrency(
-														formData.totalAmount
-													)}
-												</span>
-											</div>
-										</div>
-										<div>
-											<Label htmlFor="advanceAmount">
-												Advance Payment
-											</Label>
-											<Input
-												id="advanceAmount"
-												type="number"
-												min="0"
-												max={formData.totalAmount}
-												value={formData.advanceAmount || ""}
-												onChange={(e) =>
-													setFormData((prev) => ({
-														...prev,
-														advanceAmount:
-															Number.parseInt(
-																e.target.value
-															) || 0,
-													}))
-												}
-											/>
-										</div>
-									</div>
-
-									{formData.advanceAmount > 0 && (
-										<>
-											<div className="grid grid-cols-2 gap-4">
-												<div>
-													<Label htmlFor="paymentMethod">
-														Payment Method *
-													</Label>
-													<Select
-														value={formData.paymentMethod}
-														onValueChange={(value) =>
-															setFormData((prev) => ({
-																...prev,
-																paymentMethod:
-																	value as PaymentMethod,
-															}))
-														}
-													>
-														<SelectTrigger>
-															<SelectValue placeholder="Select payment method" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem value="bank_transfer">
-																Bank Transfer
-															</SelectItem>
-															<SelectItem value="credit_card">
-																Credit Card
-															</SelectItem>
-															<SelectItem value="debit_card">
-																Debit Card
-															</SelectItem>
-															<SelectItem value="cash">
-																Cash
-															</SelectItem>
-															<SelectItem value="upi">
-																UPI
-															</SelectItem>
-															<SelectItem value="other">
-																Other
-															</SelectItem>
-														</SelectContent>
-													</Select>
-												</div>
-												<div>
-													<Label htmlFor="paymentReference">
-														Payment Reference
-													</Label>
-													<Input
-														id="paymentReference"
-														value={formData.paymentReference}
-														onChange={(e) =>
-															setFormData((prev) => ({
-																...prev,
-																paymentReference:
-																	e.target.value,
-															}))
-														}
-														placeholder="Transaction ID, Check number, etc."
-													/>
-												</div>
-											</div>
-
-											<div>
-												<Label htmlFor="paymentScreenshot">
-													Payment Screenshot/Receipt
-												</Label>
-												<div className="mt-2">
-													<label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:bg-muted/50">
-														<div className="text-center">
-															<Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-															<p className="text-sm text-muted-foreground">
-																{formData.paymentScreenshot
-																	? formData
-																			.paymentScreenshot
-																			.name
-																	: "Click to upload payment proof (Max 5MB)"}
-															</p>
-														</div>
-														<input
-															type="file"
-															className="hidden"
-															accept="image/*,.pdf"
-															onChange={handleFileUpload}
-														/>
-													</label>
-												</div>
-											</div>
-										</>
-									)}
-
-									<div>
-										<Label htmlFor="specialRequests">
-											Special Requests
-										</Label>
-										<Textarea
-											id="specialRequests"
-											value={formData.specialRequests}
-											onChange={(e) =>
-												setFormData((prev) => ({
-													...prev,
-													specialRequests: e.target.value,
-												}))
-											}
-											placeholder="Any special arrangements or requests..."
-											rows={3}
-										/>
-									</div>
-
-									{formData.advanceAmount > 0 && (
-										<div className="p-4 bg-muted/50 rounded-lg">
-											<div className="space-y-2">
-												<div className="flex justify-between">
-													<span>Total Amount:</span>
-													<span className="font-medium">
-														{BookingService.formatCurrency(
-															formData.totalAmount
-														)}
-													</span>
-												</div>
-												<div className="flex justify-between">
-													<span>Advance Payment:</span>
-													<span className="font-medium">
-														{BookingService.formatCurrency(
-															formData.advanceAmount
-														)}
-													</span>
-												</div>
-												<div className="flex justify-between border-t pt-2">
-													<span className="font-medium">
-														Balance Amount:
-													</span>
-													<span className="font-bold">
-														{BookingService.formatCurrency(
-															formData.totalAmount -
-																formData.advanceAmount
-														)}
-													</span>
-												</div>
-											</div>
-										</div>
-									)}
-
-									{/* Group checklist status on final step */}
-									<div
-										className={`p-3 rounded-lg border ${
-											canGroupProceed()
-												? "bg-green-50 border-green-300"
-												: "bg-gray-50 border-gray-300"
-										}`}
-									>
-										<div className="flex items-center gap-2">
-											{canGroupProceed() ? (
-												<CheckCircle className="w-5 h-5 text-green-600" />
-											) : (
-												<AlertCircle className="w-5 h-5 text-gray-600" />
-											)}
-											<span
-												className={`font-medium ${
+							<div className="grid grid-cols-2 gap-5">
+								{/* Group Checklist */}
+								<div className="mt-5">
+									<Card>
+										<CardHeader>
+											<CardTitle className="text-lg">
+												Group Checklist
+											</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<GroupChecklistManager />
+											{/* Group checklist status on final step */}
+											<div
+												className={`p-3 rounded-lg border ${
 													canGroupProceed()
-														? "text-green-700"
-														: "text-gray-700"
+														? "bg-green-50 border-green-300"
+														: "bg-gray-50 border-gray-300"
 												}`}
 											>
-												{canGroupProceed()
-													? `Group checklist ready (${groupChecklist.length} items added)`
-													: "Add at least one group checklist item to proceed"}
-											</span>
-										</div>
-									</div>
-								</CardContent>
-							</Card>
-						)}
+												<div className="flex items-center gap-2">
+													{canGroupProceed() ? (
+														<CheckCircle className="w-5 h-5 text-green-600" />
+													) : (
+														<AlertCircle className="w-5 h-5 text-gray-600" />
+													)}
+													<span
+														className={`font-medium ${
+															canGroupProceed()
+																? "text-green-700"
+																: "text-gray-700"
+														}`}
+													>
+														{canGroupProceed()
+															? `Group checklist ready (${groupChecklist.length} items added)`
+															: "Add at least one group checklist item to proceed"}
+													</span>
+												</div>
+											</div>
+										</CardContent>
+									</Card>
+								</div>
 
-						{/* Navigation Buttons */}
-						<div className="flex justify-between">
-							<div>
-								{step > 1 && (
+								{/* Payment Details */}
+								<div className="mt-5">
+									<Card>
+										<CardHeader>
+											<CardTitle className="text-lg">
+												Payment Information
+											</CardTitle>
+										</CardHeader>
+										<CardContent className="space-y-4">
+											<div className="grid grid-cols-2 gap-4">
+												<div className="space-y-2">
+													<Label>Total Amount</Label>
+													<div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+														<DollarSign className="w-3 h-3" />
+														<span className="font-bold">
+															{BookingService.formatCurrency(
+																formData.totalAmount
+															)}
+														</span>
+													</div>
+												</div>
+												<div className="space-y-2">
+													<Label htmlFor="advanceAmount">
+														Advance Payment
+													</Label>
+													<Input
+														id="advanceAmount"
+														type="number"
+														min="0"
+														max={formData.totalAmount}
+														value={
+															formData.advanceAmount || ""
+														}
+														onChange={(e) =>
+															setFormData((prev) => ({
+																...prev,
+																advanceAmount:
+																	Number.parseInt(
+																		e.target.value
+																	) || 0,
+															}))
+														}
+													/>
+												</div>
+											</div>
+
+											{formData.advanceAmount > 0 && (
+												<>
+													<div className="grid grid-cols-2 gap-4">
+														<div className="space-y-2">
+															<Label htmlFor="paymentMethod">
+																Payment Method *
+															</Label>
+															<Select
+																value={
+																	formData.paymentMethod
+																}
+																onValueChange={(value) =>
+																	setFormData(
+																		(prev) => ({
+																			...prev,
+																			paymentMethod:
+																				value as PaymentMethod,
+																		})
+																	)
+																}
+															>
+																<SelectTrigger>
+																	<SelectValue placeholder="Select payment method" />
+																</SelectTrigger>
+																<SelectContent>
+																	<SelectItem value="bank_transfer">
+																		Bank Transfer
+																	</SelectItem>
+																	<SelectItem value="credit_card">
+																		Credit Card
+																	</SelectItem>
+																	<SelectItem value="debit_card">
+																		Debit Card
+																	</SelectItem>
+																	<SelectItem value="cash">
+																		Cash
+																	</SelectItem>
+																	<SelectItem value="upi">
+																		UPI
+																	</SelectItem>
+																	<SelectItem value="other">
+																		Other
+																	</SelectItem>
+																</SelectContent>
+															</Select>
+														</div>
+														<div className="space-y-2">
+															<Label htmlFor="paymentReference">
+																Payment Reference
+															</Label>
+															<Input
+																id="paymentReference"
+																value={
+																	formData.paymentReference
+																}
+																onChange={(e) =>
+																	setFormData(
+																		(prev) => ({
+																			...prev,
+																			paymentReference:
+																				e.target
+																					.value,
+																		})
+																	)
+																}
+																placeholder="Transaction ID, Check number, etc."
+															/>
+														</div>
+													</div>
+
+													<div>
+														<Label htmlFor="paymentScreenshot">
+															Payment Screenshot/Receipt
+														</Label>
+														<div className="mt-2">
+															<label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:bg-muted/50">
+																<div className="text-center">
+																	<Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+																	<p className="text-sm text-muted-foreground">
+																		{formData.paymentScreenshot
+																			? formData
+																					.paymentScreenshot
+																					.name
+																			: "Click to upload payment proof (Max 5MB)"}
+																	</p>
+																</div>
+																<input
+																	type="file"
+																	className="hidden"
+																	accept="image/*,.pdf"
+																	onChange={
+																		handleFileUpload
+																	}
+																/>
+															</label>
+														</div>
+													</div>
+												</>
+											)}
+
+											<div className="space-y-2">
+												<Label htmlFor="specialRequests">
+													Special Requests
+												</Label>
+												<Textarea
+													id="specialRequests"
+													value={formData.specialRequests}
+													onChange={(e) =>
+														setFormData((prev) => ({
+															...prev,
+															specialRequests:
+																e.target.value,
+														}))
+													}
+													placeholder="Any special arrangements or requests..."
+													rows={3}
+												/>
+											</div>
+
+											{formData.advanceAmount > 0 && (
+												<div className="p-4 bg-muted/50 rounded-lg">
+													<div className="space-y-2">
+														<div className="flex justify-between">
+															<span>Total Amount:</span>
+															<span className="font-medium">
+																{BookingService.formatCurrency(
+																	formData.totalAmount
+																)}
+															</span>
+														</div>
+														<div className="flex justify-between">
+															<span>Advance Payment:</span>
+															<span className="font-medium">
+																{BookingService.formatCurrency(
+																	formData.advanceAmount
+																)}
+															</span>
+														</div>
+														<div className="flex justify-between border-t pt-2">
+															<span className="font-medium">
+																Balance Amount:
+															</span>
+															<span className="font-bold">
+																{BookingService.formatCurrency(
+																	formData.totalAmount -
+																		formData.advanceAmount
+																)}
+															</span>
+														</div>
+													</div>
+												</div>
+											)}
+										</CardContent>
+									</Card>
+								</div>
+							</div>
+						</ScrollArea>
+
+						{/* Footer */}
+						<div className="px-6 py-4 border-t bg-background flex-shrink-0">
+							<div className="flex items-center justify-between">
+								<div className="text-sm text-muted-foreground">
+									{formData.customerId && (
+										<span className="flex items-center gap-1">
+											<CheckCircle2 className="h-4 w-4 text-green-600" />
+											Customer selected
+										</span>
+									)}
+								</div>
+								<div className="flex items-center gap-3">
 									<Button
 										type="button"
 										variant="outline"
-										onClick={prevStep}
+										onClick={() => {
+											resetForm();
+											onOpenChange(false);
+										}}
 										disabled={loading}
 									>
-										Previous
+										Cancel
 									</Button>
-								)}
-							</div>
-							<div className="flex gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => {
-										resetForm();
-										onOpenChange(false);
-									}}
-									disabled={loading}
-								>
-									Cancel
-								</Button>
-								{step < 5 ? (
-									<Button
-										type="button"
-										onClick={nextStep}
-										disabled={loading}
-									>
-										Next
-									</Button>
-								) : (
 									<Button
 										type="submit"
 										disabled={loading || !canGroupProceed()}
+										className="min-w-[120px]"
 									>
 										{loading ? (
 											<>
-												<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+												<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 												Creating...
 											</>
 										) : (
-											"Create Booking"
+											<>
+												<Plus className="mr-2 h-4 w-4" />
+												Create Booking
+											</>
 										)}
 									</Button>
-								)}
+								</div>
 							</div>
 						</div>
 					</form>

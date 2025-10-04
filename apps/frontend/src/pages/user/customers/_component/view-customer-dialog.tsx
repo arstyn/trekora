@@ -1,5 +1,5 @@
+import { ImageGallery } from "@/components/image-gallery";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,6 +25,7 @@ export function ViewCustomerDialog({
 }: ViewCustomerDialogProps) {
 	const [selectedImage, setSelectedImage] = useState<string | null>(null);
 	const [imageModalOpen, setImageModalOpen] = useState(false);
+	const [imageModalTitle, setImageModalTitle] = useState<string>("Document Image");
 
 	if (!customer) return null;
 
@@ -56,8 +57,9 @@ export function ViewCustomerDialog({
 		: "/placeholder.svg";
 
 	// Helper function to open image modal
-	const openImageModal = (imageUrl: string) => {
+	const openImageModal = (imageUrl: string, title: string = "Document Image") => {
 		setSelectedImage(imageUrl);
+		setImageModalTitle(title);
 		setImageModalOpen(true);
 	};
 
@@ -73,17 +75,30 @@ export function ViewCustomerDialog({
 				<ScrollArea className="space-y-6 max-h-[70vh] pr-4">
 					{/* Header with profile photo and basic info */}
 					<div className="flex items-center border-b pb-4">
-						<Avatar className="h-16 w-16">
-							<AvatarImage
-								src={profilePhotoUrl}
-								alt={`${customer.firstName} ${customer.lastName}`}
-								className="object-cover"
-							/>
-							<AvatarFallback className="text-lg">
-								{customer.firstName.charAt(0)}
-								{customer.lastName.charAt(0)}
-							</AvatarFallback>
-						</Avatar>
+						<div
+							className="relative group cursor-pointer"
+							onClick={() =>
+								customer.profilePhoto &&
+								openImageModal(profilePhotoUrl, "Profile Photo")
+							}
+						>
+							<Avatar className="h-16 w-16">
+								<AvatarImage
+									src={profilePhotoUrl}
+									alt={`${customer.firstName} ${customer.lastName}`}
+									className="object-cover"
+								/>
+								<AvatarFallback className="text-lg">
+									{customer.firstName.charAt(0)}
+									{customer.lastName.charAt(0)}
+								</AvatarFallback>
+							</Avatar>
+							{customer.profilePhoto && (
+								<div className="absolute inset-0 group-hover:bg-black/40 transition-all duration-200 rounded-full flex items-center justify-center">
+									<Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+								</div>
+							)}
+						</div>
 						<div className="flex items-center justify-between w-full px-4">
 							<div>
 								<h3 className="text-xl font-semibold">
@@ -209,7 +224,9 @@ export function ViewCustomerDialog({
 										</h5>
 										<ImageGallery
 											images={customer.passportPhotos}
-											onImageClick={openImageModal}
+											onImageClick={(imageUrl) =>
+												openImageModal(imageUrl, "Passport Photo")
+											}
 										/>
 									</div>
 								)}
@@ -243,7 +260,12 @@ export function ViewCustomerDialog({
 													</h6>
 													<ImageGallery
 														images={customer.aadhaarIdPhotos}
-														onImageClick={openImageModal}
+														onImageClick={(imageUrl) =>
+															openImageModal(
+																imageUrl,
+																"Aadhaar ID Photo"
+															)
+														}
 													/>
 												</div>
 											)}
@@ -266,7 +288,12 @@ export function ViewCustomerDialog({
 													</h6>
 													<ImageGallery
 														images={customer.voterIdPhotos}
-														onImageClick={openImageModal}
+														onImageClick={(imageUrl) =>
+															openImageModal(
+																imageUrl,
+																"Voter ID Photo"
+															)
+														}
 													/>
 												</div>
 											)}
@@ -368,7 +395,7 @@ export function ViewCustomerDialog({
 			<Dialog open={imageModalOpen} onOpenChange={setImageModalOpen}>
 				<DialogContent className="max-w-4xl max-h-[90vh] p-0">
 					<DialogHeader className="p-6 pb-0">
-						<DialogTitle>Document Image</DialogTitle>
+						<DialogTitle>{imageModalTitle}</DialogTitle>
 					</DialogHeader>
 					<div className="p-6 pt-0">
 						{selectedImage && (
@@ -392,46 +419,6 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
 		<div>
 			<p className="text-xs font-medium text-muted-foreground">{label}</p>
 			<p className="text-sm">{value}</p>
-		</div>
-	);
-}
-
-interface ImageGalleryProps {
-	images: string[];
-	onImageClick: (imageUrl: string) => void;
-}
-
-function ImageGallery({ images, onImageClick }: ImageGalleryProps) {
-	const getImageUrl = (filename: string) => {
-		return getFileUrl(getServeFileUrl(filename));
-	};
-
-	return (
-		<div className="flex flex-wrap gap-2">
-			{images.map((image, index) => (
-				<div
-					key={index}
-					className="relative group cursor-pointer"
-					onClick={() => onImageClick(getImageUrl(image))}
-				>
-					<div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-500 transition-colors">
-						<img
-							src={getImageUrl(image)}
-							alt={`Document ${index + 1}`}
-							className="w-full h-full object-cover"
-						/>
-					</div>
-					<div className="absolute inset-0 group-hover:bg-black/40 transition-all duration-200 rounded-lg flex items-center justify-center">
-						<Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-					</div>
-					<Badge
-						variant="secondary"
-						className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-					>
-						{index + 1}
-					</Badge>
-				</div>
-			))}
 		</div>
 	);
 }

@@ -27,7 +27,7 @@ import type { IBatches } from "@/types/batches.types";
 import { format } from "date-fns";
 import { Calendar, Edit, Eye, MoreHorizontal, Search, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 interface BatchListProps {
@@ -37,6 +37,7 @@ interface BatchListProps {
 export function BatchList({ status }: BatchListProps) {
 	const [batches, setBatches] = useState<IBatches[]>([]);
 	const [searchTerm, setSearchTerm] = useState("");
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		const getBranch = async () => {
@@ -72,6 +73,25 @@ export function BatchList({ status }: BatchListProps) {
 		}
 	};
 
+	const handleRowClick = (batchId: string, event: React.MouseEvent) => {
+		// Prevent navigation if clicking on the dropdown menu
+		if (
+			(event.target as HTMLElement).closest("[data-radix-collection-item]") ||
+			(event.target as HTMLElement).closest("button")
+		) {
+			return;
+		}
+		navigate(`/batches/${batchId}`);
+	};
+
+	const formatDate = (dateInput: string | Date) => {
+		const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+		const day = date.getDate().toString().padStart(2, "0");
+		const month = (date.getMonth() + 1).toString().padStart(2, "0");
+		const year = date.getFullYear();
+		return `${day}/${month}/${year}`;
+	};
+
 	return (
 		<Card>
 			<CardHeader>
@@ -104,17 +124,19 @@ export function BatchList({ status }: BatchListProps) {
 					</TableHeader>
 					<TableBody>
 						{filteredBatches.map((batch) => (
-							<TableRow key={batch.id}>
+							<TableRow
+								key={batch.id}
+								className="cursor-pointer hover:bg-muted/50"
+								onClick={(e) => handleRowClick(batch.id, e)}
+							>
 								<TableCell className="font-medium">
 									{batch.package?.name}
 								</TableCell>
 								<TableCell>
 									<div className="flex items-center gap-1 text-sm">
 										<Calendar className="w-4 h-4" />
-										{new Date(
-											batch.startDate
-										).toLocaleDateString()} -{" "}
-										{new Date(batch.endDate).toLocaleDateString()}
+										{formatDate(batch.startDate)} -{" "}
+										{formatDate(batch.endDate)}
 									</div>
 								</TableCell>
 								<TableCell>

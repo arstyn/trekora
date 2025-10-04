@@ -533,6 +533,34 @@ async function seed() {
 
       const savedBatch = await queryRunner.manager.save(batch);
       console.log('Batch created:', savedBatch.id);
+
+      // Add coordinators if specified
+      if (batchData.coordinators && batchData.coordinators.length > 0) {
+        const coordinators: Employee[] = [];
+
+        for (const coordinatorEmail of batchData.coordinators) {
+          const coordinator = await queryRunner.manager.findOne(Employee, {
+            where: { email: coordinatorEmail, organizationId: org.id },
+          });
+
+          if (coordinator) {
+            coordinators.push(coordinator);
+            console.log(
+              `Added coordinator ${coordinatorEmail} to batch ${savedBatch.id}`,
+            );
+          } else {
+            console.log(`Coordinator not found: ${coordinatorEmail}`);
+          }
+        }
+
+        if (coordinators.length > 0) {
+          savedBatch.coordinators = coordinators;
+          await queryRunner.manager.save(savedBatch);
+          console.log(
+            `Assigned ${coordinators.length} coordinators to batch ${savedBatch.id}`,
+          );
+        }
+      }
     }
 
     // Create leads

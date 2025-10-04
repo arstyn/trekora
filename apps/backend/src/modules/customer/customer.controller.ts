@@ -62,16 +62,41 @@ export class CustomerController {
 
   //Getting all data
   @Get()
-  async findAll(@Request() req: ApiRequestJWT): Promise<Customer[]> {
-    return this.customerService.findAll(req.user.organizationId);
+  async findAll(
+    @Request() req: ApiRequestJWT,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+    @Query('search') search?: string,
+  ): Promise<{
+    customers: Customer[];
+    total: number;
+    hasMore: boolean;
+  }> {
+    return this.customerService.findAll(
+      req.user.organizationId,
+      limit,
+      offset,
+      search,
+    );
   }
 
   @Get('search')
   async search(
     @Query('q') query: string,
     @Request() req: ApiRequestJWT,
-  ): Promise<Customer[]> {
-    return this.customerService.search(query || '', req.user.organizationId);
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+  ): Promise<{
+    customers: Customer[];
+    total: number;
+    hasMore: boolean;
+  }> {
+    return this.customerService.search(
+      query || '',
+      req.user.organizationId,
+      limit,
+      offset,
+    );
   }
 
   //Getting Single Data

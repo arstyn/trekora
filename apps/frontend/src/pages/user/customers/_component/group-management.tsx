@@ -43,14 +43,14 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { Customer, Group } from "@/types/customer.type";
+import type { ICustomer, Group } from "@/types/customer.type";
 import { Edit, MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 
 interface GroupManagementProps {
 	groups: Group[];
-	customers: Customer[];
+	customers: ICustomer[];
 	onAdd: (group: Group) => void;
 	onUpdate: (group: Group) => void;
 	onDelete: (groupId: string) => void;
@@ -139,7 +139,12 @@ export default function GroupManagement({
 
 	const getGroupMemberNames = (memberIds: string[]) => {
 		return memberIds
-			.map((id) => customers.find((c) => c.id === id)?.name || "Unknown")
+			.map(
+				(id) =>
+					customers.find((c) => c.id === id)?.firstName +
+						" " +
+						customers.find((c) => c.id === id)?.lastName || "Unknown"
+			)
 			.join(", ");
 	};
 
@@ -282,19 +287,23 @@ export default function GroupManagement({
 													<Checkbox
 														id={`customer-${customer.id}`}
 														checked={formData.memberIds.includes(
-															customer.id
+															customer.id || ""
 														)}
 														onCheckedChange={() =>
 															handleMemberToggle(
-																customer.id
+																customer.id || ""
 															)
 														}
 													/>
 													<Label
-														htmlFor={`customer-${customer.id}`}
+														htmlFor={`customer-${
+															customer.id || ""
+														}`}
 														className="flex-1"
 													>
-														{customer.name}
+														{customer.firstName +
+															" " +
+															customer.lastName}
 													</Label>
 												</div>
 											))}
