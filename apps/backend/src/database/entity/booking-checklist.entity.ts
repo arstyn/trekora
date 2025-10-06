@@ -1,14 +1,14 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Booking } from './booking.entity';
-import { BookingPassenger } from './booking-passenger.entity';
+import { Customer } from './customer.entity';
 
 export enum ChecklistType {
   GROUP = 'group',
@@ -39,7 +39,7 @@ export class BookingChecklist {
   bookingId: string;
 
   @Column({ type: 'uuid', nullable: true })
-  passengerId: string;
+  customerId: string;
 
   @Column({ type: 'int', default: 0 })
   sortOrder: number;
@@ -57,10 +57,10 @@ export class BookingChecklist {
   @JoinColumn({ name: 'bookingId' })
   booking: Booking;
 
-  @ManyToOne(() => BookingPassenger, (passenger) => passenger.additionalInfo, {
+  @ManyToOne(() => Customer, (customer) => customer.id, {
     onDelete: 'CASCADE',
     nullable: true,
   })
-  @JoinColumn({ name: 'passengerId' })
-  passenger: BookingPassenger;
+  @JoinColumn({ name: 'customerId' })
+  customer: Customer;
 }

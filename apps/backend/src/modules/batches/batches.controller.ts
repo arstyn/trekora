@@ -82,19 +82,19 @@ export class BatchesController {
     return this.batchService.removeCoordinator(id, employeeId);
   }
 
-  @Post(':id/passengers/:customerId')
-  addPassenger(
+  @Post(':id/customers/:customerId')
+  addCustomer(
     @Param('id') id: string,
     @Param('customerId') customerId: string,
   ) {
-    return this.batchService.addPassenger(id, customerId);
+    return this.batchService.addCustomer(id, customerId);
   }
 
-  @Delete(':id/passengers/:customerId')
-  removePassenger(
+  @Delete(':id/customers/:customerId')
+  removeCustomer(
     @Param('id') id: string,
     @Param('customerId') customerId: string,
   ) {
-    return this.batchService.removePassenger(id, customerId);
+    return this.batchService.removeCustomer(id, customerId);
   }
 }

@@ -3,6 +3,8 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -14,11 +16,8 @@ import { Organization } from './organization.entity';
 import { Package } from './package-related/package.entity';
 import { User } from './user.entity';
 import { BookingPayment } from './booking-payment.entity';
-import { BookingPassenger } from './booking-passenger.entity';
 import { BookingDocument } from './booking-document.entity';
 import { BookingChecklist } from './booking-checklist.entity';
-
-
 
 export enum BookingStatus {
   PENDING = 'pending',
@@ -56,13 +55,18 @@ export class Booking {
   @JoinColumn({ name: 'batch_id' })
   batch: Batch;
 
-  @Column({ name: 'number_of_passengers' })
-  numberOfPassengers: number;
+  @Column({ name: 'number_of_customers' })
+  numberOfCustomers: number;
 
   @Column('decimal', { precision: 10, scale: 2, name: 'total_amount' })
   totalAmount: number;
 
-  @Column('decimal', { precision: 10, scale: 2, name: 'advance_paid', default: 0 })
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    name: 'advance_paid',
+    default: 0,
+  })
   advancePaid: number;
 
   @Column('decimal', { precision: 10, scale: 2, name: 'balance_amount' })
@@ -81,11 +85,13 @@ export class Booking {
   @Column({ type: 'jsonb', nullable: true, name: 'additional_details' })
   additionalDetails: Record<string, any>;
 
-  @OneToMany(() => BookingPassenger, (passenger) => passenger.booking, {
-    cascade: true,
-    eager: true,
+  @ManyToMany(() => Customer, { cascade: true, eager: true })
+  @JoinTable({
+    name: 'booking_customers',
+    joinColumn: { name: 'bookingId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'customerId', referencedColumnName: 'id' },
   })
-  passengers: BookingPassenger[];
+  customers: Customer[];
 
   @OneToMany(() => BookingPayment, (payment) => payment.booking, {
     cascade: true,

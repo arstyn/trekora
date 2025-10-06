@@ -11,7 +11,12 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
 	ArrowLeft,
 	Calendar,
@@ -26,7 +31,7 @@ import {
 	AlertCircle,
 	Plus,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import BookingService from "@/services/booking.service";
 import { InvoiceService } from "@/services/invoice.service";
@@ -39,31 +44,29 @@ export default function BookingDetailsPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [selectedDocument, setSelectedDocument] = useState<any>(null);
+	const [selectedDocument, setSelectedDocument] = useState<unknown>(null);
 
-	useEffect(() => {
-		if (id) {
-			fetchBookingDetails();
-		}
-	}, [id]);
-
-	const fetchBookingDetails = async () => {
+	const fetchBookingDetails = useCallback(async () => {
 		if (!id) return;
-		
+
 		try {
 			setLoading(true);
 			setError(null);
 			const bookingData = await BookingService.getBookingById(id);
 			setBooking(bookingData);
 		} catch (err) {
-			console.error('Error fetching booking details:', err);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			setError((err as any)?.response?.data?.message || 'Failed to load booking details.');
+			console.error("Error fetching booking details:", err);
+			setError((err as Error)?.message || "Failed to load booking details.");
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [id]);
+
+	useEffect(() => {
+		if (id) {
+			fetchBookingDetails();
+		}
+	}, [id, fetchBookingDetails]);
 
 	const handleDownloadInvoice = async () => {
 		if (!booking) return;
@@ -72,9 +75,9 @@ export default function BookingDetailsPage() {
 			setIsGeneratingInvoice(true);
 			await InvoiceService.generateAndDownloadInvoice(booking);
 		} catch (err) {
-			console.error('Error generating invoice:', err);
+			console.error("Error generating invoice:", err);
 			// You could show a toast or alert here
-			alert((err as Error).message || 'Failed to generate invoice');
+			alert((err as Error).message || "Failed to generate invoice");
 		} finally {
 			setIsGeneratingInvoice(false);
 		}
@@ -97,15 +100,18 @@ export default function BookingDetailsPage() {
 
 	const getPaymentStatus = () => {
 		if (!booking) return null;
-		
-		const paymentStatus = BookingService.getPaymentStatus(booking.advancePaid, booking.totalAmount);
-		
+
+		const paymentStatus = BookingService.getPaymentStatus(
+			booking.advancePaid,
+			booking.totalAmount
+		);
+
 		switch (paymentStatus) {
-			case 'none':
+			case "none":
 				return <Badge variant="destructive">No Payment</Badge>;
-			case 'partial':
+			case "partial":
 				return <Badge variant="secondary">Partial Payment</Badge>;
-			case 'full':
+			case "full":
 				return <Badge className="bg-green-100 text-green-800">Fully Paid</Badge>;
 			default:
 				return <Badge variant="secondary">Unknown</Badge>;
@@ -147,11 +153,11 @@ export default function BookingDetailsPage() {
 				<Alert variant="destructive">
 					<AlertCircle className="h-4 w-4" />
 					<AlertDescription>
-						{error || 'Booking not found'}
-						<Button 
-							variant="outline" 
-							size="sm" 
-							className="ml-4" 
+						{error || "Booking not found"}
+						<Button
+							variant="outline"
+							size="sm"
+							className="ml-4"
 							onClick={fetchBookingDetails}
 						>
 							Try Again
@@ -174,7 +180,8 @@ export default function BookingDetailsPage() {
 					</NavLink>
 					<div>
 						<h1 className="text-3xl font-bold">
-							Booking {BookingService.formatBookingNumber(booking.bookingNumber)}
+							Booking{" "}
+							{BookingService.formatBookingNumber(booking.bookingNumber)}
 						</h1>
 						<p className="text-muted-foreground">
 							Booked on {new Date(booking.createdAt).toLocaleDateString()}
@@ -207,7 +214,10 @@ export default function BookingDetailsPage() {
 								<label className="text-sm font-medium text-muted-foreground">
 									Full Name
 								</label>
-								<p className="text-lg">{booking.customer.name}</p>
+								<p className="text-lg">
+									{booking.primaryCustomer.firstName}{" "}
+									{booking.primaryCustomer.lastName}
+								</p>
 							</div>
 							<div>
 								<label className="text-sm font-medium text-muted-foreground">
@@ -215,7 +225,7 @@ export default function BookingDetailsPage() {
 								</label>
 								<div className="flex items-center gap-2">
 									<Mail className="w-4 h-4" />
-									<p>{booking.customer.email}</p>
+									<p>{booking.primaryCustomer.email}</p>
 								</div>
 							</div>
 						</div>
@@ -226,15 +236,15 @@ export default function BookingDetailsPage() {
 								</label>
 								<div className="flex items-center gap-2">
 									<Phone className="w-4 h-4" />
-									<p>{booking.customer.phone}</p>
+									<p>{booking.primaryCustomer.phone}</p>
 								</div>
 							</div>
-							{booking.customer.address && (
+							{booking.primaryCustomer.address && (
 								<div>
 									<label className="text-sm font-medium text-muted-foreground">
 										Address
 									</label>
-									<p>{booking.customer.address}</p>
+									<p>{booking.primaryCustomer.address}</p>
 								</div>
 							)}
 						</div>
@@ -262,7 +272,9 @@ export default function BookingDetailsPage() {
 							<label className="text-sm font-medium text-muted-foreground">
 								Price per Person
 							</label>
-							<p className="text-lg">{BookingService.formatCurrency(booking.package.price)}</p>
+							<p className="text-lg">
+								{BookingService.formatCurrency(booking.package.price)}
+							</p>
 						</div>
 						{booking.package.destination && (
 							<div>
@@ -304,7 +316,8 @@ export default function BookingDetailsPage() {
 								Travel Dates
 							</label>
 							<p className="text-lg">
-								{new Date(booking.batch.startDate).toLocaleDateString()} - {new Date(booking.batch.endDate).toLocaleDateString()}
+								{new Date(booking.batch.startDate).toLocaleDateString()} -{" "}
+								{new Date(booking.batch.endDate).toLocaleDateString()}
 							</p>
 						</div>
 						<div>
@@ -312,28 +325,31 @@ export default function BookingDetailsPage() {
 								Batch Capacity
 							</label>
 							<p>
-								{booking.batch.bookedSeats} / {booking.batch.totalSeats} seats booked
+								{booking.batch.bookedSeats} / {booking.batch.totalSeats}{" "}
+								seats booked
 							</p>
 						</div>
 						<div>
 							<label className="text-sm font-medium text-muted-foreground">
-								Number of Passengers
+								Number of Customers
 							</label>
 							<div className="flex items-center gap-2">
 								<Users className="w-4 h-4" />
-								<p className="text-lg font-medium">{booking.numberOfPassengers}</p>
+								<p className="text-lg font-medium">
+									{booking.numberOfCustomers}
+								</p>
 							</div>
 						</div>
 					</CardContent>
 				</Card>
 			</div>
 
-			{/* Passenger Details */}
+			{/* Customer Details */}
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<Users className="w-5 h-5" />
-						Passenger Details
+						Customer Details ({booking.numberOfCustomers})
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -341,38 +357,45 @@ export default function BookingDetailsPage() {
 						<TableHeader>
 							<TableRow>
 								<TableHead>Name</TableHead>
-								<TableHead>Age</TableHead>
-								<TableHead>Contact</TableHead>
+								<TableHead>Email</TableHead>
+								<TableHead>Phone</TableHead>
 								<TableHead>Emergency Contact</TableHead>
 								<TableHead>Special Requirements</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{booking.passengers.map((passenger, index) => (
-								<TableRow key={passenger.id || index}>
+							{booking.customers.map((customer, index) => (
+								<TableRow key={customer.id || index}>
 									<TableCell className="font-medium">
-										{passenger.fullName}
+										{customer.firstName} {customer.lastName}
 									</TableCell>
-									<TableCell>{passenger.age}</TableCell>
 									<TableCell>
-										<div className="space-y-1">
-											{passenger.email && (
-												<div className="flex items-center gap-1 text-sm">
-													<Mail className="w-3 h-3" />
-													{passenger.email}
-												</div>
-											)}
-											{passenger.phone && (
-												<div className="flex items-center gap-1 text-sm">
-													<Phone className="w-3 h-3" />
-													{passenger.phone}
-												</div>
-											)}
+										<div className="flex items-center gap-1 text-sm">
+											<Mail className="w-3 h-3" />
+											{customer.email}
 										</div>
 									</TableCell>
-									<TableCell>{passenger.emergencyContact}</TableCell>
 									<TableCell>
-										{passenger.specialRequirements || "None"}
+										<div className="flex items-center gap-1 text-sm">
+											<Phone className="w-3 h-3" />
+											{customer.phone}
+										</div>
+									</TableCell>
+									<TableCell>
+										{customer.emergencyContactName &&
+										customer.emergencyContactPhone ? (
+											<div className="text-sm">
+												<div>{customer.emergencyContactName}</div>
+												<div className="text-gray-500">
+													{customer.emergencyContactPhone}
+												</div>
+											</div>
+										) : (
+											"Not provided"
+										)}
+									</TableCell>
+									<TableCell>
+										{customer.specialRequests || "None"}
 									</TableCell>
 								</TableRow>
 							))}
@@ -432,14 +455,29 @@ export default function BookingDetailsPage() {
 												<div className="flex justify-between items-center">
 													<div>
 														<p className="font-medium">
-															{BookingService.formatCurrency(payment.amount)}
+															{BookingService.formatCurrency(
+																payment.amount
+															)}
 														</p>
 														<p className="text-sm text-muted-foreground">
-															{payment.paymentMethod.replace('_', ' ').toUpperCase()} •{' '}
-															{payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
+															{payment.paymentMethod
+																.replace("_", " ")
+																.toUpperCase()}{" "}
+															•{" "}
+															{payment.paymentDate
+																? new Date(
+																		payment.paymentDate
+																  ).toLocaleDateString()
+																: "N/A"}
 														</p>
 													</div>
-													<Badge variant={payment.status === 'completed' ? 'default' : 'secondary'}>
+													<Badge
+														variant={
+															payment.status === "completed"
+																? "default"
+																: "secondary"
+														}
+													>
 														{payment.status}
 													</Badge>
 												</div>
@@ -449,7 +487,9 @@ export default function BookingDetailsPage() {
 													</p>
 												)}
 												{payment.notes && (
-													<p className="text-sm mt-1">{payment.notes}</p>
+													<p className="text-sm mt-1">
+														{payment.notes}
+													</p>
 												)}
 											</div>
 										))}
@@ -479,10 +519,14 @@ export default function BookingDetailsPage() {
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
-								<Button 
+								<Button
 									variant="outline"
 									onClick={handleDownloadInvoice}
-									disabled={!booking || !InvoiceService.hasCompletedPayments(booking) || isGeneratingInvoice}
+									disabled={
+										!booking ||
+										!InvoiceService.hasCompletedPayments(booking) ||
+										isGeneratingInvoice
+									}
 								>
 									{isGeneratingInvoice ? (
 										<>
@@ -499,7 +543,10 @@ export default function BookingDetailsPage() {
 							</TooltipTrigger>
 							{booking && !InvoiceService.hasCompletedPayments(booking) && (
 								<TooltipContent>
-									<p>Invoice can only be downloaded when there are completed payments</p>
+									<p>
+										Invoice can only be downloaded when there are
+										completed payments
+									</p>
 								</TooltipContent>
 							)}
 						</Tooltip>
@@ -507,9 +554,12 @@ export default function BookingDetailsPage() {
 				</div>
 				<div className="flex gap-2">
 					{booking.balanceAmount > 0 && (
-						<Button variant="outline" onClick={() => {
-							navigate(`/payments?addNew=true&bookingId=${booking.id}`);
-						}}>
+						<Button
+							variant="outline"
+							onClick={() => {
+								navigate(`/payments?addNew=true&bookingId=${booking.id}`);
+							}}
+						>
 							<Plus className="w-4 h-4 mr-2" />
 							Add Payment
 						</Button>
@@ -524,15 +574,21 @@ export default function BookingDetailsPage() {
 			</div>
 
 			{/* Document Viewer Dialog */}
-			<Dialog open={!!selectedDocument} onOpenChange={() => setSelectedDocument(null)}>
+			<Dialog
+				open={!!selectedDocument}
+				onOpenChange={() => setSelectedDocument(null)}
+			>
 				<DialogContent className="max-w-4xl max-h-[90vh]">
 					<DialogHeader>
 						<DialogTitle>
-							{selectedDocument?.name || "Document Viewer"}
+							{(selectedDocument as { name?: string })?.name ||
+								"Document Viewer"}
 						</DialogTitle>
 					</DialogHeader>
 					<div className="flex items-center justify-center py-8">
-						<p className="text-muted-foreground">Document viewer would be implemented here</p>
+						<p className="text-muted-foreground">
+							Document viewer would be implemented here
+						</p>
 					</div>
 				</DialogContent>
 			</Dialog>

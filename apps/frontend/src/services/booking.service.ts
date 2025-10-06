@@ -16,7 +16,7 @@ export interface ChecklistItemRequest {
 	completed?: boolean;
 	mandatory?: boolean;
 	type: "INDIVIDUAL" | "GROUP";
-	passengerId?: string;
+	customerId?: string;
 	sortOrder?: number;
 }
 
@@ -26,7 +26,6 @@ export interface ChecklistItemResponse {
 	completed: boolean;
 	mandatory: boolean;
 	type: "INDIVIDUAL" | "GROUP";
-	passengerId?: string;
 	sortOrder: number;
 	createdAt: string;
 	updatedAt: string;
@@ -134,7 +133,16 @@ export class BookingService {
 		offset?: number;
 		search?: string;
 	}): Promise<{
-		customers: Array<{ id: string; name: string; email: string; phone: string }>;
+		customers: Array<{
+			id: string;
+			firstName: string;
+			lastName: string;
+			email: string;
+			phone: string;
+			dateOfBirth: string;
+			gender: string;
+			address: string;
+		}>;
 		total: number;
 		hasMore: boolean;
 	}> {
@@ -163,12 +171,21 @@ export class BookingService {
 			offset?: number;
 		}
 	): Promise<{
-		customers: Array<{ id: string; name: string; email: string; phone: string }>;
+		data: Array<{
+			id: string;
+			firstName: string;
+			lastName: string;
+			email: string;
+			phone: string;
+			dateOfBirth: string;
+			gender: string;
+			address: string;
+		}>;
 		total: number;
 		hasMore: boolean;
 	}> {
 		const queryParams = new URLSearchParams();
-		queryParams.append("q", query);
+		queryParams.append("search", query);
 
 		if (params?.limit) {
 			queryParams.append("limit", params.limit.toString());
@@ -177,9 +194,7 @@ export class BookingService {
 			queryParams.append("offset", params.offset.toString());
 		}
 
-		const response = await axiosInstance.get(
-			`/customers/search?${queryParams.toString()}`
-		);
+		const response = await axiosInstance.get(`/customers?${queryParams.toString()}`);
 		return response.data;
 	}
 
@@ -274,25 +289,12 @@ export class BookingService {
 	} {
 		const errors: string[] = [];
 
-		if (!data.customerId) errors.push("Customer is required");
+		if (!data.customerId) errors.push("Primary customer is required");
 		if (!data.packageId) errors.push("Package is required");
 		if (!data.batchId) errors.push("Batch is required");
-		if (data.numberOfPassengers < 1)
-			errors.push("At least one passenger is required");
+		if (!data.customerIds || data.customerIds.length === 0)
+			errors.push("At least one customer is required");
 		if (data.totalAmount <= 0) errors.push("Total amount must be greater than zero");
-
-		if (!data.passengers || data.passengers.length === 0) {
-			errors.push("Passenger details are required");
-		} else {
-			data.passengers.forEach((passenger, index) => {
-				if (!passenger.fullName)
-					errors.push(`Passenger ${index + 1}: Name is required`);
-				if (!passenger.age || passenger.age < 0)
-					errors.push(`Passenger ${index + 1}: Valid age is required`);
-				if (!passenger.emergencyContact)
-					errors.push(`Passenger ${index + 1}: Emergency contact is required`);
-			});
-		}
 
 		if (data.initialPayment) {
 			if (data.initialPayment.amount > data.totalAmount) {

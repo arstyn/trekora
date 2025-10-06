@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Batch } from 'src/database/entity/batch.entity';
-import { BookingPassenger } from 'src/database/entity/booking-passenger.entity';
+import { Customer } from 'src/database/entity/customer.entity';
 import { Employee } from 'src/database/entity/employee.entity';
 import { In, Repository } from 'typeorm';
 import { CreateBatchDto } from './dto/create-batch.dto';
@@ -12,8 +12,8 @@ export class BatchesService {
   constructor(
     @InjectRepository(Batch) private batchRepo: Repository<Batch>,
     @InjectRepository(Employee) private empRepo: Repository<Employee>,
-    @InjectRepository(BookingPassenger)
-    private passengerRepo: Repository<BookingPassenger>,
+    @InjectRepository(Customer)
+    private customerRepo: Repository<Customer>,
   ) {}
 
   async create(data: CreateBatchDto, organizationId: string): Promise<Batch> {
@@ -51,7 +51,7 @@ export class BatchesService {
   async findOne(id: string): Promise<Batch> {
     const batch = await this.batchRepo.findOne({
       where: { id },
-      relations: ['package', 'coordinators', 'coordinators.role', 'passengers'],
+      relations: ['package', 'coordinators', 'coordinators.role', 'customers'],
     });
     if (!batch) throw new NotFoundException('Batch not found');
     return batch;
@@ -129,18 +129,18 @@ export class BatchesService {
     return this.batchRepo.save(batch);
   }
 
-  async addPassenger(batchId: string, passengerId: string): Promise<Batch> {
+  async addCustomer(batchId: string, customerId: string): Promise<Batch> {
     const batch = await this.findOne(batchId);
-    const passenger = await this.passengerRepo.findOneBy({ id: passengerId });
-    if (!passenger) throw new NotFoundException('Passenger not found');
+    const customer = await this.customerRepo.findOneBy({ id: customerId });
+    if (!customer) throw new NotFoundException('Customer not found');
 
-    batch.passengers = [...(batch.passengers || []), passenger];
+    batch.customers = [...(batch.customers || []), customer];
     return this.batchRepo.save(batch);
   }
 
-  async removePassenger(batchId: string, passengerId: string): Promise<Batch> {
+  async removeCustomer(batchId: string, customerId: string): Promise<Batch> {
     const batch = await this.findOne(batchId);
-    batch.passengers = batch.passengers.filter((p) => p.id !== passengerId);
+    batch.customers = batch.customers.filter((c) => c.id !== customerId);
     return this.batchRepo.save(batch);
   }
 

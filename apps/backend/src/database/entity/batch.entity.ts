@@ -7,7 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { BookingPassenger } from './booking-passenger.entity';
+import { Customer } from './customer.entity';
 import { Employee } from './employee.entity';
 import { Organization } from './organization.entity';
 import { Package } from './package-related/package.entity';
@@ -57,11 +57,11 @@ export class Batch {
   })
   coordinators: Employee[];
 
-  @ManyToMany(() => BookingPassenger, { cascade: true })
+  @ManyToMany(() => Customer, { cascade: true })
   @JoinTable({
-    name: 'batch_passengers',
+    name: 'batch_customers',
     joinColumn: { name: 'batchId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'passengerId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'customerId', referencedColumnName: 'id' },
   })
-  passengers: BookingPassenger[];
+  customers: Customer[];
 }

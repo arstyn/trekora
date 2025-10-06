@@ -1,4 +1,4 @@
-import type { IBookingPassenger } from "./booking.types";
+import type { ICustomer } from "./booking.types";
 import type { IEmployee } from "./employee.types";
 import type { IPackages } from "./package.schema";
 
@@ -12,7 +12,7 @@ export interface IBatches {
 	packageId: string;
 	package?: IPackages;
 	coordinators?: IEmployee[];
-	passengers?: IBookingPassenger[];
+	customers?: ICustomer[];
 	fillRate?: number;
 }
 

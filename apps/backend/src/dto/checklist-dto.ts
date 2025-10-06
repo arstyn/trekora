@@ -1,5 +1,12 @@
-
-import { IsString, IsBoolean, IsOptional, IsEnum, IsUUID, IsNumber, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsOptional,
+  IsEnum,
+  IsUUID,
+  IsNumber,
+  MaxLength,
+} from 'class-validator';
 import { ChecklistType } from 'src/database/entity/booking-checklist.entity';
 
 export class CreateChecklistItemDto {
@@ -20,7 +27,7 @@ export class CreateChecklistItemDto {
 
   @IsUUID()
   @IsOptional()
-  passengerId?: string;
+  customerId?: string;
 
   @IsNumber()
   @IsOptional()
@@ -52,7 +59,7 @@ export class ChecklistItemResponseDto {
   completed: boolean;
   mandatory: boolean;
   type: ChecklistType;
-  passengerId?: string;
+  customerId?: string;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
@@ -78,11 +85,11 @@ export class CreateBookingChecklistDto {
   completed?: boolean;
 
   @IsBoolean()
-  @IsOptional()  
+  @IsOptional()
   mandatory?: boolean;
 }
 
-export class CreateBookingPassengerDto {
+export class CreateBookingCustomerDto {
   @IsString()
   fullName: string;
 

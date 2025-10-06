@@ -1,35 +1,20 @@
-import { IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { BookingStatus } from 'src/database/entity/booking.entity';
 import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
-import { CreateBookingChecklistDto, ChecklistItemResponseDto } from './checklist-dto';
-export class CreatePassengerDto {
-  @IsString()
-  fullName: string;
-
-  @IsNumber()
-  @Min(1)
-  age: number;
-
-  @IsOptional()
-  @IsString()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @IsString()
-  emergencyContact: string;
-
-  @IsOptional()
-  @IsString()
-  specialRequirements?: string;
-
-  @IsOptional()
-  additionalInfo?: Record<string, any>;
-  checklist: Record<string, any>[];
-}
+import {
+  CreateBookingChecklistDto,
+  ChecklistItemResponseDto,
+} from './checklist-dto';
 
 export class CreatePaymentDto {
   @IsNumber()
@@ -69,9 +54,9 @@ export class CreateBookingDto {
   @IsUUID()
   batchId: string;
 
-  @IsNumber()
-  @Min(1)
-  numberOfPassengers: number;
+  @IsArray()
+  @IsUUID(4, { each: true })
+  customerIds: string[];
 
   @IsNumber()
   @Min(0)
@@ -84,19 +69,13 @@ export class CreateBookingDto {
   @IsOptional()
   additionalDetails?: Record<string, any>;
 
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreatePassengerDto)
-  passengers: CreatePassengerDto[];
-
   @IsOptional()
-
   @ValidateNested()
   @Type(() => CreatePaymentDto)
   initialPayment?: CreatePaymentDto;
+
   @IsOptional()
   groupChecklist?: CreateBookingChecklistDto[];
-  passenger: CreateBookingChecklistDto[];
 }
 
 export class UpdateBookingDto {
@@ -113,9 +92,9 @@ export class UpdateBookingDto {
   batchId?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(1)
-  numberOfPassengers?: number;
+  @IsArray()
+  @IsUUID(4, { each: true })
+  customerIds?: string[];
 
   @IsOptional()
   @IsNumber()
@@ -132,12 +111,6 @@ export class UpdateBookingDto {
 
   @IsOptional()
   additionalDetails?: Record<string, any>;
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreatePassengerDto)
-  passengers?: CreatePassengerDto[];
 }
 
 export class BookingStatsDto {
@@ -148,7 +121,7 @@ export class BookingStatsDto {
   completedBookings: number;
   totalRevenue: number;
   pendingPayments: number;
-  totalPassengers: number;
+  totalCustomers: number;
 }
 
 export class BookingSummaryDto {
@@ -158,7 +131,7 @@ export class BookingSummaryDto {
   customerEmail: string;
   packageName: string;
   batchStartDate: Date;
-  numberOfPassengers: number;
+  numberOfCustomers: number;
   totalAmount: number;
   advancePaid: number;
   balanceAmount: number;
@@ -166,26 +139,34 @@ export class BookingSummaryDto {
   createdAt: Date;
 }
 
-export class BookingPassengerResponseDto {
+export class BookingCustomerResponseDto {
   id: string;
-  fullName: string;
-  age: number;
-  email?: string;
-  phone?: string;
-  emergencyContact: string;
-  specialRequirements?: string;
-  checklist?: undefined | ChecklistItemResponseDto[];
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  email: string;
+  phone: string;
+  alternativePhone?: string;
+  dateOfBirth: Date;
+  gender: string;
+  address: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  specialRequests?: string;
+  medicalConditions?: string;
+  dietaryRestrictions?: string;
 }
 
 export class BookingResponseDto {
   id: string;
   bookingNumber: string;
-
-  passengers: BookingPassengerResponseDto[];
+  customers: BookingCustomerResponseDto[];
   groupChecklist?: ChecklistItemResponseDto[];
-  customer: {
+  primaryCustomer: {
     id: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     phone: string;
     address: string;
@@ -204,7 +185,7 @@ export class BookingResponseDto {
     totalSeats: number;
     bookedSeats: number;
   };
-  numberOfPassengers: number;
+  numberOfCustomers: number;
   totalAmount: number;
   advancePaid: number;
   balanceAmount: number;
@@ -221,4 +202,4 @@ export class BookingResponseDto {
   }[];
   createdAt: Date;
   updatedAt: Date;
-} 
+}

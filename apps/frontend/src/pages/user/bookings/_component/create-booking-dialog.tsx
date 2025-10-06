@@ -1,3 +1,4 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,9 +8,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -18,41 +22,37 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
+import BookingService from "@/services/booking.service";
+import type { IBatches } from "@/types/batches.types";
+import type {
+	IBooking,
+	ICreateBookingRequest,
+	ICustomer,
+	IPackage,
+	PaymentMethod,
+} from "@/types/booking.types";
 import {
-	Calendar,
-	DollarSign,
-	Upload,
-	Users,
-	Loader2,
 	AlertCircle,
-	Search,
-	Plus,
-	X,
+	Calendar,
 	Check,
 	CheckCircle,
 	CheckCircle2,
+	DollarSign,
+	Loader2,
 	Package,
+	Plus,
+	Search,
+	Trash,
+	Upload,
 	UserPlus,
+	Users,
+	X,
 } from "lucide-react";
 import type React from "react";
-import { useState, useEffect } from "react";
-import BookingService from "@/services/booking.service";
-import type {
-	ICreateBookingRequest,
-	IBookingPassenger,
-	PaymentMethod,
-	IPackage,
-	ICustomer,
-	IBooking,
-} from "@/types/booking.types";
-import type { IBatches } from "@/types/batches.types";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-interface EnhancedBookingPassenger extends IBookingPassenger {
+interface EnhancedCustomer extends Omit<ICustomer, "checklist"> {
 	checklist: {
 		id: string;
 		item: string;
@@ -89,6 +89,8 @@ export function CreateBookingDialog({
 	const [loadingData, setLoadingData] = useState(false);
 	const [customerSearch, setCustomerSearch] = useState("");
 	const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
+	const [packageSearch, setPackageSearch] = useState("");
+	const [packagePopoverOpen, setPackagePopoverOpen] = useState(false);
 	const [customerPagination, setCustomerPagination] = useState({
 		offset: 0,
 		limit: 10,
@@ -98,87 +100,22 @@ export function CreateBookingDialog({
 	const [loadingCustomers, setLoadingCustomers] = useState(false);
 	const [groupChecklist, setGroupChecklist] = useState<GroupChecklistItem[]>([]);
 
-	// Form validation
-	const validateForm = () => {
-		const newErrors: Record<string, string> = {};
-
-		if (!formData.customerId) newErrors.customerId = "Please select a customer";
-		if (!formData.packageId) newErrors.packageId = "Please select a tour package";
-		if (!formData.batchId) newErrors.batchId = "Please select a batch";
-		if (!formData.numberOfPassengers || formData.numberOfPassengers < 1) {
-			newErrors.numberOfPassengers = "Please select number of passengers";
-		}
-		if (formData.advanceAmount > 0 && !formData.paymentMethod) {
-			newErrors.paymentMethod =
-				"Please select a payment method for advance payment";
-		}
-
-		// Validate passenger details
-		const invalidPassengers = formData.passengers.some((p, index) => {
-			if (!p.fullName) {
-				newErrors[`passenger_${index}_name`] = "Full name is required";
-				return true;
-			}
-			if (!p.age || p.age < 1) {
-				newErrors[`passenger_${index}_age`] = "Valid age is required";
-				return true;
-			}
-			if (!p.emergencyContact) {
-				newErrors[`passenger_${index}_emergency`] =
-					"Emergency contact is required";
-				return true;
-			}
-			return false;
-		});
-
-		if (invalidPassengers) {
-			newErrors.passengers = "Please fill in all required passenger details";
-		}
-
-		setErrors(newErrors);
-		return Object.keys(newErrors).length === 0;
-	};
-
 	const [formData, setFormData] = useState<{
-		customerId: string;
-		customerName: string;
-		customerEmail: string;
-		customerPhone: string;
-
 		packageId: string;
 		batchId: string;
-		numberOfPassengers: number;
-
-		passengers: EnhancedBookingPassenger[];
-
-		// Payment Details
+		numberOfCustomers: number;
+		customers: EnhancedCustomer[];
 		totalAmount: number;
 		advanceAmount: number;
 		paymentMethod: PaymentMethod | "";
 		paymentReference: string;
 		paymentScreenshot: File | null;
-
-		// Additional Details
 		specialRequests: string;
 	}>({
-		customerId: "",
-		customerName: "",
-		customerEmail: "",
-		customerPhone: "",
 		packageId: "",
 		batchId: "",
-		numberOfPassengers: 1,
-		passengers: [
-			{
-				fullName: "",
-				age: 0,
-				email: "",
-				phone: "",
-				emergencyContact: "",
-				specialRequirements: "",
-				checklist: [],
-			},
-		],
+		numberOfCustomers: 0,
+		customers: [],
 		totalAmount: 0,
 		advanceAmount: 0,
 		paymentMethod: "",
@@ -186,6 +123,49 @@ export function CreateBookingDialog({
 		paymentScreenshot: null,
 		specialRequests: "",
 	});
+
+	// Form validation
+	const validateForm = () => {
+		const newErrors: Record<string, string> = {};
+
+		if (formData.customers.length === 0)
+			newErrors.customers = "Please select at least one customer";
+		if (!formData.packageId) newErrors.packageId = "Please select a tour package";
+		if (!formData.batchId) newErrors.batchId = "Please select a batch";
+		if (formData.advanceAmount > 0 && !formData.paymentMethod) {
+			newErrors.paymentMethod =
+				"Please select a payment method for advance payment";
+		}
+
+		// Validate customer details
+		const invalidCustomers = formData.customers.some((c, index) => {
+			if (!c.firstName || !c.lastName) {
+				newErrors[`customer_${index}_name`] = "Full name is required";
+				return true;
+			}
+			if (!c.email) {
+				newErrors[`customer_${index}_email`] = "Email is required";
+				return true;
+			}
+			if (!c.phone) {
+				newErrors[`customer_${index}_phone`] = "Phone is required";
+				return true;
+			}
+			if (!c.emergencyContactName || !c.emergencyContactPhone) {
+				newErrors[`customer_${index}_emergency`] =
+					"Emergency contact is required";
+				return true;
+			}
+			return false;
+		});
+
+		if (invalidCustomers) {
+			newErrors.customers = "Please fill in all required customer details";
+		}
+
+		setErrors(newErrors);
+		return Object.keys(newErrors).length === 0;
+	};
 
 	// Load initial data when dialog opens
 	useEffect(() => {
@@ -235,7 +215,7 @@ export function CreateBookingDialog({
 			});
 
 			if (reset) {
-				setCustomers(results.customers);
+				setCustomers(results.data);
 				setCustomerPagination({
 					offset: 10,
 					limit: 10,
@@ -243,7 +223,7 @@ export function CreateBookingDialog({
 					total: results.total,
 				});
 			} else {
-				setCustomers((prev) => [...prev, ...results.customers]);
+				setCustomers((prev) => [...prev, ...results.data]);
 				setCustomerPagination((prev) => ({
 					...prev,
 					offset: prev.offset + 10,
@@ -317,42 +297,91 @@ export function CreateBookingDialog({
 	};
 
 	const selectedPackage = packages.find((p) => p.id === formData.packageId);
-	const selectedBatch = availableBatches.find((b) => b.id === formData.batchId);
 
-	const updatePassengerCount = (count: number) => {
-		const newPassengers = Array.from(
-			{ length: count },
-			(_, i) =>
-				formData.passengers[i] || {
-					fullName: "",
-					age: 0,
-					email: "",
-					phone: "",
-					emergencyContact: "",
-					specialRequirements: "",
-					checklist: [],
-				}
-		);
+	const handleCustomerSelect = (customer: ICustomer) => {
+		// Check if customer is already selected
+		const isAlreadySelected = formData.customers.some((c) => c.id === customer.id);
+
+		if (isAlreadySelected) {
+			// Remove customer if already selected
+			setFormData((prev) => ({
+				...prev,
+				customers: prev.customers.filter((c) => c.id !== customer.id),
+				numberOfCustomers: prev.customers.length - 1,
+				totalAmount: selectedPackage
+					? selectedPackage.price * (prev.customers.length - 1)
+					: 0,
+			}));
+		} else {
+			// Add customer if not selected
+			const newCustomer: EnhancedCustomer = {
+				id: customer.id,
+				firstName: customer.firstName,
+				lastName: customer.lastName,
+				email: customer.email,
+				phone: customer.phone,
+				dateOfBirth: customer.dateOfBirth || "",
+				gender: customer.gender || "",
+				address: customer.address || "",
+				emergencyContactName: customer.emergencyContactName || "",
+				emergencyContactPhone: customer.emergencyContactPhone || "",
+				specialRequests: customer.specialRequests || "",
+				checklist: [],
+			};
+
+			setFormData((prev) => ({
+				...prev,
+				customers: [...prev.customers, newCustomer],
+				numberOfCustomers: prev.customers.length + 1,
+				totalAmount: selectedPackage
+					? selectedPackage.price * (prev.customers.length + 1)
+					: 0,
+			}));
+		}
+
+		// Clear any existing customer selection errors
+		if (errors.customers) {
+			setErrors((prev) => ({
+				...prev,
+				customers: "",
+			}));
+		}
+	};
+
+	const removeCustomer = (index: number) => {
+		const newCustomers = formData.customers.filter((_, i) => i !== index);
 		setFormData((prev) => ({
 			...prev,
-			numberOfPassengers: count,
-			passengers: newPassengers,
-			totalAmount: selectedPackage ? selectedPackage.price * count : 0,
+			customers: newCustomers,
+			numberOfCustomers: newCustomers.length,
+			totalAmount: selectedPackage
+				? selectedPackage.price * newCustomers.length
+				: 0,
 		}));
 	};
 
-	const updatePassenger = (
-		index: number,
-		field: keyof EnhancedBookingPassenger,
-		value: string | number
-	) => {
-		const newPassengers = [...formData.passengers];
-		newPassengers[index] = { ...newPassengers[index], [field]: value };
-		setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+	const handlePackageSelect = (pkg: IPackage) => {
+		setFormData((prev) => ({
+			...prev,
+			packageId: pkg.id,
+			batchId: "",
+			totalAmount: pkg.price * prev.numberOfCustomers,
+		}));
+
+		if (errors.packageId) {
+			setErrors((prev) => ({
+				...prev,
+				packageId: "",
+			}));
+		}
 	};
 
+	const filteredPackages = packages.filter((pkg) =>
+		pkg.name.toLowerCase().includes(packageSearch.toLowerCase())
+	);
+
 	// Individual checklist functions (now with API integration)
-	const addChecklistItem = async (passengerIndex: number, item: string) => {
+	const addChecklistItem = async (customerIndex: number, item: string) => {
 		if (!item.trim()) return;
 
 		// If booking is already created, call API
@@ -365,16 +394,15 @@ export function CreateBookingDialog({
 						completed: false,
 						mandatory: false,
 						type: "INDIVIDUAL",
-						passengerId: formData.passengers[passengerIndex].id, // Assuming passenger has ID after booking creation
-						sortOrder: formData.passengers[passengerIndex].checklist.length,
+						sortOrder: formData.customers[customerIndex].checklist.length,
 					}
 				);
 
-				const newPassengers = [...formData.passengers];
-				newPassengers[passengerIndex] = {
-					...newPassengers[passengerIndex],
+				const newCustomers = [...formData.customers];
+				newCustomers[customerIndex] = {
+					...newCustomers[customerIndex],
 					checklist: [
-						...newPassengers[passengerIndex].checklist,
+						...newCustomers[customerIndex].checklist,
 						{
 							id: checklistItem.id,
 							item: checklistItem.item,
@@ -384,7 +412,7 @@ export function CreateBookingDialog({
 					],
 				};
 
-				setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+				setFormData((prev) => ({ ...prev, customers: newCustomers }));
 				toast.success("Checklist item added successfully");
 			} catch (error) {
 				console.error("Error adding checklist item:", error);
@@ -392,7 +420,7 @@ export function CreateBookingDialog({
 			}
 		} else {
 			// Before booking creation, just update local state
-			const newPassengers = [...formData.passengers];
+			const newCustomers = [...formData.customers];
 			const newChecklistItem = {
 				id: Date.now().toString(),
 				item: item.trim(),
@@ -400,16 +428,16 @@ export function CreateBookingDialog({
 				mandatory: false,
 			};
 
-			newPassengers[passengerIndex] = {
-				...newPassengers[passengerIndex],
-				checklist: [...newPassengers[passengerIndex].checklist, newChecklistItem],
+			newCustomers[customerIndex] = {
+				...newCustomers[customerIndex],
+				checklist: [...newCustomers[customerIndex].checklist, newChecklistItem],
 			};
 
-			setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+			setFormData((prev) => ({ ...prev, customers: newCustomers }));
 		}
 	};
 
-	const removeChecklistItem = async (passengerIndex: number, itemId: string) => {
+	const removeChecklistItem = async (customerIndex: number, itemId: string) => {
 		// If booking is created and item has a real API ID, call API
 		if (createdBookingId && !itemId.startsWith("temp-")) {
 			try {
@@ -422,49 +450,49 @@ export function CreateBookingDialog({
 			}
 		}
 
-		const newPassengers = [...formData.passengers];
-		newPassengers[passengerIndex] = {
-			...newPassengers[passengerIndex],
-			checklist: newPassengers[passengerIndex].checklist.filter(
+		const newCustomers = [...formData.customers];
+		newCustomers[customerIndex] = {
+			...newCustomers[customerIndex],
+			checklist: newCustomers[customerIndex].checklist.filter(
 				(item) => item.id !== itemId
 			),
 		};
 
-		setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+		setFormData((prev) => ({ ...prev, customers: newCustomers }));
 	};
 
-	const toggleChecklistItem = async (passengerIndex: number, itemId: string) => {
+	const toggleChecklistItem = async (customerIndex: number, itemId: string) => {
 		// If booking is created and item has a real API ID, call API
 		if (createdBookingId && !itemId.startsWith("temp-")) {
 			try {
 				const updatedItem = await BookingService.toggleChecklistItem(itemId);
 
-				const newPassengers = [...formData.passengers];
-				newPassengers[passengerIndex] = {
-					...newPassengers[passengerIndex],
-					checklist: newPassengers[passengerIndex].checklist.map((item) =>
+				const newCustomers = [...formData.customers];
+				newCustomers[customerIndex] = {
+					...newCustomers[customerIndex],
+					checklist: newCustomers[customerIndex].checklist.map((item) =>
 						item.id === itemId
 							? { ...item, completed: updatedItem.completed }
 							: item
 					),
 				};
 
-				setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+				setFormData((prev) => ({ ...prev, customers: newCustomers }));
 			} catch (error) {
 				console.error("Error toggling checklist item:", error);
 				toast.error("Failed to update checklist item");
 			}
 		} else {
 			// Before booking creation or temporary items, just update local state
-			const newPassengers = [...formData.passengers];
-			newPassengers[passengerIndex] = {
-				...newPassengers[passengerIndex],
-				checklist: newPassengers[passengerIndex].checklist.map((item) =>
+			const newCustomers = [...formData.customers];
+			newCustomers[customerIndex] = {
+				...newCustomers[customerIndex],
+				checklist: newCustomers[customerIndex].checklist.map((item) =>
 					item.id === itemId ? { ...item, completed: !item.completed } : item
 				),
 			};
 
-			setFormData((prev) => ({ ...prev, passengers: newPassengers }));
+			setFormData((prev) => ({ ...prev, customers: newCustomers }));
 		}
 	};
 
@@ -582,25 +610,6 @@ export function CreateBookingDialog({
 		}
 	};
 
-	const handleCustomerSelect = (customer: ICustomer) => {
-		setFormData((prev) => ({
-			...prev,
-			customerId: customer.id,
-			customerName: customer.name,
-			customerEmail: customer.email,
-			customerPhone: customer.phone,
-		}));
-		setCustomerSearch(customer.name);
-		setCustomerPopoverOpen(false);
-		// Clear any existing customer selection errors
-		if (errors.customerId) {
-			setErrors((prev) => ({
-				...prev,
-				customerId: "",
-			}));
-		}
-	};
-
 	const createChecklistItems = async (bookingId: string, booking: IBooking) => {
 		try {
 			for (let i = 0; i < groupChecklist.length; i++) {
@@ -616,15 +625,15 @@ export function CreateBookingDialog({
 				}
 			}
 			for (
-				let passengerIndex = 0;
-				passengerIndex < formData.passengers.length;
-				passengerIndex++
+				let customerIndex = 0;
+				customerIndex < formData.customers.length;
+				customerIndex++
 			) {
-				const passenger = formData.passengers[passengerIndex];
-				const bookingPassenger = booking.passengers[passengerIndex];
+				const customer = formData.customers[customerIndex];
+				const bookingCustomer = booking.customers[customerIndex];
 
-				for (let i = 0; i < passenger.checklist.length; i++) {
-					const checklistItem = passenger.checklist[i];
+				for (let i = 0; i < customer.checklist.length; i++) {
+					const checklistItem = customer.checklist[i];
 					if (
 						checklistItem.id.toString().startsWith("temp-") ||
 						!checklistItem.id.match(/^\d+$/)
@@ -634,7 +643,7 @@ export function CreateBookingDialog({
 							completed: checklistItem.completed,
 							mandatory: checklistItem.mandatory,
 							type: "INDIVIDUAL",
-							passengerId: bookingPassenger.id,
+							customerId: bookingCustomer?.id || customer.id,
 							sortOrder: i,
 						});
 					}
@@ -663,25 +672,15 @@ export function CreateBookingDialog({
 			setLoading(true);
 			setError(null);
 
-			const regularPassengers: IBookingPassenger[] = formData.passengers.map(
-				(passenger) => ({
-					fullName: passenger.fullName,
-					age: passenger.age,
-					email: passenger.email,
-					phone: passenger.phone,
-					emergencyContact: passenger.emergencyContact,
-					specialRequirements: passenger.specialRequirements,
-				})
-			);
+			const customerIds = formData.customers.map((c) => c.id).filter((id) => id);
 
 			const bookingData: ICreateBookingRequest = {
-				customerId: formData.customerId,
+				customerId: formData.customers[0]?.id || "", // Use first customer as primary
 				packageId: formData.packageId,
 				batchId: formData.batchId,
-				numberOfPassengers: formData.numberOfPassengers,
+				customerIds,
 				totalAmount: formData.totalAmount,
 				specialRequests: formData.specialRequests,
-				passengers: regularPassengers,
 				initialPayment:
 					formData.advanceAmount > 0
 						? {
@@ -740,24 +739,10 @@ export function CreateBookingDialog({
 	const resetForm = () => {
 		setCreatedBookingId(null);
 		setFormData({
-			customerId: "",
-			customerName: "",
-			customerEmail: "",
-			customerPhone: "",
 			packageId: "",
 			batchId: "",
-			numberOfPassengers: 1,
-			passengers: [
-				{
-					fullName: "",
-					age: 0,
-					email: "",
-					phone: "",
-					emergencyContact: "",
-					specialRequirements: "",
-					checklist: [],
-				},
-			],
+			numberOfCustomers: 0,
+			customers: [],
 			totalAmount: 0,
 			advanceAmount: 0,
 			paymentMethod: "",
@@ -779,13 +764,13 @@ export function CreateBookingDialog({
 		setErrors({});
 	};
 
-	const ChecklistManager = ({ passengerIndex }: { passengerIndex: number }) => {
+	const ChecklistManager = ({ customerIndex }: { customerIndex: number }) => {
 		const [newItem, setNewItem] = useState("");
-		const passenger = formData.passengers[passengerIndex];
+		const customer = formData.customers[customerIndex];
 
 		const handleAddItem = () => {
 			if (newItem.trim()) {
-				addChecklistItem(passengerIndex, newItem);
+				addChecklistItem(customerIndex, newItem);
 				setNewItem("");
 			}
 		};
@@ -821,9 +806,9 @@ export function CreateBookingDialog({
 				</div>
 
 				{/* Checklist items */}
-				{passenger.checklist.length > 0 && (
+				{customer.checklist.length > 0 && (
 					<div className="space-y-2 max-h-40 overflow-y-auto">
-						{passenger.checklist.map((item) => (
+						{customer.checklist.map((item) => (
 							<div
 								key={item.id}
 								className={`flex items-center gap-2 p-2 rounded-lg border ${
@@ -837,7 +822,7 @@ export function CreateBookingDialog({
 									variant="ghost"
 									size="sm"
 									onClick={() =>
-										toggleChecklistItem(passengerIndex, item.id)
+										toggleChecklistItem(customerIndex, item.id)
 									}
 									className={`p-1 h-6 w-6 rounded ${
 										item.completed
@@ -866,7 +851,7 @@ export function CreateBookingDialog({
 									variant="ghost"
 									size="sm"
 									onClick={() =>
-										removeChecklistItem(passengerIndex, item.id)
+										removeChecklistItem(customerIndex, item.id)
 									}
 									className="p-1 h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
 								>
@@ -877,7 +862,7 @@ export function CreateBookingDialog({
 					</div>
 				)}
 
-				{passenger.checklist.length === 0 && (
+				{customer.checklist.length === 0 && (
 					<p className="text-sm text-muted-foreground">
 						No individual checklist items added yet. Add items to help track
 						personal travel preparations.
@@ -1041,7 +1026,8 @@ export function CreateBookingDialog({
 											Customer Selection
 										</CardTitle>
 										<CardDescription className="text-sm">
-											Search and select a customer for this booking
+											Search and select multiple customers for this
+											booking
 										</CardDescription>
 									</CardHeader>
 									<CardContent className="pt-0">
@@ -1060,15 +1046,28 @@ export function CreateBookingDialog({
 															variant="outline"
 															role="combobox"
 															className={`w-full justify-between ${
-																errors.customerId
+																errors.customers
 																	? "border-destructive"
 																	: ""
 															}`}
 														>
 															<span className="flex items-center gap-2">
 																<UserPlus className="h-4 w-4" />
-																{formData.customerName ||
-																	"Select a customer"}
+																{formData.customers
+																	.length > 0
+																	? `${
+																			formData
+																				.customers
+																				.length
+																	  } customer${
+																			formData
+																				.customers
+																				.length >
+																			1
+																				? "s"
+																				: ""
+																	  } selected`
+																	: "Select customers"}
 															</span>
 														</Button>
 													</PopoverTrigger>
@@ -1095,7 +1094,7 @@ export function CreateBookingDialog({
 															</div>
 														</div>
 														<ScrollArea
-															className="max-h-60"
+															className="h-72"
 															onScrollCapture={(e) => {
 																const {
 																	scrollTop,
@@ -1123,12 +1122,16 @@ export function CreateBookingDialog({
 																						customer.id
 																					}
 																					className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer"
-																					onClick={() => {
+																					onClick={(
+																						e
+																					) => {
+																						e.preventDefault();
+																						e.stopPropagation();
 																						handleCustomerSelect(
 																							customer
 																						);
 																						if (
-																							errors.customerId
+																							errors.customers
 																						) {
 																							setErrors(
 																								(
@@ -1143,16 +1146,19 @@ export function CreateBookingDialog({
 																					}}
 																				>
 																					<Checkbox
-																						checked={
-																							formData.customerId ===
-																							customer.id
-																						}
+																						checked={formData.customers.some(
+																							(
+																								c
+																							) =>
+																								c.id ===
+																								customer.id
+																						)}
 																						onCheckedChange={() => {
 																							handleCustomerSelect(
 																								customer
 																							);
 																							if (
-																								errors.customerId
+																								errors.customers
 																							) {
 																								setErrors(
 																									(
@@ -1169,7 +1175,10 @@ export function CreateBookingDialog({
 																					<div className="flex-1 min-w-0">
 																						<p className="text-sm font-medium truncate">
 																							{
-																								customer.name
+																								customer.firstName
+																							}{" "}
+																							{
+																								customer.lastName
 																							}
 																						</p>
 																						<p className="text-xs text-muted-foreground">
@@ -1228,21 +1237,21 @@ export function CreateBookingDialog({
 														</ScrollArea>
 													</PopoverContent>
 												</Popover>
-												{errors.customerId && (
+												{errors.customers && (
 													<Alert
 														variant="destructive"
 														className="py-2"
 													>
 														<AlertCircle className="h-4 w-4" />
 														<AlertDescription>
-															{errors.customerId}
+															{errors.customers}
 														</AlertDescription>
 													</Alert>
 												)}
 											</div>
 
-											{/* Selected Customer Details */}
-											{formData.customerId && (
+											{/* Selected Customers Summary */}
+											{formData.customers.length > 0 && (
 												<div className="mt-4 p-4 bg-muted/30 rounded-lg border">
 													<div className="flex items-start gap-3">
 														<div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -1250,22 +1259,25 @@ export function CreateBookingDialog({
 														</div>
 														<div className="flex-1 min-w-0">
 															<h4 className="font-semibold text-sm mb-1">
-																{formData.customerName}
+																{
+																	formData.customers
+																		.length
+																}{" "}
+																customer
+																{formData.customers
+																	.length > 1
+																	? "s"
+																	: ""}{" "}
+																selected
 															</h4>
 															<p className="text-xs text-muted-foreground mb-2">
-																{formData.customerEmail}
+																{formData.customers
+																	.map(
+																		(c) =>
+																			`${c.firstName} ${c.lastName}`
+																	)
+																	.join(", ")}
 															</p>
-															<div className="flex flex-wrap gap-2">
-																<Badge
-																	variant="secondary"
-																	className="text-xs"
-																>
-																	Phone:{" "}
-																	{
-																		formData.customerPhone
-																	}
-																</Badge>
-															</div>
 														</div>
 													</div>
 												</div>
@@ -1291,52 +1303,105 @@ export function CreateBookingDialog({
 												<Label className="text-sm font-medium">
 													Select Package
 												</Label>
-												<Select
-													value={formData.packageId}
-													onValueChange={(value) => {
-														const pkg = packages.find(
-															(p) => p.id === value
-														);
-														setFormData((prev) => ({
-															...prev,
-															packageId: value,
-															batchId: "",
-															totalAmount: pkg
-																? pkg.price *
-																  prev.numberOfPassengers
-																: 0,
-														}));
-														if (errors.packageId) {
-															setErrors((prev) => ({
-																...prev,
-																packageId: "",
-															}));
-														}
-													}}
+												<Popover
+													open={packagePopoverOpen}
+													onOpenChange={setPackagePopoverOpen}
 												>
-													<SelectTrigger
-														className={
-															errors.packageId
-																? "border-destructive"
-																: ""
-														}
+													<PopoverTrigger asChild>
+														<Button
+															variant="outline"
+															role="combobox"
+															className={`w-full justify-between ${
+																errors.packageId
+																	? "border-destructive"
+																	: ""
+															}`}
+														>
+															<span className="flex items-center gap-2">
+																<Package className="h-4 w-4" />
+																{selectedPackage
+																	? `${
+																			selectedPackage.name
+																	  } - ${BookingService.formatCurrency(
+																			selectedPackage.price
+																	  )}`
+																	: "Select package"}
+															</span>
+														</Button>
+													</PopoverTrigger>
+													<PopoverContent
+														className="w-[400px] p-0"
+														align="start"
 													>
-														<SelectValue placeholder="Choose a package" />
-													</SelectTrigger>
-													<SelectContent>
-														{packages.map((pkg) => (
-															<SelectItem
-																key={pkg.id}
-																value={pkg.id}
-															>
-																{pkg.name} -{" "}
-																{BookingService.formatCurrency(
-																	pkg.price
+														<div className="p-3 border-b">
+															<div className="relative">
+																<Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+																<Input
+																	placeholder="Search packages..."
+																	value={packageSearch}
+																	onChange={(e) => {
+																		setPackageSearch(
+																			e.target.value
+																		);
+																	}}
+																	className="pl-8"
+																/>
+															</div>
+														</div>
+														<ScrollArea className="h-72">
+															<div className="p-2">
+																{filteredPackages.length >
+																0 ? (
+																	<div className="space-y-1">
+																		{filteredPackages.map(
+																			(pkg) => (
+																				<div
+																					key={
+																						pkg.id
+																					}
+																					className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer"
+																					onClick={(
+																						e
+																					) => {
+																						e.preventDefault();
+																						e.stopPropagation();
+																						handlePackageSelect(
+																							pkg
+																						);
+																						setPackagePopoverOpen(
+																							false
+																						);
+																					}}
+																				>
+																					<div className="flex-1 min-w-0">
+																						<p className="text-sm font-medium truncate">
+																							{
+																								pkg.name
+																							}
+																						</p>
+																						<p className="text-xs text-muted-foreground">
+																							{BookingService.formatCurrency(
+																								pkg.price
+																							)}
+																						</p>
+																					</div>
+																					{formData.packageId ===
+																						pkg.id && (
+																						<Check className="h-4 w-4 text-primary" />
+																					)}
+																				</div>
+																			)
+																		)}
+																	</div>
+																) : (
+																	<div className="text-center py-4 text-muted-foreground">
+																		No packages found
+																	</div>
 																)}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
+															</div>
+														</ScrollArea>
+													</PopoverContent>
+												</Popover>
 												{errors.packageId && (
 													<Alert
 														variant="destructive"
@@ -1409,7 +1474,7 @@ export function CreateBookingDialog({
 							</div>
 
 							{/* Right Column */}
-							<div className="space-y-5">
+							<div className="space-y-5 mt-5">
 								{/* Batch Selection */}
 								{formData.packageId && (
 									<Card className="border-0 shadow-sm">
@@ -1503,240 +1568,117 @@ export function CreateBookingDialog({
 									</Card>
 								)}
 
-								{/* Passenger Count & Total Amount */}
-								{formData.batchId && (
+								{/* Customer Count & Total Amount */}
+								{formData.batchId && formData.customers.length > 0 && (
 									<Card className="border-0 shadow-sm">
 										<CardHeader className="pb-3">
 											<CardTitle className="flex items-center gap-2 text-base font-semibold">
-												<Users className="h-4 w-4 text-primary" />
-												Passenger Count & Pricing
+												<DollarSign className="h-4 w-4 text-primary" />
+												Pricing Summary
 											</CardTitle>
 											<CardDescription className="text-sm">
-												Select number of passengers and view total
-												amount
+												Total amount for selected customers
 											</CardDescription>
 										</CardHeader>
 										<CardContent className="pt-0">
-											<div className="space-y-4">
-												<div className="space-y-2">
-													<Label className="text-sm font-medium">
-														Number of Passengers
-													</Label>
-													<Select
-														value={formData.numberOfPassengers.toString()}
-														onValueChange={(value) => {
-															updatePassengerCount(
-																Number.parseInt(value)
-															);
-															if (
-																errors.numberOfPassengers
-															) {
-																setErrors((prev) => ({
-																	...prev,
-																	numberOfPassengers:
-																		"",
-																}));
-															}
-														}}
-													>
-														<SelectTrigger
-															className={
-																errors.numberOfPassengers
-																	? "border-destructive"
-																	: ""
-															}
-														>
-															<SelectValue />
-														</SelectTrigger>
-														<SelectContent>
-															{Array.from(
-																{
-																	length: Math.min(
-																		selectedBatch
-																			? selectedBatch.totalSeats -
-																					selectedBatch.bookedSeats
-																			: 1,
-																		10
-																	),
-																},
-																(_, i) => (
-																	<SelectItem
-																		key={i + 1}
-																		value={(
-																			i + 1
-																		).toString()}
-																	>
-																		{i + 1} Passenger
-																		{i > 0 ? "s" : ""}
-																	</SelectItem>
-																)
-															)}
-														</SelectContent>
-													</Select>
-													{errors.numberOfPassengers && (
-														<Alert
-															variant="destructive"
-															className="py-2"
-														>
-															<AlertCircle className="h-4 w-4" />
-															<AlertDescription>
-																{
-																	errors.numberOfPassengers
-																}
-															</AlertDescription>
-														</Alert>
+											<div className="p-4 bg-muted/30 rounded-lg border">
+												<div className="flex items-center justify-between">
+													<span className="font-medium">
+														Total Amount:
+													</span>
+													<span className="text-xl font-bold">
+														{BookingService.formatCurrency(
+															formData.totalAmount
+														)}
+													</span>
+												</div>
+												<div className="text-sm text-muted-foreground mt-2">
+													{formData.customers.length} customer
+													{formData.customers.length > 1
+														? "s"
+														: ""}{" "}
+													×{" "}
+													{BookingService.formatCurrency(
+														selectedPackage?.price || 0
 													)}
 												</div>
-
-												{formData.totalAmount > 0 && (
-													<div className="p-4 bg-muted/30 rounded-lg border">
-														<div className="flex items-center justify-between">
-															<span className="font-medium">
-																Total Amount:
-															</span>
-															<span className="text-xl font-bold">
-																{BookingService.formatCurrency(
-																	formData.totalAmount
-																)}
-															</span>
-														</div>
-													</div>
-												)}
 											</div>
 										</CardContent>
 									</Card>
 								)}
 							</div>
 
-							{/* Passenger Details */}
-							<div className="mt-5">
-								<Card>
-									<CardHeader>
-										<CardTitle className="text-lg flex items-center gap-2">
-											<Users className="h-5 w-5 text-primary" />
-											Passenger Details
-										</CardTitle>
-									</CardHeader>
-									<CardContent className="space-y-6">
-										{formData.passengers.map((passenger, index) => (
-											<div
-												key={index}
-												className="p-4 border rounded-lg space-y-4"
-											>
-												<h4 className="font-medium flex items-center gap-2">
-													<Users className="w-4 h-4" />
-													Passenger {index + 1}
-												</h4>
-												<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-													<div className="space-y-2">
-														<Label>Full Name *</Label>
-														<Input
-															value={passenger.fullName}
-															onChange={(e) =>
-																updatePassenger(
-																	index,
-																	"fullName",
-																	e.target.value
-																)
+							{/* Selected Customers with Checklists */}
+							{formData.customers.length > 0 && (
+								<div className="mt-5">
+									<Card>
+										<CardHeader>
+											<CardTitle className="text-lg flex items-center gap-2">
+												<Users className="h-5 w-5 text-primary" />
+												Selected Customers & Checklists
+											</CardTitle>
+											<CardDescription>
+												Add individual checklists for each
+												selected customer
+											</CardDescription>
+										</CardHeader>
+										<CardContent className="grid grid-cols-2 gap-5">
+											{formData.customers.map((customer, index) => (
+												<div
+													key={customer.id || index}
+													className="p-4 border rounded-lg space-y-4"
+												>
+													<div className="flex items-center justify-between">
+														<h4 className="font-medium flex items-center gap-2">
+															<Users className="w-4 h-4" />
+															{customer.firstName}{" "}
+															{customer.lastName}
+														</h4>
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															onClick={() =>
+																removeCustomer(index)
 															}
-															required
-														/>
+															className="text-red-500 hover:text-red-700 hover:bg-red-50"
+														>
+															<Trash className="w-4 h-4" />
+														</Button>
 													</div>
-													<div className="space-y-2">
-														<Label>Age *</Label>
-														<Input
-															type="number"
-															value={passenger.age || ""}
-															onChange={(e) =>
-																updatePassenger(
-																	index,
-																	"age",
-																	Number.parseInt(
-																		e.target.value
-																	) || 0
-																)
-															}
-															required
-														/>
-													</div>
-													<div className="space-y-2">
-														<Label>Email</Label>
-														<Input
-															type="email"
-															value={passenger.email}
-															onChange={(e) =>
-																updatePassenger(
-																	index,
-																	"email",
-																	e.target.value
-																)
-															}
-														/>
-													</div>
-													<div className="space-y-2">
-														<Label>Phone</Label>
-														<Input
-															value={passenger.phone}
-															onChange={(e) =>
-																updatePassenger(
-																	index,
-																	"phone",
-																	e.target.value
-																)
-															}
-														/>
-													</div>
-												</div>
-												<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-													<div className="space-y-2">
-														<Label>Emergency Contact *</Label>
-														<Input
-															value={
-																passenger.emergencyContact
-															}
-															onChange={(e) =>
-																updatePassenger(
-																	index,
-																	"emergencyContact",
-																	e.target.value
-																)
-															}
-															placeholder="Name and phone number"
-															required
-														/>
-													</div>
-													<div className="space-y-2">
-														<Label>
-															Special Requirements
-														</Label>
-														<Textarea
-															value={
-																passenger.specialRequirements
-															}
-															onChange={(e) =>
-																updatePassenger(
-																	index,
-																	"specialRequirements",
-																	e.target.value
-																)
-															}
-															placeholder="Dietary restrictions, medical conditions, etc."
-															rows={2}
-														/>
-													</div>
-												</div>
 
-												{/* Individual Checklist Section */}
-												<div className="border-t pt-4">
-													<ChecklistManager
-														passengerIndex={index}
-													/>
+													{/* Customer Info */}
+													<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+														<div>
+															<span className="text-muted-foreground">
+																Email:
+															</span>
+															<span className="ml-2">
+																{customer.email}
+															</span>
+														</div>
+														<div>
+															<span className="text-muted-foreground">
+																Phone:
+															</span>
+															<span className="ml-2">
+																{customer.phone}
+															</span>
+														</div>
+													</div>
+
+													{/* Individual Checklist Section */}
+													<div className="border-t pt-4">
+														<ChecklistManager
+															customerIndex={index}
+														/>
+													</div>
 												</div>
-											</div>
-										))}
-									</CardContent>
-								</Card>
-							</div>
+											))}
+										</CardContent>
+									</Card>
+								</div>
+							)}
 
 							<div className="grid grid-cols-2 gap-5">
 								{/* Group Checklist */}
@@ -1793,7 +1735,6 @@ export function CreateBookingDialog({
 												<div className="space-y-2">
 													<Label>Total Amount</Label>
 													<div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
-														<DollarSign className="w-3 h-3" />
 														<span className="font-bold">
 															{BookingService.formatCurrency(
 																formData.totalAmount
@@ -1988,10 +1929,14 @@ export function CreateBookingDialog({
 						<div className="px-6 py-4 border-t bg-background flex-shrink-0">
 							<div className="flex items-center justify-between">
 								<div className="text-sm text-muted-foreground">
-									{formData.customerId && (
+									{formData.customers.length > 0 && (
 										<span className="flex items-center gap-1">
 											<CheckCircle2 className="h-4 w-4 text-green-600" />
-											Customer selected
+											{formData.customers.length} customer
+											{formData.customers.length > 1
+												? "s"
+												: ""}{" "}
+											selected
 										</span>
 									)}
 								</div>

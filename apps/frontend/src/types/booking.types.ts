@@ -22,19 +22,7 @@ export interface IGroupChecklistItem extends IChecklistItem {
 	mandatory: boolean;
 }
 
-export interface IBookingPassenger {
-	id?: string;
-	fullName: string;
-	age: number;
-	email?: string;
-	phone?: string;
-	emergencyContact: string;
-	specialRequirements?: string;
-	additionalInfo?: object;
-	bookingId?: string;
-	booking?: IBooking;
-	checklist?: IChecklistItem[]; // Individual passenger checklist
-}
+// Remove IBookingPassenger as we're using customers directly
 
 export interface IBookingPayment {
 	id?: string;
@@ -50,10 +38,31 @@ export interface IBookingPayment {
 
 export interface ICustomer {
 	id: string;
-	name: string;
+	firstName: string;
+	lastName: string;
+	middleName?: string;
 	email: string;
 	phone: string;
-	address?: string;
+	alternativePhone?: string;
+	dateOfBirth: string;
+	gender: string;
+	address: string;
+	emergencyContactName?: string;
+	emergencyContactPhone?: string;
+	emergencyContactRelation?: string;
+	specialRequests?: string;
+	medicalConditions?: string;
+	dietaryRestrictions?: string;
+	passportNumber?: string;
+	passportExpiryDate?: string;
+	passportIssueDate?: string;
+	passportCountry?: string;
+	voterId?: string;
+	aadhaarId?: string;
+	profilePhoto?: string;
+	checklist?: Record<string, boolean>;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface IPackage {
@@ -77,16 +86,16 @@ export interface IBatch {
 export interface IBooking {
 	id: string;
 	bookingNumber: string;
-	customer: ICustomer;
+	customers: ICustomer[];
+	primaryCustomer: ICustomer;
 	package: IPackage;
 	batch: IBatch;
-	numberOfPassengers: number;
+	numberOfCustomers: number;
 	totalAmount: number;
 	advancePaid: number;
 	balanceAmount: number;
 	status: BookingStatus;
 	specialRequests?: string;
-	passengers: IBookingPassenger[];
 	payments: IBookingPayment[];
 	groupChecklist?: IGroupChecklistItem[]; // Group-level checklist items
 	createdAt: string;
@@ -101,7 +110,7 @@ export interface IBookingListItem {
 	customerEmail: string;
 	packageName: string;
 	batchStartDate: string;
-	numberOfPassengers: number;
+	numberOfCustomers: number;
 	totalAmount: number;
 	advancePaid: number;
 	balanceAmount: number;
@@ -114,10 +123,9 @@ export interface ICreateBookingRequest {
 	customerId: string;
 	packageId: string;
 	batchId: string;
-	numberOfPassengers: number;
+	customerIds: string[];
 	totalAmount: number;
 	specialRequests?: string;
-	passengers: IBookingPassenger[];
 	initialPayment?: Omit<IBookingPayment, "id" | "status">;
 	groupChecklist?: IGroupChecklistItem[]; // Group-level checklist items
 }
@@ -127,7 +135,7 @@ export interface IUpdateBookingRequest {
 	status?: BookingStatus;
 	totalAmount?: number;
 	specialRequests?: string;
-	passengers?: IBookingPassenger[];
+	customerIds?: string[];
 	groupChecklist?: IGroupChecklistItem[]; // Allow updating group checklist
 }
 
@@ -140,7 +148,7 @@ export interface IBookingStatistics {
 	completedBookings: number;
 	totalRevenue: number;
 	pendingPayments: number;
-	totalPassengers: number;
+	totalCustomers: number;
 }
 
 // API response types

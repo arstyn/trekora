@@ -35,18 +35,18 @@ export default function BookingsPage() {
 		try {
 			setLoading(true);
 			setError(null);
-			
+
 			// Fetch both dashboard stats and recent bookings in parallel
 			const [statsData, recentData] = await Promise.all([
 				BookingService.getBookingStatistics(),
-				BookingService.getRecentBookings(5)
+				BookingService.getRecentBookings(5),
 			]);
-			
+
 			setDashboardStats(statsData);
 			setRecentBookings(recentData);
 		} catch (err) {
-			console.error('Error fetching dashboard data:', err);
-			setError('Failed to load dashboard data. Please try again.');
+			console.error("Error fetching dashboard data:", err);
+			setError("Failed to load dashboard data. Please try again.");
 		} finally {
 			setLoading(false);
 		}
@@ -108,10 +108,10 @@ export default function BookingsPage() {
 					<AlertCircle className="h-4 w-4" />
 					<AlertDescription>
 						{error}
-						<Button 
-							variant="outline" 
-							size="sm" 
-							className="ml-4" 
+						<Button
+							variant="outline"
+							size="sm"
+							className="ml-4"
 							onClick={fetchDashboardData}
 						>
 							Try Again
@@ -151,7 +151,9 @@ export default function BookingsPage() {
 							<div className="text-2xl font-bold">
 								{dashboardStats.totalBookings}
 							</div>
-							<p className="text-xs text-muted-foreground">All time bookings</p>
+							<p className="text-xs text-muted-foreground">
+								All time bookings
+							</p>
 						</CardContent>
 					</Card>
 
@@ -172,14 +174,18 @@ export default function BookingsPage() {
 
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="text-sm font-medium">Confirmed</CardTitle>
+							<CardTitle className="text-sm font-medium">
+								Confirmed
+							</CardTitle>
 							<Calendar className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
 								{dashboardStats.confirmedBookings}
 							</div>
-							<p className="text-xs text-muted-foreground">Ready to travel</p>
+							<p className="text-xs text-muted-foreground">
+								Ready to travel
+							</p>
 						</CardContent>
 					</Card>
 
@@ -192,7 +198,9 @@ export default function BookingsPage() {
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
-								{BookingService.formatCurrency(dashboardStats.totalRevenue)}
+								{BookingService.formatCurrency(
+									dashboardStats.totalRevenue
+								)}
 							</div>
 							<p className="text-xs text-muted-foreground">
 								All confirmed bookings
@@ -209,7 +217,9 @@ export default function BookingsPage() {
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
-								{BookingService.formatCurrency(dashboardStats.pendingPayments)}
+								{BookingService.formatCurrency(
+									dashboardStats.pendingPayments
+								)}
 							</div>
 							<p className="text-xs text-muted-foreground">
 								Outstanding balance
@@ -249,23 +259,35 @@ export default function BookingsPage() {
 									<div className="flex-1">
 										<div className="flex items-center gap-2 mb-2">
 											<h3 className="font-semibold">
-												{BookingService.formatBookingNumber(booking.bookingNumber)} - {booking.customerName}
+												{BookingService.formatBookingNumber(
+													booking.bookingNumber
+												)}{" "}
+												- {booking.customerName}
 											</h3>
 											{getStatusBadge(booking.status)}
 										</div>
 										<p className="text-sm text-muted-foreground mb-2">
-											{booking.packageName} • {booking.numberOfPassengers}{" "}
-											passenger(s)
+											{booking.packageName} •{" "}
+											{booking.numberOfCustomers} passenger(s)
 										</p>
 										<div className="flex items-center gap-4">
 											<span className="text-sm">
-												Total: {BookingService.formatCurrency(booking.totalAmount)}
+												Total:{" "}
+												{BookingService.formatCurrency(
+													booking.totalAmount
+												)}
 											</span>
 											<span className="text-sm">
-												Paid: {BookingService.formatCurrency(booking.advancePaid)}
+												Paid:{" "}
+												{BookingService.formatCurrency(
+													booking.advancePaid
+												)}
 											</span>
 											<span className="text-sm text-muted-foreground">
-												Balance: {BookingService.formatCurrency(booking.balanceAmount)}
+												Balance:{" "}
+												{BookingService.formatCurrency(
+													booking.balanceAmount
+												)}
 											</span>
 										</div>
 									</div>

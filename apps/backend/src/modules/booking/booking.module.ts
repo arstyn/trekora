@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from 'src/database/entity/booking.entity';
 import { BookingPayment } from 'src/database/entity/booking-payment.entity';
-import { BookingPassenger } from 'src/database/entity/booking-passenger.entity';
+// Remove BookingPassenger import as we're using customers directly
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
@@ -17,7 +17,6 @@ import { BookingChecklist } from 'src/database/entity/booking-checklist.entity';
     TypeOrmModule.forFeature([
       Booking,
       BookingPayment,
-      BookingPassenger,
       BookingDocument,
       BookingChecklist,
       Customer,
@@ -28,6 +27,6 @@ import { BookingChecklist } from 'src/database/entity/booking-checklist.entity';
   ],
   controllers: [BookingController],
   providers: [BookingService],
-  exports: [BookingService], 
+  exports: [BookingService],
 })
 export class BookingModule {}

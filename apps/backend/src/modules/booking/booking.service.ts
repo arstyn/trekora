@@ -1,38 +1,37 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
-import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
 import {
   BookingPayment,
   PaymentStatus,
 } from 'src/database/entity/booking-payment.entity';
-import { BookingPassenger } from 'src/database/entity/booking-passenger.entity';
-import { BookingDocument } from 'src/database/entity/booking-document.entity';
+import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
+import { DataSource, In, Repository } from 'typeorm';
+import { Batch } from 'src/database/entity/batch.entity';
 import {
   BookingChecklist,
   ChecklistType,
 } from 'src/database/entity/booking-checklist.entity';
+import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
-import { Batch } from 'src/database/entity/batch.entity';
 import {
-  CreateBookingDto,
-  UpdateBookingDto,
+  BookingCustomerResponseDto,
+  BookingResponseDto,
   BookingStatsDto,
   BookingSummaryDto,
-  BookingResponseDto,
+  CreateBookingDto,
   CreatePaymentDto,
-  BookingPassengerResponseDto,
+  UpdateBookingDto,
 } from 'src/dto/booking.dto';
 import {
-  CreateChecklistItemDto,
-  UpdateChecklistItemDto,
   ChecklistItemResponseDto,
   ChecklistStatsDto,
+  CreateChecklistItemDto,
+  UpdateChecklistItemDto,
 } from 'src/dto/checklist-dto';
 
 @Injectable()
@@ -42,8 +41,6 @@ export class BookingService {
     private bookingRepository: Repository<Booking>,
     @InjectRepository(BookingPayment)
     private paymentRepository: Repository<BookingPayment>,
-    @InjectRepository(BookingPassenger)
-    private passengerRepository: Repository<BookingPassenger>,
     @InjectRepository(BookingDocument)
     private documentRepository: Repository<BookingDocument>,
     @InjectRepository(BookingChecklist)
@@ -92,7 +89,7 @@ export class BookingService {
       }
 
       const availableSeats = batch.totalSeats - batch.bookedSeats;
-      if (availableSeats < createBookingDto.numberOfPassengers) {
+      if (availableSeats < createBookingDto.customerIds.length) {
         throw new BadRequestException(
           `Only ${availableSeats} seats available in this batch`,
         );
@@ -111,7 +108,7 @@ export class BookingService {
         customerId: createBookingDto.customerId,
         packageId: createBookingDto.packageId,
         batchId: createBookingDto.batchId,
-        numberOfPassengers: createBookingDto.numberOfPassengers,
+        numberOfCustomers: createBookingDto.customerIds.length,
         totalAmount: createBookingDto.totalAmount,
         advancePaid,
         balanceAmount,
@@ -124,40 +121,18 @@ export class BookingService {
 
       const savedBooking = await queryRunner.manager.save(booking);
 
-      // Create passengers with individual checklists
-      const savedPassengers: BookingPassenger[] = [];
-      for (let i = 0; i < createBookingDto.passengers.length; i++) {
-        const passengerDto = createBookingDto.passengers[i];
-        const passenger = queryRunner.manager.create(BookingPassenger, {
-          fullName: passengerDto.fullName,
-          age: passengerDto.age,
-          email: passengerDto.email,
-          phone: passengerDto.phone,
-          emergencyContact: passengerDto.emergencyContact,
-          specialRequirements: passengerDto.specialRequirements,
-          bookingId: savedBooking.id,
-        });
+      // Validate and associate customers
+      const customers = await this.customerRepository.findBy({
+        id: In(createBookingDto.customerIds),
+      });
 
-        const savedPassenger = await queryRunner.manager.save(passenger);
-        savedPassengers.push(savedPassenger);
-
-        // Create individual checklists for this passenger
-        if (passengerDto.checklist && passengerDto.checklist.length > 0) {
-          const individualChecklists = passengerDto.checklist.map(
-            (checklistItem, index) =>
-              queryRunner.manager.create(BookingChecklist, {
-                item: checklistItem.item,
-                completed: checklistItem.completed || false,
-                mandatory: checklistItem.mandatory || false,
-                type: ChecklistType.INDIVIDUAL,
-                bookingId: savedBooking.id,
-                passengerId: savedPassenger.id,
-                sortOrder: index,
-              }),
-          );
-          await queryRunner.manager.save(individualChecklists);
-        }
+      if (customers.length !== createBookingDto.customerIds.length) {
+        throw new BadRequestException('One or more customers not found');
       }
+
+      // Associate customers with the booking
+      savedBooking.customers = customers;
+      await queryRunner.manager.save(savedBooking);
 
       // Create group checklist items
       if (
@@ -178,12 +153,12 @@ export class BookingService {
         await queryRunner.manager.save(groupChecklists);
       }
 
-      // Add passengers to batch
+      // Add customers to batch
       await queryRunner.manager
         .createQueryBuilder()
-        .relation(Batch, 'passengers')
+        .relation(Batch, 'customers')
         .of(batch.id)
-        .add(savedPassengers);
+        .add(customers);
 
       // Create initial payment if provided
       if (createBookingDto.initialPayment && advancePaid > 0) {
@@ -198,7 +173,7 @@ export class BookingService {
 
       // Update batch booked seats
       await queryRunner.manager.update(Batch, batch.id, {
-        bookedSeats: batch.bookedSeats + createBookingDto.numberOfPassengers,
+        bookedSeats: batch.bookedSeats + createBookingDto.customerIds.length,
       });
 
       await queryRunner.commitTransaction();
@@ -242,7 +217,7 @@ export class BookingService {
       customerEmail: booking.customer.email,
       packageName: booking.package.name,
       batchStartDate: booking.batch.startDate,
-      numberOfPassengers: booking.numberOfPassengers,
+      numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
       advancePaid: booking.advancePaid,
       balanceAmount: booking.balanceAmount,
@@ -256,9 +231,9 @@ export class BookingService {
       where: { id },
       relations: [
         'customer',
+        'customers',
         'package',
         'batch',
-        'passengers',
         'checklists',
         'payments',
         'documents',
@@ -272,9 +247,10 @@ export class BookingService {
     return {
       id: booking.id,
       bookingNumber: booking.bookingNumber,
-      customer: {
+      primaryCustomer: {
         id: booking.customer.id,
-        name: booking.customer.firstName + ' ' + booking.customer.lastName,
+        firstName: booking.customer.firstName,
+        lastName: booking.customer.lastName,
         email: booking.customer.email,
         phone: booking.customer.phone,
         address: booking.customer.address,
@@ -293,35 +269,30 @@ export class BookingService {
         totalSeats: booking.batch.totalSeats,
         bookedSeats: booking.batch.bookedSeats,
       },
-      numberOfPassengers: booking.numberOfPassengers,
+      numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
       advancePaid: booking.advancePaid,
       balanceAmount: booking.balanceAmount,
       status: booking.status,
       specialRequests: booking.specialRequests,
-      passengers: booking.passengers.map(
-        (passenger): BookingPassengerResponseDto => ({
-          id: passenger.id,
-          fullName: passenger.fullName,
-          age: passenger.age,
-          email: passenger.email,
-          phone: passenger.phone,
-          emergencyContact: passenger.emergencyContact,
-          specialRequirements: passenger.specialRequirements,
-          checklist:
-            passenger.additionalInfo?.map(
-              (item): ChecklistItemResponseDto => ({
-                id: item.id,
-                item: item.item,
-                completed: item.completed,
-                mandatory: item.mandatory,
-                type: item.type,
-                passengerId: item.passengerId,
-                sortOrder: item.sortOrder,
-                createdAt: item.createdAt,
-                updatedAt: item.updatedAt,
-              }),
-            ) || [],
+      customers: booking.customers.map(
+        (customer): BookingCustomerResponseDto => ({
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          middleName: customer.middleName,
+          email: customer.email,
+          phone: customer.phone,
+          alternativePhone: customer.alternativePhone,
+          dateOfBirth: customer.dateOfBirth,
+          gender: customer.gender,
+          address: customer.address,
+          emergencyContactName: customer.emergencyContactName,
+          emergencyContactPhone: customer.emergencyContactPhone,
+          emergencyContactRelation: customer.emergencyContactRelation,
+          specialRequests: customer.specialRequests,
+          medicalConditions: customer.medicalConditions,
+          dietaryRestrictions: customer.dietaryRestrictions,
         }),
       ),
       groupChecklist:
@@ -359,7 +330,7 @@ export class BookingService {
   ): Promise<BookingResponseDto> {
     const booking = await this.bookingRepository.findOne({
       where: { id },
-      relations: ['passengers', 'batch'],
+      relations: ['customers', 'batch'],
     });
 
     if (!booking) {
@@ -371,23 +342,32 @@ export class BookingService {
     await queryRunner.startTransaction();
 
     try {
-      // Update passengers if provided
-      if (updateBookingDto.passengers) {
-        // Remove existing passengers
-        await queryRunner.manager.delete(BookingPassenger, { bookingId: id });
+      // Update customers if provided
+      if (updateBookingDto.customerIds) {
+        // Validate customers exist
+        const customers = await this.customerRepository.findBy({
+          id: In(updateBookingDto.customerIds),
+        });
 
-        // Create new passengers
-        const passengers = updateBookingDto.passengers.map((passengerDto) =>
-          queryRunner.manager.create(BookingPassenger, {
-            ...passengerDto,
-            bookingId: id,
-          }),
-        );
-        await queryRunner.manager.save(passengers);
+        if (customers.length !== updateBookingDto.customerIds.length) {
+          throw new BadRequestException('One or more customers not found');
+        }
+
+        // Update customer associations
+        const bookingToUpdate = await queryRunner.manager.findOne(Booking, {
+          where: { id },
+          relations: ['customers'],
+        });
+
+        if (bookingToUpdate) {
+          bookingToUpdate.customers = customers;
+          bookingToUpdate.numberOfCustomers = customers.length;
+          await queryRunner.manager.save(bookingToUpdate);
+        }
       }
 
       // Update booking
-      const { passengers, ...bookingUpdate } = updateBookingDto;
+      const { customerIds, ...bookingUpdate } = updateBookingDto;
       await queryRunner.manager.update(Booking, id, bookingUpdate);
 
       // Update balance amount if total amount changed
@@ -427,10 +407,10 @@ export class BookingService {
     try {
       // Update batch booked seats
       await queryRunner.manager.update(Batch, booking.batch.id, {
-        bookedSeats: booking.batch.bookedSeats - booking.numberOfPassengers,
+        bookedSeats: booking.batch.bookedSeats - booking.numberOfCustomers,
       });
 
-      // Delete booking (cascades to passengers, payments, documents, checklists)
+      // Delete booking (cascades to customers, payments, documents, checklists)
       await queryRunner.manager.delete(Booking, id);
 
       await queryRunner.commitTransaction();
@@ -503,7 +483,7 @@ export class BookingService {
       .createQueryBuilder('booking')
       .select('SUM(booking.totalAmount)', 'totalRevenue')
       .addSelect('SUM(booking.balanceAmount)', 'pendingPayments')
-      .addSelect('SUM(booking.numberOfPassengers)', 'totalPassengers')
+      .addSelect('SUM(booking.numberOfCustomers)', 'totalCustomers')
       .where('booking.organizationId = :organizationId', { organizationId })
       .andWhere('booking.status != :status', {
         status: BookingStatus.CANCELLED,
@@ -518,7 +498,7 @@ export class BookingService {
       completedBookings,
       totalRevenue: parseFloat(revenueResult?.totalRevenue || '0'),
       pendingPayments: parseFloat(revenueResult?.pendingPayments || '0'),
-      totalPassengers: parseInt(revenueResult?.totalPassengers || '0'),
+      totalCustomers: parseInt(revenueResult?.totalCustomers || '0'),
     };
   }
 
@@ -542,16 +522,16 @@ export class BookingService {
       throw new NotFoundException('Booking not found');
     }
 
-    // Validate passenger exists if it's an individual checklist item
+    // Validate customer exists if it's an individual checklist item
     if (
       createChecklistDto.type === ChecklistType.INDIVIDUAL &&
-      createChecklistDto.passengerId
+      createChecklistDto.customerId
     ) {
-      const passenger = await this.passengerRepository.findOne({
-        where: { id: createChecklistDto.passengerId, bookingId },
+      const customer = await this.customerRepository.findOne({
+        where: { id: createChecklistDto.customerId },
       });
-      if (!passenger) {
-        throw new NotFoundException('Passenger not found');
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
       }
     }
 
@@ -568,7 +548,7 @@ export class BookingService {
       completed: savedItem.completed,
       mandatory: savedItem.mandatory,
       type: savedItem.type,
-      passengerId: savedItem.passengerId,
+      customerId: savedItem.customerId,
       sortOrder: savedItem.sortOrder,
       createdAt: savedItem.createdAt,
       updatedAt: savedItem.updatedAt,
@@ -602,7 +582,7 @@ export class BookingService {
       completed: updatedItem.completed,
       mandatory: updatedItem.mandatory,
       type: updatedItem.type,
-      passengerId: updatedItem.passengerId,
+      customerId: updatedItem.customerId,
       sortOrder: updatedItem.sortOrder,
       createdAt: updatedItem.createdAt,
       updatedAt: updatedItem.updatedAt,

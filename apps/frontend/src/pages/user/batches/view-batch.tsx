@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import axiosInstance from "@/lib/axios";
 import type { IBatches } from "@/types/batches.types";
-import type { IBookingPassenger } from "@/types/booking.types";
+import type { ICustomer } from "@/types/booking.types";
 import type { ICheckList } from "@/types/checklist.types";
 import type { IEmployee } from "@/types/employee.types";
 import { Calendar, Edit, Mail, Phone, Users } from "lucide-react";
@@ -27,16 +27,14 @@ import { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { CoordinatorModal } from "./_component/coordinator-modal";
-import { PassengerModal } from "./_component/passenger-modal";
+import { CustomerModal } from "./_component/customer-modal";
 import NAText from "@/components/na-text";
 
 export default function BatchDetailsPage() {
 	const { id } = useParams<{ id: string }>();
 
 	const [batch, setBatch] = useState<IBatches>();
-	const [selectedPassenger, setSelectedPassenger] = useState<IBookingPassenger | null>(
-		null
-	);
+	const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
 	const [selectedCoordinator, setSelectedCoordinator] = useState<IEmployee | null>(
 		null
 	);
@@ -192,7 +190,7 @@ export default function BatchDetailsPage() {
 								<p className="text-sm text-muted-foreground">Capacity</p>
 								<p className="font-medium">
 									{batch && batch.bookedSeats}/
-									{batch && batch.totalSeats} passengers
+									{batch && batch.totalSeats} customers
 								</p>
 							</div>
 						</div>
@@ -295,11 +293,12 @@ export default function BatchDetailsPage() {
 				</CardContent>
 			</Card>
 
-			{/* Passengers */}
+			{/* Customers */}
 			<Card>
 				<CardHeader>
-					<CardTitle>
-						Passengers ({(batch && batch.passengers?.length) || 0})
+					<CardTitle className="flex items-center gap-2">
+						<Users className="w-5 h-5" />
+						Customers ({(batch && batch.customers?.length) || 0})
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -310,75 +309,131 @@ export default function BatchDetailsPage() {
 								<TableHead>Contact</TableHead>
 								<TableHead>Age</TableHead>
 								<TableHead>Emergency Contact</TableHead>
+								<TableHead>Special Info</TableHead>
 								<TableHead>Checklist Status</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{batch &&
-								batch.passengers?.map((passenger) => {
-									const completedItems = 0;
-									const totalItems = packageCheckList
-										? packageCheckList.length
-										: 0;
+								batch.customers?.map((customer) => {
+									const getAge = (dateOfBirth: string) => {
+										const today = new Date();
+										const birthDate = new Date(dateOfBirth);
+										let age =
+											today.getFullYear() - birthDate.getFullYear();
+										const monthDiff =
+											today.getMonth() - birthDate.getMonth();
+
+										if (
+											monthDiff < 0 ||
+											(monthDiff === 0 &&
+												today.getDate() < birthDate.getDate())
+										) {
+											age--;
+										}
+
+										return age;
+									};
 
 									return (
 										<TableRow
-											key={passenger.id}
+											key={customer.id}
 											className="cursor-pointer hover:bg-muted/50"
-											onClick={() =>
-												setSelectedPassenger(passenger)
-											}
+											onClick={() => setSelectedCustomer(customer)}
 										>
 											<TableCell className="font-medium">
-												{passenger.fullName}
+												{customer.firstName} {customer.lastName}
 											</TableCell>
 											<TableCell>
 												<div className="space-y-1">
 													<div className="flex items-center gap-1 text-sm">
 														<Phone className="w-3 h-3" />
-														{passenger.phone}
+														{customer.phone}
 													</div>
 													<div className="flex items-center gap-1 text-sm">
 														<Mail className="w-3 h-3" />
-														{passenger.email}
+														{customer.email}
 													</div>
 												</div>
 											</TableCell>
-											<TableCell>{passenger.age}</TableCell>
+											<TableCell>
+												{getAge(customer.dateOfBirth)}
+											</TableCell>
 											<TableCell className="text-sm">
-												{passenger.emergencyContact}
+												{customer.emergencyContactName &&
+												customer.emergencyContactPhone
+													? `${customer.emergencyContactName} - ${customer.emergencyContactPhone}`
+													: "N/A"}
 											</TableCell>
 											<TableCell>
-												<Badge
-													variant={
-														completedItems === totalItems
-															? "default"
-															: "secondary"
+												{customer.specialRequests ||
+												customer.medicalConditions ||
+												customer.dietaryRestrictions ? (
+													<Badge variant="outline">
+														Has Special Info
+													</Badge>
+												) : (
+													<Badge variant="secondary">
+														No Special Info
+													</Badge>
+												)}
+											</TableCell>
+											<TableCell>
+												{(() => {
+													const totalItems =
+														packageCheckList?.length || 0;
+													const completedItems =
+														customer.checklist
+															? Object.values(
+																	customer.checklist
+															  ).filter(Boolean).length
+															: 0;
+
+													if (totalItems === 0) {
+														return (
+															<Badge variant="secondary">
+																No Checklist
+															</Badge>
+														);
 													}
-												>
-													{completedItems}/{totalItems} Complete
-												</Badge>
+
+													return (
+														<Badge
+															variant={
+																completedItems ===
+																totalItems
+																	? "default"
+																	: "secondary"
+															}
+														>
+															{completedItems}/{totalItems}{" "}
+															Complete
+														</Badge>
+													);
+												})()}
 											</TableCell>
 										</TableRow>
 									);
 								})}
 						</TableBody>
 					</Table>
-					{batch && (!batch.passengers || batch.passengers?.length === 0) && (
+					{batch && (!batch.customers || batch.customers?.length === 0) && (
 						<div className="text-center py-8 text-muted-foreground">
-							No passengers were added
+							No customers were added
 						</div>
 					)}
 				</CardContent>
 			</Card>
 
 			{/* Modals */}
-			<PassengerModal
-				passenger={selectedPassenger}
-				open={!!selectedPassenger}
-				onOpenChange={(open) => !open && setSelectedPassenger(null)}
-				packageCheckList={packageCheckList}
-			/>
+			{selectedCustomer && (
+				<CustomerModal
+					customer={selectedCustomer}
+					packageCheckList={packageCheckList}
+					open={!!selectedCustomer}
+					onOpenChange={(open) => !open && setSelectedCustomer(null)}
+				/>
+			)}
 
 			{selectedCoordinator && (
 				<CoordinatorModal
