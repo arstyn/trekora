@@ -3,92 +3,105 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import axiosInstance from "@/lib/axios";
 import type { ICustomer } from "@/types/booking.types";
-import type { ICheckList } from "@/types/checklist.types";
+import type { ICheckList, IBatchChecklist } from "@/types/checklist.types";
 import {
 	AlertCircle,
-	Edit,
 	Heart,
 	Mail,
 	MapPin,
-	MoreVertical,
 	Phone,
-	Plus,
 	Save,
 	Shield,
-	Trash2,
 	User,
-	X,
+	Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 
 interface CustomerModalProps {
 	customer: ICustomer;
 	packageCheckList?: ICheckList[];
+	batchId: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
 
 export function CustomerModal({
 	customer,
-	packageCheckList,
+	batchId,
 	open,
 	onOpenChange,
 }: CustomerModalProps) {
-	const [checklist, setChecklist] = useState(customer?.checklist || {});
-	const [customItems, setCustomItems] = useState<ICheckList[]>([]);
-	const [newItemInput, setNewItemInput] = useState("");
-	const [showAddInput, setShowAddInput] = useState(false);
-	const [editingItem, setEditingItem] = useState<{ id: string; task: string } | null>(
-		null
-	);
+	const [batchChecklists, setBatchChecklists] = useState<IBatchChecklist[]>([]);
+	const [isLoadingChecklists, setIsLoadingChecklists] = useState(true);
+	const [isSaving, setIsSaving] = useState(false);
+	const [hasChanges, setHasChanges] = useState(false);
+
+	const fetchBatchChecklists = useCallback(async () => {
+		setIsLoadingChecklists(true);
+		try {
+			const response = await axiosInstance.get<IBatchChecklist[]>(
+				`/batches/${batchId}/checklists`
+			);
+			setBatchChecklists(response.data);
+		} catch (error) {
+			console.error("Error fetching checklists:", error);
+			toast.error("Failed to load checklists");
+		} finally {
+			setIsLoadingChecklists(false);
+		}
+	}, [batchId]);
+
+	useEffect(() => {
+		if (open && batchId) {
+			fetchBatchChecklists();
+		}
+	}, [open, batchId, fetchBatchChecklists]);
 
 	if (!customer) return null;
 
-	const handleChecklistChange = (item: string, checked: boolean) => {
-		setChecklist((prev: Record<string, boolean>) => ({
-			...prev,
-			[item]: checked,
-		}));
+	const handleChecklistToggle = (checklistId: string) => {
+		setBatchChecklists((prev) =>
+			prev.map((item) =>
+				item.id === checklistId ? { ...item, completed: !item.completed } : item
+			)
+		);
+		setHasChanges(true);
 	};
 
-	const addCustomItem = () => {
-		if (newItemInput.trim()) {
-			const newItem: ICheckList = {
-				id: `custom_${Date.now()}`,
-				task: newItemInput.trim(),
-				description: "",
-				category: "booking",
-				dueDate: "",
-				completed: false,
-			};
-			setCustomItems((prev) => [...prev, newItem]);
-			setNewItemInput("");
-			setShowAddInput(false);
+	const handleSaveChecklists = async () => {
+		setIsSaving(true);
+		try {
+			// Update each changed checklist item
+			const updatePromises = batchChecklists.map((item) =>
+				axiosInstance.patch(`/batches/checklists/${item.id}`, {
+					completed: item.completed,
+				})
+			);
+
+			await Promise.all(updatePromises);
+			setHasChanges(false);
+			toast.success("Checklists updated successfully");
+		} catch (error) {
+			console.error("Error saving checklists:", error);
+			toast.error("Failed to save checklists");
+		} finally {
+			setIsSaving(false);
 		}
 	};
 
-	const editCustomItem = (id: string, newTask: string) => {
-		setCustomItems((prev) =>
-			prev.map((item) => (item.id === id ? { ...item, task: newTask } : item))
-		);
-		setEditingItem(null);
-	};
-
-	const deleteCustomItem = (id: string) => {
-		setCustomItems((prev) => prev.filter((item) => item.id !== id));
-		setEditingItem(null);
-	};
+	// Group checklists by type
+	const packageChecklists = batchChecklists.filter((item) => item.type === "package");
+	const groupChecklists = batchChecklists.filter((item) => item.type === "group");
+	const individualChecklists = batchChecklists.filter(
+		(item) => item.type === "individual" && item.customerId === customer.id
+	);
 
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleDateString("en-US", {
@@ -410,232 +423,300 @@ export function CustomerModal({
 										<AlertCircle className="w-4 h-4 text-orange-500" />
 										Travel Checklist
 									</CardTitle>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => setShowAddInput(true)}
-									>
-										<Plus className="w-4 h-4 mr-2" />
-										Add Item
-									</Button>
+									{hasChanges && (
+										<Button
+											size="sm"
+											onClick={handleSaveChecklists}
+											disabled={isSaving}
+										>
+											{isSaving ? (
+												<>
+													<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+													Saving...
+												</>
+											) : (
+												<>
+													<Save className="w-4 h-4 mr-2" />
+													Save Changes
+												</>
+											)}
+										</Button>
+									)}
 								</div>
 							</CardHeader>
 							<CardContent className="space-y-6">
-								{/* Package Checklist Items */}
-								{packageCheckList && packageCheckList.length > 0 && (
-									<div className="space-y-3">
-										<h4 className="font-medium text-sm text-muted-foreground">
-											Package Checklist
-										</h4>
-										<div className="space-y-2">
-											{packageCheckList.map((item) => (
-												<div
-													key={item.id}
-													className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-												>
-													<Checkbox
-														id={`package-${item.id}`}
-														checked={
-															checklist[item.task] || false
-														}
-														onCheckedChange={(checked) =>
-															handleChecklistChange(
-																item.task,
-																checked as boolean
-															)
-														}
-													/>
-													<label
-														htmlFor={`package-${item.id}`}
-														className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
-													>
-														{item.task}
-													</label>
-												</div>
-											))}
-										</div>
+								{isLoadingChecklists ? (
+									<div className="space-y-4">
+										<Skeleton className="h-8 w-full" />
+										<Skeleton className="h-8 w-full" />
+										<Skeleton className="h-8 w-full" />
+										<Skeleton className="h-8 w-full" />
 									</div>
-								)}
-
-								{/* Custom Checklist Items */}
-								{customItems.length > 0 && (
-									<div className="space-y-3">
-										<h4 className="font-medium text-sm text-muted-foreground">
-											Custom Items
-										</h4>
-										<div className="space-y-2">
-											{customItems.map((item) => (
-												<div
-													key={item.id}
-													className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-												>
-													<Checkbox
-														id={`custom-${item.id}`}
-														checked={
-															checklist[item.task] || false
+								) : (
+									<>
+										{/* Package Checklist Items */}
+										{packageChecklists.length > 0 && (
+											<div className="space-y-3">
+												<div className="flex items-center justify-between">
+													<h4 className="font-medium text-sm text-muted-foreground">
+														Package Checklist
+													</h4>
+													<Badge
+														variant="outline"
+														className="text-xs"
+													>
+														{
+															packageChecklists.filter(
+																(item) => item.completed
+															).length
 														}
-														onCheckedChange={(checked) =>
-															handleChecklistChange(
-																item.task,
-																checked as boolean
-															)
-														}
-													/>
-													{editingItem?.id === item.id ? (
-														<div className="flex items-center space-x-2 flex-1">
-															<Input
-																value={editingItem.task}
-																onChange={(e) =>
-																	setEditingItem({
-																		...editingItem,
-																		task: e.target
-																			.value,
-																	})
-																}
-																className="flex-1"
-															/>
-															<Button
-																size="sm"
-																variant="outline"
-																onClick={() =>
-																	editCustomItem(
-																		item.id,
-																		editingItem.task
+														/{packageChecklists.length}{" "}
+														Complete
+													</Badge>
+												</div>
+												<div className="space-y-2">
+													{packageChecklists.map((item) => (
+														<div
+															key={item.id}
+															className="flex items-start space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
+														>
+															<Checkbox
+																id={`package-${item.id}`}
+																checked={item.completed}
+																onCheckedChange={() =>
+																	handleChecklistToggle(
+																		item.id
 																	)
 																}
-															>
-																<Save className="w-3 h-3" />
-															</Button>
-															<Button
-																size="sm"
-																variant="outline"
-																onClick={() =>
-																	setEditingItem(null)
-																}
-															>
-																<X className="w-3 h-3" />
-															</Button>
-														</div>
-													) : (
-														<>
-															<label
-																htmlFor={`custom-${item.id}`}
-																className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
-															>
-																{item.task}
-															</label>
-															<DropdownMenu>
-																<DropdownMenuTrigger
-																	asChild
+															/>
+															<div className="flex-1 space-y-1">
+																<label
+																	htmlFor={`package-${item.id}`}
+																	className={`text-sm font-medium leading-none cursor-pointer ${
+																		item.completed
+																			? "line-through text-muted-foreground"
+																			: ""
+																	}`}
 																>
-																	<Button
-																		variant="ghost"
-																		size="sm"
-																	>
-																		<MoreVertical className="w-3 h-3" />
-																	</Button>
-																</DropdownMenuTrigger>
-																<DropdownMenuContent align="end">
-																	<DropdownMenuItem
-																		onClick={() =>
-																			setEditingItem(
-																				{
-																					id: item.id,
-																					task: item.task,
-																				}
-																			)
-																		}
-																	>
-																		<Edit className="w-3 h-3 mr-2" />
-																		Edit
-																	</DropdownMenuItem>
-																	<DropdownMenuItem
-																		onClick={() =>
-																			deleteCustomItem(
-																				item.id
-																			)
-																		}
-																		className="text-red-600"
-																	>
-																		<Trash2 className="w-3 h-3 mr-2" />
-																		Delete
-																	</DropdownMenuItem>
-																</DropdownMenuContent>
-															</DropdownMenu>
-														</>
-													)}
+																	{item.item}
+																	{item.mandatory && (
+																		<Badge
+																			variant="destructive"
+																			className="ml-2 text-xs"
+																		>
+																			Required
+																		</Badge>
+																	)}
+																</label>
+																{item.notes && (
+																	<p className="text-xs text-muted-foreground">
+																		{item.notes}
+																	</p>
+																)}
+															</div>
+														</div>
+													))}
 												</div>
-											))}
-										</div>
-									</div>
-								)}
-
-								{/* Add New Item Input */}
-								{showAddInput && (
-									<div className="flex items-center space-x-2 p-3 bg-muted/30 rounded-lg border">
-										<Input
-											placeholder="Add custom checklist item..."
-											value={newItemInput}
-											onChange={(e) =>
-												setNewItemInput(e.target.value)
-											}
-											onKeyDown={(e) => {
-												if (e.key === "Enter") {
-													addCustomItem();
-												}
-											}}
-											className="flex-1"
-										/>
-										<Button size="sm" onClick={addCustomItem}>
-											<Plus className="w-3 h-3" />
-										</Button>
-										<Button
-											size="sm"
-											variant="outline"
-											onClick={() => {
-												setShowAddInput(false);
-												setNewItemInput("");
-											}}
-										>
-											<X className="w-3 h-3" />
-										</Button>
-									</div>
-								)}
-
-								{/* Checklist Progress */}
-								<div className="pt-4 border-t">
-									<div className="flex items-center justify-between">
-										<span className="text-sm font-medium text-muted-foreground">
-											Progress:
-										</span>
-										<div className="flex items-center gap-2">
-											<div className="text-sm font-medium">
-												{
-													Object.values(checklist).filter(
-														Boolean
-													).length
-												}{" "}
-												/{" "}
-												{(packageCheckList?.length || 0) +
-													customItems.length}
 											</div>
-											<Badge
-												variant="secondary"
-												className="text-xs"
-											>
-												{Math.round(
-													(Object.values(checklist).filter(
-														Boolean
-													).length /
-														((packageCheckList?.length || 0) +
-															customItems.length || 1)) *
-														100
-												)}
-												% Complete
-											</Badge>
-										</div>
-									</div>
-								</div>
+										)}
+
+										{/* Group Checklist Items */}
+										{groupChecklists.length > 0 && (
+											<div className="space-y-3">
+												<div className="flex items-center justify-between">
+													<h4 className="font-medium text-sm text-muted-foreground">
+														Group Checklist
+													</h4>
+													<Badge
+														variant="outline"
+														className="text-xs"
+													>
+														{
+															groupChecklists.filter(
+																(item) => item.completed
+															).length
+														}
+														/{groupChecklists.length} Complete
+													</Badge>
+												</div>
+												<div className="space-y-2">
+													{groupChecklists.map((item) => (
+														<div
+															key={item.id}
+															className="flex items-start space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
+														>
+															<Checkbox
+																id={`group-${item.id}`}
+																checked={item.completed}
+																onCheckedChange={() =>
+																	handleChecklistToggle(
+																		item.id
+																	)
+																}
+															/>
+															<div className="flex-1 space-y-1">
+																<label
+																	htmlFor={`group-${item.id}`}
+																	className={`text-sm font-medium leading-none cursor-pointer ${
+																		item.completed
+																			? "line-through text-muted-foreground"
+																			: ""
+																	}`}
+																>
+																	{item.item}
+																	{item.mandatory && (
+																		<Badge
+																			variant="destructive"
+																			className="ml-2 text-xs"
+																		>
+																			Required
+																		</Badge>
+																	)}
+																</label>
+																{item.notes && (
+																	<p className="text-xs text-muted-foreground">
+																		{item.notes}
+																	</p>
+																)}
+															</div>
+														</div>
+													))}
+												</div>
+											</div>
+										)}
+
+										{/* Individual Checklist Items */}
+										{individualChecklists.length > 0 && (
+											<div className="space-y-3">
+												<div className="flex items-center justify-between">
+													<h4 className="font-medium text-sm text-muted-foreground">
+														Individual Checklist
+													</h4>
+													<Badge
+														variant="outline"
+														className="text-xs"
+													>
+														{
+															individualChecklists.filter(
+																(item) => item.completed
+															).length
+														}
+														/{individualChecklists.length}{" "}
+														Complete
+													</Badge>
+												</div>
+												<div className="space-y-2">
+													{individualChecklists.map((item) => (
+														<div
+															key={item.id}
+															className="flex items-start space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
+														>
+															<Checkbox
+																id={`individual-${item.id}`}
+																checked={item.completed}
+																onCheckedChange={() =>
+																	handleChecklistToggle(
+																		item.id
+																	)
+																}
+															/>
+															<div className="flex-1 space-y-1">
+																<label
+																	htmlFor={`individual-${item.id}`}
+																	className={`text-sm font-medium leading-none cursor-pointer ${
+																		item.completed
+																			? "line-through text-muted-foreground"
+																			: ""
+																	}`}
+																>
+																	{item.item}
+																	{item.mandatory && (
+																		<Badge
+																			variant="destructive"
+																			className="ml-2 text-xs"
+																		>
+																			Required
+																		</Badge>
+																	)}
+																</label>
+																{item.notes && (
+																	<p className="text-xs text-muted-foreground">
+																		{item.notes}
+																	</p>
+																)}
+															</div>
+														</div>
+													))}
+												</div>
+											</div>
+										)}
+
+										{/* No Checklists Message */}
+										{packageChecklists.length === 0 &&
+											groupChecklists.length === 0 &&
+											individualChecklists.length === 0 && (
+												<div className="text-center py-8 text-muted-foreground">
+													<AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+													<p>
+														No checklists available for this
+														customer
+													</p>
+												</div>
+											)}
+
+										{/* Checklist Progress */}
+										{(packageChecklists.length > 0 ||
+											groupChecklists.length > 0 ||
+											individualChecklists.length > 0) && (
+											<div className="pt-4 border-t">
+												<div className="flex items-center justify-between">
+													<span className="text-sm font-medium text-muted-foreground">
+														Overall Progress:
+													</span>
+													<div className="flex items-center gap-2">
+														<div className="text-sm font-medium">
+															{
+																batchChecklists.filter(
+																	(item) =>
+																		item.completed &&
+																		(item.type !==
+																			"individual" ||
+																			item.customerId ===
+																				customer.id)
+																).length
+															}{" "}
+															/{" "}
+															{packageChecklists.length +
+																groupChecklists.length +
+																individualChecklists.length}
+														</div>
+														<Badge
+															variant="secondary"
+															className="text-xs"
+														>
+															{Math.round(
+																(batchChecklists.filter(
+																	(item) =>
+																		item.completed &&
+																		(item.type !==
+																			"individual" ||
+																			item.customerId ===
+																				customer.id)
+																).length /
+																	(packageChecklists.length +
+																		groupChecklists.length +
+																		individualChecklists.length ||
+																		1)) *
+																	100
+															)}
+															% Complete
+														</Badge>
+													</div>
+												</div>
+											</div>
+										)}
+									</>
+								)}
 							</CardContent>
 						</Card>
 					</div>

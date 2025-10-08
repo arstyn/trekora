@@ -3,9 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Batch } from 'src/database/entity/batch.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Employee } from 'src/database/entity/employee.entity';
+import {
+  BookingChecklist,
+  ChecklistType,
+} from 'src/database/entity/booking-checklist.entity';
 import { In, Repository } from 'typeorm';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
+import {
+  CreateChecklistItemDto,
+  UpdateChecklistItemDto,
+} from 'src/dto/checklist-dto';
 
 @Injectable()
 export class BatchesService {
@@ -14,6 +22,8 @@ export class BatchesService {
     @InjectRepository(Employee) private empRepo: Repository<Employee>,
     @InjectRepository(Customer)
     private customerRepo: Repository<Customer>,
+    @InjectRepository(BookingChecklist)
+    private checklistRepo: Repository<BookingChecklist>,
   ) {}
 
   async create(data: CreateBatchDto, organizationId: string): Promise<Batch> {
@@ -51,7 +61,15 @@ export class BatchesService {
   async findOne(id: string): Promise<Batch> {
     const batch = await this.batchRepo.findOne({
       where: { id },
-      relations: ['package', 'coordinators', 'coordinators.role', 'customers'],
+      relations: [
+        'package',
+        'package.preTripChecklist',
+        'coordinators',
+        'coordinators.role',
+        'customers',
+        'checklists',
+        'checklists.customer',
+      ],
     });
     if (!batch) throw new NotFoundException('Batch not found');
     return batch;
@@ -240,5 +258,93 @@ export class BatchesService {
       .andWhere('batch.booked_seats < batch.total_seats')
       .orderBy('batch.start_date', 'ASC')
       .getMany();
+  }
+
+  // Checklist Management
+  async addChecklistItem(
+    batchId: string,
+    dto: CreateChecklistItemDto,
+  ): Promise<BookingChecklist> {
+    const batch = await this.findOne(batchId);
+
+    // Verify customer exists if customerId is provided
+    if (dto.customerId) {
+      const customer = await this.customerRepo.findOneBy({
+        id: dto.customerId,
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+    }
+
+    const checklistItem = this.checklistRepo.create({
+      ...dto,
+      batchId: batch.id,
+      completed: dto.completed ?? false,
+      mandatory: dto.mandatory ?? false,
+      sortOrder: dto.sortOrder ?? 0,
+    });
+
+    return this.checklistRepo.save(checklistItem);
+  }
+
+  async updateChecklistItem(
+    checklistId: string,
+    dto: UpdateChecklistItemDto,
+  ): Promise<BookingChecklist> {
+    const checklist = await this.checklistRepo.findOneBy({ id: checklistId });
+    if (!checklist) {
+      throw new NotFoundException('Checklist item not found');
+    }
+
+    Object.assign(checklist, dto);
+    return this.checklistRepo.save(checklist);
+  }
+
+  async deleteChecklistItem(checklistId: string): Promise<void> {
+    const checklist = await this.checklistRepo.findOneBy({ id: checklistId });
+    if (!checklist) {
+      throw new NotFoundException('Checklist item not found');
+    }
+    await this.checklistRepo.delete(checklistId);
+  }
+
+  async getChecklistItems(batchId: string): Promise<BookingChecklist[]> {
+    return this.checklistRepo.find({
+      where: { batchId },
+      relations: ['customer'],
+      order: { sortOrder: 'ASC', createdAt: 'ASC' },
+    });
+  }
+
+  async getGroupChecklistItems(batchId: string): Promise<BookingChecklist[]> {
+    return this.checklistRepo.find({
+      where: { batchId, type: ChecklistType.GROUP },
+      order: { sortOrder: 'ASC', createdAt: 'ASC' },
+    });
+  }
+
+  async getIndividualChecklistItems(
+    batchId: string,
+    customerId?: string,
+  ): Promise<BookingChecklist[]> {
+    const where: any = { batchId, type: ChecklistType.INDIVIDUAL };
+    if (customerId) {
+      where.customerId = customerId;
+    }
+    return this.checklistRepo.find({
+      where,
+      relations: ['customer'],
+      order: { sortOrder: 'ASC', createdAt: 'ASC' },
+    });
+  }
+
+  async toggleChecklistItem(checklistId: string): Promise<BookingChecklist> {
+    const checklist = await this.checklistRepo.findOneBy({ id: checklistId });
+    if (!checklist) {
+      throw new NotFoundException('Checklist item not found');
+    }
+    checklist.completed = !checklist.completed;
+    return this.checklistRepo.save(checklist);
   }
 }

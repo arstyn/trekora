@@ -72,9 +72,10 @@ export class BookingService {
         throw new NotFoundException('Customer not found');
       }
 
-      // Validate package exists
+      // Validate package exists and load pre-trip checklist
       const packageEntity = await this.packageRepository.findOne({
         where: { id: createBookingDto.packageId },
+        relations: ['preTripChecklist'],
       });
       if (!packageEntity) {
         throw new NotFoundException('Package not found');
@@ -134,6 +135,32 @@ export class BookingService {
       savedBooking.customers = customers;
       await queryRunner.manager.save(savedBooking);
 
+      // Create package checklist items from package pre-trip checklist
+      if (
+        packageEntity.preTripChecklist &&
+        packageEntity.preTripChecklist.length > 0
+      ) {
+        const packageChecklists = packageEntity.preTripChecklist.map(
+          (checklistItem, index) => {
+            const checklist: any = {
+              item: checklistItem.task,
+              completed: false,
+              mandatory: true,
+              type: ChecklistType.PACKAGE,
+              bookingId: savedBooking.id,
+              sortOrder: index,
+              batchId: batch.id,
+              createdById: userId,
+            };
+            if (checklistItem.description) {
+              checklist.notes = checklistItem.description;
+            }
+            return queryRunner.manager.create(BookingChecklist, checklist);
+          },
+        );
+        await queryRunner.manager.save(packageChecklists);
+      }
+
       // Create group checklist items
       if (
         createBookingDto.groupChecklist &&
@@ -147,7 +174,7 @@ export class BookingService {
               mandatory: checklistItem.mandatory || false,
               type: ChecklistType.GROUP,
               bookingId: savedBooking.id,
-              sortOrder: index,
+              sortOrder: (packageEntity.preTripChecklist?.length || 0) + index,
             }),
         );
         await queryRunner.manager.save(groupChecklists);

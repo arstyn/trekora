@@ -5,12 +5,14 @@ import {
   JoinTable,
   ManyToMany,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Customer } from './customer.entity';
 import { Employee } from './employee.entity';
 import { Organization } from './organization.entity';
 import { Package } from './package-related/package.entity';
+import { BookingChecklist } from './booking-checklist.entity';
 
 @Entity()
 export class Batch {
@@ -64,4 +66,9 @@ export class Batch {
     inverseJoinColumn: { name: 'customerId', referencedColumnName: 'id' },
   })
   customers: Customer[];
+
+  @OneToMany(() => BookingChecklist, (checklist) => checklist.batch, {
+    cascade: true,
+  })
+  checklists: BookingChecklist[];
 }

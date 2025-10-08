@@ -426,10 +426,11 @@ export default function BatchDetailsPage() {
 			</Card>
 
 			{/* Modals */}
-			{selectedCustomer && (
+			{selectedCustomer && batch && (
 				<CustomerModal
 					customer={selectedCustomer}
 					packageCheckList={packageCheckList}
+					batchId={batch.id}
 					open={!!selectedCustomer}
 					onOpenChange={(open) => !open && setSelectedCustomer(null)}
 				/>
