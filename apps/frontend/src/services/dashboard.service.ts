@@ -34,7 +34,7 @@ export interface LatestBooking {
 	totalAmount: number;
 	status: string;
 	createdAt: Date;
-	numberOfPassengers: number;
+	numberOfCustomers: number;
 }
 
 export interface LatestLead {

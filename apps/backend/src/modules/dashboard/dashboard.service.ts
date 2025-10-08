@@ -32,7 +32,7 @@ export interface LatestBooking {
   totalAmount: number;
   status: string;
   createdAt: Date;
-  numberOfPassengers: number;
+  numberOfCustomers: number;
 }
 
 export interface LatestLead {
@@ -244,7 +244,7 @@ export class DashboardService {
         'booking.totalAmount',
         'booking.status',
         'booking.createdAt',
-        'booking.numberOfPassengers',
+        'booking.numberOfCustomers',
         'customer.firstName',
         'customer.lastName',
         'package.name',
@@ -256,14 +256,14 @@ export class DashboardService {
       .then((results) =>
         results.map((result) => ({
           id: result.booking_id,
-          bookingNumber: result.booking_bookingNumber,
+          bookingNumber: result.booking_booking_number,
           customerName:
-            result.customer_firstName + ' ' + result.customer_lastName,
+            result.customer_first_name + ' ' + result.customer_last_name,
           packageName: result.package_name,
-          totalAmount: parseFloat(result.booking_totalAmount),
+          totalAmount: parseFloat(result.booking_total_amount),
           status: result.booking_status,
-          createdAt: result.booking_createdAt,
-          numberOfPassengers: result.booking_numberOfPassengers,
+          createdAt: result.booking_created_at,
+          numberOfCustomers: result.booking_number_of_customers,
         })),
       );
   }

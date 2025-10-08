@@ -154,9 +154,7 @@ export function DataTable() {
 										<TableCell>
 											{formatCurrency(booking.totalAmount)}
 										</TableCell>
-										<TableCell>
-											{booking.numberOfPassengers}
-										</TableCell>
+										<TableCell>{booking.numberOfCustomers}</TableCell>
 										<TableCell>
 											<Badge
 												variant={getStatusBadgeVariant(

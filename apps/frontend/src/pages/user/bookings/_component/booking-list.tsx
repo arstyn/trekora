@@ -1,4 +1,4 @@
-	import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -52,17 +52,17 @@ export function BookingList({ status }: BookingListProps) {
 		try {
 			setLoading(true);
 			setError(null);
-			
+
 			const data = await BookingService.getAllBookings({
-				status: status as BookingStatus | 'all',
+				status: status as BookingStatus | "all",
 				limit: 100, // You can implement pagination later
 				offset: 0,
 			});
-			
+
 			setBookings(data);
 		} catch (err) {
-			console.error('Error fetching bookings:', err);
-			setError('Failed to load bookings. Please try again.');
+			console.error("Error fetching bookings:", err);
+			setError("Failed to load bookings. Please try again.");
 		} finally {
 			setLoading(false);
 		}
@@ -92,13 +92,13 @@ export function BookingList({ status }: BookingListProps) {
 
 	const getPaymentStatus = (advancePaid: number, totalAmount: number) => {
 		const paymentStatus = BookingService.getPaymentStatus(advancePaid, totalAmount);
-		
+
 		switch (paymentStatus) {
-			case 'none':
+			case "none":
 				return <Badge variant="destructive">No Payment</Badge>;
-			case 'partial':
+			case "partial":
 				return <Badge variant="secondary">Partial Payment</Badge>;
-			case 'full':
+			case "full":
 				return <Badge className="bg-green-100 text-green-800">Fully Paid</Badge>;
 			default:
 				return <Badge variant="secondary">Unknown</Badge>;
@@ -126,10 +126,10 @@ export function BookingList({ status }: BookingListProps) {
 						<AlertCircle className="h-4 w-4" />
 						<AlertDescription>
 							{error}
-							<Button 
-								variant="outline" 
-								size="sm" 
-								className="ml-4" 
+							<Button
+								variant="outline"
+								size="sm"
+								className="ml-4"
 								onClick={fetchBookings}
 							>
 								Try Again
@@ -191,7 +191,9 @@ export function BookingList({ status }: BookingListProps) {
 						{filteredBookings.map((booking) => (
 							<TableRow key={booking.id}>
 								<TableCell className="font-medium">
-									{BookingService.formatBookingNumber(booking.bookingNumber)}
+									{BookingService.formatBookingNumber(
+										booking.bookingNumber
+									)}
 								</TableCell>
 								<TableCell>
 									<div>
@@ -207,23 +209,33 @@ export function BookingList({ status }: BookingListProps) {
 								<TableCell>
 									<div className="flex items-center gap-1 text-sm">
 										<Calendar className="w-4 h-4" />
-										{new Date(booking.batchStartDate).toLocaleDateString()}
+										{new Date(
+											booking.batchStartDate
+										).toLocaleDateString()}
 									</div>
 								</TableCell>
 								<TableCell>
 									<div className="flex items-center gap-1">
 										<Users className="w-4 h-4" />
-										{booking.numberOfPassengers}
+										{booking.numberOfCustomers}
 									</div>
 								</TableCell>
 								<TableCell>
 									<div className="space-y-1">
 										<div className="flex items-center gap-1 text-sm">
 											<DollarSign className="w-3 h-3" />
-											{BookingService.formatCurrency(booking.advancePaid)}/
-											{BookingService.formatCurrency(booking.totalAmount)}
+											{BookingService.formatCurrency(
+												booking.advancePaid
+											)}
+											/
+											{BookingService.formatCurrency(
+												booking.totalAmount
+											)}
 										</div>
-										{getPaymentStatus(booking.advancePaid, booking.totalAmount)}
+										{getPaymentStatus(
+											booking.advancePaid,
+											booking.totalAmount
+										)}
 									</div>
 								</TableCell>
 								<TableCell>{getStatusBadge(booking.status)}</TableCell>
@@ -265,10 +277,9 @@ export function BookingList({ status }: BookingListProps) {
 				</Table>
 				{filteredBookings.length === 0 && !loading && (
 					<div className="text-center py-8 text-muted-foreground">
-						{searchTerm ? 
-							`No bookings found matching "${searchTerm}".` : 
-							`No ${status === "all" ? "" : status} bookings found.`
-						}
+						{searchTerm
+							? `No bookings found matching "${searchTerm}".`
+							: `No ${status === "all" ? "" : status} bookings found.`}
 					</div>
 				)}
 			</CardContent>
