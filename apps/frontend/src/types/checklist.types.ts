@@ -17,7 +17,7 @@ export interface IBatchChecklist {
 	item: string;
 	completed: boolean;
 	mandatory: boolean;
-	type: "group" | "individual" | "package";
+	type: "user" | "individual" | "package";
 	bookingId?: string;
 	batchId?: string;
 	customerId?: string;

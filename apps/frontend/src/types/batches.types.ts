@@ -1,7 +1,13 @@
 import type { ICustomer } from "./booking.types";
 import type { IEmployee } from "./employee.types";
 import type { IPackages } from "./package.schema";
-import type { IBatchChecklist } from "./checklist.types";
+
+export interface IBatchCustomer extends ICustomer {
+	checklistStats?: {
+		total: number;
+		completed: number;
+	};
+}
 
 export interface IBatches {
 	id: string;
@@ -13,8 +19,7 @@ export interface IBatches {
 	packageId: string;
 	package?: IPackages;
 	coordinators?: IEmployee[];
-	customers?: ICustomer[];
-	checklists?: IBatchChecklist[];
+	customers?: IBatchCustomer[];
 	fillRate?: number;
 }
 

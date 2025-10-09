@@ -75,7 +75,10 @@ export class CreateBookingDto {
   initialPayment?: CreatePaymentDto;
 
   @IsOptional()
-  groupChecklist?: CreateBookingChecklistDto[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateBookingChecklistDto)
+  checklistItems?: CreateBookingChecklistDto[];
 }
 
 export class UpdateBookingDto {

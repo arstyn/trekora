@@ -15,8 +15,9 @@ export interface ChecklistItemRequest {
 	item: string;
 	completed?: boolean;
 	mandatory?: boolean;
-	type: "INDIVIDUAL" | "GROUP";
+	type: "INDIVIDUAL" | "GROUP" | "PACKAGE" | "USER";
 	customerId?: string;
+	notes?: string;
 	sortOrder?: number;
 }
 
@@ -25,7 +26,9 @@ export interface ChecklistItemResponse {
 	item: string;
 	completed: boolean;
 	mandatory: boolean;
-	type: "INDIVIDUAL" | "GROUP";
+	type: "INDIVIDUAL" | "GROUP" | "PACKAGE" | "USER";
+	customerId?: string;
+	notes?: string;
 	sortOrder: number;
 	createdAt: string;
 	updatedAt: string;

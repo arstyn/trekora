@@ -25,7 +25,6 @@ import { Textarea } from "@/components/ui/textarea";
 import BookingService from "@/services/booking.service";
 import type { IBatches } from "@/types/batches.types";
 import type {
-	IBooking,
 	ICreateBookingRequest,
 	ICustomer,
 	IPackage,
@@ -35,7 +34,6 @@ import {
 	AlertCircle,
 	Calendar,
 	Check,
-	CheckCircle,
 	CheckCircle2,
 	DollarSign,
 	Loader2,
@@ -46,11 +44,11 @@ import {
 	Upload,
 	UserPlus,
 	Users,
-	X,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ChecklistManager } from "./checklist-manager";
 
 interface EnhancedCustomer extends Omit<ICustomer, "checklist"> {
 	checklist: {
@@ -58,20 +56,27 @@ interface EnhancedCustomer extends Omit<ICustomer, "checklist"> {
 		item: string;
 		completed: boolean;
 		mandatory: boolean;
+		notes?: string;
 	}[];
-}
-
-interface GroupChecklistItem {
-	id: string;
-	item: string;
-	completed: boolean;
-	mandatory: boolean;
 }
 
 interface CreateBookingDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onBookingCreated?: () => void;
+}
+
+export interface ICreateBookingFormData {
+	packageId: string;
+	batchId: string;
+	numberOfCustomers: number;
+	customers: EnhancedCustomer[];
+	totalAmount: number;
+	advanceAmount: number;
+	paymentMethod: PaymentMethod | "";
+	paymentReference: string;
+	paymentScreenshot: File | null;
+	specialRequests: string;
 }
 
 export function CreateBookingDialog({
@@ -82,7 +87,7 @@ export function CreateBookingDialog({
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
-	const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
+	const [createdBookingId, setCreatedBookingId] = useState<string | undefined>();
 	const [packages, setPackages] = useState<IPackage[]>([]);
 	const [customers, setCustomers] = useState<ICustomer[]>([]);
 	const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
@@ -98,20 +103,8 @@ export function CreateBookingDialog({
 		total: 0,
 	});
 	const [loadingCustomers, setLoadingCustomers] = useState(false);
-	const [groupChecklist, setGroupChecklist] = useState<GroupChecklistItem[]>([]);
 
-	const [formData, setFormData] = useState<{
-		packageId: string;
-		batchId: string;
-		numberOfCustomers: number;
-		customers: EnhancedCustomer[];
-		totalAmount: number;
-		advanceAmount: number;
-		paymentMethod: PaymentMethod | "";
-		paymentReference: string;
-		paymentScreenshot: File | null;
-		specialRequests: string;
-	}>({
+	const [formData, setFormData] = useState<ICreateBookingFormData>({
 		packageId: "",
 		batchId: "",
 		numberOfCustomers: 0,
@@ -380,214 +373,6 @@ export function CreateBookingDialog({
 		pkg.name.toLowerCase().includes(packageSearch.toLowerCase())
 	);
 
-	// Individual checklist functions (now with API integration)
-	const addChecklistItem = async (customerIndex: number, item: string) => {
-		if (!item.trim()) return;
-
-		// If booking is already created, call API
-		if (createdBookingId) {
-			try {
-				const checklistItem = await BookingService.addChecklistItem(
-					createdBookingId,
-					{
-						item: item.trim(),
-						completed: false,
-						mandatory: false,
-						type: "INDIVIDUAL",
-						sortOrder: formData.customers[customerIndex].checklist.length,
-					}
-				);
-
-				const newCustomers = [...formData.customers];
-				newCustomers[customerIndex] = {
-					...newCustomers[customerIndex],
-					checklist: [
-						...newCustomers[customerIndex].checklist,
-						{
-							id: checklistItem.id,
-							item: checklistItem.item,
-							completed: checklistItem.completed,
-							mandatory: checklistItem.mandatory,
-						},
-					],
-				};
-
-				setFormData((prev) => ({ ...prev, customers: newCustomers }));
-				toast.success("Checklist item added successfully");
-			} catch (error) {
-				console.error("Error adding checklist item:", error);
-				toast.error("Failed to add checklist item");
-			}
-		} else {
-			// Before booking creation, just update local state
-			const newCustomers = [...formData.customers];
-			const newChecklistItem = {
-				id: Date.now().toString(),
-				item: item.trim(),
-				completed: false,
-				mandatory: false,
-			};
-
-			newCustomers[customerIndex] = {
-				...newCustomers[customerIndex],
-				checklist: [...newCustomers[customerIndex].checklist, newChecklistItem],
-			};
-
-			setFormData((prev) => ({ ...prev, customers: newCustomers }));
-		}
-	};
-
-	const removeChecklistItem = async (customerIndex: number, itemId: string) => {
-		// If booking is created and item has a real API ID, call API
-		if (createdBookingId && !itemId.startsWith("temp-")) {
-			try {
-				await BookingService.deleteChecklistItem(itemId);
-				toast.success("Checklist item removed");
-			} catch (error) {
-				console.error("Error removing checklist item:", error);
-				toast.error("Failed to remove checklist item");
-				return;
-			}
-		}
-
-		const newCustomers = [...formData.customers];
-		newCustomers[customerIndex] = {
-			...newCustomers[customerIndex],
-			checklist: newCustomers[customerIndex].checklist.filter(
-				(item) => item.id !== itemId
-			),
-		};
-
-		setFormData((prev) => ({ ...prev, customers: newCustomers }));
-	};
-
-	const toggleChecklistItem = async (customerIndex: number, itemId: string) => {
-		// If booking is created and item has a real API ID, call API
-		if (createdBookingId && !itemId.startsWith("temp-")) {
-			try {
-				const updatedItem = await BookingService.toggleChecklistItem(itemId);
-
-				const newCustomers = [...formData.customers];
-				newCustomers[customerIndex] = {
-					...newCustomers[customerIndex],
-					checklist: newCustomers[customerIndex].checklist.map((item) =>
-						item.id === itemId
-							? { ...item, completed: updatedItem.completed }
-							: item
-					),
-				};
-
-				setFormData((prev) => ({ ...prev, customers: newCustomers }));
-			} catch (error) {
-				console.error("Error toggling checklist item:", error);
-				toast.error("Failed to update checklist item");
-			}
-		} else {
-			// Before booking creation or temporary items, just update local state
-			const newCustomers = [...formData.customers];
-			newCustomers[customerIndex] = {
-				...newCustomers[customerIndex],
-				checklist: newCustomers[customerIndex].checklist.map((item) =>
-					item.id === itemId ? { ...item, completed: !item.completed } : item
-				),
-			};
-
-			setFormData((prev) => ({ ...prev, customers: newCustomers }));
-		}
-	};
-
-	// Group checklist functions (with API integration)
-	const toggleGroupChecklistItem = async (itemId: string) => {
-		// If booking is created and item has a real API ID, call API
-		if (createdBookingId && !itemId.startsWith("temp-")) {
-			try {
-				const updatedItem = await BookingService.toggleChecklistItem(itemId);
-
-				setGroupChecklist((prev) =>
-					prev.map((item) =>
-						item.id === itemId
-							? { ...item, completed: updatedItem.completed }
-							: item
-					)
-				);
-			} catch (error) {
-				console.error("Error toggling group checklist item:", error);
-				toast.error("Failed to update checklist item");
-			}
-		} else {
-			// Before booking creation or temporary items, just update local state
-			setGroupChecklist((prev) =>
-				prev.map((item) =>
-					item.id === itemId ? { ...item, completed: !item.completed } : item
-				)
-			);
-		}
-	};
-
-	const addGroupChecklistItem = async (item: string, mandatory: boolean = false) => {
-		if (!item.trim()) return;
-
-		// If booking is created, call API
-		if (createdBookingId) {
-			try {
-				const checklistItem = await BookingService.addChecklistItem(
-					createdBookingId,
-					{
-						item: item.trim(),
-						completed: false,
-						mandatory,
-						type: "GROUP",
-						sortOrder: groupChecklist.length,
-					}
-				);
-
-				const newItem: GroupChecklistItem = {
-					id: checklistItem.id,
-					item: checklistItem.item,
-					completed: checklistItem.completed,
-					mandatory: checklistItem.mandatory,
-				};
-
-				setGroupChecklist((prev) => [...prev, newItem]);
-				toast.success("Group checklist item added successfully");
-			} catch (error) {
-				console.error("Error adding group checklist item:", error);
-				toast.error("Failed to add group checklist item");
-			}
-		} else {
-			// Before booking creation, just update local state
-			const newItem: GroupChecklistItem = {
-				id: `temp-${Date.now()}`,
-				item: item.trim(),
-				completed: false,
-				mandatory,
-			};
-
-			setGroupChecklist((prev) => [...prev, newItem]);
-		}
-	};
-
-	const removeGroupChecklistItem = async (itemId: string) => {
-		// If booking is created and item has a real API ID, call API
-		if (createdBookingId && !itemId.startsWith("temp-")) {
-			try {
-				await BookingService.deleteChecklistItem(itemId);
-				toast.success("Group checklist item removed");
-			} catch (error) {
-				console.error("Error removing group checklist item:", error);
-				toast.error("Failed to remove checklist item");
-				return;
-			}
-		}
-
-		setGroupChecklist((prev) => prev.filter((item) => item.id !== itemId));
-	};
-
-	// Check if group can proceed (at least one item)
-	const canGroupProceed = () => {
-		return groupChecklist.length > 0;
-	};
-
 	const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		if (file) {
@@ -610,51 +395,6 @@ export function CreateBookingDialog({
 		}
 	};
 
-	const createChecklistItems = async (bookingId: string, booking: IBooking) => {
-		try {
-			for (let i = 0; i < groupChecklist.length; i++) {
-				const groupItem = groupChecklist[i];
-				if (groupItem.id.startsWith("temp-")) {
-					await BookingService.addChecklistItem(bookingId, {
-						item: groupItem.item,
-						completed: groupItem.completed,
-						mandatory: groupItem.mandatory,
-						type: "GROUP",
-						sortOrder: i,
-					});
-				}
-			}
-			for (
-				let customerIndex = 0;
-				customerIndex < formData.customers.length;
-				customerIndex++
-			) {
-				const customer = formData.customers[customerIndex];
-				const bookingCustomer = booking.customers[customerIndex];
-
-				for (let i = 0; i < customer.checklist.length; i++) {
-					const checklistItem = customer.checklist[i];
-					if (
-						checklistItem.id.toString().startsWith("temp-") ||
-						!checklistItem.id.match(/^\d+$/)
-					) {
-						await BookingService.addChecklistItem(bookingId, {
-							item: checklistItem.item,
-							completed: checklistItem.completed,
-							mandatory: checklistItem.mandatory,
-							type: "INDIVIDUAL",
-							customerId: bookingCustomer?.id || customer.id,
-							sortOrder: i,
-						});
-					}
-				}
-			}
-		} catch (error) {
-			console.error("Error creating checklist items:", error);
-			toast.error("Booking created but some checklist items could not be added");
-		}
-	};
-
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
@@ -663,16 +403,24 @@ export function CreateBookingDialog({
 			return;
 		}
 
-		if (!canGroupProceed()) {
-			setError("Please add at least one group checklist item to proceed.");
-			return;
-		}
-
 		try {
 			setLoading(true);
 			setError(null);
 
 			const customerIds = formData.customers.map((c) => c.id).filter((id) => id);
+
+			// Collect all checklist items from all customers
+			const allChecklistItems = formData.customers.flatMap((customer) =>
+				customer.checklist.map((item, itemIdx) => ({
+					item: item.item,
+					completed: item.completed,
+					mandatory: item.mandatory,
+					type: "user" as const,
+					customerId: customer.id,
+					notes: item.notes,
+					sortOrder: itemIdx,
+				}))
+			);
 
 			const bookingData: ICreateBookingRequest = {
 				customerId: formData.customers[0]?.id || "", // Use first customer as primary
@@ -690,6 +438,8 @@ export function CreateBookingDialog({
 								notes: "Initial payment",
 						  }
 						: undefined,
+				checklistItems:
+					allChecklistItems.length > 0 ? allChecklistItems : undefined,
 			};
 
 			const validation = BookingService.validateBookingData(bookingData);
@@ -709,8 +459,6 @@ export function CreateBookingDialog({
 
 			const createdBooking = await BookingService.createBooking(bookingData);
 			setCreatedBookingId(createdBooking.id);
-
-			await createChecklistItems(createdBooking.id, createdBooking);
 
 			toast.success("Booking created successfully", {
 				description: `Booking ${BookingService.formatBookingNumber(
@@ -737,7 +485,7 @@ export function CreateBookingDialog({
 	};
 
 	const resetForm = () => {
-		setCreatedBookingId(null);
+		setCreatedBookingId(undefined);
 		setFormData({
 			packageId: "",
 			batchId: "",
@@ -750,7 +498,6 @@ export function CreateBookingDialog({
 			paymentScreenshot: null,
 			specialRequests: "",
 		});
-		setGroupChecklist([]);
 		setCustomerSearch("");
 		setCustomerPopoverOpen(false);
 		setCustomerPagination({
@@ -762,230 +509,6 @@ export function CreateBookingDialog({
 		setLoadingCustomers(false);
 		setError(null);
 		setErrors({});
-	};
-
-	const ChecklistManager = ({ customerIndex }: { customerIndex: number }) => {
-		const [newItem, setNewItem] = useState("");
-		const customer = formData.customers[customerIndex];
-
-		const handleAddItem = () => {
-			if (newItem.trim()) {
-				addChecklistItem(customerIndex, newItem);
-				setNewItem("");
-			}
-		};
-
-		const handleKeyPress = (e: React.KeyboardEvent) => {
-			if (e.key === "Enter") {
-				e.preventDefault();
-				handleAddItem();
-			}
-		};
-
-		return (
-			<div className="space-y-3">
-				<Label>Individual Travel Checklist</Label>
-
-				{/* Add new item */}
-				<div className="flex gap-2">
-					<Input
-						value={newItem}
-						onChange={(e) => setNewItem(e.target.value)}
-						placeholder="Add checklist item (e.g., Passport, Medicines, etc.)"
-						onKeyPress={handleKeyPress}
-						className="flex-1"
-					/>
-					<Button
-						type="button"
-						onClick={handleAddItem}
-						size="sm"
-						disabled={!newItem.trim()}
-					>
-						<Plus className="w-4 h-4" />
-					</Button>
-				</div>
-
-				{/* Checklist items */}
-				{customer.checklist.length > 0 && (
-					<div className="space-y-2 max-h-40 overflow-y-auto">
-						{customer.checklist.map((item) => (
-							<div
-								key={item.id}
-								className={`flex items-center gap-2 p-2 rounded-lg border ${
-									item.completed
-										? "bg-green-50 border-green-200"
-										: "bg-gray-50 border-gray-200"
-								}`}
-							>
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									onClick={() =>
-										toggleChecklistItem(customerIndex, item.id)
-									}
-									className={`p-1 h-6 w-6 rounded ${
-										item.completed
-											? "bg-green-500 text-white hover:bg-green-600"
-											: "border-2 border-gray-300 hover:border-gray-400"
-									}`}
-								>
-									{item.completed && <Check className="w-3 h-3" />}
-								</Button>
-								<span
-									className={`flex-1 text-sm ${
-										item.completed
-											? "line-through text-green-700"
-											: "text-gray-900"
-									}`}
-								>
-									{item.item}
-								</span>
-								{item.mandatory && (
-									<Badge variant="destructive" className="text-xs">
-										Mandatory
-									</Badge>
-								)}
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									onClick={() =>
-										removeChecklistItem(customerIndex, item.id)
-									}
-									className="p-1 h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
-								>
-									<X className="w-3 h-3" />
-								</Button>
-							</div>
-						))}
-					</div>
-				)}
-
-				{customer.checklist.length === 0 && (
-					<p className="text-sm text-muted-foreground">
-						No individual checklist items added yet. Add items to help track
-						personal travel preparations.
-					</p>
-				)}
-			</div>
-		);
-	};
-
-	// Component for group checklist management
-	const GroupChecklistManager = () => {
-		const [newItem, setNewItem] = useState("");
-		const [newItemMandatory, setNewItemMandatory] = useState(false);
-
-		const handleAddItem = () => {
-			if (newItem.trim()) {
-				addGroupChecklistItem(newItem, newItemMandatory);
-				setNewItem("");
-				setNewItemMandatory(false);
-			}
-		};
-
-		const handleKeyPress = (e: React.KeyboardEvent) => {
-			if (e.key === "Enter") {
-				e.preventDefault();
-				handleAddItem();
-			}
-		};
-
-		return (
-			<div className="space-y-2">
-				<div>
-					<p className="text-sm text-muted-foreground mt-1">
-						Add at least one checklist item for travelers.
-					</p>
-				</div>
-
-				{/* Add new item */}
-				<div className="space-y-2">
-					<div className="flex gap-2">
-						<Input
-							value={newItem}
-							onChange={(e) => setNewItem(e.target.value)}
-							placeholder="Add checklist item..."
-							onKeyPress={handleKeyPress}
-							className="flex-1"
-						/>
-						<Button
-							type="button"
-							onClick={handleAddItem}
-							size="sm"
-							disabled={!newItem.trim()}
-						>
-							<Plus className="w-4 h-4" />
-						</Button>
-					</div>
-					<div className="flex items-center space-x-2">
-						<input
-							type="checkbox"
-							id="mandatory"
-							checked={newItemMandatory}
-							onChange={(e) => setNewItemMandatory(e.target.checked)}
-							className="rounded"
-						/>
-						<label
-							htmlFor="mandatory"
-							className="text-sm text-muted-foreground"
-						>
-							Mark as mandatory
-						</label>
-					</div>
-				</div>
-
-				{/* Checklist items */}
-				<div className="space-y-2 max-h-60 overflow-y-auto mb-5">
-					{groupChecklist.map((item) => (
-						<div
-							key={item.id}
-							className="flex items-center gap-3 p-3 rounded-lg border border-gray-200"
-						>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={() => toggleGroupChecklistItem(item.id)}
-								className={`p-1 h-6 w-6 rounded ${
-									item.completed
-										? "bg-green-500 text-white hover:bg-green-600"
-										: "border-2 border-gray-300 hover:border-gray-400"
-								}`}
-							>
-								{item.completed && <Check className="w-3 h-3" />}
-							</Button>
-							<div className="flex-1 ">
-								<span
-									className={`text-sm ${
-										item.completed
-											? "line-through text-green-700"
-											: "text-primary"
-									}`}
-								>
-									{item.item}
-								</span>
-								{item.mandatory && (
-									<Badge variant="destructive" className="ml-2 text-xs">
-										Mandatory
-									</Badge>
-								)}
-							</div>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={() => removeGroupChecklistItem(item.id)}
-								className="p-1 h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
-							>
-								<X className="w-3 h-3" />
-							</Button>
-						</div>
-					))}
-				</div>
-			</div>
-		);
 	};
 
 	return (
@@ -1671,6 +1194,11 @@ export function CreateBookingDialog({
 													<div className="border-t pt-4">
 														<ChecklistManager
 															customerIndex={index}
+															formData={formData}
+															setFormData={setFormData}
+															createdBookingId={
+																createdBookingId
+															}
 														/>
 													</div>
 												</div>
@@ -1681,47 +1209,6 @@ export function CreateBookingDialog({
 							)}
 
 							<div className="grid grid-cols-2 gap-5">
-								{/* Group Checklist */}
-								<div className="mt-5">
-									<Card>
-										<CardHeader>
-											<CardTitle className="text-lg">
-												Group Checklist
-											</CardTitle>
-										</CardHeader>
-										<CardContent>
-											<GroupChecklistManager />
-											{/* Group checklist status on final step */}
-											<div
-												className={`p-3 rounded-lg border ${
-													canGroupProceed()
-														? "bg-green-50 border-green-300"
-														: "bg-gray-50 border-gray-300"
-												}`}
-											>
-												<div className="flex items-center gap-2">
-													{canGroupProceed() ? (
-														<CheckCircle className="w-5 h-5 text-green-600" />
-													) : (
-														<AlertCircle className="w-5 h-5 text-gray-600" />
-													)}
-													<span
-														className={`font-medium ${
-															canGroupProceed()
-																? "text-green-700"
-																: "text-gray-700"
-														}`}
-													>
-														{canGroupProceed()
-															? `Group checklist ready (${groupChecklist.length} items added)`
-															: "Add at least one group checklist item to proceed"}
-													</span>
-												</div>
-											</div>
-										</CardContent>
-									</Card>
-								</div>
-
 								{/* Payment Details */}
 								<div className="mt-5">
 									<Card>
@@ -1954,7 +1441,7 @@ export function CreateBookingDialog({
 									</Button>
 									<Button
 										type="submit"
-										disabled={loading || !canGroupProceed()}
+										disabled={loading}
 										className="min-w-[120px]"
 									>
 										{loading ? (

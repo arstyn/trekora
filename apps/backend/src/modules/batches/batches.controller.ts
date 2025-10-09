@@ -108,9 +108,13 @@ export class BatchesController {
     return this.batchService.getChecklistItems(id);
   }
 
-  @Get(':id/checklists/group')
-  getGroupChecklistItems(@Param('id') id: string) {
-    return this.batchService.getGroupChecklistItems(id);
+  // Checklist endpoints
+  @Get(':id/checklists/customer/:customerId')
+  getChecklistItemsByCustomer(
+    @Param('id') id: string,
+    @Param('customerId') customerId: string,
+  ) {
+    return this.batchService.getChecklistItemsByCustomer(id, customerId);
   }
 
   @Get(':id/checklists/individual')

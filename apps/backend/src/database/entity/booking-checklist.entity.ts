@@ -13,7 +13,6 @@ import { Customer } from './customer.entity';
 import { User } from './user.entity';
 
 export enum ChecklistType {
-  GROUP = 'group',
   INDIVIDUAL = 'individual',
   PACKAGE = 'package',
   USER = 'user',

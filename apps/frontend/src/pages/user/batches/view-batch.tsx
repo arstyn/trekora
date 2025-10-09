@@ -1,7 +1,7 @@
+import NAText from "@/components/na-text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
 	Select,
 	SelectContent,
@@ -9,6 +9,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
 	Table,
 	TableBody,
@@ -20,7 +21,6 @@ import {
 import axiosInstance from "@/lib/axios";
 import type { IBatches } from "@/types/batches.types";
 import type { ICustomer } from "@/types/booking.types";
-import type { ICheckList } from "@/types/checklist.types";
 import type { IEmployee } from "@/types/employee.types";
 import { Calendar, Edit, Mail, Phone, Users } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -28,7 +28,6 @@ import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { CoordinatorModal } from "./_component/coordinator-modal";
 import { CustomerModal } from "./_component/customer-modal";
-import NAText from "@/components/na-text";
 
 export default function BatchDetailsPage() {
 	const { id } = useParams<{ id: string }>();
@@ -38,7 +37,6 @@ export default function BatchDetailsPage() {
 	const [selectedCoordinator, setSelectedCoordinator] = useState<IEmployee | null>(
 		null
 	);
-	const [packageCheckList, setPackageCheckList] = useState<ICheckList[]>();
 	const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
 	useEffect(() => {
@@ -57,29 +55,6 @@ export default function BatchDetailsPage() {
 
 		getBranch();
 	}, [id]);
-
-	useEffect(() => {
-		const getChecklist = async () => {
-			if (!batch) {
-				return;
-			}
-			try {
-				const checkListData = await axiosInstance.get<ICheckList[]>(
-					`/packages/${batch.packageId}/checklist`
-				);
-
-				setPackageCheckList(checkListData.data);
-			} catch (error: unknown) {
-				if (error instanceof Error) {
-					toast.error(error.message);
-				} else {
-					toast.error("Failed to load batches");
-				}
-			}
-		};
-
-		getChecklist();
-	}, [batch]);
 
 	const handleStatusUpdate = async (newStatus: string) => {
 		if (!batch || newStatus === batch.status) return;
@@ -379,38 +354,19 @@ export default function BatchDetailsPage() {
 												)}
 											</TableCell>
 											<TableCell>
-												{(() => {
-													const totalItems =
-														packageCheckList?.length || 0;
-													const completedItems =
-														customer.checklist
-															? Object.values(
-																	customer.checklist
-															  ).filter(Boolean).length
-															: 0;
-
-													if (totalItems === 0) {
-														return (
-															<Badge variant="secondary">
-																No Checklist
-															</Badge>
-														);
+												<Badge
+													variant={
+														customer.checklistStats
+															?.completed ===
+														customer.checklistStats?.total
+															? "default"
+															: "secondary"
 													}
-
-													return (
-														<Badge
-															variant={
-																completedItems ===
-																totalItems
-																	? "default"
-																	: "secondary"
-															}
-														>
-															{completedItems}/{totalItems}{" "}
-															Complete
-														</Badge>
-													);
-												})()}
+												>
+													{customer.checklistStats?.completed}/
+													{customer.checklistStats?.total}{" "}
+													Complete
+												</Badge>
 											</TableCell>
 										</TableRow>
 									);
@@ -429,7 +385,6 @@ export default function BatchDetailsPage() {
 			{selectedCustomer && batch && (
 				<CustomerModal
 					customer={selectedCustomer}
-					packageCheckList={packageCheckList}
 					batchId={batch.id}
 					open={!!selectedCustomer}
 					onOpenChange={(open) => !open && setSelectedCustomer(null)}

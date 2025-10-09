@@ -1,32 +1,31 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import axiosInstance from "@/lib/axios";
 import type { ICustomer } from "@/types/booking.types";
-import type { ICheckList, IBatchChecklist } from "@/types/checklist.types";
+import type { IBatchChecklist } from "@/types/checklist.types";
 import {
 	AlertCircle,
 	Heart,
+	Loader2,
 	Mail,
 	MapPin,
 	Phone,
 	Save,
 	Shield,
 	User,
-	Loader2,
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface CustomerModalProps {
 	customer: ICustomer;
-	packageCheckList?: ICheckList[];
 	batchId: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -47,7 +46,7 @@ export function CustomerModal({
 		setIsLoadingChecklists(true);
 		try {
 			const response = await axiosInstance.get<IBatchChecklist[]>(
-				`/batches/${batchId}/checklists`
+				`/batches/${batchId}/checklists/customer/${customer.id}`
 			);
 			setBatchChecklists(response.data);
 		} catch (error) {
@@ -56,7 +55,7 @@ export function CustomerModal({
 		} finally {
 			setIsLoadingChecklists(false);
 		}
-	}, [batchId]);
+	}, [batchId, customer.id]);
 
 	useEffect(() => {
 		if (open && batchId) {
@@ -98,9 +97,11 @@ export function CustomerModal({
 
 	// Group checklists by type
 	const packageChecklists = batchChecklists.filter((item) => item.type === "package");
-	const groupChecklists = batchChecklists.filter((item) => item.type === "group");
 	const individualChecklists = batchChecklists.filter(
 		(item) => item.type === "individual" && item.customerId === customer.id
+	);
+	const userChecklists = batchChecklists.filter(
+		(item) => item.type === "user" && item.customerId === customer.id
 	);
 
 	const formatDate = (dateString: string) => {
@@ -521,26 +522,26 @@ export function CustomerModal({
 										)}
 
 										{/* Group Checklist Items */}
-										{groupChecklists.length > 0 && (
+										{userChecklists.length > 0 && (
 											<div className="space-y-3">
 												<div className="flex items-center justify-between">
 													<h4 className="font-medium text-sm text-muted-foreground">
-														Group Checklist
+														User Checklist
 													</h4>
 													<Badge
 														variant="outline"
 														className="text-xs"
 													>
 														{
-															groupChecklists.filter(
+															userChecklists.filter(
 																(item) => item.completed
 															).length
 														}
-														/{groupChecklists.length} Complete
+														/{userChecklists.length} Complete
 													</Badge>
 												</div>
 												<div className="space-y-2">
-													{groupChecklists.map((item) => (
+													{userChecklists.map((item) => (
 														<div
 															key={item.id}
 															className="flex items-start space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
@@ -653,7 +654,7 @@ export function CustomerModal({
 
 										{/* No Checklists Message */}
 										{packageChecklists.length === 0 &&
-											groupChecklists.length === 0 &&
+											userChecklists.length === 0 &&
 											individualChecklists.length === 0 && (
 												<div className="text-center py-8 text-muted-foreground">
 													<AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
@@ -666,7 +667,7 @@ export function CustomerModal({
 
 										{/* Checklist Progress */}
 										{(packageChecklists.length > 0 ||
-											groupChecklists.length > 0 ||
+											userChecklists.length > 0 ||
 											individualChecklists.length > 0) && (
 											<div className="pt-4 border-t">
 												<div className="flex items-center justify-between">
@@ -687,7 +688,7 @@ export function CustomerModal({
 															}{" "}
 															/{" "}
 															{packageChecklists.length +
-																groupChecklists.length +
+																userChecklists.length +
 																individualChecklists.length}
 														</div>
 														<Badge
@@ -704,7 +705,7 @@ export function CustomerModal({
 																				customer.id)
 																).length /
 																	(packageChecklists.length +
-																		groupChecklists.length +
+																		userChecklists.length +
 																		individualChecklists.length ||
 																		1)) *
 																	100

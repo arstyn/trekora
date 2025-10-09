@@ -55,23 +55,72 @@ export class BatchesService {
     return this.batchRepo.find({
       where: query,
       relations: ['package', 'coordinators'],
+      select: {
+        package: {
+          id: true,
+          name: true,
+        },
+        coordinators: {
+          id: true,
+          name: true,
+          status: true,
+        },
+      },
     });
   }
 
   async findOne(id: string): Promise<Batch> {
     const batch = await this.batchRepo.findOne({
       where: { id },
-      relations: [
-        'package',
-        'package.preTripChecklist',
-        'coordinators',
-        'coordinators.role',
-        'customers',
-        'checklists',
-        'checklists.customer',
-      ],
+      relations: ['package', 'coordinators', 'coordinators.role', 'customers'],
+      select: {
+        package: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          destination: true,
+        },
+      },
     });
     if (!batch) throw new NotFoundException('Batch not found');
+
+    // Fetch checklists for this batch that are associated with customers
+    const checklists = await this.checklistRepo.find({
+      where: {
+        batchId: id,
+      },
+    });
+
+    // Group checklists by customerId and calculate stats
+    const checklistStatsByCustomer = checklists.reduce(
+      (acc, checklist) => {
+        if (checklist.customerId) {
+          if (!acc[checklist.customerId]) {
+            acc[checklist.customerId] = {
+              completed: 0,
+              total: 0,
+            };
+          }
+          acc[checklist.customerId].total += 1;
+          if (checklist.completed) {
+            acc[checklist.customerId].completed += 1;
+          }
+        }
+        return acc;
+      },
+      {} as Record<string, { completed: number; total: number }>,
+    );
+
+    // Attach checklist stats to each customer
+    batch.customers = batch.customers.map((customer) => ({
+      ...customer,
+      checklistStats: checklistStatsByCustomer[customer.id] || {
+        completed: 0,
+        total: 0,
+      },
+    }));
+
     return batch;
   }
 
@@ -317,9 +366,12 @@ export class BatchesService {
     });
   }
 
-  async getGroupChecklistItems(batchId: string): Promise<BookingChecklist[]> {
+  async getChecklistItemsByCustomer(
+    batchId: string,
+    customerId: string,
+  ): Promise<BookingChecklist[]> {
     return this.checklistRepo.find({
-      where: { batchId, type: ChecklistType.GROUP },
+      where: { batchId, customerId },
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
   }

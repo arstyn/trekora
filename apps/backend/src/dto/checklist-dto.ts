@@ -87,6 +87,22 @@ export class CreateBookingChecklistDto {
   @IsBoolean()
   @IsOptional()
   mandatory?: boolean;
+
+  @IsEnum(ChecklistType)
+  @IsOptional()
+  type?: ChecklistType;
+
+  @IsUUID()
+  @IsOptional()
+  customerId?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @IsNumber()
+  @IsOptional()
+  sortOrder?: number;
 }
 
 export class CreateBookingCustomerDto {

@@ -127,7 +127,15 @@ export interface ICreateBookingRequest {
 	totalAmount: number;
 	specialRequests?: string;
 	initialPayment?: Omit<IBookingPayment, "id" | "status">;
-	groupChecklist?: IGroupChecklistItem[]; // Group-level checklist items
+	checklistItems?: {
+		item: string;
+		completed?: boolean;
+		mandatory?: boolean;
+		type?: "individual" | "package" | "user";
+		customerId?: string;
+		notes?: string;
+		sortOrder?: number;
+	}[];
 }
 
 // For updating bookings

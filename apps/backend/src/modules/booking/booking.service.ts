@@ -136,48 +136,58 @@ export class BookingService {
       await queryRunner.manager.save(savedBooking);
 
       // Create package checklist items from package pre-trip checklist
+      for (const customer of customers) {
+        if (
+          packageEntity.preTripChecklist &&
+          packageEntity.preTripChecklist.length > 0
+        ) {
+          const packageChecklists = packageEntity.preTripChecklist.map(
+            (checklistItem, index) => {
+              const checklist = {
+                item: checklistItem.task,
+                completed: false,
+                mandatory: true,
+                type: ChecklistType.PACKAGE,
+                bookingId: savedBooking.id,
+                sortOrder: index,
+                batchId: batch.id,
+                createdById: userId,
+                customerId: customer.id,
+              };
+
+              return queryRunner.manager.create(BookingChecklist, checklist);
+            },
+          );
+          await queryRunner.manager.save(packageChecklists);
+        }
+      }
+
+      // Create user-provided checklist items (optional)
       if (
-        packageEntity.preTripChecklist &&
-        packageEntity.preTripChecklist.length > 0
+        createBookingDto.checklistItems &&
+        createBookingDto.checklistItems.length > 0
       ) {
-        const packageChecklists = packageEntity.preTripChecklist.map(
-          (checklistItem, index) => {
+        const userChecklists = createBookingDto.checklistItems.map(
+          (checklistItem) => {
             const checklist: any = {
-              item: checklistItem.task,
-              completed: false,
-              mandatory: true,
-              type: ChecklistType.PACKAGE,
+              item: checklistItem.item,
+              completed: checklistItem.completed || false,
+              mandatory: checklistItem.mandatory || false,
+              type: checklistItem.type || ChecklistType.INDIVIDUAL,
               bookingId: savedBooking.id,
-              sortOrder: index,
               batchId: batch.id,
               createdById: userId,
             };
-            if (checklistItem.description) {
-              checklist.notes = checklistItem.description;
+            if (checklistItem.customerId) {
+              checklist.customerId = checklistItem.customerId;
+            }
+            if (checklistItem.notes) {
+              checklist.notes = checklistItem.notes;
             }
             return queryRunner.manager.create(BookingChecklist, checklist);
           },
         );
-        await queryRunner.manager.save(packageChecklists);
-      }
-
-      // Create group checklist items
-      if (
-        createBookingDto.groupChecklist &&
-        createBookingDto.groupChecklist.length > 0
-      ) {
-        const groupChecklists = createBookingDto.groupChecklist.map(
-          (checklistItem, index) =>
-            queryRunner.manager.create(BookingChecklist, {
-              item: checklistItem.item,
-              completed: checklistItem.completed || false,
-              mandatory: checklistItem.mandatory || false,
-              type: ChecklistType.GROUP,
-              bookingId: savedBooking.id,
-              sortOrder: (packageEntity.preTripChecklist?.length || 0) + index,
-            }),
-        );
-        await queryRunner.manager.save(groupChecklists);
+        await queryRunner.manager.save(userChecklists);
       }
 
       // Add customers to batch
@@ -322,22 +332,6 @@ export class BookingService {
           dietaryRestrictions: customer.dietaryRestrictions,
         }),
       ),
-      groupChecklist:
-        booking.checklists
-          ?.filter((item) => item.type === ChecklistType.GROUP)
-          .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map(
-            (item): ChecklistItemResponseDto => ({
-              id: item.id,
-              item: item.item,
-              completed: item.completed,
-              mandatory: item.mandatory,
-              type: item.type,
-              sortOrder: item.sortOrder,
-              createdAt: item.createdAt,
-              updatedAt: item.updatedAt,
-            }),
-          ) || [],
       payments: booking.payments.map((payment) => ({
         id: payment.id,
         amount: payment.amount,
