@@ -19,7 +19,7 @@ import {
 import {
   CreateChecklistItemDto,
   UpdateChecklistItemDto,
-} from 'src/dto/checklist-dto';
+} from 'src/dto/checklist.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { BookingStatus } from 'src/database/entity/booking.entity';

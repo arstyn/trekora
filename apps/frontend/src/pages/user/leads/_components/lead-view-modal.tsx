@@ -6,6 +6,8 @@ import type { ILead, ILeadStatus } from "@/types/lead/lead.entity";
 import { format } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { preBookingService } from "@/services/pre-booking.service";
 import { LeadForm } from "./lead-form";
 import { LeadUpdates } from "./lead-updates";
 import { ReminderTab } from "./reminder-tab";
@@ -24,6 +26,8 @@ export function ViewLeadDialog({
 	onEdit,
 }: ViewLeadDialogProps) {
 	const [showEditForm, setShowEditForm] = useState(false);
+	const [isConverting, setIsConverting] = useState(false);
+	const navigate = useNavigate();
 
 	if (!lead) return null;
 
@@ -50,6 +54,26 @@ export function ViewLeadDialog({
 			} else {
 				toast.error("Failed to load updates");
 			}
+		}
+	};
+
+	const handleConvertToPreBooking = async () => {
+		try {
+			setIsConverting(true);
+			const preBooking = await preBookingService.convertLeadToPreBooking({
+				leadId: lead.id,
+			});
+			toast.success("Lead converted to pre-booking successfully!");
+			onOpenChange(false);
+			navigate(`/pre-bookings?selected=${preBooking.id}`);
+		} catch (error) {
+			if (error instanceof Error) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to convert lead to pre-booking");
+			}
+		} finally {
+			setIsConverting(false);
 		}
 	};
 
@@ -150,14 +174,27 @@ export function ViewLeadDialog({
 							</TabsContent>
 						</Tabs>
 
-						<div className="pt-4 pr-4 flex justify-end gap-2 border-t">
-							<Button variant="outline" onClick={() => onOpenChange(false)}>
-								Close
+						<div className="pt-4 pr-4 flex justify-between gap-2 border-t">
+							<Button
+								variant="default"
+								onClick={handleConvertToPreBooking}
+								disabled={isConverting || lead.status === "converted"}
+							>
+								{isConverting
+									? "Converting..."
+									: "Convert to Pre-Booking"}
 							</Button>
-
-							<Button onClick={() => setShowEditForm(true)}>
-								Edit Lead
-							</Button>
+							<div className="flex gap-2">
+								<Button
+									variant="outline"
+									onClick={() => onOpenChange(false)}
+								>
+									Close
+								</Button>
+								<Button onClick={() => setShowEditForm(true)}>
+									Edit Lead
+								</Button>
+							</div>
 						</div>
 					</div>
 				)}

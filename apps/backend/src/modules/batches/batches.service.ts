@@ -13,7 +13,7 @@ import { UpdateBatchDto } from './dto/update-batch.dto';
 import {
   CreateChecklistItemDto,
   UpdateChecklistItemDto,
-} from 'src/dto/checklist-dto';
+} from 'src/dto/checklist.dto';
 
 @Injectable()
 export class BatchesService {

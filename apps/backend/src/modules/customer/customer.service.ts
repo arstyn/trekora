@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { Customer } from 'src/database/entity/customer.entity';
 import { RelatedType } from 'src/database/entity/file-manager.entity';
 import { DataSource, ILike, Repository } from 'typeorm';
-import { CreateCustomerDto } from '../../dto/create-customer';
+import { CreateCustomerDto } from '../../dto/create-customer.dto';
 import { FileManagerService } from '../file-manager/file-manager.service';
 
 @Injectable()

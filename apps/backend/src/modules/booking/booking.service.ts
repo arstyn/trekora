@@ -32,7 +32,7 @@ import {
   ChecklistStatsDto,
   CreateChecklistItemDto,
   UpdateChecklistItemDto,
-} from 'src/dto/checklist-dto';
+} from 'src/dto/checklist.dto';
 
 @Injectable()
 export class BookingService {

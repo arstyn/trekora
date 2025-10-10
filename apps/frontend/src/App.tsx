@@ -35,6 +35,7 @@ import ActivatePage from "./pages/auth/activate-account";
 import ResendActivationPage from "./pages/auth/resend-activation";
 import ActivateUserPage from "./pages/auth/activate-user-account";
 import { EmployeesPage } from "./pages/user/employees/employees-table";
+import PreBookingsPage from "./pages/user/pre-bookings/pre-bookings.page";
 
 function AuthenticatedApp() {
 	// Add your dashboard and other protected routes here
@@ -46,6 +47,7 @@ function AuthenticatedApp() {
 				<Routes>
 					<Route path="/" element={<Dashboard />} />
 					<Route path="/leads" element={<Leads />} />
+					<Route path="/pre-bookings" element={<PreBookingsPage />} />
 					<Route path="/packages" element={<Packages />} />
 					<Route path="/packages/create" element={<CreatePackagePage />} />
 					<Route path="/packages/edit/:id" element={<EditPackagePage />} />

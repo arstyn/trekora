@@ -11,6 +11,7 @@ import {
 	ArrowUpCircleIcon,
 	Banknote,
 	BookUser,
+	ClipboardList,
 	FileChartColumnIncreasing,
 	FileSpreadsheet,
 	FolderIcon,
@@ -88,6 +89,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				name: "Leads",
 				url: "/leads",
 				icon: FileChartColumnIncreasing,
+			},
+			{
+				name: "Pre-Bookings",
+				url: "/pre-bookings",
+				icon: ClipboardList,
 			},
 			{
 				name: "Customers",

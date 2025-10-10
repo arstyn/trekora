@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CustomerService } from './customer.service';
-import { CreateCustomerDto } from '../../dto/create-customer';
+import { CreateCustomerDto } from '../../dto/create-customer.dto';
 import { Customer } from '../../database/entity/customer.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';

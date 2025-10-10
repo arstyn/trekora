@@ -14,7 +14,7 @@ import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
 import {
   CreateBookingChecklistDto,
   ChecklistItemResponseDto,
-} from './checklist-dto';
+} from './checklist.dto';
 
 export class CreatePaymentDto {
   @IsNumber()

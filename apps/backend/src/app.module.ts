@@ -30,6 +30,7 @@ import { BookingModule } from './modules/booking/booking.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ImportModule } from './modules/import/import.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { PreBookingModule } from './modules/pre-booking/pre-booking.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     PaymentModule,
     ImportModule,
     DashboardModule,
+    PreBookingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
