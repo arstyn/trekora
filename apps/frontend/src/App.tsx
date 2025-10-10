@@ -31,10 +31,10 @@ import PaymentsPage from "./pages/user/payments/payments.page";
 import PaymentDetailsPage from "./pages/user/payments/view-payment.page";
 import SettingsPage from "./pages/user/settings/page";
 import ImportPage from "./pages/user/import/page";
-import { TeamsPage } from "./pages/user/teams/teams-table";
 import ActivatePage from "./pages/auth/activate-account";
 import ResendActivationPage from "./pages/auth/resend-activation";
 import ActivateUserPage from "./pages/auth/activate-user-account";
+import { EmployeesPage } from "./pages/user/employees/employees-table";
 
 function AuthenticatedApp() {
 	// Add your dashboard and other protected routes here
@@ -52,7 +52,7 @@ function AuthenticatedApp() {
 					<Route path="/packages/:id" element={<ViewPackagePage />} />
 					<Route path="/customers" element={<CustomerManagement />} />
 					<Route path="/settings" element={<SettingsPage />} />
-					<Route path="/teams" element={<TeamsPage />} />
+					<Route path="/employees" element={<EmployeesPage />} />
 					<Route path="/branches" element={<BranchPage />} />
 					<Route path="/batches" element={<BatchesPage />} />
 					<Route path="/batches/:id" element={<BatchDetailsPage />} />

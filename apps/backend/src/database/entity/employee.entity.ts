@@ -101,6 +101,15 @@ export class Employee {
   @Column({ type: 'date', nullable: true, name: 'join_date' })
   joinDate?: Date;
 
+  @Column({ nullable: true, name: 'profile_photo' })
+  profilePhoto?: string;
+
+  @Column({ nullable: true, name: 'verification_document' })
+  verificationDocument?: string;
+
+  @Column({ nullable: true, name: 'verification_document_type' })
+  verificationDocumentType?: string;
+
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;
 

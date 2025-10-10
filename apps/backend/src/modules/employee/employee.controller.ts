@@ -9,7 +9,10 @@ import {
   Put,
   Request,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { EmployeeService } from './employee.service';
 import { Employee } from 'src/database/entity/employee.entity';
@@ -23,15 +26,35 @@ export class EmployeeController {
 
   // Create a new employee
   @Post()
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'profilePhoto', maxCount: 1 },
+      { name: 'verificationDocument', maxCount: 1 },
+    ]),
+  )
   async create(
     @Request() req: ApiRequestJWT,
     @Body() employeeData: IEmployeeCreateDTO,
+    @UploadedFiles()
+    files: {
+      profilePhoto?: Express.Multer.File[];
+      verificationDocument?: Express.Multer.File[];
+    },
   ): Promise<Employee | null> {
-    return this.employeeService.create({
-      ...employeeData,
-      organizationId: req.user.organizationId,
-      userId: req.user.userId,
-    });
+    // Flatten all files into a single array for the service
+    const allFiles: Express.Multer.File[] = [];
+    if (files?.profilePhoto) allFiles.push(...files.profilePhoto);
+    if (files?.verificationDocument)
+      allFiles.push(...files.verificationDocument);
+
+    return this.employeeService.create(
+      {
+        ...employeeData,
+        organizationId: req.user.organizationId,
+        userId: req.user.userId,
+      },
+      allFiles,
+    );
   }
 
   // Get all employees
@@ -48,16 +71,33 @@ export class EmployeeController {
   // Get a single employee by ID
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Employee | null> {
-    return this.employeeService.findOne(id);
+    return this.employeeService.findOneWithFiles(id);
   }
 
   // Update an employee by ID
   @Put(':id')
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'profilePhoto', maxCount: 1 },
+      { name: 'verificationDocument', maxCount: 1 },
+    ]),
+  )
   async update(
     @Param('id') id: string,
     @Body() updateData: IEmployeeCreateDTO,
+    @UploadedFiles()
+    files: {
+      profilePhoto?: Express.Multer.File[];
+      verificationDocument?: Express.Multer.File[];
+    },
   ): Promise<Employee> {
-    return this.employeeService.update(id, updateData);
+    // Flatten all files into a single array for the service
+    const allFiles: Express.Multer.File[] = [];
+    if (files?.profilePhoto) allFiles.push(...files.profilePhoto);
+    if (files?.verificationDocument)
+      allFiles.push(...files.verificationDocument);
+
+    return this.employeeService.update(id, updateData, allFiles);
   }
 
   // Terminate an employee by ID

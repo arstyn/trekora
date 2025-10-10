@@ -1,14 +1,17 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { RoleService } from '../role/role.service';
 import { UserDepartmentsService } from '../user-departments/user-departments.service';
 import { UserService } from '../user/user.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { MailerService } from '../mailer/mailer.service';
+import { FileManagerService } from '../file-manager/file-manager.service';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
 import { UserDepartments } from 'src/database/entity/user-departments.entity';
 import { User } from 'src/database/entity/user.entity';
+import { RelatedType } from 'src/database/entity/file-manager.entity';
 import { IEmployeeCreateDTO } from '../../dto/create-employee.dto';
 import { IUserProfileDTO } from 'src/dto/user-profile.dto';
 
@@ -23,10 +26,48 @@ export class EmployeeService {
     private readonly userService: UserService,
     private readonly userInviteService: UserInviteService,
     private readonly mailerService: MailerService,
+    private readonly fileManagerService: FileManagerService,
   ) {}
 
+  private async handleFileUploads(
+    employeeId: string,
+    files: Express.Multer.File[],
+  ) {
+    const fileUploads = {
+      profilePhoto: undefined as string | undefined,
+      verificationDocument: undefined as string | undefined,
+    };
+
+    // Handle profile photo
+    const profilePhotoFile = files.find((f) => f.fieldname === 'profilePhoto');
+    if (profilePhotoFile) {
+      const fileData = await this.fileManagerService.uploadOneFile(
+        { relatedId: employeeId, relatedType: RelatedType.EMPLOYEE },
+        profilePhotoFile,
+      );
+      fileUploads.profilePhoto = fileData.id;
+    }
+
+    // Handle verification document
+    const verificationDocumentFile = files.find(
+      (f) => f.fieldname === 'verificationDocument',
+    );
+    if (verificationDocumentFile) {
+      const fileData = await this.fileManagerService.uploadOneFile(
+        { relatedId: employeeId, relatedType: RelatedType.EMPLOYEE },
+        verificationDocumentFile,
+      );
+      fileUploads.verificationDocument = fileData.id;
+    }
+
+    return fileUploads;
+  }
+
   // Create a new employee
-  async create(employeeData: IEmployeeCreateDTO) {
+  async create(
+    employeeData: IEmployeeCreateDTO,
+    files: Express.Multer.File[] = [],
+  ) {
     const {
       roleId,
       emergencyContactName,
@@ -53,16 +94,24 @@ export class EmployeeService {
         }
       }
 
-      const employeeData = this.employeeRepository.create({
+      const employeeId = randomUUID();
+
+      // Handle file uploads
+      const fileUploads = await this.handleFileUploads(employeeId, files);
+
+      const newEmployeeData = this.employeeRepository.create({
         ...rest,
+        id: employeeId,
         status:
           EmployeeStatus[status.toUpperCase() as keyof typeof EmployeeStatus],
         joinDate: joinDate ? new Date(joinDate) : undefined,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
         roleId,
+        profilePhoto: fileUploads.profilePhoto,
+        verificationDocument: fileUploads.verificationDocument,
       });
 
-      const employee = await queryRunner.manager.save(employeeData);
+      const employee = await queryRunner.manager.save(newEmployeeData);
 
       const userDepartments: UserDepartments[] = [];
 
@@ -126,8 +175,44 @@ export class EmployeeService {
     return this.employeeRepository.findOne({ where: { email } });
   }
 
+  async findOneWithFiles(id: string): Promise<Employee | null> {
+    const employee = await this.employeeRepository.findOne({
+      where: { id },
+      relations: [
+        'role',
+        'employeeDepartments',
+        'employeeDepartments.department',
+        'user',
+      ],
+    });
+    if (!employee) return null;
+
+    // Get file URLs for photo fields
+    const files = await this.fileManagerService.findByRelatedEntity(
+      id,
+      RelatedType.EMPLOYEE,
+    );
+
+    // Map file IDs to URLs
+    const fileMap = new Map(files.map((f) => [f.id, f.url]));
+
+    return {
+      ...employee,
+      profilePhoto: employee.profilePhoto
+        ? fileMap.get(employee.profilePhoto)
+        : undefined,
+      verificationDocument: employee.verificationDocument
+        ? fileMap.get(employee.verificationDocument)
+        : undefined,
+    } as Employee;
+  }
+
   // Update an employee by ID
-  async update(id: string, updateData: IEmployeeCreateDTO): Promise<Employee> {
+  async update(
+    id: string,
+    updateData: IEmployeeCreateDTO,
+    files: Express.Multer.File[] = [],
+  ): Promise<Employee> {
     const {
       roleId,
       emergencyContactName,
@@ -165,6 +250,9 @@ export class EmployeeService {
         }
       }
 
+      // Handle file uploads
+      const fileUploads = await this.handleFileUploads(id, files);
+
       const updateObj: any = {
         ...rest,
         roleId,
@@ -173,6 +261,12 @@ export class EmployeeService {
           : undefined,
         joinDate: joinDate ? new Date(joinDate) : undefined,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+        ...(fileUploads.profilePhoto && {
+          profilePhoto: fileUploads.profilePhoto,
+        }),
+        ...(fileUploads.verificationDocument && {
+          verificationDocument: fileUploads.verificationDocument,
+        }),
       };
 
       Object.keys(updateObj).forEach(

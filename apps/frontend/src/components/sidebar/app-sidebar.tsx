@@ -63,8 +63,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				icon: Split,
 			},
 			{
-				title: "Teams",
-				url: "/teams",
+				title: "Employees",
+				url: "/employees",
 				icon: UsersIcon,
 			},
 			{

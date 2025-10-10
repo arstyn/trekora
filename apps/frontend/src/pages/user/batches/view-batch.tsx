@@ -39,22 +39,23 @@ export default function BatchDetailsPage() {
 	);
 	const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-	useEffect(() => {
-		const getBranch = async () => {
-			try {
-				const batchData = await axiosInstance.get<IBatches>(`/batches/${id}`);
-				setBatch(batchData.data);
-			} catch (error: unknown) {
-				if (error instanceof Error) {
-					toast.error(error.message);
-				} else {
-					toast.error("Failed to load batches");
-				}
+	const getBranch = async () => {
+		try {
+			const batchData = await axiosInstance.get<IBatches>(`/batches/${id}`);
+			setBatch(batchData.data);
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to load batches");
 			}
-		};
+		}
+	};
 
+	useEffect(() => {
 		getBranch();
-	}, [id]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	const handleStatusUpdate = async (newStatus: string) => {
 		if (!batch || newStatus === batch.status) return;
@@ -388,6 +389,7 @@ export default function BatchDetailsPage() {
 					batchId={batch.id}
 					open={!!selectedCustomer}
 					onOpenChange={(open) => !open && setSelectedCustomer(null)}
+					reloadBatchList={getBranch}
 				/>
 			)}
 

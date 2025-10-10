@@ -2,8 +2,10 @@ import StatusBadge from "@/components/status-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getFileUrl } from "@/lib/utils";
 import type { IEmployee } from "@/types/employee.types";
 import { format } from "date-fns";
+import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
 
 type ViewEmployeeDialogProps = {
 	open: boolean;
@@ -51,8 +53,16 @@ export function ViewEmployeeDialog({
 					<div className="flex items-center border-b pb-4">
 						<Avatar className="h-16 w-16">
 							<AvatarImage
-								src={employee.avatar || "/placeholder.svg"}
+								src={(() => {
+									if (employee.profilePhoto) {
+										return getFileUrl(
+											getServeFileUrl(employee.profilePhoto)
+										);
+									}
+									return "/placeholder.svg";
+								})()}
 								alt={employee.name}
+								className="object-cover w-full h-full"
 							/>
 							<AvatarFallback className="text-lg">
 								{employee.name.charAt(0)}

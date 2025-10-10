@@ -28,6 +28,7 @@ export class LeadService {
       where: {
         organizationId,
       },
+      relations: ['createdBy'],
     });
   }
 

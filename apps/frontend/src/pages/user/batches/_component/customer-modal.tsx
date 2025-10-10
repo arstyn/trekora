@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import axiosInstance from "@/lib/axios";
@@ -17,9 +18,11 @@ import {
 	Mail,
 	MapPin,
 	Phone,
+	Plus,
 	Save,
 	Shield,
 	User,
+	X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -29,6 +32,7 @@ interface CustomerModalProps {
 	batchId: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	reloadBatchList: () => void;
 }
 
 export function CustomerModal({
@@ -36,11 +40,15 @@ export function CustomerModal({
 	batchId,
 	open,
 	onOpenChange,
+	reloadBatchList,
 }: CustomerModalProps) {
 	const [batchChecklists, setBatchChecklists] = useState<IBatchChecklist[]>([]);
 	const [isLoadingChecklists, setIsLoadingChecklists] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
 	const [hasChanges, setHasChanges] = useState(false);
+	const [isAddingNewItem, setIsAddingNewItem] = useState(false);
+	const [newItemText, setNewItemText] = useState("");
+	const [isCreatingItem, setIsCreatingItem] = useState(false);
 
 	const fetchBatchChecklists = useCallback(async () => {
 		setIsLoadingChecklists(true);
@@ -86,6 +94,7 @@ export function CustomerModal({
 
 			await Promise.all(updatePromises);
 			setHasChanges(false);
+			reloadBatchList()
 			toast.success("Checklists updated successfully");
 		} catch (error) {
 			console.error("Error saving checklists:", error);
@@ -93,6 +102,44 @@ export function CustomerModal({
 		} finally {
 			setIsSaving(false);
 		}
+	};
+
+	const handleAddNewChecklistItem = async () => {
+		if (!newItemText.trim()) {
+			toast.error("Please enter a checklist item");
+			return;
+		}
+
+		setIsCreatingItem(true);
+		try {
+			const response = await axiosInstance.post<IBatchChecklist>(
+				`/batches/${batchId}/checklists`,
+				{
+					item: newItemText.trim(),
+					type: "user",
+					customerId: customer.id,
+					completed: false,
+					mandatory: false,
+					sortOrder: userChecklists.length,
+				}
+			);
+
+			// Add the new item to the list
+			setBatchChecklists((prev) => [...prev, response.data]);
+			setNewItemText("");
+			setIsAddingNewItem(false);
+			toast.success("Checklist item added successfully");
+		} catch (error) {
+			console.error("Error adding checklist item:", error);
+			toast.error("Failed to add checklist item");
+		} finally {
+			setIsCreatingItem(false);
+		}
+	};
+
+	const handleCancelAddItem = () => {
+		setNewItemText("");
+		setIsAddingNewItem(false);
 	};
 
 	// Group checklists by type
@@ -479,7 +526,7 @@ export function CustomerModal({
 													{packageChecklists.map((item) => (
 														<div
 															key={item.id}
-															className="flex items-start space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
+															className="flex items-center space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
 														>
 															<Checkbox
 																id={`package-${item.id}`}
@@ -521,30 +568,49 @@ export function CustomerModal({
 											</div>
 										)}
 
-										{/* Group Checklist Items */}
-										{userChecklists.length > 0 && (
-											<div className="space-y-3">
-												<div className="flex items-center justify-between">
-													<h4 className="font-medium text-sm text-muted-foreground">
-														User Checklist
-													</h4>
-													<Badge
-														variant="outline"
-														className="text-xs"
-													>
-														{
-															userChecklists.filter(
-																(item) => item.completed
-															).length
-														}
-														/{userChecklists.length} Complete
-													</Badge>
+										{/* User Checklist Items */}
+										<div className="space-y-3">
+											<div className="flex items-center justify-between">
+												<h4 className="font-medium text-sm text-muted-foreground">
+													User Checklist
+												</h4>
+												<div className="flex items-center gap-2">
+													{userChecklists.length > 0 && (
+														<Badge
+															variant="outline"
+															className="text-xs"
+														>
+															{
+																userChecklists.filter(
+																	(item) =>
+																		item.completed
+																).length
+															}
+															/{userChecklists.length}{" "}
+															Complete
+														</Badge>
+													)}
+													{!isAddingNewItem && (
+														<Button
+															size="sm"
+															variant="outline"
+															onClick={() =>
+																setIsAddingNewItem(true)
+															}
+														>
+															<Plus className="w-4 h-4 mr-1" />
+															Add Item
+														</Button>
+													)}
 												</div>
+											</div>
+											{userChecklists.length > 0 ||
+											isAddingNewItem ? (
 												<div className="space-y-2">
 													{userChecklists.map((item) => (
 														<div
 															key={item.id}
-															className="flex items-start space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
+															className="flex items-center space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
 														>
 															<Checkbox
 																id={`group-${item.id}`}
@@ -582,9 +648,90 @@ export function CustomerModal({
 															</div>
 														</div>
 													))}
+
+													{/* Add New Item Input */}
+													{isAddingNewItem && (
+														<div className="flex items-center space-x-2 p-3 rounded-md border border-primary/50 bg-primary/5">
+															<div className="flex-1 space-y-2">
+																<Input
+																	placeholder="Enter new checklist item..."
+																	value={newItemText}
+																	onChange={(e) =>
+																		setNewItemText(
+																			e.target.value
+																		)
+																	}
+																	onKeyDown={(e) => {
+																		if (
+																			e.key ===
+																			"Enter"
+																		) {
+																			handleAddNewChecklistItem();
+																		} else if (
+																			e.key ===
+																			"Escape"
+																		) {
+																			handleCancelAddItem();
+																		}
+																	}}
+																	disabled={
+																		isCreatingItem
+																	}
+																	autoFocus
+																/>
+																<div className="flex items-center gap-2">
+																	<Button
+																		size="sm"
+																		onClick={
+																			handleAddNewChecklistItem
+																		}
+																		disabled={
+																			isCreatingItem ||
+																			!newItemText.trim()
+																		}
+																	>
+																		{isCreatingItem ? (
+																			<>
+																				<Loader2 className="w-3 h-3 mr-1 animate-spin" />
+																				Adding...
+																			</>
+																		) : (
+																			<>
+																				<Plus className="w-3 h-3 mr-1" />
+																				Add
+																			</>
+																		)}
+																	</Button>
+																	<Button
+																		size="sm"
+																		variant="outline"
+																		onClick={
+																			handleCancelAddItem
+																		}
+																		disabled={
+																			isCreatingItem
+																		}
+																	>
+																		<X className="w-3 h-3 mr-1" />
+																		Cancel
+																	</Button>
+																</div>
+															</div>
+														</div>
+													)}
 												</div>
-											</div>
-										)}
+											) : (
+												<div className="text-center py-6 text-muted-foreground border rounded-md">
+													<p className="text-sm mb-2">
+														No user checklist items yet
+													</p>
+													<p className="text-xs">
+														Click "Add Item" above to create
+														custom checklist items
+													</p>
+												</div>
+											)}
+										</div>
 
 										{/* Individual Checklist Items */}
 										{individualChecklists.length > 0 && (

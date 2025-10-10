@@ -23,5 +23,8 @@ export class IEmployeeCreateDTO {
     relation: string;
   }[];
   isActive?: boolean;
+  profilePhoto?: string;
+  verificationDocument?: string;
+  verificationDocumentType?: string;
   // branchId?: string;
 }

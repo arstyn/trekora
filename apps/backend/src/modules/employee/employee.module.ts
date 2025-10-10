@@ -9,6 +9,7 @@ import { UserModule } from '../user/user.module';
 import { UserInviteModule } from '../user-invite/user-invite.module';
 import { MailerModule } from '../mailer/mailer.module';
 import { Employee } from 'src/database/entity/employee.entity';
+import { FileManagerModule } from '../file-manager/file-manager.module';
 
 @Module({
   controllers: [EmployeeController],
@@ -21,6 +22,7 @@ import { Employee } from 'src/database/entity/employee.entity';
     UserModule,
     UserInviteModule,
     MailerModule,
+    FileManagerModule,
   ],
   exports: [EmployeeService],
 })

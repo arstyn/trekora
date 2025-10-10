@@ -58,8 +58,10 @@ import { DeactivateDialog } from "./_component/deactivate-dialog";
 import { EditEmployeeDialog } from "./_component/edit-employee-dialog";
 import { ViewEmployeeDialog } from "./_component/view-employee-dialog";
 import type { IRole } from "@/types/role.types";
+import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
+import { getFileUrl } from "@/lib/utils";
 
-export function TeamsPage() {
+export function EmployeesPage() {
 	const navigate = useNavigate();
 	const location = useLocation();
 
@@ -147,8 +149,16 @@ export function TeamsPage() {
 					<div className="flex items-center gap-3">
 						<Avatar>
 							<AvatarImage
-								src={employee.avatar || "/placeholder.svg"}
+								src={(() => {
+									if (row.original.profilePhoto) {
+										return getFileUrl(
+											getServeFileUrl(row.original.profilePhoto)
+										);
+									}
+									return "/placeholder.svg";
+								})()}
 								alt={employee.name}
+								className="object-cover w-full h-full"
 							/>
 							<AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
 						</Avatar>

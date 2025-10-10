@@ -17,6 +17,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -33,8 +34,8 @@ import type { IRole } from "@/types/role.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Table } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronDown, X } from "lucide-react";
-import { type Dispatch, type SetStateAction, useState } from "react";
+import { CalendarIcon, ChevronDown, X, Upload, Image as ImageIcon } from "lucide-react";
+import { type Dispatch, type SetStateAction, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -64,6 +65,7 @@ const formSchema = z.object({
 	specialization: z.string().optional(),
 	additional_info: z.string().optional(),
 	maritalStatus: z.enum(["single", "married"]).optional(),
+	verificationDocumentType: z.string().optional(),
 	emergencyContacts: z
 		.array(
 			z.object({
@@ -103,6 +105,14 @@ export function AddEmployeeModal({
 	departments,
 }: AddEmployeeModalProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+	const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+	const [verificationDocFile, setVerificationDocFile] = useState<File | null>(null);
+	const [verificationDocPreview, setVerificationDocPreview] = useState<string | null>(
+		null
+	);
+	const profilePhotoRef = useRef<HTMLInputElement>(null);
+	const verificationDocRef = useRef<HTMLInputElement>(null);
 
 	// Initialize the form
 	const form = useForm<ICreateEmployeeFormValues>({
@@ -123,6 +133,7 @@ export function AddEmployeeModal({
 			specialization: "",
 			additional_info: "",
 			maritalStatus: undefined,
+			verificationDocumentType: "",
 			emergencyContacts: [],
 		},
 	});
@@ -130,42 +141,107 @@ export function AddEmployeeModal({
 	// Handle form submission
 	const onSubmit = async (data: ICreateEmployeeFormValues) => {
 		setIsSubmitting(true);
-		// Create the new employee object
-		const newEmployee = {
-			name: data.name,
-			email: data.email,
-			departments: data.departments,
-			roleId: data.roleId,
-			status: data.status,
-			joinDate: format(data.joinDate, "yyyy-MM-dd"),
-			avatar: "/placeholder.svg?height=40&width=40",
-			address: data.address,
-			phone: data.phone,
-			dateOfBirth: format(data.dateOfBirth, "yyyy-MM-dd"),
-			gender: data.gender,
-			nationality: data.nationality,
-			experience: data.experience,
-			specialization: data.specialization,
-			additional_info: data.additional_info,
-			maritalStatus: data.maritalStatus,
-			emergencyContacts: data.emergencyContacts,
-		};
+
+		const formDataToSubmit = new FormData();
+
+		// Add all form fields
+		formDataToSubmit.append("name", data.name);
+		formDataToSubmit.append("email", data.email);
+		data.departments.forEach((dept, index) => {
+			formDataToSubmit.append(`departments[${index}]`, dept);
+		});
+		formDataToSubmit.append("roleId", data.roleId);
+		formDataToSubmit.append("status", data.status);
+		formDataToSubmit.append("joinDate", format(data.joinDate, "yyyy-MM-dd"));
+
+		if (data.address) formDataToSubmit.append("address", data.address);
+		if (data.phone) formDataToSubmit.append("phone", data.phone);
+		formDataToSubmit.append("dateOfBirth", format(data.dateOfBirth, "yyyy-MM-dd"));
+		if (data.gender) formDataToSubmit.append("gender", data.gender);
+		if (data.nationality) formDataToSubmit.append("nationality", data.nationality);
+		if (data.experience) formDataToSubmit.append("experience", data.experience);
+		if (data.specialization)
+			formDataToSubmit.append("specialization", data.specialization);
+		if (data.additional_info)
+			formDataToSubmit.append("additional_info", data.additional_info);
+		if (data.maritalStatus)
+			formDataToSubmit.append("maritalStatus", data.maritalStatus);
+		if (data.verificationDocumentType)
+			formDataToSubmit.append(
+				"verificationDocumentType",
+				data.verificationDocumentType
+			);
+
+		// Add files
+		if (profilePhotoFile) {
+			formDataToSubmit.append("profilePhoto", profilePhotoFile);
+		}
+		if (verificationDocFile) {
+			formDataToSubmit.append("verificationDocument", verificationDocFile);
+		}
 
 		try {
-			const res = await axiosInstance.post<IEmployee>("/employee", newEmployee);
+			const res = await axiosInstance.post<IEmployee>(
+				"/employee",
+				formDataToSubmit,
+				{
+					headers: { "Content-Type": "multipart/form-data" },
+				}
+			);
 			setEmployees([res.data, ...employees]);
 			table.setPageIndex(0);
 			table.resetColumnFilters();
 			form.reset();
+			setProfilePhotoFile(null);
+			setProfilePhotoPreview(null);
+			setVerificationDocFile(null);
+			setVerificationDocPreview(null);
 			onOpenChange(false);
 		} catch (error) {
 			if (error instanceof Error) {
 				toast.error(error.message);
 			} else {
-				toast.error("Failed to load updates");
+				toast.error("Failed to add employee");
 			}
 		} finally {
 			setIsSubmitting(false);
+		}
+	};
+
+	const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (file) {
+			setProfilePhotoFile(file);
+			setProfilePhotoPreview(URL.createObjectURL(file));
+		}
+	};
+
+	const handleVerificationDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (file) {
+			setVerificationDocFile(file);
+			// Create preview for images only
+			if (file.type.startsWith("image/")) {
+				setVerificationDocPreview(URL.createObjectURL(file));
+			} else {
+				setVerificationDocPreview(null);
+			}
+		}
+	};
+
+	const removeProfilePhoto = () => {
+		setProfilePhotoFile(null);
+		setProfilePhotoPreview(null);
+		if (profilePhotoRef.current) {
+			profilePhotoRef.current.value = "";
+		}
+	};
+
+	const removeVerificationDoc = () => {
+		setVerificationDocFile(null);
+		setVerificationDocPreview(null);
+		if (verificationDocRef.current) {
+			verificationDocRef.current.value = "";
 		}
 	};
 
@@ -215,6 +291,172 @@ export function AddEmployeeModal({
 									</FormItem>
 								)}
 							/>
+
+							{/* Profile Photo Upload */}
+							<div className="space-y-3">
+								<Label className="text-sm font-medium">
+									Profile Photo
+								</Label>
+								<div className="flex items-start gap-4">
+									<div className="flex-shrink-0">
+										<div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden bg-gray-50 flex items-center justify-center">
+											{profilePhotoPreview ? (
+												<img
+													src={profilePhotoPreview}
+													alt="Profile preview"
+													className="w-full h-full object-cover"
+												/>
+											) : (
+												<div className="text-center">
+													<ImageIcon className="h-8 w-8 text-gray-400 mx-auto mb-1" />
+													<span className="text-xs text-gray-500">
+														No image
+													</span>
+												</div>
+											)}
+										</div>
+									</div>
+									<div className="flex-1 space-y-2">
+										<input
+											ref={profilePhotoRef}
+											type="file"
+											accept="image/*"
+											onChange={handleProfilePhotoChange}
+											className="hidden"
+										/>
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() =>
+												profilePhotoRef.current?.click()
+											}
+											className="flex items-center gap-2"
+											size="sm"
+										>
+											<Upload className="h-4 w-4" />
+											Upload Photo
+										</Button>
+										{profilePhotoFile && (
+											<div className="flex items-center gap-2">
+												<span className="text-sm text-gray-600">
+													{profilePhotoFile.name}
+												</span>
+												<Button
+													type="button"
+													variant="ghost"
+													size="sm"
+													onClick={removeProfilePhoto}
+												>
+													<X className="h-4 w-4" />
+												</Button>
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+
+							{/* Verification Document Upload */}
+							<div className="space-y-3">
+								<Label className="text-sm font-medium">
+									Verification Document
+								</Label>
+								<FormField
+									control={form.control}
+									name="verificationDocumentType"
+									render={({ field }) => (
+										<FormItem>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
+												<FormControl>
+													<SelectTrigger className="w-full">
+														<SelectValue placeholder="Select document type" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													<SelectItem value="passport">
+														Passport
+													</SelectItem>
+													<SelectItem value="driving_license">
+														Driving License
+													</SelectItem>
+													<SelectItem value="aadhaar">
+														Aadhaar Card
+													</SelectItem>
+													<SelectItem value="voter_id">
+														Voter ID
+													</SelectItem>
+													<SelectItem value="pan_card">
+														PAN Card
+													</SelectItem>
+													<SelectItem value="other">
+														Other
+													</SelectItem>
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<div className="flex items-start gap-4">
+									<div className="flex-shrink-0">
+										<div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden bg-gray-50 flex items-center justify-center">
+											{verificationDocPreview ? (
+												<img
+													src={verificationDocPreview}
+													alt="Document preview"
+													className="w-full h-full object-cover"
+												/>
+											) : (
+												<div className="text-center">
+													<ImageIcon className="h-8 w-8 text-gray-400 mx-auto mb-1" />
+													<span className="text-xs text-gray-500">
+														No file
+													</span>
+												</div>
+											)}
+										</div>
+									</div>
+									<div className="flex-1 space-y-2">
+										<input
+											ref={verificationDocRef}
+											type="file"
+											accept="image/*,.pdf"
+											onChange={handleVerificationDocChange}
+											className="hidden"
+										/>
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() =>
+												verificationDocRef.current?.click()
+											}
+											className="flex items-center gap-2"
+											size="sm"
+										>
+											<Upload className="h-4 w-4" />
+											Upload Document
+										</Button>
+										{verificationDocFile && (
+											<div className="flex items-center gap-2">
+												<span className="text-sm text-gray-600">
+													{verificationDocFile.name}
+												</span>
+												<Button
+													type="button"
+													variant="ghost"
+													size="sm"
+													onClick={removeVerificationDoc}
+												>
+													<X className="h-4 w-4" />
+												</Button>
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<FormField
 									control={form.control}

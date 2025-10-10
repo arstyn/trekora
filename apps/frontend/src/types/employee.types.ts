@@ -25,6 +25,9 @@ export interface IEmployeeCreateDTO {
 		phone: string;
 		relation: string;
 	}[];
+	profilePhoto?: string;
+	verificationDocument?: string;
+	verificationDocumentType?: string;
 	// branchId?: string;
 }
 
@@ -53,6 +56,9 @@ export interface IEmployee {
 	maritalStatus?: "single" | "married";
 	joinDate?: Date;
 	avatar: string;
+	profilePhoto?: string;
+	verificationDocument?: string;
+	verificationDocumentType?: string;
 	createdAt: Date;
 	updatedAt: Date;
 	isActive: boolean;
