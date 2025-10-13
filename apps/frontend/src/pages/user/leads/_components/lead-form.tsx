@@ -17,7 +17,7 @@ import type { ILead } from "@/types/lead/lead.entity";
 import { leadSchema, type LeadFormDTO } from "@/types/lead/lead.schema";
 import type { IPackages } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronsUpDown, Package, Search, Users } from "lucide-react";
+import { Check, ChevronsUpDown, Package, Search, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -236,81 +236,82 @@ export function LeadForm({
 												<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 											</Button>
 										</PopoverTrigger>
-										<PopoverContent className="w-[300px] p-0">
-											<div className="flex items-center border-b px-3">
-												<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-												<Input
-													placeholder="Search packages..."
-													className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-0 focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
-													value={packageSearch}
-													onChange={(e) =>
-														setPackageSearch(e.target.value)
-													}
-												/>
+										<PopoverContent
+											className="w-[400px] p-0"
+											align="start"
+										>
+											<div className="p-3 border-b">
+												<div className="relative">
+													<Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+													<Input
+														placeholder="Search packages..."
+														value={packageSearch}
+														onChange={(e) =>
+															setPackageSearch(
+																e.target.value
+															)
+														}
+														className="pl-8"
+													/>
+												</div>
 											</div>
-											<ScrollArea className="max-h-64">
+											<ScrollArea className="h-72">
 												<div className="p-2">
-													<div
-														className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm"
-														onClick={() => {
-															field.onChange(undefined);
-															setOpenPackageSelect(false);
-															setPackageSearch("");
-														}}
-													>
-														<div className="h-4 w-4" />
-														<span className="text-sm">
-															None
-														</span>
-													</div>
-													{packages
-														.filter((pkg) =>
-															pkg.name
-																?.toLowerCase()
-																.includes(
-																	packageSearch.toLowerCase()
-																)
-														)
-														.map((pkg) => (
-															<div
-																key={pkg.id}
-																className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm"
-																onClick={() => {
-																	field.onChange(
-																		pkg.id
-																	);
-																	setOpenPackageSelect(
-																		false
-																	);
-																	setPackageSearch("");
-																}}
-															>
-																<div className="h-4 w-4 flex items-center justify-center">
-																	{field.value ===
-																		pkg.id && (
-																		<div className="h-2 w-2 rounded-full bg-primary" />
-																	)}
-																</div>
-																<div className="flex flex-col flex-1">
-																	<span className="text-sm">
-																		{pkg.name}
-																	</span>
-																	<span className="text-xs text-muted-foreground">
-																		{pkg.destination}{" "}
-																		• ₹{pkg.price}
-																	</span>
-																</div>
-															</div>
-														))}
 													{packages.filter((pkg) =>
 														pkg.name
 															?.toLowerCase()
 															.includes(
 																packageSearch.toLowerCase()
 															)
-													).length === 0 && (
-														<div className="px-2 py-6 text-center text-sm text-muted-foreground">
-															No package found.
+													).length > 0 ? (
+														<div className="space-y-1">
+															{packages
+																.filter((pkg) =>
+																	pkg.name
+																		?.toLowerCase()
+																		.includes(
+																			packageSearch.toLowerCase()
+																		)
+																)
+																.map((pkg) => (
+																	<div
+																		key={pkg.id}
+																		className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer"
+																		onClick={(e) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																			field.onChange(
+																				pkg.id
+																			);
+																			setOpenPackageSelect(
+																				false
+																			);
+																			setPackageSearch(
+																				""
+																			);
+																		}}
+																	>
+																		<div className="flex-1 min-w-0">
+																			<p className="text-sm font-medium truncate">
+																				{pkg.name}
+																			</p>
+																			<p className="text-xs text-muted-foreground">
+																				₹
+																				{
+																					pkg.price
+																				}
+																			</p>
+																		</div>
+																		{field.value ===
+																			pkg.id && (
+																			<Check className="h-4 w-4 text-primary" />
+																		)}
+																	</div>
+																))}
+														</div>
+													) : (
+														<div className="text-center py-4 text-muted-foreground">
+															No packages found
 														</div>
 													)}
 												</div>
@@ -383,82 +384,99 @@ export function LeadForm({
 											<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 										</Button>
 									</PopoverTrigger>
-									<PopoverContent className="w-[400px] p-0">
-										<div className="flex items-center border-b px-3">
-											<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-											<Input
-												placeholder="Search packages..."
-												className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-0 focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
-												value={consideredSearch}
-												onChange={(e) =>
-													setConsideredSearch(e.target.value)
-												}
-											/>
+									<PopoverContent
+										className="w-[400px] p-0"
+										align="start"
+									>
+										<div className="p-3 border-b">
+											<div className="relative">
+												<Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+												<Input
+													placeholder="Search packages..."
+													value={consideredSearch}
+													onChange={(e) =>
+														setConsideredSearch(
+															e.target.value
+														)
+													}
+													className="pl-8"
+												/>
+											</div>
 										</div>
-										<ScrollArea className="max-h-64">
-											<div className="p-2 space-y-1">
-												{packages
-													.filter((pkg) =>
-														pkg.name
-															?.toLowerCase()
-															.includes(
-																consideredSearch.toLowerCase()
-															)
-													)
-													.map((pkg) => {
-														const isSelected =
-															field.value?.includes(
-																pkg.id
-															) || false;
-														return (
-															<div
-																key={pkg.id}
-																className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm"
-																onClick={() => {
-																	const newValue =
-																		isSelected
-																			? field.value?.filter(
-																					(
-																						id
-																					) =>
-																						id !==
-																						pkg.id
-																			  ) || []
-																			: [
-																					...(field.value ||
-																						[]),
-																					pkg.id,
-																			  ];
-																	field.onChange(
-																		newValue
-																	);
-																}}
-															>
-																<Checkbox
-																	checked={isSelected}
-																	onCheckedChange={() => {}}
-																/>
-																<div className="flex flex-col flex-1">
-																	<span className="text-sm">
-																		{pkg.name}
-																	</span>
-																	<span className="text-xs text-muted-foreground">
-																		{pkg.destination}{" "}
-																		• ₹{pkg.price}
-																	</span>
-																</div>
-															</div>
-														);
-													})}
+										<ScrollArea className="h-72">
+											<div className="p-2">
 												{packages.filter((pkg) =>
 													pkg.name
 														?.toLowerCase()
 														.includes(
 															consideredSearch.toLowerCase()
 														)
-												).length === 0 && (
-													<div className="px-2 py-6 text-center text-sm text-muted-foreground">
-														No package found.
+												).length > 0 ? (
+													<div className="space-y-1">
+														{packages
+															.filter((pkg) =>
+																pkg.name
+																	?.toLowerCase()
+																	.includes(
+																		consideredSearch.toLowerCase()
+																	)
+															)
+															.map((pkg) => {
+																const isSelected =
+																	field.value?.includes(
+																		pkg.id
+																	) || false;
+																return (
+																	<div
+																		key={pkg.id}
+																		className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer"
+																		onClick={(e) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																			const newValue =
+																				isSelected
+																					? field.value?.filter(
+																							(
+																								id
+																							) =>
+																								id !==
+																								pkg.id
+																					  ) ||
+																					  []
+																					: [
+																							...(field.value ||
+																								[]),
+																							pkg.id,
+																					  ];
+																			field.onChange(
+																				newValue
+																			);
+																		}}
+																	>
+																		<Checkbox
+																			checked={
+																				isSelected
+																			}
+																			onCheckedChange={() => {}}
+																		/>
+																		<div className="flex-1 min-w-0">
+																			<p className="text-sm font-medium truncate">
+																				{pkg.name}
+																			</p>
+																			<p className="text-xs text-muted-foreground">
+																				₹
+																				{
+																					pkg.price
+																				}
+																			</p>
+																		</div>
+																	</div>
+																);
+															})}
+													</div>
+												) : (
+													<div className="text-center py-4 text-muted-foreground">
+														No packages found
 													</div>
 												)}
 											</div>
