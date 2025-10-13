@@ -28,12 +28,15 @@ export class LeadService {
       where: {
         organizationId,
       },
-      relations: ['createdBy'],
+      relations: ['createdBy', 'preferredPackage'],
     });
   }
 
   async findOne(id: string): Promise<Lead | null> {
-    return this.leadRepository.findOne({ where: { id } });
+    return this.leadRepository.findOne({
+      where: { id },
+      relations: ['preferredPackage'],
+    });
   }
 
   async update(id: string, updateData: Partial<Lead>): Promise<Lead | null> {

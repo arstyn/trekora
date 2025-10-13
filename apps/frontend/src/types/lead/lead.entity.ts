@@ -10,4 +10,13 @@ export interface ILead {
 	createdAt: string;
 	updatedAt: string;
 	notes?: string;
+	preferredPackageId?: string;
+	consideredPackageIds?: string[];
+	numberOfPassengers: number;
+	preferredPackage?: {
+		id: string;
+		name: string;
+		destination: string;
+		price: number;
+	};
 }

@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -12,7 +15,9 @@ import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
 import type { ILead } from "@/types/lead/lead.entity";
 import { leadSchema, type LeadFormDTO } from "@/types/lead/lead.schema";
+import type { IPackages } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ChevronsUpDown, Package, Search, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -33,27 +38,62 @@ export function LeadForm({
 	setOpenCustomerCreateModal,
 }: LeadFormProps) {
 	const [loading, setLoading] = useState(false);
+	const [packages, setPackages] = useState<IPackages[]>([]);
+	const [openPackageSelect, setOpenPackageSelect] = useState(false);
+	const [openConsideredSelect, setOpenConsideredSelect] = useState(false);
+	const [packageSearch, setPackageSearch] = useState("");
+	const [consideredSearch, setConsideredSearch] = useState("");
 
 	const {
 		control,
 		handleSubmit,
 		reset,
+		watch,
 		formState: { errors },
-	} = useForm<LeadFormDTO>({
+	} = useForm({
 		resolver: zodResolver(leadSchema),
 		defaultValues: {
 			name: "",
 			company: "",
 			email: undefined,
 			phone: "",
-			status: "new",
+			status: "new" as const,
 			notes: "",
+			preferredPackageId: undefined,
+			consideredPackageIds: [],
+			numberOfPassengers: 1,
 		},
 	});
 
+	const consideredPackageIds = watch("consideredPackageIds");
+
+	// Fetch packages on component mount
+	useEffect(() => {
+		const fetchPackages = async () => {
+			try {
+				const res = await axiosInstance.get<IPackages[]>("/packages");
+				setPackages(res.data.filter((pkg) => pkg.status === "published"));
+			} catch (error) {
+				console.error("Failed to fetch packages:", error);
+				toast.error("Failed to load packages");
+			}
+		};
+		fetchPackages();
+	}, []);
+
 	useEffect(() => {
 		if (lead && !isCreating) {
-			reset(lead);
+			reset({
+				name: lead.name,
+				company: lead.company,
+				email: lead.email,
+				phone: lead.phone,
+				status: lead.status,
+				notes: lead.notes,
+				preferredPackageId: lead.preferredPackageId,
+				consideredPackageIds: lead.consideredPackageIds || [],
+				numberOfPassengers: lead.numberOfPassengers || 1,
+			});
 		} else if (isCreating) {
 			reset({
 				name: "",
@@ -62,6 +102,9 @@ export function LeadForm({
 				phone: "",
 				status: "new",
 				notes: "",
+				preferredPackageId: undefined,
+				consideredPackageIds: [],
+				numberOfPassengers: 1,
 			});
 		}
 	}, [lead, isCreating, reset]);
@@ -157,6 +200,296 @@ export function LeadForm({
 						/>
 					</div>
 				</div>
+
+				{/* Package Preferences Section */}
+				<div className="space-y-4 pt-4 border-t">
+					<div className="flex items-center gap-2 text-sm font-medium">
+						<Package className="size-4" />
+						<span>Package Preferences</span>
+					</div>
+
+					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+						{/* Preferred Package */}
+						<div className="space-y-2">
+							<Label htmlFor="preferredPackageId">Preferred Package</Label>
+							<Controller
+								name="preferredPackageId"
+								control={control}
+								render={({ field }) => (
+									<Popover
+										open={openPackageSelect}
+										onOpenChange={setOpenPackageSelect}
+									>
+										<PopoverTrigger asChild>
+											<Button
+												variant="outline"
+												role="combobox"
+												aria-expanded={openPackageSelect}
+												className="w-full justify-between"
+											>
+												{field.value
+													? packages.find(
+															(pkg) =>
+																pkg.id === field.value
+													  )?.name
+													: "Select package..."}
+												<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+											</Button>
+										</PopoverTrigger>
+										<PopoverContent className="w-[300px] p-0">
+											<div className="flex items-center border-b px-3">
+												<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+												<Input
+													placeholder="Search packages..."
+													className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-0 focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
+													value={packageSearch}
+													onChange={(e) =>
+														setPackageSearch(e.target.value)
+													}
+												/>
+											</div>
+											<ScrollArea className="max-h-64">
+												<div className="p-2">
+													<div
+														className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm"
+														onClick={() => {
+															field.onChange(undefined);
+															setOpenPackageSelect(false);
+															setPackageSearch("");
+														}}
+													>
+														<div className="h-4 w-4" />
+														<span className="text-sm">
+															None
+														</span>
+													</div>
+													{packages
+														.filter((pkg) =>
+															pkg.name
+																?.toLowerCase()
+																.includes(
+																	packageSearch.toLowerCase()
+																)
+														)
+														.map((pkg) => (
+															<div
+																key={pkg.id}
+																className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm"
+																onClick={() => {
+																	field.onChange(
+																		pkg.id
+																	);
+																	setOpenPackageSelect(
+																		false
+																	);
+																	setPackageSearch("");
+																}}
+															>
+																<div className="h-4 w-4 flex items-center justify-center">
+																	{field.value ===
+																		pkg.id && (
+																		<div className="h-2 w-2 rounded-full bg-primary" />
+																	)}
+																</div>
+																<div className="flex flex-col flex-1">
+																	<span className="text-sm">
+																		{pkg.name}
+																	</span>
+																	<span className="text-xs text-muted-foreground">
+																		{pkg.destination}{" "}
+																		• ₹{pkg.price}
+																	</span>
+																</div>
+															</div>
+														))}
+													{packages.filter((pkg) =>
+														pkg.name
+															?.toLowerCase()
+															.includes(
+																packageSearch.toLowerCase()
+															)
+													).length === 0 && (
+														<div className="px-2 py-6 text-center text-sm text-muted-foreground">
+															No package found.
+														</div>
+													)}
+												</div>
+											</ScrollArea>
+										</PopoverContent>
+									</Popover>
+								)}
+							/>
+							{errors.preferredPackageId && (
+								<span className="text-red-500 text-sm">
+									{errors.preferredPackageId.message}
+								</span>
+							)}
+						</div>
+
+						{/* Number of Passengers */}
+						<div className="space-y-2">
+							<Label htmlFor="numberOfPassengers">
+								<div className="flex items-center gap-2">
+									<Users className="size-4" />
+									Number of Passengers
+								</div>
+							</Label>
+							<Controller
+								name="numberOfPassengers"
+								control={control}
+								render={({ field }) => (
+									<Input
+										id="numberOfPassengers"
+										type="number"
+										min="1"
+										{...field}
+										onChange={(e) =>
+											field.onChange(
+												Number.parseInt(e.target.value) || 1
+											)
+										}
+									/>
+								)}
+							/>
+							{errors.numberOfPassengers && (
+								<span className="text-red-500 text-sm">
+									{errors.numberOfPassengers.message}
+								</span>
+							)}
+						</div>
+					</div>
+
+					{/* Considered Packages */}
+					<div className="space-y-2">
+						<Label htmlFor="consideredPackageIds">Considered Packages</Label>
+						<Controller
+							name="consideredPackageIds"
+							control={control}
+							render={({ field }) => (
+								<Popover
+									open={openConsideredSelect}
+									onOpenChange={setOpenConsideredSelect}
+								>
+									<PopoverTrigger asChild>
+										<Button
+											variant="outline"
+											role="combobox"
+											aria-expanded={openConsideredSelect}
+											className="w-full justify-between"
+										>
+											{field.value && field.value.length > 0
+												? `${field.value.length} package(s) selected`
+												: "Select packages..."}
+											<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+										</Button>
+									</PopoverTrigger>
+									<PopoverContent className="w-[400px] p-0">
+										<div className="flex items-center border-b px-3">
+											<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+											<Input
+												placeholder="Search packages..."
+												className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-0 focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
+												value={consideredSearch}
+												onChange={(e) =>
+													setConsideredSearch(e.target.value)
+												}
+											/>
+										</div>
+										<ScrollArea className="max-h-64">
+											<div className="p-2 space-y-1">
+												{packages
+													.filter((pkg) =>
+														pkg.name
+															?.toLowerCase()
+															.includes(
+																consideredSearch.toLowerCase()
+															)
+													)
+													.map((pkg) => {
+														const isSelected =
+															field.value?.includes(
+																pkg.id
+															) || false;
+														return (
+															<div
+																key={pkg.id}
+																className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm"
+																onClick={() => {
+																	const newValue =
+																		isSelected
+																			? field.value?.filter(
+																					(
+																						id
+																					) =>
+																						id !==
+																						pkg.id
+																			  ) || []
+																			: [
+																					...(field.value ||
+																						[]),
+																					pkg.id,
+																			  ];
+																	field.onChange(
+																		newValue
+																	);
+																}}
+															>
+																<Checkbox
+																	checked={isSelected}
+																	onCheckedChange={() => {}}
+																/>
+																<div className="flex flex-col flex-1">
+																	<span className="text-sm">
+																		{pkg.name}
+																	</span>
+																	<span className="text-xs text-muted-foreground">
+																		{pkg.destination}{" "}
+																		• ₹{pkg.price}
+																	</span>
+																</div>
+															</div>
+														);
+													})}
+												{packages.filter((pkg) =>
+													pkg.name
+														?.toLowerCase()
+														.includes(
+															consideredSearch.toLowerCase()
+														)
+												).length === 0 && (
+													<div className="px-2 py-6 text-center text-sm text-muted-foreground">
+														No package found.
+													</div>
+												)}
+											</div>
+										</ScrollArea>
+									</PopoverContent>
+								</Popover>
+							)}
+						/>
+						{errors.consideredPackageIds && (
+							<span className="text-red-500 text-sm">
+								{errors.consideredPackageIds.message}
+							</span>
+						)}
+						{consideredPackageIds && consideredPackageIds.length > 0 && (
+							<div className="flex flex-wrap gap-2 mt-2">
+								{consideredPackageIds.map((pkgId) => {
+									const pkg = packages.find((p) => p.id === pkgId);
+									return pkg ? (
+										<div
+											key={pkgId}
+											className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-secondary rounded-md"
+										>
+											{pkg.name}
+										</div>
+									) : null;
+								})}
+							</div>
+						)}
+					</div>
+				</div>
+
 				<div className="space-y-2">
 					<Label htmlFor="status">Status</Label>
 					<Controller

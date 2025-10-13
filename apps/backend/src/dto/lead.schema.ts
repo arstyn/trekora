@@ -8,6 +8,9 @@ export const leadSchema = z
     phone: z.string().optional(),
     status: z.enum(['new', 'contacted', 'qualified', 'lost', 'converted']),
     notes: z.string().optional(),
+    preferredPackageId: z.string().uuid().optional(),
+    consideredPackageIds: z.array(z.string().uuid()).optional(),
+    numberOfPassengers: z.number().int().min(1).default(1),
   })
   .strict();
 

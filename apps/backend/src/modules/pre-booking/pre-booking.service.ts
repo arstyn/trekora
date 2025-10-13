@@ -52,9 +52,10 @@ export class PreBookingService {
     await queryRunner.startTransaction();
 
     try {
-      // Validate lead exists
+      // Validate lead exists and load preferred package
       const lead = await this.leadRepository.findOne({
         where: { id: dto.leadId, organizationId },
+        relations: ['preferredPackage'],
       });
 
       if (!lead) {
@@ -76,17 +77,34 @@ export class PreBookingService {
       const preBookingNumber =
         await this.generatePreBookingNumber(organizationId);
 
+      // Calculate estimated amount if package is available
+      let estimatedAmount: number | undefined;
+      if (lead.preferredPackage && lead.numberOfPassengers) {
+        estimatedAmount = lead.preferredPackage.price * lead.numberOfPassengers;
+      }
+
+      // Determine initial status based on package selection
+      const initialStatus = lead.preferredPackageId
+        ? PreBookingStatus.CUSTOMER_DETAILS_PENDING
+        : PreBookingStatus.PENDING;
+
       // Create pre-booking with lead details
       const preBooking = queryRunner.manager.create(PreBooking, {
         preBookingNumber,
         leadId: dto.leadId,
-        status: PreBookingStatus.PENDING,
+        status: initialStatus,
         notes: dto.notes,
+        packageId: lead.preferredPackageId || undefined,
+        numberOfTravelers: lead.numberOfPassengers || 1,
+        estimatedAmount,
         temporaryCustomerDetails: {
           firstName: lead.name?.split(' ')[0] || 'N/A',
           lastName: lead.name?.split(' ').slice(1).join(' ') || 'N/A',
           email: lead.email || 'N/A',
           phone: lead.phone || 'N/A',
+        },
+        additionalDetails: {
+          consideredPackageIds: lead.consideredPackageIds || [],
         },
         createdById: userId,
         organizationId,
