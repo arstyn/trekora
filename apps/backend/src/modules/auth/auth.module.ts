@@ -14,6 +14,7 @@ import { UserInviteModule } from '../user-invite/user-invite.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { MailerModule } from '../mailer/mailer.module';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { MailerModule } from '../mailer/mailer.module';
     MailerModule,
     TypeOrmModule.forFeature([UserInvite, Employee, Organization, Role, User]),
   ],
-  providers: [AuthService],
+  providers: [AuthService, GoogleStrategy],
   controllers: [AuthController],
 })
 export class AuthModule {}

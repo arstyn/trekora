@@ -452,4 +452,100 @@ export class AuthService {
       html,
     });
   }
+
+  async googleLogin(req) {
+    if (!req.user) {
+      throw new UnauthorizedException('No user from google');
+    }
+
+    const { email, firstName, lastName } = req.user;
+
+    let user = await this.userService.findOneWithEmail(email);
+
+    if (!user) {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        // Create organization
+        const organization = queryRunner.manager.create(Organization, {
+          name: `${firstName}'s Organization`,
+          size: '1-10', // Default
+          industry: 'Other', // Default
+          domain: '',
+          description: 'Created via Google Login',
+        });
+
+        const savedOrganization = await queryRunner.manager.save(organization);
+
+        // Find admin role
+        const adminRole = await queryRunner.manager.findOne(Role, {
+          where: { name: 'admin' },
+        });
+        if (!adminRole) {
+          throw new Error('Admin role not found in database');
+        }
+
+        // Create user
+        const newUser = queryRunner.manager.create(User, {
+          name: `${firstName} ${lastName}`,
+          email: email,
+          organizationId: savedOrganization.id,
+          roleId: adminRole.id,
+          isActive: true, // Auto-activate Google users
+          notificationsEnabled: true,
+          newsletterSubscribed: false,
+        });
+
+        user = await queryRunner.manager.save(newUser);
+
+        // Create employee
+        const employee = queryRunner.manager.create(Employee, {
+          name: `${firstName} ${lastName}`,
+          email: email,
+          organizationId: savedOrganization.id,
+          userId: user.id,
+          roleId: adminRole.id,
+          status: EmployeeStatus.ACTIVE,
+          joinDate: new Date().toISOString(),
+          isActive: true,
+        });
+
+        await queryRunner.manager.save(employee);
+
+        await queryRunner.commitTransaction();
+      } catch (error) {
+        console.error('Google signup error:', error);
+        await queryRunner.rollbackTransaction();
+        throw error;
+      } finally {
+        await queryRunner.release();
+      }
+    }
+
+    // If user exists but is not active
+    if (!user.isActive) {
+      // Optional: Reactivate or throw error. For now, throw error.
+      throw new UnauthorizedException('User account is deactivated.');
+    }
+
+    const accessToken = this.generateAccessToken(
+      user.id,
+      user.organizationId || '',
+    );
+    const refreshToken = this.generateRefreshToken(
+      user.id,
+      user.organizationId || '',
+    );
+
+    return {
+      message: 'Login successful',
+      userId: user.id,
+      name: user.name,
+      role: user.role?.name,
+      accessToken,
+      refreshToken,
+    };
+  }
 }

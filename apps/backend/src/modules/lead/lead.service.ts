@@ -29,6 +29,14 @@ export class LeadService {
         organizationId,
       },
       relations: ['createdBy', 'preferredPackage'],
+      select: {
+        createdBy: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
     });
   }
 

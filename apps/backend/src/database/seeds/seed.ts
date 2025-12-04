@@ -55,6 +55,21 @@ const AppDataSource = new DataSource({
   ssl: databaseConfig.ssl_mode ? { rejectUnauthorized: false } : false,
 });
 
+async function tableExists(
+  queryRunner: any,
+  tableName: string,
+): Promise<boolean> {
+  const result = await queryRunner.query(
+    `SELECT EXISTS (
+      SELECT FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = $1
+    );`,
+    [tableName],
+  );
+  return result[0].exists;
+}
+
 async function seed() {
   await AppDataSource.initialize();
   console.log('Database connection initialized');
@@ -77,8 +92,14 @@ async function seed() {
     // Clear all tables in reverse order to handle foreign key constraints
     for (const entity of entities.reverse()) {
       const tableName = entity.tableName;
-      console.log(`Clearing table: ${tableName}`);
-      await queryRunner.query(`DELETE FROM "${tableName}";`);
+
+      // Check if table exists before attempting to delete
+      if (await tableExists(queryRunner, tableName)) {
+        console.log(`Clearing table: ${tableName}`);
+        await queryRunner.query(`DELETE FROM "${tableName}";`);
+      } else {
+        console.log(`Table ${tableName} does not exist, skipping...`);
+      }
     }
 
     // Re-enable foreign key checks
@@ -91,161 +112,224 @@ async function seed() {
       AppDataSource.getRepository(UserNotificationType);
 
     console.log('Seeding roles...');
-    for (const roleData of roles) {
-      const existingRole = await roleRepository.findOne({
-        where: { name: roleData.name },
-      });
+    const roleTableExists = await tableExists(queryRunner, 'role');
+    if (!roleTableExists) {
+      console.log('Role table does not exist, skipping role seeding...');
+    } else {
+      for (const roleData of roles) {
+        let existingRole: Role | null = null;
+        existingRole = await roleRepository.findOne({
+          where: { name: roleData.name },
+        });
 
-      if (!existingRole) {
-        const role = roleRepository.create(roleData);
-        await roleRepository.save(role);
-        console.log(`Created role: ${roleData.name}`);
-      } else {
-        console.log(`Role ${roleData.name} already exists`);
+        if (!existingRole) {
+          const role = roleRepository.create(roleData);
+          await roleRepository.save(role);
+          console.log(`Created role: ${roleData.name}`);
+        } else {
+          console.log(`Role ${roleData.name} already exists`);
+        }
       }
     }
 
     console.log('Seeding departments...');
-    for (const departmentData of departments) {
-      const existingDepartment = await departmentRepository.findOne({
-        where: { name: departmentData.name },
-      });
+    const departmentTableExists = await tableExists(queryRunner, 'department');
+    if (!departmentTableExists) {
+      console.log(
+        'Department table does not exist, skipping department seeding...',
+      );
+    } else {
+      for (const departmentData of departments) {
+        let existingDepartment: Department | null = null;
+        existingDepartment = await departmentRepository.findOne({
+          where: { name: departmentData.name },
+        });
 
-      if (!existingDepartment) {
-        const department = departmentRepository.create(departmentData);
-        await departmentRepository.save(department);
-        console.log(`Created department: ${departmentData.name}`);
-      } else {
-        console.log(`Department ${departmentData.name} already exists`);
+        if (!existingDepartment) {
+          const department = departmentRepository.create(departmentData);
+          await departmentRepository.save(department);
+          console.log(`Created department: ${departmentData.name}`);
+        } else {
+          console.log(`Department ${departmentData.name} already exists`);
+        }
       }
     }
 
     console.log('Seeding notification types...');
-    for (const user_notification_type of userNotificationType) {
-      const existingNotificationType =
-        await userNotificationTypeRepository.findOne({
-          where: { title: user_notification_type.title },
-        });
+    const notificationTypeTableExists = await tableExists(
+      queryRunner,
+      'user_notification_type',
+    );
+    if (!notificationTypeTableExists) {
+      console.log(
+        'User notification type table does not exist, skipping notification type seeding...',
+      );
+    } else {
+      for (const user_notification_type of userNotificationType) {
+        let existingNotificationType: UserNotificationType | null = null;
+        existingNotificationType = await userNotificationTypeRepository.findOne(
+          {
+            where: { title: user_notification_type.title },
+          },
+        );
 
-      if (!existingNotificationType) {
-        const notificationType = userNotificationTypeRepository.create(
-          user_notification_type,
-        );
-        await userNotificationTypeRepository.save(notificationType);
-        console.log(
-          `Created notification type: ${user_notification_type.title}`,
-        );
+        if (!existingNotificationType) {
+          const notificationType = userNotificationTypeRepository.create(
+            user_notification_type,
+          );
+          await userNotificationTypeRepository.save(notificationType);
+          console.log(
+            `Created notification type: ${user_notification_type.title}`,
+          );
+        } else {
+          console.log(
+            `Notification type ${user_notification_type.title} already exists`,
+          );
+        }
+      }
+    }
+
+    // Seed organizations
+    const organizationTableExists = await tableExists(
+      queryRunner,
+      'organization',
+    );
+    if (!organizationTableExists) {
+      console.log(
+        'Organization table does not exist, skipping organization seeding...',
+      );
+    } else {
+      for (const organization of organizations) {
+        // Create organization
+        const organizationData = queryRunner.manager.create(Organization, {
+          name: organization.name,
+          size: organization.size,
+          industry: organization.industry,
+          domain: organization.domain,
+          description: organization.description,
+        });
+        const savedOrganization =
+          await queryRunner.manager.save(organizationData);
+        console.log('Organization created:', savedOrganization.id);
+      }
+    }
+
+    // Find admin role (should exist after seeding roles above)
+    let adminRole: Role | null = null;
+    if (await tableExists(queryRunner, 'role')) {
+      adminRole = await queryRunner.manager.findOne(Role, {
+        where: { name: 'admin' },
+      });
+    }
+    if (!adminRole) {
+      console.log(
+        'Admin role not found, skipping user and employee seeding that requires admin role...',
+      );
+    } else {
+      // TypeScript now knows adminRole is not null after the check above
+
+      const userTableExists = await tableExists(queryRunner, 'user');
+      const employeeTableExists = await tableExists(queryRunner, 'employee');
+
+      if (userTableExists && employeeTableExists) {
+        for (const user of users) {
+          const org = await queryRunner.manager.findOne(Organization, {
+            where: { domain: user.organizationDomain },
+          });
+
+          if (!org) {
+            throw new Error('Organization not found in database');
+          }
+
+          // Create user
+          const hashedPassword = await bcrypt.hash(user.password, 10);
+          const newUser = queryRunner.manager.create(User, {
+            name: user.name,
+            email: user.email,
+            password: hashedPassword,
+            phone: user.phone,
+            organizationId: org.id,
+            roleId: adminRole!.id,
+            notificationsEnabled: user.notificationsEnabled,
+            newsletterSubscribed: user.newsletterSubscribed,
+          });
+
+          const savedUser = await queryRunner.manager.save(newUser);
+          console.log('User created:', savedUser.id);
+
+          // Create employee
+          const employee = queryRunner.manager.create(Employee, {
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            organizationId: org.id,
+            userId: savedUser.id,
+            roleId: adminRole!.id,
+            status: EmployeeStatus.ACTIVE,
+            joinDate: new Date().toISOString(),
+          });
+          const savedEmployee = await queryRunner.manager.save(employee);
+          console.log('Employee created:', savedEmployee.id);
+        }
       } else {
         console.log(
-          `Notification type ${user_notification_type.title} already exists`,
+          'User or employee table does not exist, skipping user/employee seeding...',
         );
       }
-    }
-
-    for (const organization of organizations) {
-      // Create organization
-      const organizationData = queryRunner.manager.create(Organization, {
-        name: organization.name,
-        size: organization.size,
-        industry: organization.industry,
-        domain: organization.domain,
-        description: organization.description,
-      });
-      const savedOrganization =
-        await queryRunner.manager.save(organizationData);
-      console.log('Organization created:', savedOrganization.id);
-    }
-
-    // Find admin role
-    const adminRole = await queryRunner.manager.findOne(Role, {
-      where: { name: 'admin' },
-    });
-    if (!adminRole) {
-      throw new Error('Admin role not found in database');
-    }
-
-    for (const user of users) {
-      const org = await queryRunner.manager.findOne(Organization, {
-        where: { domain: user.organizationDomain },
-      });
-
-      if (!org) {
-        throw new Error('Organization not found in database');
-      }
-
-      // Create user
-      const hashedPassword = await bcrypt.hash(user.password, 10);
-      const newUser = queryRunner.manager.create(User, {
-        name: user.name,
-        email: user.email,
-        password: hashedPassword,
-        phone: user.phone,
-        organizationId: org.id,
-        roleId: adminRole.id,
-        notificationsEnabled: user.notificationsEnabled,
-        newsletterSubscribed: user.newsletterSubscribed,
-      });
-
-      const savedUser = await queryRunner.manager.save(newUser);
-      console.log('User created:', savedUser.id);
-
-      // Create employee
-      const employee = queryRunner.manager.create(Employee, {
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        organizationId: org.id,
-        userId: savedUser.id,
-        roleId: adminRole.id,
-        status: EmployeeStatus.ACTIVE,
-        joinDate: new Date().toISOString(),
-      });
-      const savedEmployee = await queryRunner.manager.save(employee);
-      console.log('Employee created:', savedEmployee.id);
     }
 
     // Create additional employees
-    console.log('Seeding additional employees...');
-    for (const employeeData of additionalEmployees) {
-      const org = await queryRunner.manager.findOne(Organization, {
-        where: { domain: employeeData.organizationDomain },
-      });
+    const additionalEmployeeTableExists = await tableExists(
+      queryRunner,
+      'employee',
+    );
+    if (!additionalEmployeeTableExists) {
+      console.log(
+        'Employee table does not exist, skipping additional employee seeding...',
+      );
+    } else {
+      console.log('Seeding additional employees...');
+      for (const employeeData of additionalEmployees) {
+        const org = await queryRunner.manager.findOne(Organization, {
+          where: { domain: employeeData.organizationDomain },
+        });
 
-      if (!org) {
-        console.log(
-          `Organization not found for domain: ${employeeData.organizationDomain}`,
-        );
-        continue;
+        if (!org) {
+          console.log(
+            `Organization not found for domain: ${employeeData.organizationDomain}`,
+          );
+          continue;
+        }
+
+        const role = await queryRunner.manager.findOne(Role, {
+          where: { name: employeeData.roleName },
+        });
+
+        if (!role) {
+          console.log(`Role not found: ${employeeData.roleName}`);
+          continue;
+        }
+
+        const employee = queryRunner.manager.create(Employee, {
+          name: employeeData.name,
+          email: employeeData.email,
+          phone: employeeData.phone,
+          address: employeeData.address,
+          experience: employeeData.experience,
+          specialization: employeeData.specialization,
+          dateOfBirth: new Date(employeeData.dateOfBirth),
+          gender: employeeData.gender,
+          nationality: employeeData.nationality,
+          maritalStatus: employeeData.maritalStatus,
+          organizationId: org.id,
+          roleId: role.id,
+          status: employeeData.status,
+          joinDate: new Date().toISOString(),
+        });
+
+        const savedEmployee = await queryRunner.manager.save(employee);
+        console.log('Additional employee created:', savedEmployee.id);
       }
-
-      const role = await queryRunner.manager.findOne(Role, {
-        where: { name: employeeData.roleName },
-      });
-
-      if (!role) {
-        console.log(`Role not found: ${employeeData.roleName}`);
-        continue;
-      }
-
-      const employee = queryRunner.manager.create(Employee, {
-        name: employeeData.name,
-        email: employeeData.email,
-        phone: employeeData.phone,
-        address: employeeData.address,
-        experience: employeeData.experience,
-        specialization: employeeData.specialization,
-        dateOfBirth: new Date(employeeData.dateOfBirth),
-        gender: employeeData.gender,
-        nationality: employeeData.nationality,
-        maritalStatus: employeeData.maritalStatus,
-        organizationId: org.id,
-        roleId: role.id,
-        status: employeeData.status,
-        joinDate: new Date().toISOString(),
-      });
-
-      const savedEmployee = await queryRunner.manager.save(employee);
-      console.log('Additional employee created:', savedEmployee.id);
     }
 
     // Create branches

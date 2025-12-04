@@ -12,6 +12,7 @@ import Pricing from "@/pages/general/pricing";
 import Team from "@/pages/general/team";
 import Dashboard from "@/pages/user/dashboard";
 import { Leads } from "@/pages/user/leads/page";
+import LeadDetailsPage from "@/pages/user/leads/[id]/page";
 import CreatePackagePage from "@/pages/user/packages/create-package";
 import EditPackagePage from "@/pages/user/packages/edit-package";
 import Packages from "@/pages/user/packages/package-list";
@@ -36,65 +37,101 @@ import ResendActivationPage from "./pages/auth/resend-activation";
 import ActivateUserPage from "./pages/auth/activate-user-account";
 import { EmployeesPage } from "./pages/user/employees/employees-table";
 import PreBookingsPage from "./pages/user/pre-bookings/pre-bookings.page";
+import GoogleCallbackPage from "./pages/auth/google-callback";
 
 function AuthenticatedApp() {
-	// Add your dashboard and other protected routes here
-	return (
-		<SidebarProvider>
-			<AppSidebar variant="inset" />
-			<SidebarInset>
-				<SiteHeader />
-				<Routes>
-					<Route path="/" element={<Dashboard />} />
-					<Route path="/leads" element={<Leads />} />
-					<Route path="/pre-bookings" element={<PreBookingsPage />} />
-					<Route path="/packages" element={<Packages />} />
-					<Route path="/packages/create" element={<CreatePackagePage />} />
-					<Route path="/packages/edit/:id" element={<EditPackagePage />} />
-					<Route path="/packages/:id" element={<ViewPackagePage />} />
-					<Route path="/customers" element={<CustomerManagement />} />
-					<Route path="/settings" element={<SettingsPage />} />
-					<Route path="/employees" element={<EmployeesPage />} />
-					<Route path="/branches" element={<BranchPage />} />
-					<Route path="/batches" element={<BatchesPage />} />
-					<Route path="/batches/:id" element={<BatchDetailsPage />} />
-					<Route path="/batches/edit/:id" element={<EditBatchPage />} />
-					<Route path="/bookings" element={<BookingsPage />} />
-					<Route path="/bookings/:id" element={<BookingDetailsPage />} />
-					<Route path="/bookings/:id/edit" element={<EditBookingPage />} />
-					<Route path="/payments" element={<PaymentsPage />} />
-					<Route path="/payments/:id" element={<PaymentDetailsPage />} />
-					<Route path="/payments/:id/edit" element={<EditPaymentPage />} />
-					<Route path="/import" element={<ImportPage />} />
-				</Routes>
-			</SidebarInset>
-		</SidebarProvider>
-	);
+    // Add your dashboard and other protected routes here
+    return (
+        <SidebarProvider>
+            <AppSidebar variant="inset" />
+            <SidebarInset>
+                <SiteHeader />
+                <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/leads" element={<Leads />} />
+                    <Route path="/leads/:id" element={<LeadDetailsPage />} />
+                    <Route path="/pre-bookings" element={<PreBookingsPage />} />
+                    <Route path="/packages" element={<Packages />} />
+                    <Route
+                        path="/packages/create"
+                        element={<CreatePackagePage />}
+                    />
+                    <Route
+                        path="/packages/edit/:id"
+                        element={<EditPackagePage />}
+                    />
+                    <Route path="/packages/:id" element={<ViewPackagePage />} />
+                    <Route path="/customers" element={<CustomerManagement />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/employees" element={<EmployeesPage />} />
+                    <Route path="/branches" element={<BranchPage />} />
+                    <Route path="/batches" element={<BatchesPage />} />
+                    <Route path="/batches/:id" element={<BatchDetailsPage />} />
+                    <Route
+                        path="/batches/edit/:id"
+                        element={<EditBatchPage />}
+                    />
+                    <Route path="/bookings" element={<BookingsPage />} />
+                    <Route
+                        path="/bookings/:id"
+                        element={<BookingDetailsPage />}
+                    />
+                    <Route
+                        path="/bookings/:id/edit"
+                        element={<EditBookingPage />}
+                    />
+                    <Route path="/payments" element={<PaymentsPage />} />
+                    <Route
+                        path="/payments/:id"
+                        element={<PaymentDetailsPage />}
+                    />
+                    <Route
+                        path="/payments/:id/edit"
+                        element={<EditPaymentPage />}
+                    />
+                    <Route path="/import" element={<ImportPage />} />
+                </Routes>
+            </SidebarInset>
+        </SidebarProvider>
+    );
 }
 
 export default function App() {
-	const { isAuthenticated } = useAuth();
+    const { isAuthenticated } = useAuth();
 
-	if (isAuthenticated) {
-		return <AuthenticatedApp />;
-	}
+    if (isAuthenticated) {
+        return <AuthenticatedApp />;
+    }
 
-	return (
-		<>
-			<Navigation />
-			<Routes>
-				<Route path="/" element={<Home />} />
-				<Route path="/about" element={<About />} />
-				<Route path="/pricing" element={<Pricing />} />
-				<Route path="/team" element={<Team />} />
-				<Route path="/contact" element={<Contact />} />
-				<Route path="/login" element={<LoginPage />} />
-				<Route path="/signup" element={<Signup />} />
-				<Route path="/activate-account/:id" element={<ActivatePage />} />
-				<Route path="/activate-user-account/:id" element={<ActivateUserPage />} />
-				<Route path="/resend-activation" element={<ResendActivationPage />} />
-			</Routes>
-			<Footer />
-		</>
-	);
+    return (
+        <>
+            <Navigation />
+            <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/team" element={<Team />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route
+                    path="/activate-account/:id"
+                    element={<ActivatePage />}
+                />
+                <Route
+                    path="/activate-user-account/:id"
+                    element={<ActivateUserPage />}
+                />
+                <Route
+                    path="/resend-activation"
+                    element={<ResendActivationPage />}
+                />
+                <Route
+                    path="/google-callback"
+                    element={<GoogleCallbackPage />}
+                />
+            </Routes>
+            <Footer />
+        </>
+    );
 }

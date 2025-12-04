@@ -1,4 +1,15 @@
-import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  Patch,
+  Post,
+  Get,
+  UseGuards,
+  Req,
+  Res,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { ILoginDto } from 'src/dto/auth.types';
 import { SignupFormDTO } from 'src/dto/signup.schema';
@@ -60,6 +71,22 @@ export class AuthController {
       body.email,
       body.currentPassword,
       body.newPassword,
+    );
+  }
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth(@Req() req) {}
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req, @Res() res) {
+    const result = await this.authService.googleLogin(req);
+    // Redirect to frontend with token
+    // Assuming FRONTEND_URL is set in env, e.g., http://localhost:5173
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(
+      `${frontendUrl}/google-callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}&userId=${result.userId}&name=${encodeURIComponent(result.name)}&role=${result.role}`,
     );
   }
 }
