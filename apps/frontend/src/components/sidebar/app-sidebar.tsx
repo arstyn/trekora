@@ -7,6 +7,8 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import axiosInstance from "@/lib/axios";
+import type { IEmployee } from "@/types/employee.types";
 import {
     ArrowUpCircleIcon,
     Banknote,
@@ -19,18 +21,15 @@ import {
     LayoutDashboardIcon,
     ListIcon,
     SettingsIcon,
-    Split,
     Tickets,
     UsersIcon,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
 import { NavUser } from "./nav-user";
-import { useEffect, useState } from "react";
-import type { IEmployee } from "@/types/employee.types";
-import axiosInstance from "@/lib/axios";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const [userData, setUserData] = useState<IEmployee>();

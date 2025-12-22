@@ -1,44 +1,54 @@
-import type { IBooking } from '@/types/booking.types';
+import type { IBooking } from "@/types/booking.types";
 
 export interface InvoiceData {
-  booking: IBooking;
-  invoiceNumber: string;
-  invoiceDate: string;
-  dueDate?: string;
+    booking: IBooking;
+    invoiceNumber: string;
+    invoiceDate: string;
+    dueDate?: string;
 }
 
 export class InvoiceService {
-  // Generate invoice number based on booking
-  static generateInvoiceNumber(booking: IBooking): string {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    return `INV-${year}${month}-${booking.bookingNumber}`;
-  }
+    // Generate invoice number based on booking
+    static generateInvoiceNumber(booking: IBooking): string {
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        return `INV-${year}${month}-${booking.bookingNumber}`;
+    }
 
-  // Check if booking has completed payments
-  static hasCompletedPayments(booking: IBooking): boolean {
-    return booking.payments?.some(payment => payment.status === 'completed') ?? false;
-  }
+    // Check if booking has completed payments
+    static hasCompletedPayments(booking: IBooking): boolean {
+        return (
+            booking.payments?.some(
+                (payment) => payment.status === "completed"
+            ) ?? false
+        );
+    }
 
-  // Get completed payments only
-  static getCompletedPayments(booking: IBooking) {
-    return booking.payments?.filter(payment => payment.status === 'completed') ?? [];
-  }
+    // Get completed payments only
+    static getCompletedPayments(booking: IBooking) {
+        return (
+            booking.payments?.filter(
+                (payment) => payment.status === "completed"
+            ) ?? []
+        );
+    }
 
-  // Calculate total paid amount from completed payments
-  static getTotalPaidAmount(booking: IBooking): number {
-    return this.getCompletedPayments(booking)
-      .reduce((total, payment) => total + payment.amount, 0);
-  }
+    // Calculate total paid amount from completed payments
+    static getTotalPaidAmount(booking: IBooking): number {
+        return this.getCompletedPayments(booking).reduce(
+            (total, payment) => total + payment.amount,
+            0
+        );
+    }
 
-  // Generate HTML content for invoice
-  static generateInvoiceHTML(invoiceData: InvoiceData): string {
-    const { booking } = invoiceData;
-    const completedPayments = this.getCompletedPayments(booking);
-    const totalPaid = this.getTotalPaidAmount(booking);
+    // Generate HTML content for invoice
+    static generateInvoiceHTML(invoiceData: InvoiceData): string {
+        const { booking } = invoiceData;
+        const completedPayments = this.getCompletedPayments(booking);
+        const totalPaid = this.getTotalPaidAmount(booking);
 
-    return `
+        return `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -245,7 +255,9 @@ export class InvoiceService {
             <div class="invoice-details">
               <h2>INVOICE</h2>
               <p><strong>Invoice #:</strong> ${invoiceData.invoiceNumber}</p>
-              <p><strong>Date:</strong> ${new Date(invoiceData.invoiceDate).toLocaleDateString()}</p>
+              <p><strong>Date:</strong> ${new Date(
+                  invoiceData.invoiceDate
+              ).toLocaleDateString()}</p>
               <p><strong>Booking #:</strong> ${booking.bookingNumber}</p>
             </div>
           </div>
@@ -254,18 +266,25 @@ export class InvoiceService {
           <div class="billing-info">
             <div class="billing-section">
               <h3>Bill To:</h3>
-              <p><strong>${booking.customer.name}</strong></p>
-              <p>${booking.customer.email}</p>
-              <p>${booking.customer.phone}</p>
-              ${booking.customer.address ? `<p>${booking.customer.address}</p>` : ''}
+              
             </div>
             <div class="billing-section">
               <h3>Trip Details:</h3>
               <p><strong>Package:</strong> ${booking.package.name}</p>
-              ${booking.package.destination ? `<p><strong>Destination:</strong> ${booking.package.destination}</p>` : ''}
-              <p><strong>Travel Dates:</strong> ${new Date(booking.batch.startDate).toLocaleDateString()} - ${new Date(booking.batch.endDate).toLocaleDateString()}</p>
-              <p><strong>Passengers:</strong> ${booking.numberOfPassengers}</p>
-              <p><strong>Status:</strong> <span class="status-badge status-completed">${booking.status}</span></p>
+              ${
+                  booking.package.destination
+                      ? `<p><strong>Destination:</strong> ${booking.package.destination}</p>`
+                      : ""
+              }
+              <p><strong>Travel Dates:</strong> ${new Date(
+                  booking.batch.startDate
+              ).toLocaleDateString()} - ${new Date(
+            booking.batch.endDate
+        ).toLocaleDateString()}</p>
+              <p><strong>Passengers:</strong> ${booking.customers.length}</p>
+              <p><strong>Status:</strong> <span class="status-badge status-completed">${
+                  booking.status
+              }</span></p>
             </div>
           </div>
 
@@ -283,9 +302,11 @@ export class InvoiceService {
               <tr>
                 <td>
                   <strong>${booking.package.name}</strong><br>
-                  <small>${booking.package.description || 'Travel package'}</small>
+                  <small>${
+                      booking.package.description || "Travel package"
+                  }</small>
                 </td>
-                <td>${booking.numberOfPassengers}</td>
+                <td>${booking.customers.length}</td>
                 <td class="amount">$${booking.package.price.toLocaleString()}</td>
                 <td class="amount">$${booking.totalAmount.toLocaleString()}</td>
               </tr>
@@ -312,12 +333,16 @@ export class InvoiceService {
             </div>
             <div class="total-row">
               <span>Balance Due:</span>
-              <span style="color: ${booking.balanceAmount > 0 ? '#dc2626' : '#059669'};">$${booking.balanceAmount.toLocaleString()}</span>
+              <span style="color: ${
+                  booking.balanceAmount > 0 ? "#dc2626" : "#059669"
+              };">$${booking.balanceAmount.toLocaleString()}</span>
             </div>
           </div>
 
           <!-- Payment History -->
-          ${completedPayments.length > 0 ? `
+          ${
+              completedPayments.length > 0
+                  ? `
           <div class="payment-history">
             <h3>Payment History</h3>
             <table class="payment-table">
@@ -331,19 +356,33 @@ export class InvoiceService {
                 </tr>
               </thead>
               <tbody>
-                ${completedPayments.map(payment => `
+                ${completedPayments
+                    .map(
+                        (payment) => `
                 <tr>
-                  <td>${payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}</td>
-                  <td>${payment.paymentMethod.replace('_', ' ').toUpperCase()}</td>
-                  <td>${payment.paymentReference || 'N/A'}</td>
+                  <td>${
+                      payment.paymentDate
+                          ? new Date(payment.paymentDate).toLocaleDateString()
+                          : "N/A"
+                  }</td>
+                  <td>${payment.paymentMethod
+                      .replace("_", " ")
+                      .toUpperCase()}</td>
+                  <td>${payment.paymentReference || "N/A"}</td>
                   <td class="amount">$${payment.amount.toLocaleString()}</td>
-                  <td><span class="status-badge status-completed">${payment.status}</span></td>
+                  <td><span class="status-badge status-completed">${
+                      payment.status
+                  }</span></td>
                 </tr>
-                `).join('')}
+                `
+                    )
+                    .join("")}
               </tbody>
             </table>
           </div>
-          ` : ''}
+          `
+                  : ""
+          }
 
           <!-- Footer -->
           <div class="footer">
@@ -354,66 +393,68 @@ export class InvoiceService {
       </body>
       </html>
     `;
-  }
-
-  // Generate and download invoice
-  static async generateAndDownloadInvoice(booking: IBooking): Promise<void> {
-    if (!this.hasCompletedPayments(booking)) {
-      throw new Error('No completed payments found for this booking');
     }
 
-    const invoiceData: InvoiceData = {
-      booking,
-      invoiceNumber: this.generateInvoiceNumber(booking),
-      invoiceDate: new Date().toISOString(),
-    };
+    // Generate and download invoice
+    static async generateAndDownloadInvoice(booking: IBooking): Promise<void> {
+        if (!this.hasCompletedPayments(booking)) {
+            throw new Error("No completed payments found for this booking");
+        }
 
-    const htmlContent = this.generateInvoiceHTML(invoiceData);
-    
-    // Create a new window for printing/downloading
-    const printWindow = window.open('', '_blank');
-    
-    if (!printWindow) {
-      throw new Error('Popup blocked. Please allow popups for this site.');
+        const invoiceData: InvoiceData = {
+            booking,
+            invoiceNumber: this.generateInvoiceNumber(booking),
+            invoiceDate: new Date().toISOString(),
+        };
+
+        const htmlContent = this.generateInvoiceHTML(invoiceData);
+
+        // Create a new window for printing/downloading
+        const printWindow = window.open("", "_blank");
+
+        if (!printWindow) {
+            throw new Error(
+                "Popup blocked. Please allow popups for this site."
+            );
+        }
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+
+        // Wait for content to load, then trigger print dialog
+        printWindow.onload = () => {
+            setTimeout(() => {
+                printWindow.focus();
+                printWindow.print();
+                // Close the window after printing (optional)
+                // printWindow.close();
+            }, 500);
+        };
     }
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    // Alternative method using HTML5 download (saves as HTML file)
+    static downloadInvoiceAsHTML(booking: IBooking): void {
+        if (!this.hasCompletedPayments(booking)) {
+            throw new Error("No completed payments found for this booking");
+        }
 
-    // Wait for content to load, then trigger print dialog
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-        // Close the window after printing (optional)
-        // printWindow.close();
-      }, 500);
-    };
-  }
+        const invoiceData: InvoiceData = {
+            booking,
+            invoiceNumber: this.generateInvoiceNumber(booking),
+            invoiceDate: new Date().toISOString(),
+        };
 
-  // Alternative method using HTML5 download (saves as HTML file)
-  static downloadInvoiceAsHTML(booking: IBooking): void {
-    if (!this.hasCompletedPayments(booking)) {
-      throw new Error('No completed payments found for this booking');
+        const htmlContent = this.generateInvoiceHTML(invoiceData);
+
+        const blob = new Blob([htmlContent], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `invoice-${invoiceData.invoiceNumber}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
-
-    const invoiceData: InvoiceData = {
-      booking,
-      invoiceNumber: this.generateInvoiceNumber(booking),
-      invoiceDate: new Date().toISOString(),
-    };
-
-    const htmlContent = this.generateInvoiceHTML(invoiceData);
-    
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `invoice-${invoiceData.invoiceNumber}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-} 
+}

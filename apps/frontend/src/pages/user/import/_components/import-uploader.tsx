@@ -1,384 +1,413 @@
 "use client";
 
-import { useState, useRef } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import {
-  Upload,
-  FileSpreadsheet,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Users,
-  UserCheck,
-  Building2,
-  Loader2,
-} from "lucide-react";
-import { toast } from "sonner";
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import AxiosRequest from "@/lib/axios";
+import {
+    AlertCircle,
+    Building2,
+    CheckCircle,
+    FileSpreadsheet,
+    Loader2,
+    Upload,
+    UserCheck,
+    Users,
+    XCircle,
+} from "lucide-react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 interface ImportUploaderProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onImportComplete: (result: any) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onImportComplete: (result: any) => void;
 }
 
 interface ImportResult {
-  success: boolean;
-  totalRows: number;
-  importedRows: number;
-  failedRows: number;
-  errors: string[];
-  message: string;
+    success: boolean;
+    totalRows: number;
+    importedRows: number;
+    failedRows: number;
+    errors: string[];
+    message: string;
 }
 
 export function ImportUploader({ onImportComplete }: ImportUploaderProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [entityType, setEntityType] = useState<
-    "customer" | "lead" | "employee" | "branch"
-  >("customer");
-  const [updateExisting, setUpdateExisting] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [columnMapping, setColumnMapping] = useState<Record<string, string>>(
-    {}
-  );
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [showColumnMapping, setShowColumnMapping] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [entityType, setEntityType] = useState<
+        "customer" | "lead" | "employee" | "branch"
+    >("customer");
+    const [updateExisting, setUpdateExisting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [importResult, setImportResult] = useState<ImportResult | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const entityTypeOptions = [
-    { value: "customer", label: "Customers", icon: Users },
-    { value: "lead", label: "Leads", icon: UserCheck },
-    { value: "employee", label: "Employees", icon: Building2 },
-    { value: "branch", label: "Branches", icon: Building2 },
-  ];
+    const entityTypeOptions = [
+        { value: "customer", label: "Customers", icon: Users },
+        { value: "lead", label: "Leads", icon: UserCheck },
+        { value: "employee", label: "Employees", icon: Building2 },
+        { value: "branch", label: "Branches", icon: Building2 },
+    ];
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
-      const validTypes = [
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel",
-        "application/octet-stream", // Some Excel files might have this MIME type
-      ];
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            // Validate file type
+            const validTypes = [
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-excel",
+                "application/octet-stream", // Some Excel files might have this MIME type
+            ];
 
-      if (
-        !validTypes.includes(file.type) &&
-        !file.name.match(/\.(xlsx|xls)$/i)
-      ) {
-        toast.error("Please select a valid Excel file (.xlsx or .xls)");
-        return;
-      }
+            if (
+                !validTypes.includes(file.type) &&
+                !file.name.match(/\.(xlsx|xls)$/i)
+            ) {
+                toast.error("Please select a valid Excel file (.xlsx or .xls)");
+                return;
+            }
 
-      // Validate file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("File size must be less than 10MB");
-        return;
-      }
+            // Validate file size (10MB limit)
+            if (file.size > 10 * 1024 * 1024) {
+                toast.error("File size must be less than 10MB");
+                return;
+            }
 
-      setSelectedFile(file);
-      setImportResult(null);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      toast.error("Please select a file to upload");
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("entityType", entityType);
-      formData.append("updateExisting", updateExisting.toString());
-      if (Object.keys(columnMapping).length > 0) {
-        formData.append("columnMapping", JSON.stringify(columnMapping));
-      }
-
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      const response = await AxiosRequest.post(
-        "/import/upload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+            setSelectedFile(file);
+            setImportResult(null);
         }
-      );
+    };
 
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            toast.error("Please select a file to upload");
+            return;
+        }
 
-      setImportResult(response?.data);
-      onImportComplete(response?.data);
+        setIsUploading(true);
+        setUploadProgress(0);
 
-      if (response?.data?.success) {
-        toast.success(response?.data?.message);
-      } else {
-        toast.error(`Import completed with ${response?.data?.failedRows || 0} errors`);
-      }
+        try {
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+            formData.append("entityType", entityType);
+            formData.append("updateExisting", updateExisting.toString());
 
-      // Reset form
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast.error(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (error as any)?.response?.data?.message || "Failed to upload file"
-      );
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  };
+            // Simulate progress
+            const progressInterval = setInterval(() => {
+                setUploadProgress((prev) => {
+                    if (prev >= 90) {
+                        clearInterval(progressInterval);
+                        return prev;
+                    }
+                    return prev + 10;
+                });
+            }, 200);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+            const response = await AxiosRequest.post(
+                "/import/upload",
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      const event = {
-        target: { files: [file] },
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleFileSelect(event);
-    }
-  };
+            clearInterval(progressInterval);
+            setUploadProgress(100);
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" />
-            Upload Excel File
-          </CardTitle>
-          <CardDescription>
-            Select an Excel file and choose the data type to import
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* File Upload Area */}
-          <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
+            setImportResult(response?.data);
+            onImportComplete(response?.data);
 
-            {selectedFile ? (
-              <div className="space-y-2">
-                <FileSpreadsheet className="w-12 h-12 mx-auto text-green-500" />
-                <div>
-                  <p className="font-medium">{selectedFile.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Upload className="w-12 h-12 mx-auto text-gray-400" />
-                <div>
-                  <p className="font-medium">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Excel files (.xlsx, .xls) up to 10MB
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+            if (response?.data?.success) {
+                toast.success(response?.data?.message);
+            } else {
+                toast.error(
+                    `Import completed with ${
+                        response?.data?.failedRows || 0
+                    } errors`
+                );
+            }
 
-          {/* Import Options */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="entity-type">Data Type</Label>
-              <Select
-                value={entityType}
+            // Reset form
+            setSelectedFile(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+            toast.error(
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                onValueChange={(value: any) => setEntityType(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select data type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {entityTypeOptions.map((option) => {
-                    const Icon = option.icon;
-                    return (
-                      <SelectItem key={option.value} value={option.value}>
-                        <div className="flex items-center gap-2">
-                          <Icon className="w-4 h-4" />
-                          {option.label}
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
+                (error as any)?.response?.data?.message ||
+                    "Failed to upload file"
+            );
+        } finally {
+            setIsUploading(false);
+            setUploadProgress(0);
+        }
+    };
 
-            <div className="space-y-2">
-              <Label>Import Options</Label>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="update-existing"
-                  checked={updateExisting}
-                  onCheckedChange={(checked) =>
-                    setUpdateExisting(checked as boolean)
-                  }
-                />
-                <Label htmlFor="update-existing" className="text-sm">
-                  Update existing records
-                </Label>
-              </div>
-            </div>
-          </div>
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
 
-          {/* Upload Progress */}
-          {isUploading && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Uploading and processing...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <Progress value={uploadProgress} className="w-full" />
-            </div>
-          )}
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            const event = {
+                target: { files: [file] },
+            } as unknown as React.ChangeEvent<HTMLInputElement>;
+            handleFileSelect(event);
+        }
+    };
 
-          {/* Import Button */}
-          <Button
-            onClick={handleUpload}
-            disabled={!selectedFile || isUploading}
-            className="w-full"
-            size="lg"
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                Import Data
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Upload className="w-5 h-5" />
+                        Upload Excel File
+                    </CardTitle>
+                    <CardDescription>
+                        Select an Excel file and choose the data type to import
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {/* File Upload Area */}
+                    <div
+                        className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />
 
-      {/* Import Results */}
-      {importResult && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {importResult.success ? (
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              ) : (
-                <XCircle className="w-5 h-5 text-red-500" />
-              )}
-              Import Results
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold text-blue-600">
-                  {importResult.totalRows}
-                </p>
-                <p className="text-sm text-muted-foreground">Total Rows</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-green-600">
-                  {importResult.importedRows}
-                </p>
-                <p className="text-sm text-muted-foreground">Imported</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-red-600">
-                  {importResult.failedRows}
-                </p>
-                <p className="text-sm text-muted-foreground">Failed</p>
-              </div>
-            </div>
-
-            <p className="text-sm">{importResult.message}</p>
-
-            {importResult?.errors?.length > 0 && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p className="font-medium">
-                      Errors ({importResult.errors.length}):
-                    </p>
-                    <div className="max-h-32 overflow-y-auto space-y-1">
-                      {importResult.errors.slice(0, 5).map((error, index) => (
-                        <p key={index} className="text-xs text-red-600">
-                          {error}
-                        </p>
-                      ))}
-                      {importResult.errors.length > 5 && (
-                        <p className="text-xs text-muted-foreground">
-                          ... and {importResult.errors.length - 5} more errors
-                        </p>
-                      )}
+                        {selectedFile ? (
+                            <div className="space-y-2">
+                                <FileSpreadsheet className="w-12 h-12 mx-auto text-green-500" />
+                                <div>
+                                    <p className="font-medium">
+                                        {selectedFile.name}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {(
+                                            selectedFile.size /
+                                            1024 /
+                                            1024
+                                        ).toFixed(2)}{" "}
+                                        MB
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <Upload className="w-12 h-12 mx-auto text-gray-400" />
+                                <div>
+                                    <p className="font-medium">
+                                        Click to upload or drag and drop
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Excel files (.xlsx, .xls) up to 10MB
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                  </div>
-                </AlertDescription>
-              </Alert>
+
+                    {/* Import Options */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="entity-type">Data Type</Label>
+                            <Select
+                                value={entityType}
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                onValueChange={(value: any) =>
+                                    setEntityType(value)
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select data type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {entityTypeOptions.map((option) => {
+                                        const Icon = option.icon;
+                                        return (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={option.value}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <Icon className="w-4 h-4" />
+                                                    {option.label}
+                                                </div>
+                                            </SelectItem>
+                                        );
+                                    })}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Import Options</Label>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="update-existing"
+                                    checked={updateExisting}
+                                    onCheckedChange={(checked) =>
+                                        setUpdateExisting(checked as boolean)
+                                    }
+                                />
+                                <Label
+                                    htmlFor="update-existing"
+                                    className="text-sm"
+                                >
+                                    Update existing records
+                                </Label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Upload Progress */}
+                    {isUploading && (
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                                <span>Uploading and processing...</span>
+                                <span>{uploadProgress}%</span>
+                            </div>
+                            <Progress
+                                value={uploadProgress}
+                                className="w-full"
+                            />
+                        </div>
+                    )}
+
+                    {/* Import Button */}
+                    <Button
+                        onClick={handleUpload}
+                        disabled={!selectedFile || isUploading}
+                        className="w-full"
+                        size="lg"
+                    >
+                        {isUploading ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Processing...
+                            </>
+                        ) : (
+                            <>
+                                <Upload className="w-4 h-4 mr-2" />
+                                Import Data
+                            </>
+                        )}
+                    </Button>
+                </CardContent>
+            </Card>
+
+            {/* Import Results */}
+            {importResult && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            {importResult.success ? (
+                                <CheckCircle className="w-5 h-5 text-green-500" />
+                            ) : (
+                                <XCircle className="w-5 h-5 text-red-500" />
+                            )}
+                            Import Results
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <p className="text-2xl font-bold text-blue-600">
+                                    {importResult.totalRows}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    Total Rows
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-green-600">
+                                    {importResult.importedRows}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    Imported
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-red-600">
+                                    {importResult.failedRows}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    Failed
+                                </p>
+                            </div>
+                        </div>
+
+                        <p className="text-sm">{importResult.message}</p>
+
+                        {importResult?.errors?.length > 0 && (
+                            <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>
+                                    <div className="space-y-2">
+                                        <p className="font-medium">
+                                            Errors ({importResult.errors.length}
+                                            ):
+                                        </p>
+                                        <div className="max-h-32 overflow-y-auto space-y-1">
+                                            {importResult.errors
+                                                .slice(0, 5)
+                                                .map((error, index) => (
+                                                    <p
+                                                        key={index}
+                                                        className="text-xs text-red-600"
+                                                    >
+                                                        {error}
+                                                    </p>
+                                                ))}
+                                            {importResult.errors.length > 5 && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    ... and{" "}
+                                                    {importResult.errors
+                                                        .length - 5}{" "}
+                                                    more errors
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                    </CardContent>
+                </Card>
             )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+        </div>
+    );
 }
