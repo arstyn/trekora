@@ -9,7 +9,7 @@ export default () => ({
     database: process.env.DB_NAME || 'postgres',
     sync: process.env.DB_SYNC || false,
     ssl_mode: process.env.NODE_ENV
-      ? process.env.NODE_ENV === 'prod'
+      ? process.env.NODE_ENV === 'production'
         ? true
         : false
       : false,
@@ -20,7 +20,7 @@ export default () => ({
   },
   app: {
     isProduction: process.env.NODE_ENV
-      ? process.env.NODE_ENV === 'prod'
+      ? process.env.NODE_ENV === 'production'
         ? true
         : false
       : false,
