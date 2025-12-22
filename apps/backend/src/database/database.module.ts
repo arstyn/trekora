@@ -30,11 +30,24 @@ export const DatabaseModule = TypeOrmModule.forRootAsync({
             extra: {
               max: 10,
               idleTimeoutMillis: 30000,
+              ssl: {
+                rejectUnauthorized: true,
+                ca: fs
+                  .readFileSync('/etc/ssl/certs/global-bundle.pem')
+                  .toString(),
+              },
             },
           }
         : {
             ssl: {
               rejectUnauthorized: false,
+            },
+            extra: {
+              max: 10,
+              idleTimeoutMillis: 30000,
+              ssl: {
+                rejectUnauthorized: false,
+              },
             },
           }),
     };
