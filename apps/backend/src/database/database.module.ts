@@ -19,21 +19,24 @@ export const DatabaseModule = TypeOrmModule.forRootAsync({
       migrationsRun: true,
       logging: ['error', 'query', 'schema'],
       synchronize: databaseConfig.sync,
-      extra: {
-        max: 10,
-        idleTimeoutMillis: 30000,
-      },
-      ...(databaseConfig.isProduction === 'true' &&
-        databaseConfig.ssl_mode === 'true' && {
-          ssl: {
-            rejectUnauthorized: true,
-            ca: fs.readFileSync('/etc/ssl/certs/global-bundle.pem').toString(),
-          },
-          extra: {
-            max: 10,
-            idleTimeoutMillis: 30000,
-          },
-        }),
+      ...(databaseConfig.ssl_mode === true
+        ? {
+            ssl: {
+              rejectUnauthorized: true,
+              ca: fs
+                .readFileSync('/etc/ssl/certs/global-bundle.pem')
+                .toString(),
+            },
+            extra: {
+              max: 10,
+              idleTimeoutMillis: 30000,
+            },
+          }
+        : {
+            ssl: {
+              rejectUnauthorized: false,
+            },
+          }),
     };
   },
 });

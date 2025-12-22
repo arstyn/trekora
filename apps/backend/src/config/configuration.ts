@@ -8,8 +8,8 @@ export default () => ({
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'postgres',
     sync: process.env.DB_SYNC || false,
-    ssl_mode: process.env.NODE_ENV
-      ? process.env.NODE_ENV === 'production'
+    ssl_mode: process.env.DB_SSL_MODE
+      ? process.env.DB_SSL_MODE === 'true'
         ? true
         : false
       : false,
