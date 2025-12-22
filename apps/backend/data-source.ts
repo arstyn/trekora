@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
+import * as fs from 'fs';
+
+const sslMode = process.env.DB_SSL_MODE === 'true';
 
 export default new DataSource({
   type: 'postgres',
@@ -14,4 +17,20 @@ export default new DataSource({
 
   synchronize: false, // never true in prod
   logging: false,
+
+  // SSL configuration
+  ...(sslMode
+    ? {
+        ssl: fs.existsSync('/etc/ssl/certs/global-bundle.pem')
+          ? {
+              rejectUnauthorized: true,
+              ca: fs
+                .readFileSync('/etc/ssl/certs/global-bundle.pem')
+                .toString(),
+            }
+          : {
+              rejectUnauthorized: false,
+            },
+      }
+    : {}),
 });
