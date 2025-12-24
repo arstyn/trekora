@@ -1,5 +1,12 @@
 # Release Notes
 
+All notable changes to Trekora will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
 ## Version 0.0.1 (Beta) - Initial Production Release
 
 **Release Date:** [Current Date]
@@ -69,3 +76,11 @@ We're excited to announce the first production release of Trekora! This beta ver
 ---
 
 **Next Steps**: Continue monitoring production usage, gather feedback, and iterate on improvements for future releases.
+
+---
+
+## [Unreleased]
+
+### Planned Features
+
+-   Additional features and improvements coming in future releases

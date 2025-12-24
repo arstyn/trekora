@@ -262,6 +262,29 @@ When making changes to the application, you must update the version numbers in t
     - Click **Create Tag**
     - Push the tag to GitHub: **Repository** → **Push Tags...** (or it will be included when you push your branch)
 
+6. Create a GitHub Release (Recommended):
+
+    After pushing the tag, create a release on GitHub:
+
+    - Go to your repository on GitHub.com
+    - Click on **Releases** (on the right sidebar or in the repository menu)
+    - Click **Draft a new release**
+    - Select the tag you just created (e.g., `v0.0.2`)
+    - Set the release title (e.g., "Version 0.0.2 (Beta)")
+    - **Copy the release notes**: In `RELEASE_NOTES.md`, copy the entire section for your version (from `## Version X.X.X` down to the next `---` separator or end of that version's section)
+    - Paste the copied notes into the release description field
+    - Check **Set as the latest release** (if this is your newest version)
+    - Click **Publish release**
+
+    **Example**: For version 0.0.1, copy everything from `## Version 0.0.1 (Beta) - Initial Production Release` down to (but not including) the `---` separator at the end of that section.
+
+    **Note:** Creating a GitHub Release is recommended as it:
+
+    - Makes your releases visible on the GitHub releases page
+    - Provides a clear changelog for users
+    - Allows you to attach release notes and assets
+    - Makes it easier to track version history
+
 ### Important Notes
 
 -   **Always update both backend and frontend versions** to keep them in sync
