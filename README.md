@@ -245,7 +245,22 @@ When making changes to the application, you must update the version numbers in t
 2. Update version in both `package.json` files
 3. Update `RELEASE_NOTES.md` with the new version and changes
 4. Commit with message: `chore: bump version to 0.0.2`
-5. Tag the release: `git tag v0.0.2`
+5. Tag the release:
+
+    **Using Command Line:**
+
+    ```bash
+    git tag v0.0.2
+    git push origin v0.0.2
+    ```
+
+    **Using GitHub Desktop:**
+
+    - After committing your changes, go to **Repository** → **Create Tag...** (or press `Ctrl+Shift+T` / `Cmd+Shift+T`)
+    - Enter the tag name: `v0.0.2`
+    - Optionally add a description (e.g., "Version 0.0.2 - Bug fixes and improvements")
+    - Click **Create Tag**
+    - Push the tag to GitHub: **Repository** → **Push Tags...** (or it will be included when you push your branch)
 
 ### Important Notes
 
