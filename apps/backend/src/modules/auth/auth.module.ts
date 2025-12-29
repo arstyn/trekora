@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Employee } from 'src/database/entity/employee.entity';
@@ -15,6 +15,10 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { MailerModule } from '../mailer/mailer.module';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { PermissionModule } from '../permission/permission.module';
+import { RolesGuard } from './guard/roles.guard';
+import { PermissionGuard } from './guard/permission.guard';
+import { AuthGuard } from './guard/auth.guard';
 
 @Module({
   imports: [
@@ -25,9 +29,17 @@ import { GoogleStrategy } from './strategies/google.strategy';
     RoleModule,
     EmployeeModule,
     MailerModule,
+    forwardRef(() => PermissionModule),
     TypeOrmModule.forFeature([UserInvite, Employee, Organization, Role, User]),
   ],
-  providers: [AuthService, GoogleStrategy],
+  providers: [
+    AuthService,
+    GoogleStrategy,
+    AuthGuard,
+    RolesGuard,
+    PermissionGuard,
+  ],
   controllers: [AuthController],
+  exports: [AuthGuard, RolesGuard, PermissionGuard],
 })
 export class AuthModule {}

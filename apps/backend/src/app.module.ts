@@ -31,6 +31,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { ImportModule } from './modules/import/import.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PreBookingModule } from './modules/pre-booking/pre-booking.module';
+import { PermissionModule } from './modules/permission/permission.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { PreBookingModule } from './modules/pre-booking/pre-booking.module';
     DatabaseModule,
     ScheduleModule.forRoot(),
     UserModule,
+    PermissionModule,
     AuthModule,
     OrganizationModule,
     RoleModule,

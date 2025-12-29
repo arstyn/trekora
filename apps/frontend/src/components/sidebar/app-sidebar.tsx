@@ -21,6 +21,7 @@ import {
     LayoutDashboardIcon,
     ListIcon,
     SettingsIcon,
+    Shield,
     Tickets,
     UsersIcon,
 } from "lucide-react";
@@ -30,9 +31,11 @@ import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
 import { NavUser } from "./nav-user";
+import { useHasRole } from "@/hooks/use-permissions";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const [userData, setUserData] = useState<IEmployee>();
+    const { hasRole: isAdmin } = useHasRole("admin");
 
     useEffect(() => {
         const getProfile = async () => {
@@ -111,6 +114,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             },
         ],
         navSecondary: [
+            ...(isAdmin
+                ? [
+                      {
+                          title: "Permission Sets",
+                          url: "/permission-sets",
+                          icon: Shield,
+                      },
+                  ]
+                : []),
             {
                 title: "Settings",
                 url: "/settings",

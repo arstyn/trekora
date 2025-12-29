@@ -26,6 +26,7 @@ import { Transportation } from '../entity/package-related/transportations.entity
 import { Role } from '../entity/role.entity';
 import { UserNotificationType } from '../entity/user-notification-type.entity';
 import { User } from '../entity/user.entity';
+import { Permission } from '../entity/permission.entity';
 import { batches } from './batch.seed';
 import { branches } from './branch.seed';
 import { customers } from './customer.seed';
@@ -37,6 +38,9 @@ import { packages } from './package.seed';
 import { roles } from './role.seed';
 import { userNotificationType } from './user-notification-type.seed';
 import { users } from './user.seed';
+import { permissions } from './permission.seed';
+import { PermissionSet } from '../entity/permission-set.entity';
+import { PermissionSetPermission } from '../entity/permission-set-permission.entity';
 
 config();
 
@@ -128,6 +132,30 @@ async function seed() {
           console.log(`Created role: ${roleData.name}`);
         } else {
           console.log(`Role ${roleData.name} already exists`);
+        }
+      }
+    }
+
+    console.log('Seeding permissions...');
+    const permissionTableExists = await tableExists(queryRunner, 'permission');
+    const permissionRepository = queryRunner.manager.getRepository(Permission);
+    if (!permissionTableExists) {
+      console.log(
+        'Permission table does not exist, skipping permission seeding...',
+      );
+    } else {
+      for (const permissionData of permissions) {
+        let existingPermission: Permission | null = null;
+        existingPermission = await permissionRepository.findOne({
+          where: { name: permissionData.name },
+        });
+
+        if (!existingPermission) {
+          const permission = permissionRepository.create(permissionData);
+          await permissionRepository.save(permission);
+          console.log(`Created permission: ${permissionData.name}`);
+        } else {
+          console.log(`Permission ${permissionData.name} already exists`);
         }
       }
     }
@@ -856,6 +884,94 @@ async function seed() {
         await queryRunner.manager.update(Customer, savedCustomer.id, {
           aadhaarIdPhotos: aadhaarIdPhotoIds,
         });
+      }
+    }
+
+    // Create default permission sets for all organizations
+    console.log('Creating default permission sets for organizations...');
+    const permissionSetTableExists = await tableExists(
+      queryRunner,
+      'permission_set',
+    );
+    const permissionSetRepository =
+      queryRunner.manager.getRepository(PermissionSet);
+    const permissionSetPermissionRepository = queryRunner.manager.getRepository(
+      PermissionSetPermission,
+    );
+
+    if (!permissionSetTableExists) {
+      console.log(
+        'Permission set table does not exist, skipping permission set creation...',
+      );
+    } else {
+      const organizations = await queryRunner.manager.find(Organization);
+      const { defaultPermissionSets } = await import(
+        '../../modules/permission/default-permission-sets'
+      );
+
+      // Get all permissions as a map for quick lookup
+      const allPermissions = await permissionRepository.find();
+      const permissionMap = new Map(allPermissions.map((p) => [p.name, p.id]));
+
+      for (const org of organizations) {
+        // Create permission sets for each role (admin, manager, employee)
+        for (const [roleName, config] of Object.entries(
+          defaultPermissionSets,
+        )) {
+          // Check if permission set already exists
+          const existingSet = await permissionSetRepository.findOne({
+            where: {
+              name: config.name,
+              organizationId: org.id,
+            },
+          });
+
+          if (existingSet) {
+            console.log(
+              `Permission set "${config.name}" already exists for organization ${org.id}, skipping...`,
+            );
+            continue;
+          }
+
+          // Create permission set
+          const permissionSet = permissionSetRepository.create({
+            name: config.name,
+            description: config.description,
+            organizationId: org.id,
+          });
+          const savedPermissionSet =
+            await permissionSetRepository.save(permissionSet);
+
+          // Find permission IDs for this permission set
+          const permissionIds: string[] = [];
+          for (const permissionName of config.permissionNames) {
+            const permissionId = permissionMap.get(permissionName);
+            if (permissionId) {
+              permissionIds.push(permissionId);
+            } else {
+              console.warn(
+                `Permission ${permissionName} not found, skipping for ${roleName} permission set`,
+              );
+            }
+          }
+
+          // Create permission_set_permission entries
+          if (permissionIds.length > 0) {
+            const permissionSetPermissions = permissionIds.map((permissionId) =>
+              permissionSetPermissionRepository.create({
+                permissionSetId: savedPermissionSet.id,
+                permissionId,
+              }),
+            );
+            await permissionSetPermissionRepository.save(
+              permissionSetPermissions,
+            );
+          }
+
+          console.log(
+            `Created permission set "${config.name}" for organization ${org.id} with ${permissionIds.length} permissions`,
+          );
+        }
       }
     }
 

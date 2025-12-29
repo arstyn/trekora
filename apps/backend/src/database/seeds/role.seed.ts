@@ -11,8 +11,4 @@ export const roles = [
     name: 'employee',
     description: 'Employee with access to their own data and tasks',
   },
-  {
-    name: 'user',
-    description: 'Regular user with limited access',
-  },
 ];

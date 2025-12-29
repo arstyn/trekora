@@ -20,6 +20,8 @@ import { EmployeeService } from '../employee/employee.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { UserService } from '../user/user.service';
 import { MailerService } from '../mailer/mailer.service';
+import { PermissionSetService } from '../permission/permission-set.service';
+import { PermissionService } from '../permission/permission.service';
 
 @Injectable()
 export class AuthService {
@@ -40,16 +42,28 @@ export class AuthService {
     private readonly employeeService: EmployeeService,
     private readonly dataSource: DataSource,
     private readonly mailerService: MailerService,
+    private readonly permissionSetService: PermissionSetService,
+    private readonly permissionService: PermissionService,
   ) {}
 
-  private generateAccessToken(userId: string, organizationId: string): string {
-    return jwt.sign(
-      { userId, organizationId },
-      process.env.JWT_ACCESS_SECRET as string,
-      {
-        expiresIn: process.env.JWT_ACCESS_SECRET_EXPIRATION ?? '15m', // Access token expires in 15 minutes
-      },
-    );
+  private async generateAccessToken(
+    userId: string,
+    organizationId: string,
+  ): Promise<string> {
+    // Fetch user to get role
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['role'],
+    });
+
+    const payload: any = { userId, organizationId };
+    if (user?.role) {
+      payload.role = user.role.name;
+    }
+
+    return jwt.sign(payload, process.env.JWT_ACCESS_SECRET as string, {
+      expiresIn: process.env.JWT_ACCESS_SECRET_EXPIRATION ?? '15m', // Access token expires in 15 minutes
+    });
   }
 
   private generateRefreshToken(userId: string, organizationId: string): string {
@@ -76,7 +90,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      const newAccessToken = this.generateAccessToken(
+      const newAccessToken = await this.generateAccessToken(
         user.id,
         user.organizationId,
       );
@@ -214,6 +228,30 @@ export class AuthService {
       await queryRunner.commitTransaction();
       console.log('Transaction committed successfully');
 
+      // Create default permission sets for the organization
+      try {
+        const existingPermissions = await this.permissionService.findAll();
+        if (existingPermissions.length === 0) {
+          console.log(
+            'No permissions found, skipping default permission sets creation',
+          );
+          console.log(
+            'Please run the migration to seed permissions first, then permission sets will be created automatically for new organizations',
+          );
+        } else {
+          await this.permissionSetService.createDefaultPermissionSetsForOrganization(
+            savedOrganization.id,
+          );
+          console.log('Default permission sets created for organization');
+        }
+      } catch (error) {
+        console.error(
+          'Error creating default permission sets (non-critical):',
+          error,
+        );
+        // Don't fail the signup if permission sets creation fails
+      }
+
       const invite = await this.userInviteService.createInvite(employee);
 
       await this.sendActivationEmail(userData.email, invite.token);
@@ -254,7 +292,10 @@ export class AuthService {
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) throw new UnauthorizedException('Invalid credentials');
 
-    const accessToken = this.generateAccessToken(user.id, user.organizationId);
+    const accessToken = await this.generateAccessToken(
+      user.id,
+      user.organizationId,
+    );
     const refreshToken = this.generateRefreshToken(
       user.id,
       user.organizationId,
@@ -515,6 +556,27 @@ export class AuthService {
         await queryRunner.manager.save(employee);
 
         await queryRunner.commitTransaction();
+        console.log('Google signup transaction committed successfully');
+
+        // Create default permission sets for the organization
+        try {
+          const existingPermissions = await this.permissionService.findAll();
+          if (existingPermissions.length === 0) {
+            console.log(
+              'No permissions found, skipping default permission sets creation',
+            );
+          } else {
+            await this.permissionSetService.createDefaultPermissionSetsForOrganization(
+              savedOrganization.id,
+            );
+            console.log('Default permission sets created for organization');
+          }
+        } catch (error) {
+          console.error(
+            'Error creating default permission sets (non-critical):',
+            error,
+          );
+        }
       } catch (error) {
         console.error('Google signup error:', error);
         await queryRunner.rollbackTransaction();
@@ -530,7 +592,7 @@ export class AuthService {
       throw new UnauthorizedException('User account is deactivated.');
     }
 
-    const accessToken = this.generateAccessToken(
+    const accessToken = await this.generateAccessToken(
       user.id,
       user.organizationId || '',
     );
