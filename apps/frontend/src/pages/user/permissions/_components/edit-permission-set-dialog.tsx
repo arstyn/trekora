@@ -158,7 +158,7 @@ export function EditPermissionSetDialog({
                                     Loading permissions...
                                 </div>
                             ) : (
-                                <ScrollArea className="h-[400px] border rounded-md p-4">
+                                <ScrollArea className="h-[200px] border rounded-md p-4">
                                     <div className="space-y-4">
                                         {Object.entries(
                                             permissionsByResource

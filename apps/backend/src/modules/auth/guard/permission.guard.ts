@@ -19,7 +19,7 @@ export class PermissionGuard implements CanActivate {
     private reflector: Reflector,
     @Inject(forwardRef(() => PermissionCheckService))
     private permissionCheckService: PermissionCheckService,
-  ) {}
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const permissionMetadata =
@@ -27,6 +27,7 @@ export class PermissionGuard implements CanActivate {
         context.getHandler(),
         context.getClass(),
       ]);
+
 
     if (!permissionMetadata) {
       return true; // No permission requirement, allow access

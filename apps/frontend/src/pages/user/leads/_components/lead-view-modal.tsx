@@ -24,7 +24,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosInstance from "@/lib/axios";
-import { preBookingService } from "@/services/pre-booking.service";
 import type { ILead, ILeadStatus } from "@/types/lead/lead.entity";
 import type { IPackages } from "@/types/package.schema";
 import { format } from "date-fns";
@@ -58,7 +57,6 @@ export function ViewLeadDialog({
     onEdit,
 }: ViewLeadDialogProps) {
     const [showEditForm, setShowEditForm] = useState(false);
-    const [isConverting, setIsConverting] = useState(false);
     const [packages, setPackages] = useState<IPackages[]>([]);
     const [isSavingPackagePreferences, setIsSavingPackagePreferences] =
         useState(false);
@@ -162,25 +160,6 @@ export function ViewLeadDialog({
         }
     };
 
-    const handleConvertToPreBooking = async () => {
-        try {
-            setIsConverting(true);
-            const preBooking = await preBookingService.convertLeadToPreBooking({
-                leadId: lead.id,
-            });
-            toast.success("Lead converted to pre-booking successfully!");
-            onOpenChange(false);
-            navigate(`/pre-bookings?selected=${preBooking.id}`);
-        } catch (error) {
-            if (error instanceof Error) {
-                toast.error(error.message);
-            } else {
-                toast.error("Failed to convert lead to pre-booking");
-            }
-        } finally {
-            setIsConverting(false);
-        }
-    };
 
     return (
         <Dialog
@@ -241,290 +220,147 @@ export function ViewLeadDialog({
                                 {/* Package Preferences Section - Editable */}
                                 {(lead.status === "qualified" ||
                                     lead.status === "converted") && (
-                                    <>
-                                        <Separator className="my-4" />
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center justify-between text-base">
-                                                    <div className="flex items-center gap-2">
-                                                        <Package className="h-4 w-4" />
-                                                        Package Preferences
-                                                    </div>
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={
-                                                            handleSavePackagePreferences
-                                                        }
-                                                        disabled={
-                                                            isSavingPackagePreferences
-                                                        }
-                                                        className="h-8"
-                                                    >
-                                                        <Save className="h-3 w-3 mr-1" />
-                                                        {isSavingPackagePreferences
-                                                            ? "Saving..."
-                                                            : "Save"}
-                                                    </Button>
-                                                </CardTitle>
-                                                <CardDescription>
-                                                    Edit package selection and
-                                                    travel details
-                                                </CardDescription>
-                                            </CardHeader>
-                                            <CardContent className="space-y-4">
-                                                {/* Number of Passengers */}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="numberOfPassengers">
+                                        <>
+                                            <Separator className="my-4" />
+                                            <Card>
+                                                <CardHeader>
+                                                    <CardTitle className="flex items-center justify-between text-base">
                                                         <div className="flex items-center gap-2">
-                                                            <Users className="size-4" />
-                                                            Number of Passengers
+                                                            <Package className="h-4 w-4" />
+                                                            Package Preferences
                                                         </div>
-                                                    </Label>
-                                                    <Input
-                                                        id="numberOfPassengers"
-                                                        type="number"
-                                                        min="1"
-                                                        value={
-                                                            numberOfPassengers
-                                                        }
-                                                        onChange={(e) =>
-                                                            setNumberOfPassengers(
-                                                                Number.parseInt(
-                                                                    e.target
-                                                                        .value
-                                                                ) || 1
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-
-                                                {/* Preferred Package */}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="preferredPackageId">
-                                                        Preferred Package
-                                                    </Label>
-                                                    <Popover
-                                                        open={openPackageSelect}
-                                                        onOpenChange={
-                                                            setOpenPackageSelect
-                                                        }
-                                                    >
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                variant="outline"
-                                                                role="combobox"
-                                                                aria-expanded={
-                                                                    openPackageSelect
-                                                                }
-                                                                className="w-full justify-between"
-                                                            >
-                                                                {preferredPackageId
-                                                                    ? packages.find(
-                                                                          (
-                                                                              pkg
-                                                                          ) =>
-                                                                              pkg.id ===
-                                                                              preferredPackageId
-                                                                      )?.name
-                                                                    : "Select package..."}
-                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent
-                                                            className="w-[400px] p-0"
-                                                            align="start"
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={
+                                                                handleSavePackagePreferences
+                                                            }
+                                                            disabled={
+                                                                isSavingPackagePreferences
+                                                            }
+                                                            className="h-8"
                                                         >
-                                                            <div className="p-3 border-b">
-                                                                <div className="relative">
-                                                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                                    <Input
-                                                                        placeholder="Search packages..."
-                                                                        value={
-                                                                            packageSearch
-                                                                        }
-                                                                        onChange={(
-                                                                            e
-                                                                        ) =>
-                                                                            setPackageSearch(
-                                                                                e
-                                                                                    .target
-                                                                                    .value
-                                                                            )
-                                                                        }
-                                                                        className="pl-8"
-                                                                    />
-                                                                </div>
+                                                            <Save className="h-3 w-3 mr-1" />
+                                                            {isSavingPackagePreferences
+                                                                ? "Saving..."
+                                                                : "Save"}
+                                                        </Button>
+                                                    </CardTitle>
+                                                    <CardDescription>
+                                                        Edit package selection and
+                                                        travel details
+                                                    </CardDescription>
+                                                </CardHeader>
+                                                <CardContent className="space-y-4">
+                                                    {/* Number of Passengers */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="numberOfPassengers">
+                                                            <div className="flex items-center gap-2">
+                                                                <Users className="size-4" />
+                                                                Number of Passengers
                                                             </div>
-                                                            <ScrollArea className="h-72">
-                                                                <div className="p-2">
-                                                                    {packages.filter(
-                                                                        (pkg) =>
-                                                                            pkg.name
-                                                                                ?.toLowerCase()
-                                                                                .includes(
-                                                                                    packageSearch.toLowerCase()
+                                                        </Label>
+                                                        <Input
+                                                            id="numberOfPassengers"
+                                                            type="number"
+                                                            min="1"
+                                                            value={
+                                                                numberOfPassengers
+                                                            }
+                                                            onChange={(e) =>
+                                                                setNumberOfPassengers(
+                                                                    Number.parseInt(
+                                                                        e.target
+                                                                            .value
+                                                                    ) || 1
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+
+                                                    {/* Preferred Package */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="preferredPackageId">
+                                                            Preferred Package
+                                                        </Label>
+                                                        <Popover
+                                                            open={openPackageSelect}
+                                                            onOpenChange={
+                                                                setOpenPackageSelect
+                                                            }
+                                                        >
+                                                            <PopoverTrigger asChild>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    role="combobox"
+                                                                    aria-expanded={
+                                                                        openPackageSelect
+                                                                    }
+                                                                    className="w-full justify-between"
+                                                                >
+                                                                    {preferredPackageId
+                                                                        ? packages.find(
+                                                                            (
+                                                                                pkg
+                                                                            ) =>
+                                                                                pkg.id ===
+                                                                                preferredPackageId
+                                                                        )?.name
+                                                                        : "Select package..."}
+                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent
+                                                                className="w-[400px] p-0"
+                                                                align="start"
+                                                            >
+                                                                <div className="p-3 border-b">
+                                                                    <div className="relative">
+                                                                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                                        <Input
+                                                                            placeholder="Search packages..."
+                                                                            value={
+                                                                                packageSearch
+                                                                            }
+                                                                            onChange={(
+                                                                                e
+                                                                            ) =>
+                                                                                setPackageSearch(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value
                                                                                 )
-                                                                    ).length >
-                                                                    0 ? (
-                                                                        <div className="space-y-1">
-                                                                            {packages
-                                                                                .filter(
-                                                                                    (
-                                                                                        pkg
-                                                                                    ) =>
-                                                                                        pkg.name
-                                                                                            ?.toLowerCase()
-                                                                                            .includes(
-                                                                                                packageSearch.toLowerCase()
-                                                                                            )
-                                                                                )
-                                                                                .map(
-                                                                                    (
-                                                                                        pkg
-                                                                                    ) => (
-                                                                                        <div
-                                                                                            key={
-                                                                                                pkg.id
-                                                                                            }
-                                                                                            className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer"
-                                                                                            onClick={(
-                                                                                                e
-                                                                                            ) => {
-                                                                                                e.preventDefault();
-                                                                                                e.stopPropagation();
-                                                                                                setPreferredPackageId(
-                                                                                                    pkg.id
-                                                                                                );
-                                                                                                setOpenPackageSelect(
-                                                                                                    false
-                                                                                                );
-                                                                                                setPackageSearch(
-                                                                                                    ""
-                                                                                                );
-                                                                                            }}
-                                                                                        >
-                                                                                            <div className="flex-1 min-w-0">
-                                                                                                <p className="text-sm font-medium truncate">
-                                                                                                    {
-                                                                                                        pkg.name
-                                                                                                    }
-                                                                                                </p>
-                                                                                                <p className="text-xs text-muted-foreground">
-                                                                                                    ₹
-                                                                                                    {
-                                                                                                        pkg.price
-                                                                                                    }
-                                                                                                </p>
-                                                                                            </div>
-                                                                                            {preferredPackageId ===
-                                                                                                pkg.id && (
-                                                                                                <Check className="h-4 w-4 text-primary" />
-                                                                                            )}
-                                                                                        </div>
+                                                                            }
+                                                                            className="pl-8"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <ScrollArea className="h-72">
+                                                                    <div className="p-2">
+                                                                        {packages.filter(
+                                                                            (pkg) =>
+                                                                                pkg.name
+                                                                                    ?.toLowerCase()
+                                                                                    .includes(
+                                                                                        packageSearch.toLowerCase()
                                                                                     )
-                                                                                )}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="text-center py-4 text-muted-foreground">
-                                                                            No
-                                                                            packages
-                                                                            found
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </ScrollArea>
-                                                        </PopoverContent>
-                                                    </Popover>
-                                                </div>
-
-                                                {/* Considered Packages */}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="consideredPackageIds">
-                                                        Considered Packages
-                                                    </Label>
-                                                    <Popover
-                                                        open={
-                                                            openConsideredSelect
-                                                        }
-                                                        onOpenChange={
-                                                            setOpenConsideredSelect
-                                                        }
-                                                    >
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                variant="outline"
-                                                                role="combobox"
-                                                                aria-expanded={
-                                                                    openConsideredSelect
-                                                                }
-                                                                className="w-full justify-between"
-                                                            >
-                                                                {consideredPackageIds &&
-                                                                consideredPackageIds.length >
-                                                                    0
-                                                                    ? `${consideredPackageIds.length} package(s) selected`
-                                                                    : "Select packages..."}
-                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent
-                                                            className="w-[400px] p-0"
-                                                            align="start"
-                                                        >
-                                                            <div className="p-3 border-b">
-                                                                <div className="relative">
-                                                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                                    <Input
-                                                                        placeholder="Search packages..."
-                                                                        value={
-                                                                            consideredSearch
-                                                                        }
-                                                                        onChange={(
-                                                                            e
-                                                                        ) =>
-                                                                            setConsideredSearch(
-                                                                                e
-                                                                                    .target
-                                                                                    .value
-                                                                            )
-                                                                        }
-                                                                        className="pl-8"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                            <ScrollArea className="h-72">
-                                                                <div className="p-2">
-                                                                    {packages.filter(
-                                                                        (pkg) =>
-                                                                            pkg.name
-                                                                                ?.toLowerCase()
-                                                                                .includes(
-                                                                                    consideredSearch.toLowerCase()
-                                                                                )
-                                                                    ).length >
-                                                                    0 ? (
-                                                                        <div className="space-y-1">
-                                                                            {packages
-                                                                                .filter(
-                                                                                    (
-                                                                                        pkg
-                                                                                    ) =>
-                                                                                        pkg.name
-                                                                                            ?.toLowerCase()
-                                                                                            .includes(
-                                                                                                consideredSearch.toLowerCase()
-                                                                                            )
-                                                                                )
-                                                                                .map(
-                                                                                    (
-                                                                                        pkg
-                                                                                    ) => {
-                                                                                        const isSelected =
-                                                                                            consideredPackageIds?.includes(
-                                                                                                pkg.id
-                                                                                            ) ||
-                                                                                            false;
-                                                                                        return (
+                                                                        ).length >
+                                                                            0 ? (
+                                                                            <div className="space-y-1">
+                                                                                {packages
+                                                                                    .filter(
+                                                                                        (
+                                                                                            pkg
+                                                                                        ) =>
+                                                                                            pkg.name
+                                                                                                ?.toLowerCase()
+                                                                                                .includes(
+                                                                                                    packageSearch.toLowerCase()
+                                                                                                )
+                                                                                    )
+                                                                                    .map(
+                                                                                        (
+                                                                                            pkg
+                                                                                        ) => (
                                                                                             <div
                                                                                                 key={
                                                                                                     pkg.id
@@ -535,32 +371,17 @@ export function ViewLeadDialog({
                                                                                                 ) => {
                                                                                                     e.preventDefault();
                                                                                                     e.stopPropagation();
-                                                                                                    const newValue =
-                                                                                                        isSelected
-                                                                                                            ? consideredPackageIds?.filter(
-                                                                                                                  (
-                                                                                                                      id
-                                                                                                                  ) =>
-                                                                                                                      id !==
-                                                                                                                      pkg.id
-                                                                                                              ) ||
-                                                                                                              []
-                                                                                                            : [
-                                                                                                                  ...(consideredPackageIds ||
-                                                                                                                      []),
-                                                                                                                  pkg.id,
-                                                                                                              ];
-                                                                                                    setConsideredPackageIds(
-                                                                                                        newValue
+                                                                                                    setPreferredPackageId(
+                                                                                                        pkg.id
+                                                                                                    );
+                                                                                                    setOpenPackageSelect(
+                                                                                                        false
+                                                                                                    );
+                                                                                                    setPackageSearch(
+                                                                                                        ""
                                                                                                     );
                                                                                                 }}
                                                                                             >
-                                                                                                <Checkbox
-                                                                                                    checked={
-                                                                                                        isSelected
-                                                                                                    }
-                                                                                                    onCheckedChange={() => {}}
-                                                                                                />
                                                                                                 <div className="flex-1 min-w-0">
                                                                                                     <p className="text-sm font-medium truncate">
                                                                                                         {
@@ -574,103 +395,261 @@ export function ViewLeadDialog({
                                                                                                         }
                                                                                                     </p>
                                                                                                 </div>
+                                                                                                {preferredPackageId ===
+                                                                                                    pkg.id && (
+                                                                                                        <Check className="h-4 w-4 text-primary" />
+                                                                                                    )}
                                                                                             </div>
-                                                                                        );
+                                                                                        )
+                                                                                    )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="text-center py-4 text-muted-foreground">
+                                                                                No
+                                                                                packages
+                                                                                found
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </ScrollArea>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </div>
+
+                                                    {/* Considered Packages */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="consideredPackageIds">
+                                                            Considered Packages
+                                                        </Label>
+                                                        <Popover
+                                                            open={
+                                                                openConsideredSelect
+                                                            }
+                                                            onOpenChange={
+                                                                setOpenConsideredSelect
+                                                            }
+                                                        >
+                                                            <PopoverTrigger asChild>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    role="combobox"
+                                                                    aria-expanded={
+                                                                        openConsideredSelect
+                                                                    }
+                                                                    className="w-full justify-between"
+                                                                >
+                                                                    {consideredPackageIds &&
+                                                                        consideredPackageIds.length >
+                                                                        0
+                                                                        ? `${consideredPackageIds.length} package(s) selected`
+                                                                        : "Select packages..."}
+                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent
+                                                                className="w-[400px] p-0"
+                                                                align="start"
+                                                            >
+                                                                <div className="p-3 border-b">
+                                                                    <div className="relative">
+                                                                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                                        <Input
+                                                                            placeholder="Search packages..."
+                                                                            value={
+                                                                                consideredSearch
+                                                                            }
+                                                                            onChange={(
+                                                                                e
+                                                                            ) =>
+                                                                                setConsideredSearch(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value
+                                                                                )
+                                                                            }
+                                                                            className="pl-8"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <ScrollArea className="h-72">
+                                                                    <div className="p-2">
+                                                                        {packages.filter(
+                                                                            (pkg) =>
+                                                                                pkg.name
+                                                                                    ?.toLowerCase()
+                                                                                    .includes(
+                                                                                        consideredSearch.toLowerCase()
+                                                                                    )
+                                                                        ).length >
+                                                                            0 ? (
+                                                                            <div className="space-y-1">
+                                                                                {packages
+                                                                                    .filter(
+                                                                                        (
+                                                                                            pkg
+                                                                                        ) =>
+                                                                                            pkg.name
+                                                                                                ?.toLowerCase()
+                                                                                                .includes(
+                                                                                                    consideredSearch.toLowerCase()
+                                                                                                )
+                                                                                    )
+                                                                                    .map(
+                                                                                        (
+                                                                                            pkg
+                                                                                        ) => {
+                                                                                            const isSelected =
+                                                                                                consideredPackageIds?.includes(
+                                                                                                    pkg.id
+                                                                                                ) ||
+                                                                                                false;
+                                                                                            return (
+                                                                                                <div
+                                                                                                    key={
+                                                                                                        pkg.id
+                                                                                                    }
+                                                                                                    className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer"
+                                                                                                    onClick={(
+                                                                                                        e
+                                                                                                    ) => {
+                                                                                                        e.preventDefault();
+                                                                                                        e.stopPropagation();
+                                                                                                        const newValue =
+                                                                                                            isSelected
+                                                                                                                ? consideredPackageIds?.filter(
+                                                                                                                    (
+                                                                                                                        id
+                                                                                                                    ) =>
+                                                                                                                        id !==
+                                                                                                                        pkg.id
+                                                                                                                ) ||
+                                                                                                                []
+                                                                                                                : [
+                                                                                                                    ...(consideredPackageIds ||
+                                                                                                                        []),
+                                                                                                                    pkg.id,
+                                                                                                                ];
+                                                                                                        setConsideredPackageIds(
+                                                                                                            newValue
+                                                                                                        );
+                                                                                                    }}
+                                                                                                >
+                                                                                                    <Checkbox
+                                                                                                        checked={
+                                                                                                            isSelected
+                                                                                                        }
+                                                                                                        onCheckedChange={() => { }}
+                                                                                                    />
+                                                                                                    <div className="flex-1 min-w-0">
+                                                                                                        <p className="text-sm font-medium truncate">
+                                                                                                            {
+                                                                                                                pkg.name
+                                                                                                            }
+                                                                                                        </p>
+                                                                                                        <p className="text-xs text-muted-foreground">
+                                                                                                            ₹
+                                                                                                            {
+                                                                                                                pkg.price
+                                                                                                            }
+                                                                                                        </p>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            );
+                                                                                        }
+                                                                                    )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="text-center py-4 text-muted-foreground">
+                                                                                No
+                                                                                packages
+                                                                                found
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </ScrollArea>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                        {consideredPackageIds &&
+                                                            consideredPackageIds.length >
+                                                            0 && (
+                                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                                    {consideredPackageIds.map(
+                                                                        (pkgId) => {
+                                                                            const pkg =
+                                                                                packages.find(
+                                                                                    (
+                                                                                        p
+                                                                                    ) =>
+                                                                                        p.id ===
+                                                                                        pkgId
+                                                                                );
+                                                                            return pkg ? (
+                                                                                <div
+                                                                                    key={
+                                                                                        pkgId
                                                                                     }
-                                                                                )}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="text-center py-4 text-muted-foreground">
-                                                                            No
-                                                                            packages
-                                                                            found
-                                                                        </div>
+                                                                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-secondary rounded-md"
+                                                                                >
+                                                                                    {
+                                                                                        pkg.name
+                                                                                    }
+                                                                                </div>
+                                                                            ) : null;
+                                                                        }
                                                                     )}
                                                                 </div>
-                                                            </ScrollArea>
-                                                        </PopoverContent>
-                                                    </Popover>
-                                                    {consideredPackageIds &&
-                                                        consideredPackageIds.length >
-                                                            0 && (
-                                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                                {consideredPackageIds.map(
-                                                                    (pkgId) => {
-                                                                        const pkg =
-                                                                            packages.find(
-                                                                                (
-                                                                                    p
-                                                                                ) =>
-                                                                                    p.id ===
-                                                                                    pkgId
-                                                                            );
-                                                                        return pkg ? (
-                                                                            <div
-                                                                                key={
-                                                                                    pkgId
-                                                                                }
-                                                                                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-secondary rounded-md"
-                                                                            >
-                                                                                {
-                                                                                    pkg.name
-                                                                                }
-                                                                            </div>
-                                                                        ) : null;
-                                                                    }
-                                                                )}
+                                                            )}
+                                                    </div>
+
+                                                    {/* Estimated Total */}
+                                                    {preferredPackageId &&
+                                                        numberOfPassengers && (
+                                                            <div className="pt-2 border-t">
+                                                                <div className="flex items-center justify-between text-sm">
+                                                                    <span className="font-medium">
+                                                                        Estimated
+                                                                        Total:
+                                                                    </span>
+                                                                    <span className="text-lg font-bold flex items-center gap-1">
+                                                                        <IndianRupee className="h-4 w-4" />
+                                                                        {(
+                                                                            Number(
+                                                                                packages.find(
+                                                                                    (
+                                                                                        p
+                                                                                    ) =>
+                                                                                        p.id ===
+                                                                                        preferredPackageId
+                                                                                )
+                                                                                    ?.price ||
+                                                                                0
+                                                                            ) *
+                                                                            numberOfPassengers
+                                                                        ).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground mt-1">
+                                                                    Based on{" "}
+                                                                    {
+                                                                        numberOfPassengers
+                                                                    }{" "}
+                                                                    {numberOfPassengers ===
+                                                                        1
+                                                                        ? "passenger"
+                                                                        : "passengers"}{" "}
+                                                                    × ₹
+                                                                    {packages.find(
+                                                                        (p) =>
+                                                                            p.id ===
+                                                                            preferredPackageId
+                                                                    )?.price || 0}
+                                                                </p>
                                                             </div>
                                                         )}
-                                                </div>
-
-                                                {/* Estimated Total */}
-                                                {preferredPackageId &&
-                                                    numberOfPassengers && (
-                                                        <div className="pt-2 border-t">
-                                                            <div className="flex items-center justify-between text-sm">
-                                                                <span className="font-medium">
-                                                                    Estimated
-                                                                    Total:
-                                                                </span>
-                                                                <span className="text-lg font-bold flex items-center gap-1">
-                                                                    <IndianRupee className="h-4 w-4" />
-                                                                    {(
-                                                                        Number(
-                                                                            packages.find(
-                                                                                (
-                                                                                    p
-                                                                                ) =>
-                                                                                    p.id ===
-                                                                                    preferredPackageId
-                                                                            )
-                                                                                ?.price ||
-                                                                                0
-                                                                        ) *
-                                                                        numberOfPassengers
-                                                                    ).toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-xs text-muted-foreground mt-1">
-                                                                Based on{" "}
-                                                                {
-                                                                    numberOfPassengers
-                                                                }{" "}
-                                                                {numberOfPassengers ===
-                                                                1
-                                                                    ? "passenger"
-                                                                    : "passengers"}{" "}
-                                                                × ₹
-                                                                {packages.find(
-                                                                    (p) =>
-                                                                        p.id ===
-                                                                        preferredPackageId
-                                                                )?.price || 0}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                            </CardContent>
-                                        </Card>
-                                    </>
-                                )}
+                                                </CardContent>
+                                            </Card>
+                                        </>
+                                    )}
                             </div>
 
                             {/* Status Strip */}
@@ -698,9 +677,8 @@ export function ViewLeadDialog({
                                         <Button
                                             key={status}
                                             className="rounded-none flex-1 cursor-pointer"
-                                            variant={`${
-                                                isUpcoming ? "ghost" : "default"
-                                            }`}
+                                            variant={`${isUpcoming ? "ghost" : "default"
+                                                }`}
                                             onClick={() =>
                                                 updateLeadStatus(
                                                     status as ILeadStatus
@@ -743,16 +721,7 @@ export function ViewLeadDialog({
                                 </TabsContent>
                             </Tabs>
 
-                            <div className="pt-4 pr-4 flex justify-between gap-2 border-t">
-                                <Button
-                                    variant="default"
-                                    onClick={handleConvertToPreBooking}
-                                    disabled={isConverting}
-                                >
-                                    {isConverting
-                                        ? "Converting..."
-                                        : "Convert to Pre-Booking"}
-                                </Button>
+                            <div className="pt-4 pr-4 flex justify-end gap-2 border-t">
                                 <div className="flex gap-2">
                                     <Button
                                         variant="secondary"

@@ -49,6 +49,12 @@ export interface ICustomer {
 
 	// Additional Information
 	notes?: string;
+	createdBy?: {
+		id: string;
+		name?: string;
+		email?: string;
+	};
+	createdAt?: string;
 }
 
 export interface Itinerary {

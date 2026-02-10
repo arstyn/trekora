@@ -116,6 +116,11 @@ export interface IBookingListItem {
 	balanceAmount: number;
 	status: BookingStatus;
 	createdAt: string;
+	createdBy?: {
+		id: string;
+		name: string;
+		email: string;
+	} | null;
 }
 
 // For creating new bookings

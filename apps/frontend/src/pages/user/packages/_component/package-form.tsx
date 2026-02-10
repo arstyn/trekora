@@ -574,12 +574,6 @@ export function PackageForm({
 	const packageFormDataToFormData = (data: PackageFormData): FormData => {
 		const formData = new FormData();
 
-		console.log("Form data being sent:", {
-			itinerary: data.itinerary,
-			existingImages: existingItineraryImages,
-			previewUrls: itineraryPreviewUrls,
-		});
-
 		const appendIfDefined = (
 			key: string,
 			value?: null | File | string | number | string[] | object
@@ -1140,11 +1134,9 @@ export function PackageForm({
 															>
 																<img
 																	src={url}
-																	alt={`Day ${
-																		dayIndex + 1
-																	} image ${
-																		imageIndex + 1
-																	}`}
+																	alt={`Day ${dayIndex + 1
+																		} image ${imageIndex + 1
+																		}`}
 																	width={150}
 																	height={100}
 																	className="rounded-lg object-cover border w-full h-full"
@@ -1279,20 +1271,20 @@ export function PackageForm({
 																		`itinerary.${dayIndex}.activities`
 																	)?.length ?? 0) >
 																		1 && (
-																		<Button
-																			type="button"
-																			variant="ghost"
-																			size="sm"
-																			onClick={() =>
-																				removeActivity(
-																					dayIndex,
-																					activityIndex
-																				)
-																			}
-																		>
-																			<Trash2 className="w-4 h-4" />
-																		</Button>
-																	)}
+																			<Button
+																				type="button"
+																				variant="ghost"
+																				size="sm"
+																				onClick={() =>
+																					removeActivity(
+																						dayIndex,
+																						activityIndex
+																					)
+																				}
+																			>
+																				<Trash2 className="w-4 h-4" />
+																			</Button>
+																		)}
 																</div>
 															)
 														)}
@@ -1326,18 +1318,18 @@ export function PackageForm({
 																						const updatedMeals =
 																							checked
 																								? [
-																										...(field.value ||
-																											[]),
-																										meal,
-																								  ]
+																									...(field.value ||
+																										[]),
+																									meal,
+																								]
 																								: field.value?.filter(
-																										(
-																											value
-																										) =>
-																											value !==
-																											meal
-																								  ) ||
-																								  [];
+																									(
+																										value
+																									) =>
+																										value !==
+																										meal
+																								) ||
+																								[];
 																						field.onChange(
 																							updatedMeals
 																						);
@@ -1412,7 +1404,7 @@ export function PackageForm({
 											<Badge
 												variant={
 													getTotalPaymentAmount() ===
-													form.watch("price")
+														form.watch("price")
 														? "default"
 														: "destructive"
 												}
@@ -2169,41 +2161,41 @@ export function PackageForm({
 
 										{form.watch("packageLocation.type") ===
 											"local" && (
-											<FormField
-												control={form.control}
-												name="packageLocation.state"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>
-															State/Region
-														</FormLabel>
-														<Select
-															onValueChange={field.onChange}
-															defaultValue={field.value}
-														>
-															<FormControl>
-																<SelectTrigger>
-																	<SelectValue placeholder="Select state" />
-																</SelectTrigger>
-															</FormControl>
-															<SelectContent>
-																{indianStates.map(
-																	(state) => (
-																		<SelectItem
-																			key={state}
-																			value={state}
-																		>
-																			{state}
-																		</SelectItem>
-																	)
-																)}
-															</SelectContent>
-														</Select>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-										)}
+												<FormField
+													control={form.control}
+													name="packageLocation.state"
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>
+																State/Region
+															</FormLabel>
+															<Select
+																onValueChange={field.onChange}
+																defaultValue={field.value}
+															>
+																<FormControl>
+																	<SelectTrigger>
+																		<SelectValue placeholder="Select state" />
+																	</SelectTrigger>
+																</FormControl>
+																<SelectContent>
+																	{indianStates.map(
+																		(state) => (
+																			<SelectItem
+																				key={state}
+																				value={state}
+																			>
+																				{state}
+																			</SelectItem>
+																		)
+																	)}
+																</SelectContent>
+															</Select>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+											)}
 									</CardContent>
 								</Card>
 
@@ -2378,9 +2370,9 @@ export function PackageForm({
 															?.filter(
 																(doc) =>
 																	doc.applicableFor ===
-																		"adults" ||
+																	"adults" ||
 																	doc.applicableFor ===
-																		"all"
+																	"all"
 															)
 															.map((doc, index) => (
 																<li key={index}>
@@ -2399,9 +2391,9 @@ export function PackageForm({
 															?.filter(
 																(doc) =>
 																	doc.applicableFor ===
-																		"children" ||
+																	"children" ||
 																	doc.applicableFor ===
-																		"all"
+																	"all"
 															)
 															.map((doc, index) => (
 																<li key={index}>
@@ -2753,7 +2745,7 @@ export function PackageForm({
 												isLoading ||
 												isValidating ||
 												getTotalPaymentAmount() !==
-													form.watch("price")
+												form.watch("price")
 											}
 										>
 											{isValidating ? (
@@ -2764,16 +2756,16 @@ export function PackageForm({
 											{isValidating
 												? "Validating..."
 												: isEditing
-												? "Update & Publish"
-												: "Publish Package"}
+													? "Update & Publish"
+													: "Publish Package"}
 										</Button>
 										{getTotalPaymentAmount() !==
 											form.watch("price") && (
-											<p className="text-sm text-red-500 mt-2">
-												Payment structure must total exactly ₹
-												{form.watch("price") || 0} to publish
-											</p>
-										)}
+												<p className="text-sm text-red-500 mt-2">
+													Payment structure must total exactly ₹
+													{form.watch("price") || 0} to publish
+												</p>
+											)}
 									</CardContent>
 								</Card>
 
@@ -2940,7 +2932,7 @@ export function PackageForm({
 											<Badge
 												variant={
 													getTotalPaymentAmount() ===
-													form.watch("price")
+														form.watch("price")
 														? "default"
 														: "destructive"
 												}
@@ -2964,7 +2956,7 @@ export function PackageForm({
 											<Badge
 												variant={
 													form.watch("packageLocation.type") ===
-													"international"
+														"international"
 														? "default"
 														: "secondary"
 												}

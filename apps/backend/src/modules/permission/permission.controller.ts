@@ -11,16 +11,16 @@ import {
 } from '@nestjs/common';
 import { Permission } from 'src/database/entity/permission.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { PermissionGuard } from '../auth/guard/permission.guard';
+import { RequirePermission } from '../auth/decorator/require-permission.decorator';
 import { PermissionService } from './permission.service';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
-import { RolesGuard } from '../auth/guard/roles.guard';
-import { RequireRole } from '../auth/decorator/require-role.decorator';
 
-@UseGuards(AuthGuard, RolesGuard)
-@RequireRole('admin')
+@UseGuards(AuthGuard, PermissionGuard)
+@RequirePermission('permission', 'manage')
 @Controller('api/permissions')
 export class PermissionController {
-  constructor(private readonly permissionService: PermissionService) {}
+  constructor(private readonly permissionService: PermissionService) { }
 
   // Create a new permission
   @Post()

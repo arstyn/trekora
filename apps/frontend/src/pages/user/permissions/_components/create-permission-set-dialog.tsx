@@ -75,7 +75,7 @@ export function CreatePermissionSetDialog({
         try {
             setLoading(true);
             const session = await getSession();
-            if (!session?.organizationId) {
+            if (!session || !(session as any).organizationId) {
                 toast.error("Organization ID not found");
                 return;
             }
@@ -83,7 +83,7 @@ export function CreatePermissionSetDialog({
             const data: CreatePermissionSetDto = {
                 name: name.trim(),
                 description: description.trim() || undefined,
-                organizationId: session.organizationId as string,
+                organizationId: (session as any).organizationId as string,
                 permissionIds: selectedPermissionIds,
             };
 
@@ -158,7 +158,7 @@ export function CreatePermissionSetDialog({
                                     Loading permissions...
                                 </div>
                             ) : (
-                                <ScrollArea className="h-[400px] border rounded-md p-4">
+                                <ScrollArea className="h-[200px] border rounded-md p-4">
                                     <div className="space-y-4">
                                         {Object.entries(
                                             permissionsByResource

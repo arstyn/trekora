@@ -15,21 +15,19 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { PermissionService } from "@/services/permission.service";
 import type { PermissionSet } from "@/types/permission.types";
 import { Plus, Search, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { AssignPermissionSetDialog } from "./_components/assign-permission-set-dialog";
 import { CreatePermissionSetDialog } from "./_components/create-permission-set-dialog";
 import { EditPermissionSetDialog } from "./_components/edit-permission-set-dialog";
 import { ViewPermissionSetDialog } from "./_components/view-permission-set-dialog";
-import { AssignPermissionSetDialog } from "./_components/assign-permission-set-dialog";
-import { useHasRole } from "@/hooks/use-permissions";
-import { useNavigate } from "react-router-dom";
 
 export default function PermissionSetsPage() {
-    const navigate = useNavigate();
-    const { hasRole: isAdmin, loading: roleLoading } = useHasRole("admin");
+    const { hasPermission: canManage, loading: permissionLoading } = useHasPermission("permission-set", "manage");
     const [permissionSets, setPermissionSets] = useState<PermissionSet[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -39,14 +37,6 @@ export default function PermissionSetsPage() {
     const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
     const [selectedPermissionSet, setSelectedPermissionSet] =
         useState<PermissionSet | null>(null);
-
-    // Redirect if not admin
-    useEffect(() => {
-        if (!roleLoading && !isAdmin) {
-            toast.error("You don't have permission to access this page");
-            navigate("/");
-        }
-    }, [isAdmin, roleLoading, navigate]);
 
     const fetchPermissionSets = async () => {
         try {
@@ -62,10 +52,10 @@ export default function PermissionSetsPage() {
     };
 
     useEffect(() => {
-        if (isAdmin) {
+        if (canManage) {
             fetchPermissionSets();
         }
-    }, [isAdmin]);
+    }, [canManage]);
 
     const filteredPermissionSets = permissionSets.filter((ps) =>
         ps.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -105,12 +95,21 @@ export default function PermissionSetsPage() {
         }
     };
 
-    if (roleLoading) {
+    if (permissionLoading) {
         return <div>Loading...</div>;
     }
 
-    if (!isAdmin) {
-        return null;
+    if (!canManage) {
+        return (
+            <div className="container mx-auto p-6">
+                <div className="text-center py-12">
+                    <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+                    <p className="text-muted-foreground">
+                        You don't have permission to access this page.
+                    </p>
+                </div>
+            </div>
+        );
     }
 
     return (

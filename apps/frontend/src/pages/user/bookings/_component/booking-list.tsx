@@ -184,6 +184,7 @@ export function BookingList({ status }: BookingListProps) {
 							<TableHead>Passengers</TableHead>
 							<TableHead>Payment</TableHead>
 							<TableHead>Status</TableHead>
+							<TableHead>Created By</TableHead>
 							<TableHead className="text-right">Actions</TableHead>
 						</TableRow>
 					</TableHeader>
@@ -239,6 +240,15 @@ export function BookingList({ status }: BookingListProps) {
 									</div>
 								</TableCell>
 								<TableCell>{getStatusBadge(booking.status)}</TableCell>
+								<TableCell>
+									{booking.createdBy ? (
+										<span className="text-sm text-muted-foreground">
+											{booking.createdBy.name || booking.createdBy.email || "Unknown"}
+										</span>
+									) : (
+										<span className="text-sm text-muted-foreground">—</span>
+									)}
+								</TableCell>
 								<TableCell className="text-right">
 									<DropdownMenu>
 										<DropdownMenuTrigger asChild>

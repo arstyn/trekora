@@ -1,36 +1,43 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
-  Request,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
-import { BookingService } from './booking.service';
+import { ChecklistType } from 'src/database/entity/booking-checklist.entity';
+import { BookingStatus } from 'src/database/entity/booking.entity';
+import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import {
   CreateBookingDto,
-  UpdateBookingDto,
   CreatePaymentDto,
+  UpdateBookingDto,
 } from 'src/dto/booking.dto';
 import {
   CreateChecklistItemDto,
   UpdateChecklistItemDto,
 } from 'src/dto/checklist.dto';
+import { RequirePermission } from '../auth/decorator/require-permission.decorator';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
-import { BookingStatus } from 'src/database/entity/booking.entity';
-import { ChecklistType } from 'src/database/entity/booking-checklist.entity';
+import { PermissionGuard } from '../auth/guard/permission.guard';
+import { EmployeeService } from '../employee/employee.service';
+import { BookingService } from './booking.service';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 @Controller('api/bookings')
 export class BookingController {
-  constructor(private readonly bookingService: BookingService) {}
+  constructor(
+    private readonly bookingService: BookingService,
+    private readonly employeeService: EmployeeService,
+  ) { }
 
   @Post()
+  @RequirePermission('booking', 'create')
   create(
     @Body() createBookingDto: CreateBookingDto,
     @Request() req: ApiRequestJWT,
@@ -43,6 +50,7 @@ export class BookingController {
   }
 
   @Get()
+  @RequirePermission('booking', 'read')
   findAll(
     @Request() req: ApiRequestJWT,
     @Query('status') status?: BookingStatus,
@@ -51,6 +59,37 @@ export class BookingController {
   ) {
     return this.bookingService.findAll(
       req.user.organizationId,
+      status,
+      limit,
+      offset,
+    );
+  }
+
+  @Get('team')
+  @RequirePermission('employee', 'read')
+  async findTeamBookings(
+    @Request() req: ApiRequestJWT,
+    @Query('status') status?: BookingStatus,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+  ) {
+    const employee = await this.employeeService.findProfile(req.user.userId);
+    if (!employee || !employee.id) {
+      return [];
+    }
+
+    const directReports = await this.employeeService.getDirectReports(employee.id);
+    const teamUserIds = directReports
+      .map((emp) => emp.userId)
+      .filter((id): id is string => !!id);
+
+    if (teamUserIds.length === 0) {
+      return [];
+    }
+
+    return this.bookingService.findByManagerTeam(
+      req.user.organizationId,
+      teamUserIds,
       status,
       limit,
       offset,
@@ -130,11 +169,13 @@ export class BookingController {
   }
 
   @Patch(':id')
+  @RequirePermission('booking', 'update')
   update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
     return this.bookingService.update(id, updateBookingDto);
   }
 
   @Delete(':id')
+  @RequirePermission('booking', 'delete')
   remove(@Param('id') id: string) {
     return this.bookingService.remove(id);
   }

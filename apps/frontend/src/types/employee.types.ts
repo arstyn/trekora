@@ -3,6 +3,7 @@ import type { IOrganization } from "./organization.types";
 import type { IRole } from "./role.types";
 import type { IUserDepartments } from "./user-department.types";
 import type { IUser } from "./user.types";
+import type { PermissionSet } from "./permission.types";
 
 export interface IEmployeeCreateDTO {
 	userId?: string;
@@ -28,6 +29,9 @@ export interface IEmployeeCreateDTO {
 	profilePhoto?: string;
 	verificationDocument?: string;
 	verificationDocumentType?: string;
+	managerId?: string;
+	manager?: IEmployee;
+	directReports?: IEmployee[];
 	// branchId?: string;
 }
 
@@ -64,4 +68,8 @@ export interface IEmployee {
 	isActive: boolean;
 	status: IEmployeeStatus;
 	employeeDepartments?: IUserDepartments[];
+	managerId?: string;
+	manager?: IEmployee;
+	directReports?: IEmployee[];
+	permissionSets?: PermissionSet[];
 }

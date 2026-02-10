@@ -6,6 +6,7 @@ import { Employee } from 'src/database/entity/employee.entity';
 import { Role } from 'src/database/entity/role.entity';
 import { PermissionSetService } from './permission-set.service';
 import { Permission } from 'src/database/entity/permission.entity';
+import { PermissionSet } from 'src/database/entity/permission-set.entity';
 
 @Injectable()
 export class PermissionCheckService {
@@ -17,10 +18,11 @@ export class PermissionCheckService {
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
     private readonly permissionSetService: PermissionSetService,
-  ) {}
+  ) { }
 
   /**
    * Check if a user has a specific permission
+   * Uses permission sets only - no role dependency
    */
   async hasPermission(
     userId: string,
@@ -28,28 +30,40 @@ export class PermissionCheckService {
     resource: string,
     action: string,
   ): Promise<boolean> {
-    // Admins have all permissions
     const user = await this.userRepository.findOne({
       where: { id: userId, organizationId },
-      relations: ['role'],
     });
 
     if (!user) {
       return false;
     }
 
-    // Check if user is admin
-    if (user.role?.name === 'admin') {
-      return true;
+    // Get all permission sets assigned to the user
+    const userPermissionSets =
+      await this.permissionSetService.getPermissionSetsForUser(userId);
+
+    // Also check if user has a linked employee and get their permission sets
+    const employee = await this.employeeRepository.findOne({
+      where: { userId, organizationId },
+    });
+
+    let employeePermissionSets: PermissionSet[] = [];
+    if (employee) {
+      employeePermissionSets = await this.permissionSetService.getPermissionSetsForUser(
+        undefined,
+        employee.id,
+      );
     }
 
-    // Get all permission sets assigned to the user
-    const permissionSets =
-      await this.permissionSetService.getPermissionSetsForUser(userId);
+    // Combine both sets and remove duplicates
+    const allPermissionSets = [...userPermissionSets, ...employeePermissionSets];
+    const uniquePermissionSets = Array.from(
+      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values()
+    );
 
     // Get permissions from all assigned permission sets
     const allPermissions: Permission[] = [];
-    for (const permissionSet of permissionSets) {
+    for (const permissionSet of uniquePermissionSets) {
       if (permissionSet.permissionSetPermissions) {
         const permissions = permissionSet.permissionSetPermissions.map(
           (psp) => psp.permission,
@@ -67,6 +81,7 @@ export class PermissionCheckService {
 
   /**
    * Check if an employee has a specific permission
+   * Uses permission sets only - no role dependency
    */
   async hasPermissionForEmployee(
     employeeId: string,
@@ -76,19 +91,14 @@ export class PermissionCheckService {
   ): Promise<boolean> {
     const employee = await this.employeeRepository.findOne({
       where: { id: employeeId, organizationId },
-      relations: ['role', 'user'],
+      relations: ['user'],
     });
 
     if (!employee) {
       return false;
     }
 
-    // Check if employee is admin
-    if (employee.role?.name === 'admin') {
-      return true;
-    }
-
-    // If employee has a user account, check user permissions
+    // If employee has a user account, check user permissions first
     if (employee.userId) {
       const hasUserPermission = await this.hasPermission(
         employee.userId,

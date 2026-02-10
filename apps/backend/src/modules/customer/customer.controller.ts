@@ -1,31 +1,38 @@
 import {
   Body,
   Controller,
-  Post,
-  Get,
-  Put,
   Delete,
-  UseGuards,
+  Get,
   Param,
+  Post,
+  Put,
   Query,
   Request,
-  UseInterceptors,
   UploadedFiles,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { CustomerService } from './customer.service';
-import { CreateCustomerDto } from '../../dto/create-customer.dto';
-import { Customer } from '../../database/entity/customer.entity';
-import { AuthGuard } from '../auth/guard/auth.guard';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
+import { Customer } from '../../database/entity/customer.entity';
+import { CreateCustomerDto } from '../../dto/create-customer.dto';
+import { RequirePermission } from '../auth/decorator/require-permission.decorator';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { PermissionGuard } from '../auth/guard/permission.guard';
+import { EmployeeService } from '../employee/employee.service';
+import { CustomerService } from './customer.service';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 @Controller('api/customers')
 export class CustomerController {
-  constructor(private readonly customerService: CustomerService) {}
+  constructor(
+    private readonly customerService: CustomerService,
+    private readonly employeeService: EmployeeService,
+  ) { }
 
   //Creating Customers
   @Post()
+  @RequirePermission('customer', 'create')
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'profilePhoto', maxCount: 1 },
@@ -62,6 +69,7 @@ export class CustomerController {
 
   //Getting all data
   @Get()
+  @RequirePermission('customer', 'read')
   async findAll(
     @Request() req: ApiRequestJWT,
     @Query('limit') limit?: number,
@@ -74,6 +82,41 @@ export class CustomerController {
   }> {
     return this.customerService.findAll(
       req.user.organizationId,
+      limit,
+      offset,
+      search,
+    );
+  }
+
+  @Get('team')
+  @RequirePermission('employee', 'read')
+  async findTeamCustomers(
+    @Request() req: ApiRequestJWT,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+    @Query('search') search?: string,
+  ): Promise<{
+    customers: Customer[];
+    hasMore: boolean;
+    total: number;
+  }> {
+    const employee = await this.employeeService.findProfile(req.user.userId);
+    if (!employee || !employee.id) {
+      return { customers: [], total: 0, hasMore: false };
+    }
+
+    const directReports = await this.employeeService.getDirectReports(employee.id);
+    const teamUserIds = directReports
+      .map((emp) => emp.userId)
+      .filter((id): id is string => !!id);
+
+    if (teamUserIds.length === 0) {
+      return { customers: [], total: 0, hasMore: false };
+    }
+
+    return this.customerService.findByManagerTeam(
+      req.user.organizationId,
+      teamUserIds,
       limit,
       offset,
       search,
@@ -106,6 +149,7 @@ export class CustomerController {
   }
   //Updating data
   @Put(':id')
+  @RequirePermission('customer', 'update')
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'profilePhoto', maxCount: 1 },
@@ -136,6 +180,7 @@ export class CustomerController {
   }
   //Delete Customer
   @Delete(':id')
+  @RequirePermission('customer', 'delete')
   async delete(@Param('id') id: string): Promise<void> {
     return this.customerService.delete(id);
   }

@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Employee } from 'src/database/entity/employee.entity';
+import { PermissionSetPermission } from 'src/database/entity/permission-set-permission.entity';
 import { PermissionSet } from 'src/database/entity/permission-set.entity';
 import { Permission } from 'src/database/entity/permission.entity';
-import { PermissionSetPermission } from 'src/database/entity/permission-set-permission.entity';
 import { UserPermissionSet } from 'src/database/entity/user-permission-set.entity';
+import { In, Repository } from 'typeorm';
 import { defaultPermissionSets } from './default-permission-sets';
 
 export interface CreatePermissionSetDto {
@@ -31,7 +32,9 @@ export class PermissionSetService {
     private readonly permissionSetPermissionRepository: Repository<PermissionSetPermission>,
     @InjectRepository(UserPermissionSet)
     private readonly userPermissionSetRepository: Repository<UserPermissionSet>,
-  ) {}
+    @InjectRepository(Employee)
+    private readonly employeeRepository: Repository<Employee>,
+  ) { }
 
   // Create a new permission set with permissions
   async create(createDto: CreatePermissionSetDto): Promise<PermissionSet> {
@@ -148,48 +151,160 @@ export class PermissionSetService {
   }
 
   // Assign permission set to user or employee
+  // Ensures user and employee are always in sync when linked
   async assignPermissionSet(
     permissionSetId: string,
     userId?: string,
     employeeId?: string,
-  ): Promise<UserPermissionSet> {
+  ): Promise<UserPermissionSet[]> {
     if (!userId && !employeeId) {
       throw new Error('Either userId or employeeId must be provided');
     }
 
-    // Check if already assigned
-    const existing = await this.userPermissionSetRepository.findOne({
-      where: {
-        permissionSetId,
-        ...(userId ? { userId } : {}),
-        ...(employeeId ? { employeeId } : {}),
-      },
-    });
+    const results: UserPermissionSet[] = [];
 
-    if (existing) {
-      return existing;
+    // If assigning to a user, also assign to linked employee
+    if (userId) {
+      // Check if already assigned to user
+      let existingUser = await this.userPermissionSetRepository.findOne({
+        where: {
+          permissionSetId,
+          userId,
+        },
+      });
+
+      if (!existingUser) {
+        existingUser = this.userPermissionSetRepository.create({
+          permissionSetId,
+          userId,
+        });
+        existingUser = await this.userPermissionSetRepository.save(existingUser);
+      }
+      results.push(existingUser);
+
+      // Find linked employee and sync
+      const employee = await this.employeeRepository.findOne({
+        where: { userId },
+      });
+
+      if (employee) {
+        const existingEmployee = await this.userPermissionSetRepository.findOne({
+          where: {
+            permissionSetId,
+            employeeId: employee.id,
+          },
+        });
+
+        if (!existingEmployee) {
+          const employeePermissionSet = this.userPermissionSetRepository.create({
+            permissionSetId,
+            employeeId: employee.id,
+          });
+          results.push(await this.userPermissionSetRepository.save(employeePermissionSet));
+        } else {
+          results.push(existingEmployee);
+        }
+      }
     }
 
-    const userPermissionSet = this.userPermissionSetRepository.create({
-      permissionSetId,
-      userId,
-      employeeId,
-    });
+    // If assigning to an employee, also assign to linked user
+    if (employeeId) {
+      // Check if already assigned to employee
+      let existingEmployee = await this.userPermissionSetRepository.findOne({
+        where: {
+          permissionSetId,
+          employeeId,
+        },
+      });
 
-    return await this.userPermissionSetRepository.save(userPermissionSet);
+      if (!existingEmployee) {
+        existingEmployee = this.userPermissionSetRepository.create({
+          permissionSetId,
+          employeeId,
+        });
+        existingEmployee = await this.userPermissionSetRepository.save(existingEmployee);
+      }
+      results.push(existingEmployee);
+
+      // Find linked user and sync
+      const employee = await this.employeeRepository.findOne({
+        where: { id: employeeId },
+      });
+
+      if (employee?.userId) {
+        const existingUser = await this.userPermissionSetRepository.findOne({
+          where: {
+            permissionSetId,
+            userId: employee.userId,
+          },
+        });
+
+        if (!existingUser) {
+          const userPermissionSet = this.userPermissionSetRepository.create({
+            permissionSetId,
+            userId: employee.userId,
+          });
+          results.push(await this.userPermissionSetRepository.save(userPermissionSet));
+        } else {
+          results.push(existingUser);
+        }
+      }
+    }
+
+    // Remove duplicates
+    const uniqueResults = Array.from(
+      new Map(results.map((r) => [r.id, r])).values()
+    );
+
+    return uniqueResults;
   }
 
   // Remove permission set assignment from user or employee
+  // Ensures user and employee are always in sync when linked
   async removePermissionSetAssignment(
     permissionSetId: string,
     userId?: string,
     employeeId?: string,
   ): Promise<void> {
-    await this.userPermissionSetRepository.delete({
-      permissionSetId,
-      ...(userId ? { userId } : {}),
-      ...(employeeId ? { employeeId } : {}),
-    });
+    // If removing from user, also remove from linked employee
+    if (userId) {
+      await this.userPermissionSetRepository.delete({
+        permissionSetId,
+        userId,
+      });
+
+      // Find linked employee and sync
+      const employee = await this.employeeRepository.findOne({
+        where: { userId },
+      });
+
+      if (employee) {
+        await this.userPermissionSetRepository.delete({
+          permissionSetId,
+          employeeId: employee.id,
+        });
+      }
+    }
+
+    // If removing from employee, also remove from linked user
+    if (employeeId) {
+      await this.userPermissionSetRepository.delete({
+        permissionSetId,
+        employeeId,
+      });
+
+      // Find linked user and sync
+      const employee = await this.employeeRepository.findOne({
+        where: { id: employeeId },
+      });
+
+      if (employee?.userId) {
+        await this.userPermissionSetRepository.delete({
+          permissionSetId,
+          userId: employee.userId,
+        });
+      }
+    }
   }
 
   // Get permission sets for a user or employee

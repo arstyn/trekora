@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   BookingPayment,
   PaymentStatus,
@@ -37,7 +37,7 @@ export class PaymentService {
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
     private fileManagerService: FileManagerService,
-  ) {}
+  ) { }
 
   async searchBookingsForPayment(
     searchDto: BookingSearchDto,
@@ -176,6 +176,97 @@ export class PaymentService {
       .leftJoinAndSelect('booking.batch', 'batch')
       .leftJoinAndSelect('payment.recordedBy', 'recordedBy')
       .where('booking.organizationId = :organizationId', { organizationId });
+
+    // Apply filters
+    if (status) {
+      query.andWhere('payment.status = :status', { status });
+    }
+
+    if (paymentType) {
+      query.andWhere('payment.paymentType = :paymentType', { paymentType });
+    }
+
+    if (paymentMethod) {
+      query.andWhere('payment.paymentMethod = :paymentMethod', {
+        paymentMethod,
+      });
+    }
+
+    if (fromDate && toDate) {
+      query.andWhere('payment.paymentDate BETWEEN :fromDate AND :toDate', {
+        fromDate,
+        toDate,
+      });
+    }
+
+    if (search) {
+      query.andWhere(
+        '(customer.name ILIKE :search OR booking.bookingNumber ILIKE :search OR payment.paymentReference ILIKE :search OR payment.transactionId ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    // Apply sorting
+    const validSortFields = ['paymentDate', 'amount', 'status', 'createdAt'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'paymentDate';
+    query.orderBy(`payment.${sortField}`, sortOrder);
+
+    // Apply pagination
+    const skip = (page - 1) * limit;
+    query.skip(skip).take(limit);
+
+    const [payments, total] = await query.getManyAndCount();
+
+    return {
+      data: payments.map((payment) => this.transformToResponseDto(payment)),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findByManagerTeam(
+    filterDto: PaymentFilterDto,
+    organizationId: string,
+    teamUserIds: string[],
+  ): Promise<PaymentListResponseDto> {
+    if (teamUserIds.length === 0) {
+      return {
+        data: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
+
+    const {
+      search,
+      status,
+      paymentType,
+      paymentMethod,
+      fromDate,
+      toDate,
+      page = 1,
+      limit = 20,
+      sortBy = 'paymentDate',
+      sortOrder = 'DESC',
+    } = filterDto;
+
+    const query = this.paymentRepository
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.booking', 'booking')
+      .leftJoinAndSelect('booking.customer', 'customer')
+      .leftJoinAndSelect('booking.package', 'package')
+      .leftJoinAndSelect('booking.batch', 'batch')
+      .leftJoinAndSelect('payment.recordedBy', 'recordedBy')
+      .where('booking.organizationId = :organizationId', { organizationId })
+      .andWhere('payment.recordedById IN (:...teamUserIds)', { teamUserIds });
 
     // Apply filters
     if (status) {
@@ -409,7 +500,7 @@ export class PaymentService {
       .map((booking) => {
         const daysOverdue = Math.floor(
           (new Date().getTime() - booking.batch.startDate.getTime()) /
-            (1000 * 3600 * 24),
+          (1000 * 3600 * 24),
         );
 
         return {

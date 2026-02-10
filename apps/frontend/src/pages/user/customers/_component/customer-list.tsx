@@ -105,6 +105,20 @@ export default function CustomerList({
 			),
 		},
 		{
+			accessorKey: "createdBy",
+			header: "Created By",
+			cell: ({ row }) => {
+				const createdBy = row.original.createdBy;
+				return createdBy ? (
+					<span className="text-sm text-muted-foreground">
+						{createdBy.name || createdBy.email || "Unknown"}
+					</span>
+				) : (
+					<NAText />
+				);
+			},
+		},
+		{
 			id: "actions",
 			header: "",
 			cell: ({ row }) => {

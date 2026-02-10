@@ -57,13 +57,26 @@ export class Employee {
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'role_id' })
-  role: Role;
+  role?: Role;
 
   @Column('uuid', { nullable: true, name: 'role_id' })
   roleId?: string;
 
   @OneToMany(() => UserDepartments, (ud) => ud.employee)
   employeeDepartments: UserDepartments[];
+
+  @Column({ type: 'uuid', nullable: true, name: 'manager_id' })
+  managerId?: string;
+
+  @ManyToOne(() => Employee, (employee) => employee.directReports, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'manager_id' })
+  manager?: Employee;
+
+  @OneToMany(() => Employee, (employee) => employee.manager)
+  directReports: Employee[];
 
   @Column({ type: 'varchar', name: 'name' })
   name: string;

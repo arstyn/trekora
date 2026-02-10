@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { getSession } from "@/lib/auth-utils";
 import { PermissionService } from "@/services/permission.service";
 import type { PermissionSet } from "@/types/permission.types";
-import { getSession } from "@/lib/auth-utils";
+import { useEffect, useState } from "react";
 
 /**
  * Hook to get permission sets for the current user
@@ -15,15 +15,11 @@ export function useMyPermissionSets() {
         const fetchPermissionSets = async () => {
             try {
                 setLoading(true);
-                const session = await getSession();
-                if (session && (session as any).userId) {
-                    const sets =
-                        await PermissionService.getPermissionSetsForUser(
-                            (session as any).userId as string
-                        );
-                    setPermissionSets(sets);
-                }
+                setError(null);
+                const sets = await PermissionService.getMyPermissionSets();
+                setPermissionSets(sets);
             } catch (err) {
+                console.error('❌ Error fetching permission sets:', err);
                 setError(err as Error);
             } finally {
                 setLoading(false);
@@ -46,16 +42,32 @@ export function useHasPermission(resource: string, action: string) {
     const [hasPermission, setHasPermission] = useState(false);
 
     useEffect(() => {
-        if (loading) return;
-
+        if (loading) {
+            setHasPermission(false);
+            return;
+        }
         // Check if any permission set contains the required permission
-        const hasPerm = permissionSets.some((set) =>
-            set.permissionSetPermissions?.some(
-                (psp) =>
-                    psp.permission.resource === resource &&
-                    psp.permission.action === action
-            )
-        );
+        const hasPerm = permissionSets.some((set) => {
+            if (!set.permissionSetPermissions || set.permissionSetPermissions.length === 0) {
+                return false;
+            }
+
+
+            const found = set.permissionSetPermissions.some(
+                (psp) => {
+                    if (!psp.permission) {
+                        return false;
+                    }
+
+                    const matches = psp.permission.resource === resource &&
+                        psp.permission.action === action;
+
+                    return matches;
+                }
+            );
+
+            return found;
+        });
 
         setHasPermission(hasPerm);
     }, [permissionSets, loading, resource, action]);

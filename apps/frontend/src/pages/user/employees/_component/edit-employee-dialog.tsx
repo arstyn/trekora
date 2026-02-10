@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -36,11 +35,14 @@ import type { IEmployee } from "@/types/employee.types";
 import type { IRole } from "@/types/role.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronDown, X, Upload, Image as ImageIcon } from "lucide-react";
-import { useState, useRef } from "react";
+import { CalendarIcon, ChevronDown, Image as ImageIcon, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Checkbox } from "@/components/ui/checkbox";
+import { PermissionService } from "@/services/permission.service";
+import type { PermissionSet } from "@/types/permission.types";
 
 // Update Zod schema to include all fields
 const formSchema = z.object({
@@ -58,14 +60,13 @@ const formSchema = z.object({
 	joinDate: z.date({ error: "Join date is required" }),
 	avatar: z.string().optional(),
 	branchId: z.string().optional(),
-	roleId: z.string().min(1, { message: "Role is required" }),
+	roleId: z.string().optional(),
 	status: z.enum(["active", "inactive", "suspended", "terminated"], {
 		error: "Please select a status",
 	}),
-	departments: z
-		.array(z.string())
-		.min(1, { message: "Select at least one department" }),
+	departments: z.array(z.string()).optional(),
 	verificationDocumentType: z.string().optional(),
+	managerId: z.string().optional(),
 });
 
 // Define the type for the form values
@@ -77,8 +78,9 @@ type EditEmployeeDialogProps = {
 	onOpenChange: (open: boolean) => void;
 	employee: IEmployee | null;
 	onUpdateEmployee: (id: string, updatedEmployee: IEmployee) => void;
-	roles: IRole[];
-	departments: IDepartment[];
+	roles?: IRole[];
+	departments?: IDepartment[];
+	employees?: IEmployee[];
 };
 
 export function EditEmployeeDialog({
@@ -86,8 +88,7 @@ export function EditEmployeeDialog({
 	onOpenChange,
 	employee,
 	onUpdateEmployee,
-	roles,
-	departments,
+	employees = [],
 }: EditEmployeeDialogProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
@@ -99,6 +100,11 @@ export function EditEmployeeDialog({
 	const profilePhotoRef = useRef<HTMLInputElement>(null);
 	const verificationDocRef = useRef<HTMLInputElement>(null);
 
+	// Permission sets state
+	const [allPermissionSets, setAllPermissionSets] = useState<PermissionSet[]>([]);
+	const [selectedPermissionSetIds, setSelectedPermissionSetIds] = useState<string[]>([]);
+	const [loadingPermissionSets, setLoadingPermissionSets] = useState(false);
+
 	// Helper to extract departments from employeeDepartments
 	const getDepartmentIds = (employee: IEmployee) =>
 		employee.employeeDepartments?.map((ud) => ud.department.id) ?? [];
@@ -107,54 +113,90 @@ export function EditEmployeeDialog({
 		return getFileUrl(getServeFileUrl(filename));
 	};
 
+	// Load permission sets
+	useEffect(() => {
+		if (open) {
+			loadPermissionSets();
+		}
+	}, [open]);
+
+	const loadPermissionSets = async () => {
+		try {
+			setLoadingPermissionSets(true);
+			// Load all available permission sets
+			const allSets = await PermissionService.getAllPermissionSets();
+			setAllPermissionSets(allSets);
+
+			// Load employee's current permission sets if editing
+			if (employee?.id) {
+				const employeeSets = await PermissionService.getPermissionSetsForEmployee(employee.id);
+				setSelectedPermissionSetIds(employeeSets.map((set) => set.id));
+			}
+		} catch (error) {
+			console.error("Failed to load permission sets:", error);
+			toast.error("Failed to load permission sets");
+		} finally {
+			setLoadingPermissionSets(false);
+		}
+	};
+
+	const handlePermissionSetToggle = (permissionSetId: string, checked: boolean) => {
+		if (checked) {
+			setSelectedPermissionSetIds((prev) => [...prev, permissionSetId]);
+		} else {
+			setSelectedPermissionSetIds((prev) => prev.filter((id) => id !== permissionSetId));
+		}
+	};
+
 	// Initialize the form
 	const form = useForm<IEditEmployeeFormValues>({
 		resolver: zodResolver(formSchema),
 		defaultValues: employee
 			? {
-					name: employee.name,
-					address: employee.address ?? "",
-					phone: employee.phone ?? "",
-					email: employee.email ?? "",
-					dateOfBirth: employee.dateOfBirth
-						? new Date(employee.dateOfBirth)
-						: undefined,
-					gender: employee.gender ?? undefined,
-					nationality: employee.nationality ?? "",
-					experience: employee.experience ?? "",
-					specialization: employee.specialization ?? "",
-					additional_info: employee.additional_info ?? "",
-					maritalStatus: employee.maritalStatus ?? undefined,
-					joinDate: employee.joinDate
-						? new Date(employee.joinDate)
-						: new Date(),
-					avatar: employee.avatar ?? "",
-					branchId: employee.branchId ?? "",
-					roleId: employee.roleId ?? employee.role?.id ?? "",
-					status: employee.status,
-					departments: getDepartmentIds(employee),
-					verificationDocumentType: employee.verificationDocumentType ?? "",
-			  }
+				name: employee.name,
+				address: employee.address ?? "",
+				phone: employee.phone ?? "",
+				email: employee.email ?? "",
+				dateOfBirth: employee.dateOfBirth
+					? new Date(employee.dateOfBirth)
+					: undefined,
+				gender: employee.gender ?? undefined,
+				nationality: employee.nationality ?? "",
+				experience: employee.experience ?? "",
+				specialization: employee.specialization ?? "",
+				additional_info: employee.additional_info ?? "",
+				maritalStatus: employee.maritalStatus ?? undefined,
+				joinDate: employee.joinDate
+					? new Date(employee.joinDate)
+					: new Date(),
+				avatar: employee.avatar ?? "",
+				branchId: employee.branchId ?? "",
+				roleId: employee.roleId ?? employee.role?.id ?? "",
+				status: employee.status,
+				departments: getDepartmentIds(employee),
+				verificationDocumentType: employee.verificationDocumentType ?? "",
+				managerId: employee.managerId ?? "",
+			}
 			: {
-					name: "",
-					address: "",
-					phone: "",
-					email: "",
-					dateOfBirth: undefined,
-					gender: undefined,
-					nationality: "",
-					experience: "",
-					specialization: "",
-					additional_info: "",
-					maritalStatus: undefined,
-					joinDate: new Date(),
-					avatar: "",
-					branchId: "",
-					roleId: "",
-					status: "active",
-					departments: [],
-					verificationDocumentType: "",
-			  },
+				name: "",
+				address: "",
+				phone: "",
+				email: "",
+				dateOfBirth: undefined,
+				gender: undefined,
+				nationality: "",
+				experience: "",
+				specialization: "",
+				additional_info: "",
+				maritalStatus: undefined,
+				joinDate: new Date(),
+				avatar: "",
+				branchId: "",
+				roleId: "",
+				status: "active",
+				departments: [],
+				verificationDocumentType: "",
+			},
 	});
 
 	// Update form values when employee changes
@@ -171,10 +213,14 @@ export function EditEmployeeDialog({
 			// Add all form fields
 			formDataToSubmit.append("name", data.name);
 			formDataToSubmit.append("email", data.email);
-			data.departments.forEach((dept, index) => {
-				formDataToSubmit.append(`departments[${index}]`, dept);
-			});
-			formDataToSubmit.append("roleId", data.roleId);
+			if (data.departments && data.departments.length > 0) {
+				data.departments.forEach((dept, index) => {
+					formDataToSubmit.append(`departments[${index}]`, dept);
+				});
+			}
+			if (data.roleId) {
+				formDataToSubmit.append("roleId", data.roleId);
+			}
 			formDataToSubmit.append("status", data.status);
 			formDataToSubmit.append("joinDate", format(data.joinDate, "yyyy-MM-dd"));
 
@@ -200,6 +246,42 @@ export function EditEmployeeDialog({
 					"verificationDocumentType",
 					data.verificationDocumentType
 				);
+
+			// Add managerId if provided
+			if (data.managerId) {
+				formDataToSubmit.append("managerId", data.managerId);
+			} else {
+				formDataToSubmit.append("managerId", "");
+			}
+
+			// Handle permission set assignments
+			// First, get current permission sets
+			if (employee?.id) {
+				const currentSets = await PermissionService.getPermissionSetsForEmployee(employee.id);
+				const currentSetIds = currentSets.map((set) => set.id);
+
+				// Find sets to add and remove
+				const setsToAdd = selectedPermissionSetIds.filter(
+					(id) => !currentSetIds.includes(id)
+				);
+				const setsToRemove = currentSetIds.filter(
+					(id) => !selectedPermissionSetIds.includes(id)
+				);
+
+				// Remove permission sets
+				for (const setId of setsToRemove) {
+					await PermissionService.removePermissionSetAssignment(setId, {
+						employeeId: employee.id,
+					});
+				}
+
+				// Add permission sets
+				for (const setId of setsToAdd) {
+					await PermissionService.assignPermissionSet(setId, {
+						employeeId: employee.id,
+					});
+				}
+			}
 
 			// Add files
 			if (profilePhotoFile) {
@@ -533,123 +615,95 @@ export function EditEmployeeDialog({
 								)}
 							/>
 
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<FormField
-									control={form.control}
-									name="departments"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Departments</FormLabel>
-											<FormControl>
-												<Popover>
-													<PopoverTrigger asChild>
-														<Button
-															variant="outline"
-															className={`w-full justify-between text-left truncate ${
-																field.value.length === 0
-																	? "text-muted-foreground"
-																	: ""
-															}`}
+							{/* Permission Sets Assignment */}
+							<div className="space-y-2">
+								<Label>Permission Sets</Label>
+								{loadingPermissionSets ? (
+									<div className="text-sm text-muted-foreground">
+										Loading permission sets...
+									</div>
+								) : (
+									<Popover>
+										<PopoverTrigger asChild>
+											<Button
+												variant="outline"
+												className={`w-full justify-between text-left truncate ${selectedPermissionSetIds.length === 0
+														? "text-muted-foreground"
+														: ""
+													}`}
+											>
+												{selectedPermissionSetIds.length > 0
+													? `${selectedPermissionSetIds.length} selected`
+													: "Select permission sets"}
+												<ChevronDown className="ml-2 h-4 w-4" />
+											</Button>
+										</PopoverTrigger>
+										<PopoverContent className="w-full p-2">
+											<div className="flex flex-col space-y-2 max-h-60 overflow-y-auto">
+												{allPermissionSets.map((set) => (
+													<div
+														key={set.id}
+														className="flex items-center space-x-2"
+													>
+														<Checkbox
+															id={`permission-set-${set.id}`}
+															checked={selectedPermissionSetIds.includes(
+																set.id
+															)}
+															onCheckedChange={(checked) =>
+																handlePermissionSetToggle(set.id, checked as boolean)
+															}
+														/>
+														<label
+															htmlFor={`permission-set-${set.id}`}
+															className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
 														>
-															{field.value.length > 0
-																? departments
-																		.filter((dep) =>
-																			field.value.find(
-																				(a) =>
-																					a ===
-																					dep.id
-																			)
-																		)
-																		.map(
-																			(d) => d.name
-																		)
-																		.join(", ")
-																: "Select departments"}
-															<ChevronDown className="ml-2 h-4 w-4" />
-														</Button>
-													</PopoverTrigger>
-													<PopoverContent className="w-full p-2">
-														<div className="flex flex-col space-y-2">
-															{departments.map((dept) => (
-																<div
-																	key={dept.id}
-																	className="flex items-center space-x-2"
-																>
-																	<Checkbox
-																		checked={field.value.includes(
-																			dept.id
-																		)}
-																		onCheckedChange={(
-																			checked
-																		) => {
-																			if (checked) {
-																				field.onChange(
-																					[
-																						...field.value,
-																						dept.id,
-																					]
-																				);
-																			} else {
-																				field.onChange(
-																					field.value.filter(
-																						(
-																							item
-																						) =>
-																							item !==
-																							dept.id
-																					)
-																				);
-																			}
-																		}}
-																	/>
-																	<span>
-																		{dept.name}
-																	</span>
-																</div>
-															))}
-														</div>
-													</PopoverContent>
-												</Popover>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+															{set.name}
+														</label>
+													</div>
+												))}
+											</div>
+										</PopoverContent>
+									</Popover>
+								)}
+								<div className="text-sm text-muted-foreground">
+									{selectedPermissionSetIds.length} permission set(s) selected
+								</div>
+							</div>
 
-								<FormField
-									control={form.control}
-									name="roleId"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Role</FormLabel>
-											<FormControl>
-												<Select
-													onValueChange={field.onChange}
-													defaultValue={field.value}
-												>
-													<FormControl>
-														<SelectTrigger className="capitalize">
-															<SelectValue placeholder="Select role" />
-														</SelectTrigger>
-													</FormControl>
-													<SelectContent>
-														{roles.map((role) => (
-															<SelectItem
-																key={role.id}
-																value={role.id}
-																className="capitalize"
-															>
-																{role.name}
+							<FormField
+								control={form.control}
+								name="managerId"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Manager</FormLabel>
+										<FormControl>
+											<Select
+												onValueChange={(value) => field.onChange(value === "none" ? "" : value)}
+												defaultValue={field.value || "none"}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select manager (optional)" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													<SelectItem value="none">No Manager</SelectItem>
+													{employees
+														.filter((emp) => emp.id !== employee?.id)
+														.map((emp) => (
+															<SelectItem key={emp.id} value={emp.id}>
+																{emp.name}
 															</SelectItem>
 														))}
-													</SelectContent>
-												</Select>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							</div>
+												</SelectContent>
+											</Select>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
 
 							<FormField
 								control={form.control}
@@ -713,11 +767,10 @@ export function EditEmployeeDialog({
 												<FormControl>
 													<Button
 														variant={"outline"}
-														className={`w-full pl-3 text-left font-normal ${
-															!field.value
-																? "text-muted-foreground"
-																: ""
-														}`}
+														className={`w-full pl-3 text-left font-normal ${!field.value
+															? "text-muted-foreground"
+															: ""
+															}`}
 													>
 														{field.value ? (
 															format(field.value, "PPP")
@@ -760,11 +813,10 @@ export function EditEmployeeDialog({
 												<FormControl>
 													<Button
 														variant={"outline"}
-														className={`w-full pl-3 text-left font-normal ${
-															!field.value
-																? "text-muted-foreground"
-																: ""
-														}`}
+														className={`w-full pl-3 text-left font-normal ${!field.value
+															? "text-muted-foreground"
+															: ""
+															}`}
 													>
 														{field.value ? (
 															format(field.value, "PPP")
@@ -945,6 +997,6 @@ export function EditEmployeeDialog({
 					</form>
 				</Form>
 			</DialogContent>
-		</Dialog>
+		</Dialog >
 	);
 }

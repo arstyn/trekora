@@ -9,7 +9,6 @@ import { User } from 'src/database/entity/user.entity';
 import { UserModule } from 'src/modules/user/user.module';
 import { EmployeeModule } from '../employee/employee.module';
 import { OrganizationModule } from '../organization/organization.module';
-import { RoleModule } from '../role/role.module';
 import { UserInviteModule } from '../user-invite/user-invite.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -26,7 +25,6 @@ import { AuthGuard } from './guard/auth.guard';
     JwtModule.register({}),
     OrganizationModule,
     UserInviteModule,
-    RoleModule,
     EmployeeModule,
     MailerModule,
     forwardRef(() => PermissionModule),
@@ -42,4 +40,4 @@ import { AuthGuard } from './guard/auth.guard';
   controllers: [AuthController],
   exports: [AuthGuard, RolesGuard, PermissionGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

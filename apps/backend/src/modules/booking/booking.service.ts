@@ -52,7 +52,7 @@ export class BookingService {
     @InjectRepository(Batch)
     private batchRepository: Repository<Batch>,
     private dataSource: DataSource,
-  ) {}
+  ) { }
 
   async create(
     createBookingDto: CreateBookingDto,
@@ -235,6 +235,7 @@ export class BookingService {
       .leftJoinAndSelect('booking.customer', 'customer')
       .leftJoinAndSelect('booking.package', 'package')
       .leftJoinAndSelect('booking.batch', 'batch')
+      .leftJoinAndSelect('booking.createdBy', 'createdBy')
       .where('booking.organizationId = :organizationId', { organizationId })
       .orderBy('booking.createdAt', 'DESC')
       .take(limit)
@@ -260,6 +261,66 @@ export class BookingService {
       balanceAmount: booking.balanceAmount,
       status: booking.status,
       createdAt: booking.createdAt,
+      createdBy: booking.createdBy
+        ? {
+          id: booking.createdBy.id,
+          name: booking.createdBy.name,
+          email: booking.createdBy.email,
+        }
+        : null,
+    }));
+  }
+
+  async findByManagerTeam(
+    organizationId: string,
+    teamUserIds: string[],
+    status?: BookingStatus,
+    limit = 50,
+    offset = 0,
+  ): Promise<BookingSummaryDto[]> {
+    if (teamUserIds.length === 0) {
+      return [];
+    }
+
+    const queryBuilder = this.bookingRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.customer', 'customer')
+      .leftJoinAndSelect('booking.package', 'package')
+      .leftJoinAndSelect('booking.batch', 'batch')
+      .leftJoinAndSelect('booking.createdBy', 'createdBy')
+      .where('booking.organizationId = :organizationId', { organizationId })
+      .andWhere('booking.createdById IN (:...teamUserIds)', { teamUserIds })
+      .orderBy('booking.createdAt', 'DESC')
+      .take(limit)
+      .skip(offset);
+
+    if (status) {
+      queryBuilder.andWhere('booking.status = :status', { status });
+    }
+
+    const bookings = await queryBuilder.getMany();
+
+    return bookings.map((booking) => ({
+      id: booking.id,
+      bookingNumber: booking.bookingNumber,
+      customerName:
+        booking.customer.firstName + ' ' + booking.customer.lastName,
+      customerEmail: booking.customer.email,
+      packageName: booking.package.name,
+      batchStartDate: booking.batch.startDate,
+      numberOfCustomers: booking.numberOfCustomers,
+      totalAmount: booking.totalAmount,
+      advancePaid: booking.advancePaid,
+      balanceAmount: booking.balanceAmount,
+      status: booking.status,
+      createdAt: booking.createdAt,
+      createdBy: booking.createdBy
+        ? {
+          id: booking.createdBy.id,
+          name: booking.createdBy.name,
+          email: booking.createdBy.email,
+        }
+        : null,
     }));
   }
 

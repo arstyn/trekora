@@ -15,14 +15,17 @@ import {
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { PermissionGuard } from '../auth/guard/permission.guard';
+import { RequirePermission } from '../auth/decorator/require-permission.decorator';
 import { PackageService } from './package.service';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 @Controller('api/packages')
 export class PackageController {
-  constructor(private readonly packageService: PackageService) {}
+  constructor(private readonly packageService: PackageService) { }
 
   @Post()
+  @RequirePermission('package', 'create')
   @UseInterceptors(AnyFilesInterceptor())
   create(
     @Request() req: ApiRequestJWT,
@@ -33,6 +36,7 @@ export class PackageController {
   }
 
   @Get()
+  @RequirePermission('package', 'read')
   findAll(@Request() req: ApiRequestJWT, @Query('status') status?: string) {
     return this.packageService.findAll(req.user.organizationId, status);
   }
@@ -48,6 +52,7 @@ export class PackageController {
   }
 
   @Patch(':id')
+  @RequirePermission('package', 'update')
   @UseInterceptors(AnyFilesInterceptor())
   update(
     @Param('id') id: string,
@@ -58,6 +63,7 @@ export class PackageController {
   }
 
   @Delete(':id')
+  @RequirePermission('package', 'delete')
   remove(@Param('id') id: string) {
     return this.packageService.remove(id);
   }

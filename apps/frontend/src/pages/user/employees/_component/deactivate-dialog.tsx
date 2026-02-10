@@ -16,7 +16,7 @@ import { useState } from "react";
 type DeactivateDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	employee: IEmployee;
+	employee: IEmployee | null;
 	onDeactivate: (deletedEmployee: IEmployee) => void;
 };
 
@@ -28,20 +28,25 @@ export function DeactivateDialog({
 }: DeactivateDialogProps) {
 	const [error, setError] = useState<string | null>(null);
 
+	if (!employee) {
+		return null;
+	}
+
 	const handleDeactivate = async () => {
-		const res = await axiosInstance.patch<IEmployee>(
-			`/employee/${employee.id}/terminate`
-		);
+		if (!employee) return;
 
-		if (res) {
-			onDeactivate(res.data);
+		try {
+			const res = await axiosInstance.patch<IEmployee>(
+				`/employee/${employee.id}/terminate`
+			);
 
-			onOpenChange(false);
-		} else {
-			setError(error);
+			if (res) {
+				onDeactivate(res.data);
+				onOpenChange(false);
+			}
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Failed to terminate employee');
 		}
-
-		onOpenChange(false);
 	};
 
 	return (
@@ -97,7 +102,7 @@ export function DeactivateDialog({
 						</div>
 						<div>
 							<p className="text-muted-foreground">Role:</p>
-							<p className="font-medium">{employee.role.name}</p>
+							<p className="font-medium">{employee.role?.name || "No role assigned"}</p>
 						</div>
 					</div>
 				</div>

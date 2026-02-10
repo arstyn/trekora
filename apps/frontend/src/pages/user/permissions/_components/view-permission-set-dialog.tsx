@@ -60,12 +60,12 @@ export function ViewPermissionSetDialog({
                             )
                         </div>
                         {permissionSet.permissionSetPermissions?.length ===
-                        0 ? (
+                            0 ? (
                             <div className="text-sm text-muted-foreground">
                                 No permissions assigned
                             </div>
                         ) : (
-                            <ScrollArea className="h-[400px] border rounded-md p-4">
+                            <ScrollArea className="h-[300px] border rounded-md p-4">
                                 <div className="space-y-4">
                                     {Object.entries(permissionsByResource).map(
                                         ([resource, perms]) => (

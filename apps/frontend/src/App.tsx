@@ -32,13 +32,15 @@ import BookingDetailsPage from "./pages/user/bookings/view-booking.page";
 import { BranchPage } from "./pages/user/branch/branch-page";
 import CustomerManagement from "./pages/user/customers/customer";
 import { EmployeesPage } from "./pages/user/employees/employees-table";
+import TeamHierarchyPage from "./pages/user/employees/team-hierarchy.page";
 import ImportPage from "./pages/user/import/page";
 import EditPaymentPage from "./pages/user/payments/edit-payment.page";
 import PaymentsPage from "./pages/user/payments/payments.page";
 import PaymentDetailsPage from "./pages/user/payments/view-payment.page";
 import PermissionSetsPage from "./pages/user/permissions/permission-sets.page";
 import PermissionsPage from "./pages/user/permissions/permissions.page";
-import PreBookingsPage from "./pages/user/pre-bookings/pre-bookings.page";
+import AdminOverviewPage from "./pages/user/admin/overview.page";
+import ManagerOverviewPage from "./pages/user/manager/overview.page";
 import SettingsPage from "./pages/user/settings/page";
 
 function AuthenticatedApp() {
@@ -52,7 +54,6 @@ function AuthenticatedApp() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/leads" element={<Leads />} />
                     <Route path="/leads/:id" element={<LeadDetailsPage />} />
-                    <Route path="/pre-bookings" element={<PreBookingsPage />} />
                     <Route path="/packages" element={<Packages />} />
                     <Route
                         path="/packages/create"
@@ -71,6 +72,9 @@ function AuthenticatedApp() {
                     />
                     <Route path="/permissions" element={<PermissionsPage />} />
                     <Route path="/employees" element={<EmployeesPage />} />
+                    <Route path="/employees/hierarchy" element={<TeamHierarchyPage />} />
+                    <Route path="/admin/overview" element={<AdminOverviewPage />} />
+                    <Route path="/manager/overview" element={<ManagerOverviewPage />} />
                     <Route path="/branches" element={<BranchPage />} />
                     <Route path="/batches" element={<BatchesPage />} />
                     <Route path="/batches/:id" element={<BatchDetailsPage />} />

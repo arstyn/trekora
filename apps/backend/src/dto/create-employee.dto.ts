@@ -26,5 +26,6 @@ export class IEmployeeCreateDTO {
   profilePhoto?: string;
   verificationDocument?: string;
   verificationDocumentType?: string;
+  managerId?: string;
   // branchId?: string;
 }

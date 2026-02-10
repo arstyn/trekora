@@ -6,7 +6,6 @@ import configuration from '../../config/configuration';
 import { Batch } from '../entity/batch.entity';
 import { Branch } from '../entity/branch.entity';
 import { Customer } from '../entity/customer.entity';
-import { Department } from '../entity/department.entity';
 import { Employee, EmployeeStatus } from '../entity/employee.entity';
 import { FileManager, RelatedType } from '../entity/file-manager.entity';
 import { Lead } from '../entity/lead.entity';
@@ -23,24 +22,22 @@ import { PackageLocation } from '../entity/package-related/package-locations.ent
 import { Package } from '../entity/package-related/package.entity';
 import { PaymentMilestone } from '../entity/package-related/payment-milestones.entity';
 import { Transportation } from '../entity/package-related/transportations.entity';
-import { Role } from '../entity/role.entity';
 import { UserNotificationType } from '../entity/user-notification-type.entity';
 import { User } from '../entity/user.entity';
 import { Permission } from '../entity/permission.entity';
 import { batches } from './batch.seed';
 import { branches } from './branch.seed';
 import { customers } from './customer.seed';
-import { departments } from './department.seed';
 import { additionalEmployees } from './employee.seed';
 import { leads } from './lead.seed';
 import { organizations } from './organization.seed';
 import { packages } from './package.seed';
-import { roles } from './role.seed';
 import { userNotificationType } from './user-notification-type.seed';
 import { users } from './user.seed';
 import { permissions } from './permission.seed';
 import { PermissionSet } from '../entity/permission-set.entity';
 import { PermissionSetPermission } from '../entity/permission-set-permission.entity';
+import { UserPermissionSet } from '../entity/user-permission-set.entity';
 
 config();
 
@@ -110,31 +107,8 @@ async function seed() {
     await queryRunner.query('SET session_replication_role = DEFAULT;');
 
     console.log('Database cleared successfully');
-    const roleRepository = queryRunner.manager.getRepository(Role);
-    const departmentRepository = queryRunner.manager.getRepository(Department);
     const userNotificationTypeRepository =
       AppDataSource.getRepository(UserNotificationType);
-
-    console.log('Seeding roles...');
-    const roleTableExists = await tableExists(queryRunner, 'role');
-    if (!roleTableExists) {
-      console.log('Role table does not exist, skipping role seeding...');
-    } else {
-      for (const roleData of roles) {
-        let existingRole: Role | null = null;
-        existingRole = await roleRepository.findOne({
-          where: { name: roleData.name },
-        });
-
-        if (!existingRole) {
-          const role = roleRepository.create(roleData);
-          await roleRepository.save(role);
-          console.log(`Created role: ${roleData.name}`);
-        } else {
-          console.log(`Role ${roleData.name} already exists`);
-        }
-      }
-    }
 
     console.log('Seeding permissions...');
     const permissionTableExists = await tableExists(queryRunner, 'permission');
@@ -156,29 +130,6 @@ async function seed() {
           console.log(`Created permission: ${permissionData.name}`);
         } else {
           console.log(`Permission ${permissionData.name} already exists`);
-        }
-      }
-    }
-
-    console.log('Seeding departments...');
-    const departmentTableExists = await tableExists(queryRunner, 'department');
-    if (!departmentTableExists) {
-      console.log(
-        'Department table does not exist, skipping department seeding...',
-      );
-    } else {
-      for (const departmentData of departments) {
-        let existingDepartment: Department | null = null;
-        existingDepartment = await departmentRepository.findOne({
-          where: { name: departmentData.name },
-        });
-
-        if (!existingDepartment) {
-          const department = departmentRepository.create(departmentData);
-          await departmentRepository.save(department);
-          console.log(`Created department: ${departmentData.name}`);
-        } else {
-          console.log(`Department ${departmentData.name} already exists`);
         }
       }
     }
@@ -242,71 +193,58 @@ async function seed() {
       }
     }
 
-    // Find admin role (should exist after seeding roles above)
-    let adminRole: Role | null = null;
-    if (await tableExists(queryRunner, 'role')) {
-      adminRole = await queryRunner.manager.findOne(Role, {
-        where: { name: 'admin' },
-      });
-    }
-    if (!adminRole) {
-      console.log(
-        'Admin role not found, skipping user and employee seeding that requires admin role...',
-      );
-    } else {
-      // TypeScript now knows adminRole is not null after the check above
+    // Create users and employees (no role requirement - using permission sets)
+    const userTableExists = await tableExists(queryRunner, 'user');
+    const employeeTableExists = await tableExists(queryRunner, 'employee');
 
-      const userTableExists = await tableExists(queryRunner, 'user');
-      const employeeTableExists = await tableExists(queryRunner, 'employee');
+    if (userTableExists && employeeTableExists) {
+      for (const user of users) {
+        const org = await queryRunner.manager.findOne(Organization, {
+          where: { domain: user.organizationDomain },
+        });
 
-      if (userTableExists && employeeTableExists) {
-        for (const user of users) {
-          const org = await queryRunner.manager.findOne(Organization, {
-            where: { domain: user.organizationDomain },
-          });
-
-          if (!org) {
-            throw new Error('Organization not found in database');
-          }
-
-          // Create user
-          const hashedPassword = await bcrypt.hash(user.password, 10);
-          const newUser = queryRunner.manager.create(User, {
-            name: user.name,
-            email: user.email,
-            password: hashedPassword,
-            phone: user.phone,
-            organizationId: org.id,
-            roleId: adminRole!.id,
-            notificationsEnabled: user.notificationsEnabled,
-            newsletterSubscribed: user.newsletterSubscribed,
-          });
-
-          const savedUser = await queryRunner.manager.save(newUser);
-          console.log('User created:', savedUser.id);
-
-          // Create employee
-          const employee = queryRunner.manager.create(Employee, {
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            organizationId: org.id,
-            userId: savedUser.id,
-            roleId: adminRole!.id,
-            status: EmployeeStatus.ACTIVE,
-            joinDate: new Date().toISOString(),
-          });
-          const savedEmployee = await queryRunner.manager.save(employee);
-          console.log('Employee created:', savedEmployee.id);
+        if (!org) {
+          throw new Error('Organization not found in database');
         }
-      } else {
-        console.log(
-          'User or employee table does not exist, skipping user/employee seeding...',
-        );
+
+        // Create user (roleId is optional now)
+        const hashedPassword = await bcrypt.hash(user.password, 10);
+        const newUser = queryRunner.manager.create(User, {
+          name: user.name,
+          email: user.email,
+          password: hashedPassword,
+          phone: user.phone,
+          organizationId: org.id,
+          notificationsEnabled: user.notificationsEnabled,
+          newsletterSubscribed: user.newsletterSubscribed,
+        });
+
+        const savedUser = await queryRunner.manager.save(newUser);
+        console.log('User created:', savedUser.id);
+
+        // Create employee (roleId is optional now)
+        const employee = queryRunner.manager.create(Employee, {
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          organizationId: org.id,
+          userId: savedUser.id,
+          status: EmployeeStatus.ACTIVE,
+          joinDate: new Date().toISOString(),
+        });
+        const savedEmployee = await queryRunner.manager.save(employee);
+        console.log('Employee created:', savedEmployee.id);
+
+        // Assign admin permission set to the user (will be done after permission sets are created)
+        // This will be handled after permission sets are seeded
       }
+    } else {
+      console.log(
+        'User or employee table does not exist, skipping user/employee seeding...',
+      );
     }
 
-    // Create additional employees
+    // Create additional employees (no role requirement - using permission sets)
     const additionalEmployeeTableExists = await tableExists(
       queryRunner,
       'employee',
@@ -329,15 +267,7 @@ async function seed() {
           continue;
         }
 
-        const role = await queryRunner.manager.findOne(Role, {
-          where: { name: employeeData.roleName },
-        });
-
-        if (!role) {
-          console.log(`Role not found: ${employeeData.roleName}`);
-          continue;
-        }
-
+        // Create employee without role (roleId is optional)
         const employee = queryRunner.manager.create(Employee, {
           name: employeeData.name,
           email: employeeData.email,
@@ -350,13 +280,14 @@ async function seed() {
           nationality: employeeData.nationality,
           maritalStatus: employeeData.maritalStatus,
           organizationId: org.id,
-          roleId: role.id,
           status: employeeData.status,
           joinDate: new Date().toISOString(),
         });
 
         const savedEmployee = await queryRunner.manager.save(employee);
         console.log('Additional employee created:', savedEmployee.id);
+
+        // Permission set assignment will be done after permission sets are created
       }
     }
 
@@ -971,6 +902,275 @@ async function seed() {
           console.log(
             `Created permission set "${config.name}" for organization ${org.id} with ${permissionIds.length} permissions`,
           );
+        }
+      }
+    }
+
+    // Assign permission sets to users and employees
+    console.log('Assigning permission sets to users and employees...');
+    const userPermissionSetTableExists = await tableExists(
+      queryRunner,
+      'user_permission_set',
+    );
+    if (userPermissionSetTableExists) {
+      const userPermissionSetRepository =
+        queryRunner.manager.getRepository(UserPermissionSet);
+
+      // Get all users, employees, and organizations
+      const allUsers = await queryRunner.manager.find(User);
+      const allEmployees = await queryRunner.manager.find(Employee);
+      const organizations = await queryRunner.manager.find(Organization);
+
+      // Define admin users and manager employees for each organization
+      // Structure: { organizationDomain: { adminEmail, managerEmail } }
+      const organizationHierarchy = {
+        'acme.com': {
+          adminEmail: 'alice@acme.com',
+          managerEmail: 'sarah.wilson@acme.com',
+        },
+        'globex.co': {
+          adminEmail: 'bob@globex.co',
+          managerEmail: 'james.thompson@globex.co',
+        },
+        'initech.org': {
+          adminEmail: 'carol@initech.org',
+          managerEmail: 'jennifer.lee@initech.org',
+        },
+        'umbrella.com': {
+          adminEmail: 'david@umbrella.com',
+          managerEmail: 'amanda.foster@umbrella.com',
+        },
+      };
+
+      // Step 1: Assign admin permission sets to admin users
+      for (const user of allUsers) {
+        if (!user.organizationId) continue;
+
+        const org = organizations.find(o => o.id === user.organizationId);
+        if (!org || !org.domain) continue;
+
+        const hierarchy = organizationHierarchy[org.domain];
+        if (!hierarchy) continue;
+
+        const isAdminUser = hierarchy.adminEmail.toLowerCase() === user.email.toLowerCase();
+
+        if (isAdminUser) {
+          // Find admin permission set for this organization
+          const adminPermissionSet = await permissionSetRepository.findOne({
+            where: {
+              name: 'Admin - Full Access',
+              organizationId: user.organizationId,
+            },
+          });
+
+          if (adminPermissionSet) {
+            // Check if already assigned to user
+            let existing = await userPermissionSetRepository.findOne({
+              where: {
+                userId: user.id,
+                permissionSetId: adminPermissionSet.id,
+              },
+            });
+
+            if (!existing) {
+              existing = userPermissionSetRepository.create({
+                userId: user.id,
+                permissionSetId: adminPermissionSet.id,
+              });
+              await userPermissionSetRepository.save(existing);
+            }
+
+            // Also assign to linked employee if exists
+            const linkedEmployee = allEmployees.find(e => e.userId === user.id);
+            if (linkedEmployee) {
+              let existingEmployee = await userPermissionSetRepository.findOne({
+                where: {
+                  employeeId: linkedEmployee.id,
+                  permissionSetId: adminPermissionSet.id,
+                },
+              });
+
+              if (!existingEmployee) {
+                existingEmployee = userPermissionSetRepository.create({
+                  employeeId: linkedEmployee.id,
+                  permissionSetId: adminPermissionSet.id,
+                });
+                await userPermissionSetRepository.save(existingEmployee);
+              }
+              console.log(
+                `Assigned Admin - Full Access permission set to admin: ${user.email}`,
+              );
+            }
+          }
+        }
+      }
+
+      // Step 2: Set up manager hierarchy and assign manager permission sets
+      for (const org of organizations) {
+        if (!org.domain) continue;
+        const hierarchy = organizationHierarchy[org.domain];
+        if (!hierarchy) continue;
+
+        // Find admin employee
+        const adminUser = allUsers.find(
+          u => u.email.toLowerCase() === hierarchy.adminEmail.toLowerCase() && u.organizationId === org.id
+        );
+        const adminEmployee = adminUser
+          ? allEmployees.find(e => e.userId === adminUser.id)
+          : null;
+
+        // Find manager employee
+        const managerEmployee = allEmployees.find(
+          e => e.email?.toLowerCase() === hierarchy.managerEmail.toLowerCase() && e.organizationId === org.id
+        );
+
+        if (!managerEmployee) {
+          console.log(`Manager employee not found for ${org.domain}: ${hierarchy.managerEmail}`);
+          continue;
+        }
+
+        // Assign manager permission set to manager employee
+        const managerPermissionSet = await permissionSetRepository.findOne({
+          where: {
+            name: 'Manager - Team Management',
+            organizationId: org.id,
+          },
+        });
+
+        if (managerPermissionSet) {
+          // Assign to manager employee
+          let existing = await userPermissionSetRepository.findOne({
+            where: {
+              employeeId: managerEmployee.id,
+              permissionSetId: managerPermissionSet.id,
+            },
+          });
+
+          if (!existing) {
+            existing = userPermissionSetRepository.create({
+              employeeId: managerEmployee.id,
+              permissionSetId: managerPermissionSet.id,
+            });
+            await userPermissionSetRepository.save(existing);
+          }
+
+          // Also assign to linked user if exists
+          if (managerEmployee.userId) {
+            let existingUser = await userPermissionSetRepository.findOne({
+              where: {
+                userId: managerEmployee.userId,
+                permissionSetId: managerPermissionSet.id,
+              },
+            });
+
+            if (!existingUser) {
+              existingUser = userPermissionSetRepository.create({
+                userId: managerEmployee.userId,
+                permissionSetId: managerPermissionSet.id,
+              });
+              await userPermissionSetRepository.save(existingUser);
+            }
+          }
+
+          console.log(
+            `Assigned Manager - Team Management permission set to manager: ${managerEmployee.email}`,
+          );
+        }
+
+        // Set manager hierarchy: manager reports to admin
+        if (adminEmployee) {
+          await queryRunner.manager.update(Employee, managerEmployee.id, {
+            managerId: adminEmployee.id,
+          });
+          console.log(
+            `Set ${managerEmployee.email} as direct report of admin ${adminEmployee.email}`,
+          );
+        }
+      }
+
+      // Step 3: Assign "Employee - Basic Access" to all other employees and set their manager
+      const adminUserEmails = Object.values(organizationHierarchy).map(h => h.adminEmail.toLowerCase());
+      const managerEmails = Object.values(organizationHierarchy).map(h => h.managerEmail.toLowerCase());
+
+      for (const employee of allEmployees) {
+        if (!employee.organizationId) continue;
+
+        const org = organizations.find(o => o.id === employee.organizationId);
+        if (!org || !org.domain) continue;
+
+        const hierarchy = organizationHierarchy[org.domain];
+        if (!hierarchy) continue;
+
+        const employeeEmail = employee.email?.toLowerCase();
+        if (!employeeEmail) continue;
+
+        // Skip admin and manager employees (already assigned)
+        if (adminUserEmails.includes(employeeEmail) || managerEmails.includes(employeeEmail)) {
+          continue;
+        }
+
+        // Find manager employee for this organization
+        const managerEmployee = allEmployees.find(
+          e => e.email?.toLowerCase() === hierarchy.managerEmail.toLowerCase() && e.organizationId === org.id
+        );
+
+        // Set manager for this employee
+        if (managerEmployee) {
+          await queryRunner.manager.update(Employee, employee.id, {
+            managerId: managerEmployee.id,
+          });
+          console.log(
+            `Set ${employee.email} as direct report of manager ${managerEmployee.email}`,
+          );
+        }
+
+        // Assign "Employee - Basic Access" permission set
+        const employeePermissionSet = await permissionSetRepository.findOne({
+          where: {
+            name: 'Employee - Basic Access',
+            organizationId: employee.organizationId,
+          },
+        });
+
+        if (employeePermissionSet) {
+          // Check if already assigned
+          let existing = await userPermissionSetRepository.findOne({
+            where: {
+              employeeId: employee.id,
+              permissionSetId: employeePermissionSet.id,
+            },
+          });
+
+          if (!existing) {
+            // Assign to employee
+            existing = userPermissionSetRepository.create({
+              employeeId: employee.id,
+              permissionSetId: employeePermissionSet.id,
+            });
+            await userPermissionSetRepository.save(existing);
+
+            // Also assign to linked user if exists
+            if (employee.userId) {
+              let existingUser = await userPermissionSetRepository.findOne({
+                where: {
+                  userId: employee.userId,
+                  permissionSetId: employeePermissionSet.id,
+                },
+              });
+
+              if (!existingUser) {
+                existingUser = userPermissionSetRepository.create({
+                  userId: employee.userId,
+                  permissionSetId: employeePermissionSet.id,
+                });
+                await userPermissionSetRepository.save(existingUser);
+              }
+            }
+
+            console.log(
+              `Assigned Employee - Basic Access permission set to employee: ${employee.email}`,
+            );
+          }
         }
       }
     }

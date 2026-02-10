@@ -107,16 +107,16 @@ export function CreatePermissionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
-                <form onSubmit={handleSubmit}>
-                    <DialogHeader>
+            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+                <form onSubmit={handleSubmit} className="flex flex-col min-h-0">
+                    <DialogHeader className="flex-shrink-0">
                         <DialogTitle>Create Permission</DialogTitle>
                         <DialogDescription>
                             Create a new system permission
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
                         <div className="space-y-2">
                             <Label htmlFor="name">Name *</Label>
                             <Input
@@ -182,7 +182,7 @@ export function CreatePermissionDialog({
                         </div>
                     </div>
 
-                    <DialogFooter>
+                    <DialogFooter className="flex-shrink-0">
                         <Button
                             type="button"
                             variant="outline"

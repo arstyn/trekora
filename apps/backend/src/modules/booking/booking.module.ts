@@ -11,6 +11,8 @@ import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
 import { JwtModule } from '@nestjs/jwt';
 import { BookingChecklist } from 'src/database/entity/booking-checklist.entity';
+import { PermissionModule } from '../permission/permission.module';
+import { EmployeeModule } from '../employee/employee.module';
 
 @Module({
   imports: [
@@ -24,9 +26,11 @@ import { BookingChecklist } from 'src/database/entity/booking-checklist.entity';
       Batch,
     ]),
     JwtModule.register({}),
+    PermissionModule,
+    EmployeeModule,
   ],
   controllers: [BookingController],
   providers: [BookingService],
   exports: [BookingService],
 })
-export class BookingModule {}
+export class BookingModule { }

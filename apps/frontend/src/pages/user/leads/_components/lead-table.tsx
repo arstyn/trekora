@@ -71,6 +71,20 @@ export function LeadTable({ leads, onStatusChange, onLeadClick }: LeadTableProps
 			cell: ({ row }) => formatDate(row.original.createdAt),
 		},
 		{
+			accessorKey: "createdBy",
+			header: "Created By",
+			cell: ({ row }) => {
+				const createdBy = row.original.createdBy;
+				return createdBy ? (
+					<span className="text-sm text-muted-foreground">
+						{createdBy.name || createdBy.email || "Unknown"}
+					</span>
+				) : (
+					<NAText />
+				);
+			},
+		},
+		{
 			id: "actions",
 			header: "",
 			cell: ({ row }) => {
@@ -155,9 +169,9 @@ export function LeadTable({ leads, onStatusChange, onLeadClick }: LeadTableProps
 										{header.isPlaceholder
 											? null
 											: flexRender(
-													header.column.columnDef.header,
-													header.getContext()
-											  )}
+												header.column.columnDef.header,
+												header.getContext()
+											)}
 									</TableHead>
 								))}
 							</TableRow>

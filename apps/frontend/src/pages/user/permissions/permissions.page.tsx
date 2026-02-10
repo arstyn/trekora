@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -15,7 +16,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { PermissionService } from "@/services/permission.service";
 import type { Permission } from "@/types/permission.types";
 import { Plus, Search } from "lucide-react";
@@ -23,12 +24,9 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CreatePermissionDialog } from "./_components/create-permission-dialog";
 import { EditPermissionDialog } from "./_components/edit-permission-dialog";
-import { useHasRole } from "@/hooks/use-permissions";
-import { useNavigate } from "react-router-dom";
 
 export default function PermissionsPage() {
-    const navigate = useNavigate();
-    const { hasRole: isAdmin, loading: roleLoading } = useHasRole("admin");
+    const { hasPermission: canManage, loading: permissionLoading } = useHasPermission("permission", "manage");
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -36,14 +34,6 @@ export default function PermissionsPage() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null);
-
-    // Redirect if not admin
-    useEffect(() => {
-        if (!roleLoading && !isAdmin) {
-            toast.error("You don't have permission to access this page");
-            navigate("/");
-        }
-    }, [isAdmin, roleLoading, navigate]);
 
     const fetchPermissions = async () => {
         try {
@@ -59,10 +49,10 @@ export default function PermissionsPage() {
     };
 
     useEffect(() => {
-        if (isAdmin) {
+        if (canManage) {
             fetchPermissions();
         }
-    }, [isAdmin]);
+    }, [canManage]);
 
     const filteredPermissions = permissions.filter((perm) => {
         const matchesSearch = perm.name
@@ -103,12 +93,21 @@ export default function PermissionsPage() {
         }
     };
 
-    if (roleLoading) {
+    if (permissionLoading) {
         return <div>Loading...</div>;
     }
 
-    if (!isAdmin) {
-        return null;
+    if (!canManage) {
+        return (
+            <div className="container mx-auto p-6">
+                <div className="text-center py-12">
+                    <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+                    <p className="text-muted-foreground">
+                        You don't have permission to access this page.
+                    </p>
+                </div>
+            </div>
+        );
     }
 
     return (

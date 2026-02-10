@@ -333,6 +333,7 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
               <TableHead>Method</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
+              <TableHead>Recorded By</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -376,6 +377,15 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
                   <TableCell>{getStatusBadge(payment.status)}</TableCell>
                   <TableCell className="text-sm">
                     {new Date(payment.paymentDate).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    {payment.recordedBy ? (
+                      <span className="text-sm text-muted-foreground">
+                        {payment.recordedBy.firstName} {payment.recordedBy.lastName}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

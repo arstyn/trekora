@@ -17,6 +17,7 @@ import { PackageController } from './package.controller';
 import { PackageService } from './package.service';
 import { FileManager } from 'src/database/entity/file-manager.entity';
 import { FileManagerModule } from '../file-manager/file-manager.module';
+import { PermissionModule } from '../permission/permission.module';
 
 @Module({
   imports: [
@@ -37,8 +38,9 @@ import { FileManagerModule } from '../file-manager/file-manager.module';
     ]),
     FileManagerModule,
     JwtModule.register({}),
+    PermissionModule,
   ],
   providers: [PackageService],
   controllers: [PackageController],
 })
-export class PackageModule {}
+export class PackageModule { }

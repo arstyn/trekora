@@ -127,6 +127,12 @@ export class BookingStatsDto {
   totalCustomers: number;
 }
 
+export class CreatedByDto {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export class BookingSummaryDto {
   id: string;
   bookingNumber: string;
@@ -140,6 +146,7 @@ export class BookingSummaryDto {
   balanceAmount: number;
   status: BookingStatus;
   createdAt: Date;
+  createdBy?: CreatedByDto | null;
 }
 
 export class BookingCustomerResponseDto {
