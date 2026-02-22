@@ -10,6 +10,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { BatchStatus } from 'src/database/entity/batch.entity';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { BatchesService } from './batches.service';
@@ -31,7 +32,10 @@ export class BatchesController {
   }
 
   @Get()
-  findAll(@Request() req: ApiRequestJWT, @Query('status') status?: string) {
+  findAll(
+    @Request() req: ApiRequestJWT,
+    @Query('status') status?: BatchStatus,
+  ) {
     return this.batchService.findAll(req.user.organizationId, status);
   }
 
@@ -63,6 +67,16 @@ export class BatchesController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateBatchDto) {
     return this.batchService.update(id, dto);
+  }
+
+  @Patch(':id/active')
+  markActive(@Param('id') id: string) {
+    return this.batchService.markActive(id);
+  }
+
+  @Patch(':id/complete')
+  markCompleted(@Param('id') id: string) {
+    return this.batchService.markCompleted(id);
   }
 
   @Delete(':id')
@@ -129,8 +143,9 @@ export class BatchesController {
   addChecklistItem(
     @Param('id') id: string,
     @Body() dto: CreateChecklistItemDto,
+    @Request() req: ApiRequestJWT,
   ) {
-    return this.batchService.addChecklistItem(id, dto);
+    return this.batchService.addChecklistItem(id, dto, req.user.userId);
   }
 
   @Patch('checklists/:checklistId')
@@ -142,8 +157,11 @@ export class BatchesController {
   }
 
   @Patch('checklists/:checklistId/toggle')
-  toggleChecklistItem(@Param('checklistId') checklistId: string) {
-    return this.batchService.toggleChecklistItem(checklistId);
+  toggleChecklistItem(
+    @Param('checklistId') checklistId: string,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.batchService.toggleChecklistItem(checklistId, req.user.userId);
   }
 
   @Delete('checklists/:checklistId')

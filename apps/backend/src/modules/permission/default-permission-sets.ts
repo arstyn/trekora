@@ -9,15 +9,27 @@ export interface DefaultPermissionSetConfig {
   permissionNames: string[];
 }
 
+export type DefaultPermissionSetRole =
+  | 'admin'
+  | 'manager'
+  | 'finance_manager'
+  | 'finance_employee'
+  | 'booking_manager'
+  | 'booking_employee'
+  | 'leads_manager'
+  | 'leads_employee'
+  | 'operations_manager'
+  | 'operations_employee'
+  | 'employee';
+
 export const defaultPermissionSets: Record<
-  'admin' | 'manager' | 'employee',
+  DefaultPermissionSetRole,
   DefaultPermissionSetConfig
 > = {
   admin: {
     name: 'Admin - Full Access',
     description: 'Full access to all system features and settings',
     permissionNames: [
-      // All permissions for admin
       'booking.create',
       'booking.read',
       'booking.update',
@@ -82,78 +94,238 @@ export const defaultPermissionSets: Record<
       'permission-set.delete',
       'permission-set.view',
       'permission-set.manage',
+      'workflow.create',
+      'workflow.read',
+      'workflow.update',
+      'workflow.delete',
+      'workflow.view',
     ],
   },
   manager: {
-    name: 'Manager - Team Management',
-    description: 'Access to manage teams, view reports, and handle bookings',
+    name: 'General Manager',
+    description: 'Broad access to manage all departments and operations',
     permissionNames: [
-      // Booking permissions
       'booking.create',
       'booking.read',
       'booking.update',
       'booking.view',
-      // Lead permissions
       'lead.create',
       'lead.read',
       'lead.update',
       'lead.view',
-      // Package permissions (view only)
+      'package.create',
       'package.read',
+      'package.update',
       'package.view',
-      // Customer permissions
       'customer.create',
       'customer.read',
       'customer.update',
       'customer.view',
-      // Employee permissions (view and limited manage)
       'employee.read',
       'employee.view',
-      // Payment permissions
       'payment.create',
       'payment.read',
       'payment.update',
       'payment.view',
-      // Batch permissions
       'batch.create',
       'batch.read',
       'batch.update',
       'batch.view',
-      // Branch permissions (view only)
       'branch.read',
       'branch.view',
-      // Department permissions (view only)
       'department.read',
       'department.view',
+      'workflow.read',
+      'workflow.update',
+      'workflow.view',
     ],
   },
-  employee: {
-    name: 'Employee - Basic Access',
-    description: 'Basic access to view and create bookings, leads, and customers',
+  finance_manager: {
+    name: 'Finance Manager',
+    description: 'Full access to financial records and payments',
     permissionNames: [
-      // Booking permissions (create and view own)
-      'booking.create',
+      'payment.create',
+      'payment.read',
+      'payment.update',
+      'payment.delete',
+      'payment.view',
+      'customer.read',
+      'customer.view',
       'booking.read',
       'booking.view',
-      // Lead permissions
+    ],
+  },
+  finance_employee: {
+    name: 'Finance Employee',
+    description: 'Access to create and view payments',
+    permissionNames: [
+      'payment.create',
+      'payment.read',
+      'payment.view',
+      'customer.read',
+      'customer.view',
+      'booking.read',
+      'booking.view',
+    ],
+  },
+  booking_manager: {
+    name: 'Booking Manager',
+    description: 'Manage all bookings, customers and packages',
+    permissionNames: [
+      'booking.create',
+      'booking.read',
+      'booking.update',
+      'booking.delete',
+      'booking.view',
+      'customer.create',
+      'customer.read',
+      'customer.update',
+      'customer.delete',
+      'customer.view',
+      'package.read',
+      'package.view',
+      'batch.read',
+      'batch.view',
+      'workflow.read',
+      'workflow.update',
+      'workflow.view',
+    ],
+  },
+  booking_employee: {
+    name: 'Booking Employee',
+    description: 'Facilitate bookings and customer management',
+    permissionNames: [
+      'booking.create',
+      'booking.read',
+      'booking.update',
+      'booking.view',
+      'customer.create',
+      'customer.read',
+      'customer.update',
+      'customer.view',
+      'package.read',
+      'package.view',
+      'batch.read',
+      'batch.view',
+      'workflow.read',
+      'workflow.update',
+      'workflow.view',
+    ],
+  },
+  leads_manager: {
+    name: 'Leads Manager',
+    description: 'Manage sales leads and customer acquisition',
+    permissionNames: [
+      'lead.create',
+      'lead.read',
+      'lead.update',
+      'lead.delete',
+      'lead.view',
+      'customer.create',
+      'customer.read',
+      'customer.update',
+      'customer.view',
+    ],
+  },
+  leads_employee: {
+    name: 'Leads Employee',
+    description: 'Process and update sales leads',
+    permissionNames: [
       'lead.create',
       'lead.read',
       'lead.update',
       'lead.view',
-      // Package permissions (view only)
-      'package.read',
-      'package.view',
-      // Customer permissions
       'customer.create',
       'customer.read',
       'customer.view',
-      // Payment permissions (view only)
-      'payment.read',
-      'payment.view',
-      // Batch permissions (view only)
+    ],
+  },
+  operations_manager: {
+    name: 'Operations Manager',
+    description: 'Manage batches, packages, and logistics',
+    permissionNames: [
+      'package.create',
+      'package.read',
+      'package.update',
+      'package.delete',
+      'package.view',
+      'batch.create',
       'batch.read',
+      'batch.update',
+      'batch.delete',
       'batch.view',
+      'branch.create',
+      'branch.read',
+      'branch.update',
+      'branch.view',
+      'department.read',
+      'department.view',
+      'booking.read',
+      'booking.view',
+      'workflow.read',
+      'workflow.update',
+      'workflow.view',
+    ],
+  },
+  operations_employee: {
+    name: 'Operations Employee',
+    description: 'Support logistics and package management',
+    permissionNames: [
+      'package.create',
+      'package.read',
+      'package.update',
+      'package.view',
+      'batch.create',
+      'batch.read',
+      'batch.update',
+      'batch.view',
+      'branch.read',
+      'branch.view',
+      'department.read',
+      'department.view',
+      'workflow.read',
+      'workflow.update',
+      'workflow.view',
+    ],
+  },
+  employee: {
+    name: 'Employee - Basic Access',
+    description:
+      'Comprehensive access to view, create, and edit records (No Delete)',
+    permissionNames: [
+      'booking.create',
+      'booking.read',
+      'booking.update',
+      'booking.view',
+      'lead.create',
+      'lead.read',
+      'lead.update',
+      'lead.view',
+      'package.create',
+      'package.read',
+      'package.update',
+      'package.view',
+      'customer.create',
+      'customer.read',
+      'customer.update',
+      'customer.view',
+      'employee.read',
+      'employee.view',
+      'payment.create',
+      'payment.read',
+      'payment.update',
+      'payment.view',
+      'batch.create',
+      'batch.read',
+      'batch.update',
+      'batch.view',
+      'branch.read',
+      'branch.view',
+      'department.read',
+      'department.view',
+      'workflow.read',
+      'workflow.update',
+      'workflow.view',
     ],
   },
 };
-

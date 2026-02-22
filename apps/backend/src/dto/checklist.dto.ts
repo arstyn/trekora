@@ -29,6 +29,10 @@ export class CreateChecklistItemDto {
   @IsOptional()
   customerId?: string;
 
+  @IsUUID()
+  @IsOptional()
+  assignedToId?: string;
+
   @IsNumber()
   @IsOptional()
   sortOrder?: number;
@@ -51,6 +55,14 @@ export class UpdateChecklistItemDto {
   @IsNumber()
   @IsOptional()
   sortOrder?: number;
+
+  @IsUUID()
+  @IsOptional()
+  assignedToId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  updatedById?: string;
 }
 
 export class ChecklistItemResponseDto {
@@ -61,6 +73,21 @@ export class ChecklistItemResponseDto {
   type: ChecklistType;
   customerId?: string;
   sortOrder: number;
+  assignedTo?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  createdBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  updatedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,6 +130,10 @@ export class CreateBookingChecklistDto {
   @IsNumber()
   @IsOptional()
   sortOrder?: number;
+
+  @IsUUID()
+  @IsOptional()
+  assignedToId?: string;
 }
 
 export class CreateBookingCustomerDto {

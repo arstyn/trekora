@@ -1,6 +1,21 @@
-import { IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, Max, IsDateString, IsBoolean } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  Max,
+  IsDateString,
+  IsBoolean,
+} from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { PaymentMethod, PaymentStatus, PaymentType } from 'src/database/entity/booking-payment.entity';
+import {
+  PaymentMethod,
+  PaymentStatus,
+  PaymentType,
+} from 'src/database/entity/booking-payment.entity';
 
 export class CreatePaymentDto {
   @IsUUID()
@@ -194,6 +209,7 @@ export class OverduePaymentDto {
 
 export class PaymentResponseDto {
   id: string;
+  paymentNumber: string;
   amount: number;
   paymentType: PaymentType;
   paymentMethod: PaymentMethod;
@@ -204,42 +220,42 @@ export class PaymentResponseDto {
   notes?: string;
   receiptFilePath?: string;
   paymentDetails?: Record<string, any>;
-  
+
   booking: {
     id: string;
     bookingNumber: string;
     totalAmount: number;
     advancePaid: number;
     balanceAmount: number;
-    
+
     customer: {
       id: string;
       name: string;
       email: string;
       phone: string;
     };
-    
+
     package: {
       id: string;
       name: string;
       destination: string;
       duration: string;
     };
-    
+
     batch: {
       id: string;
       startDate: Date;
       endDate: Date;
     };
   };
-  
+
   recordedBy: {
     id: string;
     firstName: string;
     lastName: string;
     email: string;
   };
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -252,4 +268,4 @@ export class PaymentListResponseDto {
     total: number;
     totalPages: number;
   };
-} 
+}

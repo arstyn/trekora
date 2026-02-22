@@ -406,5 +406,36 @@ export const permissions = [
     action: 'manage',
     description: 'Manage permission sets (full access)',
   },
-];
 
+  // Workflow permissions
+  {
+    name: 'workflow.create',
+    resource: 'workflow',
+    action: 'create',
+    description: 'Create new workflows',
+  },
+  {
+    name: 'workflow.read',
+    resource: 'workflow',
+    action: 'read',
+    description: 'View workflows',
+  },
+  {
+    name: 'workflow.update',
+    resource: 'workflow',
+    action: 'update',
+    description: 'Update existing workflows',
+  },
+  {
+    name: 'workflow.delete',
+    resource: 'workflow',
+    action: 'delete',
+    description: 'Delete workflows',
+  },
+  {
+    name: 'workflow.view',
+    resource: 'workflow',
+    action: 'view',
+    description: 'View workflow details',
+  },
+];

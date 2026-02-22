@@ -44,7 +44,7 @@ export class AuthService {
     private readonly mailerService: MailerService,
     private readonly permissionSetService: PermissionSetService,
     private readonly permissionService: PermissionService,
-  ) {}
+  ) { }
 
   private async generateAccessToken(
     userId: string,
@@ -228,25 +228,18 @@ export class AuthService {
       await queryRunner.commitTransaction();
       console.log('Transaction committed successfully');
 
-      // Create default permission sets for the organization
+      // Create default permissions and permission sets for the organization
+      // This will create tenant-specific permissions and permission sets
       try {
-        const existingPermissions = await this.permissionService.findAll();
-        if (existingPermissions.length === 0) {
-          console.log(
-            'No permissions found, skipping default permission sets creation',
-          );
-          console.log(
-            'Please run the migration to seed permissions first, then permission sets will be created automatically for new organizations',
-          );
-        } else {
-          await this.permissionSetService.createDefaultPermissionSetsForOrganization(
-            savedOrganization.id,
-          );
-          console.log('Default permission sets created for organization');
-        }
+        await this.permissionSetService.createDefaultPermissionSetsForOrganization(
+          savedOrganization.id,
+        );
+        console.log(
+          'Default permissions and permission sets created for organization',
+        );
       } catch (error) {
         console.error(
-          'Error creating default permission sets (non-critical):',
+          'Error creating default permissions and permission sets (non-critical):',
           error,
         );
         // Don't fail the signup if permission sets creation fails
@@ -558,22 +551,18 @@ export class AuthService {
         await queryRunner.commitTransaction();
         console.log('Google signup transaction committed successfully');
 
-        // Create default permission sets for the organization
+        // Create default permissions and permission sets for the organization
+        // This will create tenant-specific permissions and permission sets
         try {
-          const existingPermissions = await this.permissionService.findAll();
-          if (existingPermissions.length === 0) {
-            console.log(
-              'No permissions found, skipping default permission sets creation',
-            );
-          } else {
-            await this.permissionSetService.createDefaultPermissionSetsForOrganization(
-              savedOrganization.id,
-            );
-            console.log('Default permission sets created for organization');
-          }
+          await this.permissionSetService.createDefaultPermissionSetsForOrganization(
+            savedOrganization.id,
+          );
+          console.log(
+            'Default permissions and permission sets created for organization',
+          );
         } catch (error) {
           console.error(
-            'Error creating default permission sets (non-critical):',
+            'Error creating default permissions and permission sets (non-critical):',
             error,
           );
         }

@@ -18,7 +18,7 @@ export class PermissionCheckService {
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
     private readonly permissionSetService: PermissionSetService,
-  ) { }
+  ) {}
 
   /**
    * Check if a user has a specific permission
@@ -34,6 +34,11 @@ export class PermissionCheckService {
       where: { id: userId, organizationId },
     });
 
+    console.log(
+      '🚀 ~ permission-check.service.ts:37 ~ PermissionCheckService ~ hasPermission ~ user:',
+      user,
+    );
+
     if (!user) {
       return false;
     }
@@ -42,35 +47,56 @@ export class PermissionCheckService {
     const userPermissionSets =
       await this.permissionSetService.getPermissionSetsForUser(userId);
 
+    console.log(
+      '🚀 ~ permission-check.service.ts:48 ~ PermissionCheckService ~ hasPermission ~ userPermissionSets:',
+      userPermissionSets,
+    );
+
     // Also check if user has a linked employee and get their permission sets
     const employee = await this.employeeRepository.findOne({
       where: { userId, organizationId },
     });
 
+    console.log(
+      '🚀 ~ permission-check.service.ts:56 ~ PermissionCheckService ~ hasPermission ~ employee:',
+      employee,
+    );
+
     let employeePermissionSets: PermissionSet[] = [];
     if (employee) {
-      employeePermissionSets = await this.permissionSetService.getPermissionSetsForUser(
-        undefined,
-        employee.id,
-      );
+      employeePermissionSets =
+        await this.permissionSetService.getPermissionSetsForUser(
+          undefined,
+          employee.id,
+        );
     }
 
     // Combine both sets and remove duplicates
-    const allPermissionSets = [...userPermissionSets, ...employeePermissionSets];
+    const allPermissionSets = [
+      ...userPermissionSets,
+      ...employeePermissionSets,
+    ];
     const uniquePermissionSets = Array.from(
-      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values()
+      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values(),
     );
 
     // Get permissions from all assigned permission sets
+    // Filter by organizationId to ensure tenant isolation
     const allPermissions: Permission[] = [];
     for (const permissionSet of uniquePermissionSets) {
+      // Ensure permission set belongs to the organization
+      if (permissionSet.organizationId !== organizationId) {
+        continue;
+      }
       if (permissionSet.permissionSetPermissions) {
-        const permissions = permissionSet.permissionSetPermissions.map(
-          (psp) => psp.permission,
-        );
+        const permissions = permissionSet.permissionSetPermissions
+          .map((psp) => psp.permission)
+          .filter((p) => p && p.organizationId === organizationId);
         allPermissions.push(...permissions);
       }
     }
+
+    console.log(allPermissions);
 
     // Check if the required permission exists
     return allPermissions.some(
@@ -119,12 +145,17 @@ export class PermissionCheckService {
       );
 
     // Get permissions from all assigned permission sets
+    // Filter by organizationId to ensure tenant isolation
     const allPermissions: Permission[] = [];
     for (const permissionSet of permissionSets) {
+      // Ensure permission set belongs to the organization
+      if (permissionSet.organizationId !== organizationId) {
+        continue;
+      }
       if (permissionSet.permissionSetPermissions) {
-        const permissions = permissionSet.permissionSetPermissions.map(
-          (psp) => psp.permission,
-        );
+        const permissions = permissionSet.permissionSetPermissions
+          .map((psp) => psp.permission)
+          .filter((p) => p && p.organizationId === organizationId);
         allPermissions.push(...permissions);
       }
     }

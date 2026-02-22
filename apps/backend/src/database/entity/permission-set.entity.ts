@@ -6,6 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 import { Organization } from './organization.entity';
@@ -13,6 +14,7 @@ import { PermissionSetPermission } from './permission-set-permission.entity';
 import { UserPermissionSet } from './user-permission-set.entity';
 
 @Entity('permission_set')
+@Unique(['name', 'organizationId'])
 export class PermissionSet {
   @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;

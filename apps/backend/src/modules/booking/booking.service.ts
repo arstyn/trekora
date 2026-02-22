@@ -18,6 +18,8 @@ import {
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
+import { WorkflowService } from '../workflow/workflow.service';
+import { WorkflowType } from '../../database/entity/workflow/workflow.entity';
 import {
   BookingCustomerResponseDto,
   BookingResponseDto,
@@ -51,8 +53,9 @@ export class BookingService {
     private packageRepository: Repository<Package>,
     @InjectRepository(Batch)
     private batchRepository: Repository<Batch>,
+    private workflowService: WorkflowService,
     private dataSource: DataSource,
-  ) { }
+  ) {}
 
   async create(
     createBookingDto: CreateBookingDto,
@@ -135,59 +138,80 @@ export class BookingService {
       savedBooking.customers = customers;
       await queryRunner.manager.save(savedBooking);
 
-      // Create package checklist items from package pre-trip checklist
-      for (const customer of customers) {
-        if (
-          packageEntity.preTripChecklist &&
-          packageEntity.preTripChecklist.length > 0
-        ) {
-          const packageChecklists = packageEntity.preTripChecklist.map(
-            (checklistItem, index) => {
-              const checklist = {
-                item: checklistItem.task,
-                completed: false,
-                mandatory: true,
-                type: ChecklistType.PACKAGE,
-                bookingId: savedBooking.id,
-                sortOrder: index,
-                batchId: batch.id,
-                createdById: userId,
-                customerId: customer.id,
-              };
+      // Create workflow for the booking
+      const workflow = await this.workflowService.createWorkflow(
+        {
+          name: `Booking ${bookingNumber} Flow`,
+          type: WorkflowType.BOOKING,
+          referenceId: savedBooking.id,
+          organizationId,
+        },
+        userId,
+      );
 
-              return queryRunner.manager.create(BookingChecklist, checklist);
+      // Add default verification steps
+      await this.workflowService.addStep(
+        workflow.id,
+        {
+          label: 'Documentation Verification',
+          description: 'Verify all required documents are uploaded and valid',
+          isMandatory: true,
+        },
+        userId,
+      );
+
+      await this.workflowService.addStep(
+        workflow.id,
+        {
+          label: 'Payment Verification',
+          description: 'Ensure initial payment is received and verified',
+          isMandatory: true,
+        },
+        userId,
+      );
+
+      // Link workflow to booking
+      savedBooking.currentWorkflowId = workflow.id;
+      await queryRunner.manager.save(savedBooking);
+
+      // Create package checklist items as workflow steps
+      if (
+        packageEntity.preTripChecklist &&
+        packageEntity.preTripChecklist.length > 0
+      ) {
+        for (const checklistItem of packageEntity.preTripChecklist) {
+          await this.workflowService.addStep(
+            workflow.id,
+            {
+              label: checklistItem.task,
+              description: checklistItem.description,
+              isMandatory: true,
             },
+            userId,
           );
-          await queryRunner.manager.save(packageChecklists);
         }
       }
 
-      // Create user-provided checklist items (optional)
+      // Create user-provided checklist items as workflow steps
       if (
         createBookingDto.checklistItems &&
         createBookingDto.checklistItems.length > 0
       ) {
-        const userChecklists = createBookingDto.checklistItems.map(
-          (checklistItem) => {
-            const checklist: any = {
-              item: checklistItem.item,
-              completed: checklistItem.completed || false,
-              mandatory: checklistItem.mandatory || false,
-              type: checklistItem.type || ChecklistType.INDIVIDUAL,
-              bookingId: savedBooking.id,
-              batchId: batch.id,
-              createdById: userId,
-            };
-            if (checklistItem.customerId) {
-              checklist.customerId = checklistItem.customerId;
-            }
-            if (checklistItem.notes) {
-              checklist.notes = checklistItem.notes;
-            }
-            return queryRunner.manager.create(BookingChecklist, checklist);
-          },
-        );
-        await queryRunner.manager.save(userChecklists);
+        for (const checklistItem of createBookingDto.checklistItems) {
+          await this.workflowService.addStep(
+            workflow.id,
+            {
+              label: checklistItem.item,
+              isMandatory: checklistItem.mandatory || false,
+              description: checklistItem.notes,
+              config: {
+                customerId: checklistItem.customerId,
+                type: checklistItem.type,
+              },
+            },
+            userId,
+          );
+        }
       }
 
       // Add customers to batch
@@ -199,8 +223,10 @@ export class BookingService {
 
       // Create initial payment if provided
       if (createBookingDto.initialPayment && advancePaid > 0) {
+        const paymentNumber = await this.generatePaymentNumber(organizationId);
         const payment = queryRunner.manager.create(BookingPayment, {
           ...createBookingDto.initialPayment,
+          paymentNumber,
           bookingId: savedBooking.id,
           recordedById: userId,
           status: PaymentStatus.COMPLETED,
@@ -263,10 +289,10 @@ export class BookingService {
       createdAt: booking.createdAt,
       createdBy: booking.createdBy
         ? {
-          id: booking.createdBy.id,
-          name: booking.createdBy.name,
-          email: booking.createdBy.email,
-        }
+            id: booking.createdBy.id,
+            name: booking.createdBy.name,
+            email: booking.createdBy.email,
+          }
         : null,
     }));
   }
@@ -316,10 +342,10 @@ export class BookingService {
       createdAt: booking.createdAt,
       createdBy: booking.createdBy
         ? {
-          id: booking.createdBy.id,
-          name: booking.createdBy.name,
-          email: booking.createdBy.email,
-        }
+            id: booking.createdBy.id,
+            name: booking.createdBy.name,
+            email: booking.createdBy.email,
+          }
         : null,
     }));
   }
@@ -401,6 +427,7 @@ export class BookingService {
         paymentDate: payment.paymentDate,
         paymentReference: payment.paymentReference,
       })),
+      currentWorkflowId: booking.currentWorkflowId,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
     };
@@ -450,6 +477,7 @@ export class BookingService {
 
       // Update booking
       const { customerIds, ...bookingUpdate } = updateBookingDto;
+
       await queryRunner.manager.update(Booking, id, bookingUpdate);
 
       // Update balance amount if total amount changed
@@ -517,8 +545,22 @@ export class BookingService {
       throw new NotFoundException('Booking not found');
     }
 
+    const bookingWithOrg = await this.bookingRepository.findOne({
+      where: { id: bookingId },
+      select: ['organizationId'],
+    });
+
+    if (!bookingWithOrg) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const paymentNumber = await this.generatePaymentNumber(
+      bookingWithOrg.organizationId,
+    );
+
     const payment = this.paymentRepository.create({
       ...paymentDto,
+      paymentNumber,
       bookingId,
       recordedById: userId,
       status: PaymentStatus.COMPLETED,
@@ -620,6 +662,7 @@ export class BookingService {
     const checklistItem = this.checklistRepository.create({
       ...createChecklistDto,
       bookingId,
+      batchId: booking.batchId,
     });
 
     const savedItem = await this.checklistRepository.save(checklistItem);
@@ -713,7 +756,10 @@ export class BookingService {
     };
   }
 
-  async toggleChecklistItem(id: string): Promise<ChecklistItemResponseDto> {
+  async toggleChecklistItem(
+    id: string,
+    userId: string,
+  ): Promise<ChecklistItemResponseDto> {
     const checklistItem = await this.checklistRepository.findOne({
       where: { id },
     });
@@ -722,13 +768,75 @@ export class BookingService {
       throw new NotFoundException('Checklist item not found');
     }
 
+    const newStatus = !checklistItem.completed;
     await this.checklistRepository.update(id, {
-      completed: !checklistItem.completed,
+      completed: newStatus,
+      updatedById: userId,
     });
 
     return this.updateChecklistItem(id, {
-      completed: !checklistItem.completed,
+      completed: newStatus,
+      updatedById: userId,
     });
+  }
+
+  async findAllChecklists(
+    organizationId: string,
+    assignedToId?: string,
+    completed?: boolean,
+  ): Promise<ChecklistItemResponseDto[]> {
+    const queryBuilder = this.checklistRepository
+      .createQueryBuilder('checklist')
+      .leftJoinAndSelect('checklist.assignedTo', 'assignedTo')
+      .leftJoinAndSelect('checklist.createdBy', 'createdBy')
+      .leftJoinAndSelect('checklist.updatedBy', 'updatedBy')
+      .leftJoinAndSelect('checklist.booking', 'booking')
+      .where('booking.organizationId = :organizationId', { organizationId });
+
+    if (assignedToId) {
+      queryBuilder.andWhere('checklist.assignedToId = :assignedToId', {
+        assignedToId,
+      });
+    }
+
+    if (completed !== undefined) {
+      queryBuilder.andWhere('checklist.completed = :completed', { completed });
+    }
+
+    const items = await queryBuilder.getMany();
+
+    return items.map((item) => ({
+      id: item.id,
+      item: item.item,
+      completed: item.completed,
+      mandatory: item.mandatory,
+      type: item.type,
+      customerId: item.customerId,
+      sortOrder: item.sortOrder,
+      assignedTo: item.assignedTo
+        ? {
+            id: item.assignedTo.id,
+            name: item.assignedTo.name,
+            email: item.assignedTo.email,
+          }
+        : undefined,
+      createdBy: item.createdBy
+        ? {
+            id: item.createdBy.id,
+            name: item.createdBy.name,
+            email: item.createdBy.email,
+          }
+        : undefined,
+      updatedBy: item.updatedBy
+        ? {
+            id: item.updatedBy.id,
+            name: item.updatedBy.name,
+            email: item.updatedBy.email,
+          }
+        : undefined,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    }));
   }
 
   private async generateBookingNumber(organizationId: string): Promise<string> {
@@ -742,5 +850,20 @@ export class BookingService {
 
     const sequence = (count + 1).toString().padStart(4, '0');
     return `BK${year}${month}${sequence}`;
+  }
+
+  private async generatePaymentNumber(organizationId: string): Promise<string> {
+    const today = new Date();
+    const year = today.getFullYear().toString().slice(-2);
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+
+    const count = await this.paymentRepository
+      .createQueryBuilder('payment')
+      .leftJoin('payment.booking', 'booking')
+      .where('booking.organizationId = :organizationId', { organizationId })
+      .getCount();
+
+    const sequence = (count + 1).toString().padStart(4, '0');
+    return `PAY${year}${month}${sequence}`;
   }
 }

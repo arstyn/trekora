@@ -87,4 +87,18 @@ export class BookingChecklist {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'created_by_id' })
   createdBy: User;
+
+  @Column({ type: 'uuid', name: 'assigned_to_id', nullable: true })
+  assignedToId: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'assigned_to_id' })
+  assignedTo: User;
+
+  @Column({ type: 'uuid', name: 'updated_by_id', nullable: true })
+  updatedById: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'updated_by_id' })
+  updatedBy: User;
 }

@@ -29,6 +29,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { ImportModule } from './modules/import/import.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PermissionModule } from './modules/permission/permission.module';
+import { WorkflowModule } from './modules/workflow/workflow.module';
 
 @Module({
   imports: [
@@ -63,8 +64,9 @@ import { PermissionModule } from './modules/permission/permission.module';
     PaymentModule,
     ImportModule,
     DashboardModule,
+    WorkflowModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

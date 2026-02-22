@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, forwardRef, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Employee } from 'src/database/entity/employee.entity';
 import { PermissionSetPermission } from 'src/database/entity/permission-set-permission.entity';
@@ -7,6 +7,7 @@ import { Permission } from 'src/database/entity/permission.entity';
 import { UserPermissionSet } from 'src/database/entity/user-permission-set.entity';
 import { In, Repository } from 'typeorm';
 import { defaultPermissionSets } from './default-permission-sets';
+import { PermissionService } from './permission.service';
 
 export interface CreatePermissionSetDto {
   name: string;
@@ -34,11 +35,13 @@ export class PermissionSetService {
     private readonly userPermissionSetRepository: Repository<UserPermissionSet>,
     @InjectRepository(Employee)
     private readonly employeeRepository: Repository<Employee>,
+    @Inject(forwardRef(() => PermissionService))
+    private readonly permissionService: PermissionService,
   ) { }
 
   // Create a new permission set with permissions
   async create(createDto: CreatePermissionSetDto): Promise<PermissionSet> {
-    const { permissionIds, ...permissionSetData } = createDto;
+    const { permissionIds, organizationId, ...permissionSetData } = createDto;
 
     const permissionSet =
       this.permissionSetRepository.create(permissionSetData);
@@ -50,6 +53,7 @@ export class PermissionSetService {
       await this.updatePermissionSetPermissions(
         savedPermissionSet.id,
         permissionIds,
+        organizationId,
       );
     }
 
@@ -104,7 +108,11 @@ export class PermissionSetService {
 
     // Update permissions if provided
     if (permissionIds !== undefined) {
-      await this.updatePermissionSetPermissions(id, permissionIds);
+      await this.updatePermissionSetPermissions(
+        id,
+        permissionIds,
+        permissionSet.organizationId,
+      );
     }
 
     return this.findOne(id);
@@ -125,16 +133,17 @@ export class PermissionSetService {
   private async updatePermissionSetPermissions(
     permissionSetId: string,
     permissionIds: string[],
+    organizationId: string,
   ): Promise<void> {
     // Remove existing permissions
     await this.permissionSetPermissionRepository.delete({
       permissionSetId,
     });
 
-    // Add new permissions
+    // Add new permissions (filtered by organizationId to ensure security)
     if (permissionIds.length > 0) {
       const permissions = await this.permissionRepository.find({
-        where: { id: In(permissionIds) },
+        where: { id: In(permissionIds), organizationId },
       });
 
       const permissionSetPermissions = permissions.map((permission) =>
@@ -330,14 +339,22 @@ export class PermissionSetService {
   /**
    * Create default permission sets for an organization
    * This should be called when a new organization is created
+   * First creates default permissions for the organization, then creates permission sets
    */
   async createDefaultPermissionSetsForOrganization(
     organizationId: string,
   ): Promise<PermissionSet[]> {
+    // First, create default permissions for this organization
+    await this.permissionService.createDefaultPermissionsForOrganization(
+      organizationId,
+    );
+
     const createdSets: PermissionSet[] = [];
 
-    // Get all permissions from database
-    const allPermissions = await this.permissionRepository.find();
+    // Get all permissions for this organization
+    const allPermissions = await this.permissionRepository.find({
+      where: { organizationId },
+    });
     const permissionMap = new Map(allPermissions.map((p) => [p.name, p.id]));
 
     // Create permission sets for each role
@@ -350,7 +367,7 @@ export class PermissionSetService {
           permissionIds.push(permissionId);
         } else {
           console.warn(
-            `Permission ${permissionName} not found, skipping for ${roleName} permission set`,
+            `Permission ${permissionName} not found for organization ${organizationId}, skipping for ${roleName} permission set`,
           );
         }
       }

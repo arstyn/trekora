@@ -34,7 +34,7 @@ export class BookingController {
   constructor(
     private readonly bookingService: BookingService,
     private readonly employeeService: EmployeeService,
-  ) { }
+  ) {}
 
   @Post()
   @RequirePermission('booking', 'create')
@@ -78,7 +78,9 @@ export class BookingController {
       return [];
     }
 
-    const directReports = await this.employeeService.getDirectReports(employee.id);
+    const directReports = await this.employeeService.getDirectReports(
+      employee.id,
+    );
     const teamUserIds = directReports
       .map((emp) => emp.userId)
       .filter((id): id is string => !!id);
@@ -109,6 +111,20 @@ export class BookingController {
     return this.bookingService.getRecentBookings(
       req.user.organizationId,
       limit,
+    );
+  }
+
+  @Get('checklists')
+  @RequirePermission('booking', 'read')
+  findAllChecklists(
+    @Request() req: ApiRequestJWT,
+    @Query('assignedToId') assignedToId?: string,
+    @Query('completed') completed?: boolean,
+  ) {
+    return this.bookingService.findAllChecklists(
+      req.user.organizationId,
+      assignedToId,
+      completed,
     );
   }
 
@@ -146,8 +162,14 @@ export class BookingController {
   }
 
   @Patch('checklist/:checklistId/toggle')
-  toggleChecklistItem(@Param('checklistId') checklistId: string) {
-    return this.bookingService.toggleChecklistItem(checklistId);
+  toggleChecklistItem(
+    @Param('checklistId') checklistId: string,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.bookingService.toggleChecklistItem(
+      checklistId,
+      req.user.userId,
+    );
   }
 
   @Post(':id/payments')

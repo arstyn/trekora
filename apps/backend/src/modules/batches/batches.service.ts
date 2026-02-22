@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Batch } from 'src/database/entity/batch.entity';
+import { Batch, BatchStatus } from 'src/database/entity/batch.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Employee } from 'src/database/entity/employee.entity';
 import {
@@ -39,14 +39,17 @@ export class BatchesService {
       organizationId,
       coordinators: coordinatorsData,
       bookedSeats: 0,
-      status: 'upcoming',
+      status: BatchStatus.UPCOMING,
     });
 
     return this.batchRepo.save(batch);
   }
 
-  async findAll(organizationId: string, status?: string): Promise<Batch[]> {
-    let query: { organizationId: string; status?: string } = {
+  async findAll(
+    organizationId: string,
+    status?: BatchStatus,
+  ): Promise<Batch[]> {
+    let query: { organizationId: string; status?: BatchStatus } = {
       organizationId,
     };
     if (status) {
@@ -181,6 +184,31 @@ export class BatchesService {
     await this.batchRepo.delete(id);
   }
 
+  async markActive(id: string): Promise<Batch> {
+    const batch = await this.findOne(id);
+
+    // Check if all mandatory checklists for all customers in this batch are completed
+    const checklists = await this.checklistRepo.find({
+      where: { batchId: id, mandatory: true },
+    });
+
+    const incompleteMandatory = checklists.filter((c) => !c.completed);
+    if (incompleteMandatory.length > 0) {
+      throw new Error(
+        `Cannot activate batch. ${incompleteMandatory.length} mandatory checklist items are still pending.`,
+      );
+    }
+
+    batch.status = BatchStatus.ACTIVE;
+    return this.batchRepo.save(batch);
+  }
+
+  async markCompleted(id: string): Promise<Batch> {
+    const batch = await this.findOne(id);
+    batch.status = BatchStatus.COMPLETED;
+    return this.batchRepo.save(batch);
+  }
+
   async addCoordinator(batchId: string, employeeId: string): Promise<Batch> {
     const batch = await this.findOne(batchId);
     const employee = await this.empRepo.findOneBy({ id: employeeId });
@@ -291,7 +319,7 @@ export class BatchesService {
     return this.batchRepo.find({
       where: {
         packageId,
-        status: 'upcoming',
+        status: BatchStatus.UPCOMING,
       },
       relations: ['package'],
       order: { startDate: 'ASC' },
@@ -302,7 +330,7 @@ export class BatchesService {
     return this.batchRepo
       .createQueryBuilder('batch')
       .where('batch.packageId = :packageId', { packageId })
-      .andWhere('batch.status = :status', { status: 'upcoming' })
+      .andWhere('batch.status = :status', { status: BatchStatus.UPCOMING })
       .andWhere('batch.start_date > :currentDate', { currentDate: new Date() })
       .andWhere('batch.booked_seats < batch.total_seats')
       .orderBy('batch.start_date', 'ASC')
@@ -313,6 +341,7 @@ export class BatchesService {
   async addChecklistItem(
     batchId: string,
     dto: CreateChecklistItemDto,
+    userId: string,
   ): Promise<BookingChecklist> {
     const batch = await this.findOne(batchId);
 
@@ -332,6 +361,7 @@ export class BatchesService {
       completed: dto.completed ?? false,
       mandatory: dto.mandatory ?? false,
       sortOrder: dto.sortOrder ?? 0,
+      createdById: userId,
     });
 
     return this.checklistRepo.save(checklistItem);
@@ -391,12 +421,16 @@ export class BatchesService {
     });
   }
 
-  async toggleChecklistItem(checklistId: string): Promise<BookingChecklist> {
+  async toggleChecklistItem(
+    checklistId: string,
+    userId: string,
+  ): Promise<BookingChecklist> {
     const checklist = await this.checklistRepo.findOneBy({ id: checklistId });
     if (!checklist) {
       throw new NotFoundException('Checklist item not found');
     }
     checklist.completed = !checklist.completed;
+    checklist.updatedById = userId;
     return this.checklistRepo.save(checklist);
   }
 }

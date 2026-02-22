@@ -15,6 +15,7 @@ import {
     Banknote,
     BarChart3,
     BookUser,
+    CheckCircle2,
     FileChartColumnIncreasing,
     FileSpreadsheet,
     FolderIcon,
@@ -36,14 +37,24 @@ import { NavUser } from "./nav-user";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const [userData, setUserData] = useState<IEmployee>();
-    const { hasPermission: canManagePermissions } = useHasPermission("permission", "manage");
-    const { hasPermission: canManagePermissionSets } = useHasPermission("permission-set", "manage");
-    const { hasPermission: canReadEmployees } = useHasPermission("employee", "read");
+    const { hasPermission: canManagePermissions } = useHasPermission(
+        "permission",
+        "manage",
+    );
+    const { hasPermission: canManagePermissionSets } = useHasPermission(
+        "permission-set",
+        "manage",
+    );
+    const { hasPermission: canReadEmployees } = useHasPermission(
+        "employee",
+        "read",
+    );
 
     useEffect(() => {
         const getProfile = async () => {
             try {
-                const res = await axiosInstance.get<IEmployee>(`/employee/profile`);
+                const res =
+                    await axiosInstance.get<IEmployee>(`/employee/profile`);
                 if (res) {
                     setUserData(res.data);
                 }
@@ -66,6 +77,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 title: "Dashboard",
                 url: "/",
                 icon: LayoutDashboardIcon,
+            },
+            {
+                title: "Todos",
+                url: "/todos",
+                icon: CheckCircle2,
             },
             // {
             // 	title: "Branches",
@@ -118,35 +134,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         navSecondary: [
             ...(canManagePermissions
                 ? [
-                    {
-                        title: "Admin Overview",
-                        url: "/admin/overview",
-                        icon: ShieldCheck,
-                    },
-                    {
-                        title: "Permissions",
-                        url: "/permissions",
-                        icon: ShieldCheck,
-                    },
-                ]
+                      {
+                          title: "Admin Overview",
+                          url: "/admin/overview",
+                          icon: ShieldCheck,
+                      },
+                      {
+                          title: "Permissions",
+                          url: "/permissions",
+                          icon: ShieldCheck,
+                      },
+                  ]
                 : []),
             ...(canReadEmployees && !canManagePermissions
                 ? [
-                    {
-                        title: "Team Overview",
-                        url: "/manager/overview",
-                        icon: BarChart3,
-                    },
-                ]
+                      {
+                          title: "Team Overview",
+                          url: "/manager/overview",
+                          icon: BarChart3,
+                      },
+                  ]
                 : []),
             ...(canManagePermissionSets
                 ? [
-                    {
-                        title: "Permission Sets",
-                        url: "/permission-sets",
-                        icon: Shield,
-                    },
-                ]
+                      {
+                          title: "Permission Sets",
+                          url: "/permission-sets",
+                          icon: Shield,
+                      },
+                  ]
                 : []),
             {
                 title: "Settings",

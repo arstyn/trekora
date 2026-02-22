@@ -37,7 +37,7 @@ export class PaymentService {
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
     private fileManagerService: FileManagerService,
-  ) { }
+  ) {}
 
   async searchBookingsForPayment(
     searchDto: BookingSearchDto,
@@ -116,8 +116,12 @@ export class PaymentService {
       }
     }
 
+    // Generate unique payment number
+    const paymentNumber = await this.generatePaymentNumber(organizationId);
+
     // Create payment with paymentType in dedicated column
     const payment = this.paymentRepository.create({
+      paymentNumber,
       amount: createPaymentDto.amount,
       paymentType: createPaymentDto.paymentType,
       paymentMethod: createPaymentDto.paymentMethod,
@@ -500,7 +504,7 @@ export class PaymentService {
       .map((booking) => {
         const daysOverdue = Math.floor(
           (new Date().getTime() - booking.batch.startDate.getTime()) /
-          (1000 * 3600 * 24),
+            (1000 * 3600 * 24),
         );
 
         return {
@@ -696,6 +700,7 @@ export class PaymentService {
   private transformToResponseDto(payment: BookingPayment): PaymentResponseDto {
     return {
       id: payment.id,
+      paymentNumber: payment.paymentNumber,
       amount: payment.amount,
       paymentType: payment.paymentType,
       paymentMethod: payment.paymentMethod,
@@ -748,5 +753,20 @@ export class PaymentService {
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,
     };
+  }
+
+  private async generatePaymentNumber(organizationId: string): Promise<string> {
+    const today = new Date();
+    const year = today.getFullYear().toString().slice(-2);
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+
+    const count = await this.paymentRepository
+      .createQueryBuilder('payment')
+      .leftJoin('payment.booking', 'booking')
+      .where('booking.organizationId = :organizationId', { organizationId })
+      .getCount();
+
+    const sequence = (count + 1).toString().padStart(4, '0');
+    return `PAY${year}${month}${sequence}`;
   }
 }

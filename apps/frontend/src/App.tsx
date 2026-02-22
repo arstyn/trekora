@@ -42,6 +42,7 @@ import PermissionsPage from "./pages/user/permissions/permissions.page";
 import AdminOverviewPage from "./pages/user/admin/overview.page";
 import ManagerOverviewPage from "./pages/user/manager/overview.page";
 import SettingsPage from "./pages/user/settings/page";
+import TodosPage from "./pages/user/todos/todos.page";
 
 function AuthenticatedApp() {
     // Add your dashboard and other protected routes here
@@ -72,9 +73,18 @@ function AuthenticatedApp() {
                     />
                     <Route path="/permissions" element={<PermissionsPage />} />
                     <Route path="/employees" element={<EmployeesPage />} />
-                    <Route path="/employees/hierarchy" element={<TeamHierarchyPage />} />
-                    <Route path="/admin/overview" element={<AdminOverviewPage />} />
-                    <Route path="/manager/overview" element={<ManagerOverviewPage />} />
+                    <Route
+                        path="/employees/hierarchy"
+                        element={<TeamHierarchyPage />}
+                    />
+                    <Route
+                        path="/admin/overview"
+                        element={<AdminOverviewPage />}
+                    />
+                    <Route
+                        path="/manager/overview"
+                        element={<ManagerOverviewPage />}
+                    />
                     <Route path="/branches" element={<BranchPage />} />
                     <Route path="/batches" element={<BatchesPage />} />
                     <Route path="/batches/:id" element={<BatchDetailsPage />} />
@@ -101,6 +111,7 @@ function AuthenticatedApp() {
                         element={<EditPaymentPage />}
                     />
                     <Route path="/import" element={<ImportPage />} />
+                    <Route path="/todos" element={<TodosPage />} />
                 </Routes>
             </SidebarInset>
         </SidebarProvider>

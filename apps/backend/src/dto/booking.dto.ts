@@ -210,6 +210,7 @@ export class BookingResponseDto {
     paymentDate?: Date;
     paymentReference?: string;
   }[];
+  currentWorkflowId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
