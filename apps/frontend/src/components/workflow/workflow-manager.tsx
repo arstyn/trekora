@@ -132,16 +132,6 @@ export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
             <Card className="border-none shadow-md overflow-hidden bg-gradient-to-br from-background to-muted/30">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b">
                     <div className="space-y-1">
-                        <CardTitle className="text-xl font-bold flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-primary" />
-                            {workflow.name}
-                            <Badge
-                                variant="outline"
-                                className="ml-2 capitalize"
-                            >
-                                {workflow.type}
-                            </Badge>
-                        </CardTitle>
                         <p className="text-sm text-muted-foreground">
                             {completedSteps} of {workflow.steps.length} steps
                             completed ({progress}%)
@@ -213,7 +203,7 @@ export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
                         </Dialog>
                     </div>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent>
                     <div className="space-y-4">
                         {workflow.steps.map((step) => (
                             <div
@@ -304,14 +294,14 @@ export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
             </Card>
 
             <Dialog open={showLogs} onOpenChange={setShowLogs}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <History className="w-5 h-5" />
                             Workflow Audit Trail
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+                    <div className="relative max-h-[60vh] overflow-y-auto space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
                         {logs.map((log) => (
                             <div
                                 key={log.id}

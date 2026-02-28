@@ -15,6 +15,7 @@ import {
   CreateWorkflowStepDto,
   UpdateWorkflowStepDto,
 } from '../../dto/workflow.dto';
+import { Booking, BookingStatus } from '../../database/entity/booking.entity';
 
 @Injectable()
 export class WorkflowService {
@@ -25,6 +26,8 @@ export class WorkflowService {
     private stepRepository: Repository<WorkflowStep>,
     @InjectRepository(WorkflowLog)
     private logRepository: Repository<WorkflowLog>,
+    @InjectRepository(Booking)
+    private bookingRepository: Repository<Booking>,
   ) {}
 
   async createWorkflow(
@@ -125,7 +128,49 @@ export class WorkflowService {
       updatedStep,
     );
 
+    // Check if all steps are completed to update booking status
+    if (
+      updatedStep.status === WorkflowStepStatus.COMPLETED ||
+      updatedStep.status === WorkflowStepStatus.SKIPPED
+    ) {
+      await this.checkAndUpdateBookingStatus(updatedStep.workflowId);
+    }
+
     return updatedStep;
+  }
+
+  private async checkAndUpdateBookingStatus(workflowId: string): Promise<void> {
+    const workflow = await this.workflowRepository.findOne({
+      where: { id: workflowId },
+      relations: ['steps'],
+    });
+
+    if (
+      workflow &&
+      workflow.type === WorkflowType.BOOKING &&
+      workflow.referenceId
+    ) {
+      const allCompleted =
+        workflow.steps.length > 0 &&
+        workflow.steps.every(
+          (s) =>
+            s.status === WorkflowStepStatus.COMPLETED ||
+            s.status === WorkflowStepStatus.SKIPPED,
+        );
+
+      if (allCompleted) {
+        // Only update if current status is PENDING
+        const booking = await this.bookingRepository.findOne({
+          where: { id: workflow.referenceId },
+        });
+
+        if (booking && booking.status === BookingStatus.PENDING) {
+          await this.bookingRepository.update(workflow.referenceId, {
+            status: BookingStatus.CONFIRMED,
+          });
+        }
+      }
+    }
   }
 
   async deleteStep(stepId: string, userId: string): Promise<void> {
@@ -143,6 +188,9 @@ export class WorkflowService {
       null,
     );
     await this.stepRepository.delete(stepId);
+
+    // Check if the remaining steps are all completed to update booking status
+    await this.checkAndUpdateBookingStatus(step.workflowId);
   }
 
   async getHistory(workflowId: string): Promise<WorkflowLog[]> {
