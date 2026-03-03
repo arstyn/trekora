@@ -7,7 +7,6 @@ import { PermissionSetPermission } from 'src/database/entity/permission-set-perm
 import { UserPermissionSet } from 'src/database/entity/user-permission-set.entity';
 import { User } from 'src/database/entity/user.entity';
 import { Employee } from 'src/database/entity/employee.entity';
-import { Role } from 'src/database/entity/role.entity';
 import { PermissionService } from './permission.service';
 import { PermissionSetService } from './permission-set.service';
 import { PermissionCheckService } from './permission-check.service';
@@ -24,7 +23,6 @@ import { AuthModule } from '../auth/auth.module';
       UserPermissionSet,
       User,
       Employee,
-      Role,
     ]),
     JwtModule.register({}),
     forwardRef(() => AuthModule),

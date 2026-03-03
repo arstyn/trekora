@@ -94,6 +94,7 @@ export const checklistItemSchema = z.object({
     .optional(),
   dueDate: z.string().optional(),
   completed: z.boolean().optional(),
+  type: z.enum(['individual', 'common']).optional(),
 });
 
 export const packageLocationSchema = z.object({

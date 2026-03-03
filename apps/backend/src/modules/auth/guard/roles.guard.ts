@@ -34,18 +34,6 @@ export class RolesGuard implements CanActivate {
       return false;
     }
 
-    // Check if user has any of the required roles
-    for (const role of requiredRoles) {
-      const hasRole = await this.permissionCheckService.hasRole(
-        user.userId,
-        user.organizationId,
-        role,
-      );
-      if (hasRole) {
-        return true;
-      }
-    }
-
     return false;
   }
 }

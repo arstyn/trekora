@@ -50,6 +50,10 @@ export class CreateWorkflowStepDto {
 
   @IsOptional()
   config?: Record<string, any>;
+
+  @IsEnum(['individual', 'common'])
+  @IsOptional()
+  type?: 'individual' | 'common';
 }
 
 export class UpdateWorkflowStepDto {
@@ -79,6 +83,10 @@ export class UpdateWorkflowStepDto {
 
   @IsOptional()
   config?: Record<string, any>;
+
+  @IsEnum(['individual', 'common'])
+  @IsOptional()
+  type?: 'individual' | 'common';
 }
 
 export class WorkflowHistoryDto {

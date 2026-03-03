@@ -27,19 +27,22 @@ export class EmployeeService {
     private readonly mailerService: MailerService,
     private readonly fileManagerService: FileManagerService,
     private readonly permissionSetService: PermissionSetService,
-  ) { }
+  ) {}
 
   /**
    * Helper method to load permission sets for an employee
    * Since user and employee are always kept in sync, we only need to check employee
    */
-  private async loadPermissionSetsForEmployee(employee: Employee): Promise<void> {
+  private async loadPermissionSetsForEmployee(
+    employee: Employee,
+  ): Promise<void> {
     // Get permission sets assigned to the employee
     // User and employee are always kept in sync, so we only need to check employee
-    const permissionSets = await this.permissionSetService.getPermissionSetsForUser(
-      undefined,
-      employee.id,
-    );
+    const permissionSets =
+      await this.permissionSetService.getPermissionSetsForUser(
+        undefined,
+        employee.id,
+      );
 
     // Attach permission sets to employee object
     (employee as any).permissionSets = permissionSets;
@@ -85,7 +88,6 @@ export class EmployeeService {
     files: Express.Multer.File[] = [],
   ) {
     const {
-      roleId,
       emergencyContactName,
       departments,
       status,
@@ -93,10 +95,6 @@ export class EmployeeService {
       dateOfBirth,
       ...rest
     } = employeeData;
-    console.log(
-      '🚀 ~ employee.service.ts:39 ~ EmployeeService ~ create ~ rest:',
-      rest,
-    );
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -115,7 +113,6 @@ export class EmployeeService {
           EmployeeStatus[status.toUpperCase() as keyof typeof EmployeeStatus],
         joinDate: joinDate ? new Date(joinDate) : undefined,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
-        roleId,
         profilePhoto: fileUploads.profilePhoto,
         verificationDocument: fileUploads.verificationDocument,
       });
@@ -139,11 +136,7 @@ export class EmployeeService {
 
       const updatedEmployee = await queryRunner.manager.findOne(Employee, {
         where: { id: employee.id },
-        relations: [
-          'role',
-          'employeeDepartments',
-          'employeeDepartments.department',
-        ],
+        relations: ['employeeDepartments', 'employeeDepartments.department'],
       });
 
       await queryRunner.commitTransaction();
@@ -166,9 +159,7 @@ export class EmployeeService {
       where: {
         organizationId,
       },
-      relations: [
-        'manager',
-      ],
+      relations: ['manager'],
       order: { createdAt: 'DESC' },
     });
 
@@ -194,7 +185,9 @@ export class EmployeeService {
   }
   // Get a single employee by ID
   async findOneWithEmail(email: string): Promise<Employee | null> {
-    const employee = await this.employeeRepository.findOne({ where: { email } });
+    const employee = await this.employeeRepository.findOne({
+      where: { email },
+    });
 
     if (!employee) {
       return null;
@@ -208,33 +201,34 @@ export class EmployeeService {
   async findOneWithFiles(id: string): Promise<Employee | null> {
     const employee = await this.employeeRepository.findOne({
       where: { id },
-      relations: [
-        'user',
-        'manager',
-        'directReports',
-      ],
+      relations: ['user', 'manager', 'directReports'],
     });
     if (!employee) return null;
 
     // Get permission sets assigned directly to the employee
-    const employeePermissionSets = await this.permissionSetService.getPermissionSetsForUser(
-      undefined,
-      employee.id,
-    );
+    const employeePermissionSets =
+      await this.permissionSetService.getPermissionSetsForUser(
+        undefined,
+        employee.id,
+      );
 
     // If employee has a linked user, also get permission sets assigned to the user
     let userPermissionSets: any[] = [];
     if (employee.userId) {
-      userPermissionSets = await this.permissionSetService.getPermissionSetsForUser(
-        employee.userId,
-        undefined,
-      );
+      userPermissionSets =
+        await this.permissionSetService.getPermissionSetsForUser(
+          employee.userId,
+          undefined,
+        );
     }
 
     // Combine both sets and remove duplicates
-    const allPermissionSets = [...employeePermissionSets, ...userPermissionSets];
+    const allPermissionSets = [
+      ...employeePermissionSets,
+      ...userPermissionSets,
+    ];
     const uniquePermissionSets = Array.from(
-      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values()
+      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values(),
     );
 
     // Attach permission sets to employee object
@@ -267,7 +261,6 @@ export class EmployeeService {
     files: Express.Multer.File[] = [],
   ): Promise<Employee> {
     const {
-      roleId,
       emergencyContactName,
       departments,
       status,
@@ -301,7 +294,6 @@ export class EmployeeService {
 
       const updateObj: any = {
         ...rest,
-        roleId,
         status: status
           ? EmployeeStatus[status.toUpperCase() as keyof typeof EmployeeStatus]
           : undefined,
@@ -357,9 +349,7 @@ export class EmployeeService {
 
       const updatedEmployee = await queryRunner.manager.findOne(Employee, {
         where: { id },
-        relations: [
-          'user',
-        ],
+        relations: ['user'],
       });
 
       await queryRunner.commitTransaction();
@@ -407,8 +397,7 @@ export class EmployeeService {
 
       const terminatedEmployee = await queryRunner.manager.findOne(Employee, {
         where: { id },
-        relations: [
-        ],
+        relations: [],
       });
 
       await queryRunner.commitTransaction();
@@ -520,9 +509,7 @@ export class EmployeeService {
   async getProfile(userId: string): Promise<IUserProfileDTO | null> {
     const employee = await this.employeeRepository.findOne({
       where: { user: { id: userId } },
-      relations: [
-        'branch',
-      ],
+      relations: ['branch'],
     });
 
     if (!employee) return null;
@@ -536,7 +523,7 @@ export class EmployeeService {
       username: employee.name,
       email: employee.email ?? '',
       mobileNumber: employee.phone ?? '',
-      position: employee.role?.name ?? '',
+      position: (employee as any).permissionSets?.[0]?.name ?? '',
       department,
       location: employee.branch?.name ?? null,
     };
@@ -550,12 +537,10 @@ export class EmployeeService {
         status: EmployeeStatus.ACTIVE,
       },
       relations: [
-        'role',
         'employeeDepartments',
         'employeeDepartments.department',
         'manager',
         'directReports',
-        'directReports.role',
       ],
       order: { name: 'ASC' },
     });
@@ -568,9 +553,7 @@ export class EmployeeService {
         managerId,
         status: EmployeeStatus.ACTIVE,
       },
-      relations: [
-        'directReports',
-      ],
+      relations: ['directReports'],
       order: { name: 'ASC' },
     });
   }

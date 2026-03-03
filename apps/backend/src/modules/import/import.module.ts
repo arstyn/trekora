@@ -12,7 +12,6 @@ import { Employee } from 'src/database/entity/employee.entity';
 import { Branch } from 'src/database/entity/branch.entity';
 import { ImportTemplate } from 'src/database/entity/import-template.entity';
 import { ImportHistory } from 'src/database/entity/import-history.entity';
-import { Role } from 'src/database/entity/role.entity';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
@@ -26,8 +25,11 @@ import { JwtModule } from '@nestjs/jwt';
         },
       }),
       fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-            file.mimetype === 'application/vnd.ms-excel') {
+        if (
+          file.mimetype ===
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+          file.mimetype === 'application/vnd.ms-excel'
+        ) {
           cb(null, true);
         } else {
           cb(new Error('Only Excel files are allowed'), false);
@@ -37,11 +39,18 @@ import { JwtModule } from '@nestjs/jwt';
         fileSize: 10 * 1024 * 1024, // 10MB limit
       },
     }),
-    TypeOrmModule.forFeature([Customer, Lead, Employee, Branch, ImportTemplate, ImportHistory, Role]),
+    TypeOrmModule.forFeature([
+      Customer,
+      Lead,
+      Employee,
+      Branch,
+      ImportTemplate,
+      ImportHistory,
+    ]),
     JwtModule.register({}),
   ],
   controllers: [ImportController],
   providers: [ImportService],
   exports: [ImportService],
 })
-export class ImportModule {} 
+export class ImportModule {}

@@ -31,6 +31,23 @@ export class WorkflowController {
     return this.workflowService.createWorkflow(createWorkflowDto, req.user.id);
   }
 
+  @Get('steps/assigned')
+  async findAssignedSteps(@Request() req: ApiRequestJWT) {
+    return this.workflowService.findAssignedSteps(req.user.userId);
+  }
+
+  @Get('steps/all')
+  @RequirePermission('workflow', 'read')
+  async findAllSteps(@Request() req: ApiRequestJWT) {
+    return this.workflowService.findAllSteps(req.user.organizationId);
+  }
+
+  @Get('summary')
+  @RequirePermission('workflow', 'read')
+  async getSummary(@Request() req: ApiRequestJWT) {
+    return this.workflowService.getSummary(req.user.organizationId);
+  }
+
   @Get(':id')
   @RequirePermission('workflow', 'read')
   async findOne(@Param('id') id: string) {
@@ -74,5 +91,11 @@ export class WorkflowController {
   @RequirePermission('workflow', 'read')
   async getHistory(@Param('id') id: string) {
     return this.workflowService.getHistory(id);
+  }
+
+  @Get('steps/:stepId/history')
+  @RequirePermission('workflow', 'read')
+  async getStepHistory(@Param('stepId') stepId: string) {
+    return this.workflowService.getStepHistory(stepId);
   }
 }

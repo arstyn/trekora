@@ -46,6 +46,13 @@ export class WorkflowStep {
   })
   status: WorkflowStepStatus;
 
+  @Column({
+    type: 'enum',
+    enum: ['individual', 'common'],
+    default: 'common',
+  })
+  type: 'individual' | 'common';
+
   @Column({ type: 'int', default: 0, name: 'sort_order' })
   sortOrder: number;
 

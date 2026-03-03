@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/database/entity/user.entity';
 import { Employee } from 'src/database/entity/employee.entity';
-import { Role } from 'src/database/entity/role.entity';
 import { PermissionSetService } from './permission-set.service';
 import { Permission } from 'src/database/entity/permission.entity';
 import { PermissionSet } from 'src/database/entity/permission-set.entity';
@@ -15,8 +14,6 @@ export class PermissionCheckService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Employee)
     private readonly employeeRepository: Repository<Employee>,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
     private readonly permissionSetService: PermissionSetService,
   ) {}
 
@@ -165,28 +162,5 @@ export class PermissionCheckService {
       (permission) =>
         permission.resource === resource && permission.action === action,
     );
-  }
-
-  /**
-   * Check if user has a specific role
-   */
-  async hasRole(
-    userId: string,
-    organizationId: string,
-    roleName: string,
-  ): Promise<boolean> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId, organizationId },
-      relations: ['role'],
-    });
-
-    return user?.role?.name === roleName;
-  }
-
-  /**
-   * Check if user is admin
-   */
-  async isAdmin(userId: string, organizationId: string): Promise<boolean> {
-    return this.hasRole(userId, organizationId, 'admin');
   }
 }

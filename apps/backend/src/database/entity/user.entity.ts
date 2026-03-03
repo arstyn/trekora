@@ -8,7 +8,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Organization } from './organization.entity';
-import { Role } from './role.entity';
 
 @Entity('user')
 export class User {
@@ -40,13 +39,6 @@ export class User {
 
   @Column({ nullable: true, name: 'password' })
   password?: string;
-
-  @ManyToOne(() => Role, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'role_id' })
-  role?: Role;
-
-  @Column('uuid', { nullable: true, name: 'role_id' })
-  roleId?: string;
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;

@@ -19,6 +19,13 @@ export class ChecklistItem {
   })
   category: string;
 
+  @Column({
+    type: 'enum',
+    enum: ['individual', 'common'],
+    default: 'common',
+  })
+  type: 'individual' | 'common';
+
   @Column({ nullable: true })
   dueDate: string;
 

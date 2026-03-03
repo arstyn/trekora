@@ -156,6 +156,14 @@ export class BookingService {
           label: 'Documentation Verification',
           description: 'Verify all required documents are uploaded and valid',
           isMandatory: true,
+          type: 'individual',
+          config: {
+            completions: customers.map((c) => ({
+              customerId: c.id,
+              customerName: `${c.firstName} ${c.lastName}`,
+              completed: false,
+            })),
+          },
         },
         userId,
       );
@@ -180,12 +188,23 @@ export class BookingService {
         packageEntity.preTripChecklist.length > 0
       ) {
         for (const checklistItem of packageEntity.preTripChecklist) {
+          const isIndividual = checklistItem.type === 'individual';
           await this.workflowService.addStep(
             workflow.id,
             {
               label: checklistItem.task,
               description: checklistItem.description,
               isMandatory: true,
+              type: checklistItem.type,
+              config: isIndividual
+                ? {
+                    completions: customers.map((c) => ({
+                      customerId: c.id,
+                      customerName: `${c.firstName} ${c.lastName}`,
+                      completed: false,
+                    })),
+                  }
+                : {},
             },
             userId,
           );

@@ -73,7 +73,6 @@ export class UserInviteService {
       name: invite.employee.name,
       phone: invite.employee.phone,
       organizationId: invite.employee.organizationId,
-      roleId: invite.employee.roleId,
       password: hashedPassword,
     });
     invite.used = true;

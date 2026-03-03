@@ -117,6 +117,28 @@ export class WorkflowService {
     }
 
     Object.assign(step, dto);
+
+    // If it's an individual step and completions were updated, check for overall completion
+    if (step.type === 'individual' && step.config?.completions) {
+      const allCompleted = step.config.completions.every(
+        (c: any) => c.completed,
+      );
+      if (allCompleted) {
+        if (step.status !== WorkflowStepStatus.COMPLETED) {
+          step.status = WorkflowStepStatus.COMPLETED;
+          step.completedById = userId;
+          step.completedAt = new Date();
+        }
+      } else {
+        // If not all completed, it should be PENDING
+        if (step.status === WorkflowStepStatus.COMPLETED) {
+          step.status = WorkflowStepStatus.PENDING;
+          step.completedById = null;
+          step.completedAt = null;
+        }
+      }
+    }
+
     const updatedStep = await this.stepRepository.save(step);
 
     await this.logAction(
@@ -196,7 +218,15 @@ export class WorkflowService {
   async getHistory(workflowId: string): Promise<WorkflowLog[]> {
     return this.logRepository.find({
       where: { workflowId },
-      relations: ['changedBy', 'step'],
+      relations: ['changedBy', 'step', 'step.workflow'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getStepHistory(stepId: string): Promise<WorkflowLog[]> {
+    return this.logRepository.find({
+      where: { stepId },
+      relations: ['changedBy', 'step', 'step.workflow'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -253,5 +283,72 @@ export class WorkflowService {
     }
 
     return this.findOne(newWorkflow.id);
+  }
+
+  async findAssignedSteps(userId: string): Promise<WorkflowStep[]> {
+    return this.stepRepository.find({
+      where: { assignedToId: userId },
+      relations: ['workflow', 'assignedTo', 'completedBy'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findAllSteps(organizationId: string): Promise<WorkflowStep[]> {
+    return this.stepRepository.find({
+      where: { workflow: { organizationId } },
+      relations: ['workflow', 'assignedTo', 'completedBy'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getSummary(organizationId: string): Promise<any> {
+    const steps = await this.findAllSteps(organizationId);
+
+    const summary = {
+      total: steps.length,
+      pending: steps.filter((s) => s.status === WorkflowStepStatus.PENDING)
+        .length,
+      completed: steps.filter((s) => s.status === WorkflowStepStatus.COMPLETED)
+        .length,
+      skipped: steps.filter((s) => s.status === WorkflowStepStatus.SKIPPED)
+        .length,
+      byAssignee: [] as { name: string; total: number; completed: number }[],
+      byType: {
+        booking: 0,
+        package: 0,
+        customer: 0,
+      },
+    };
+
+    const assigneeMap = new Map<string, { total: number; completed: number }>();
+
+    steps.forEach((step) => {
+      const assigneeName = step.assignedTo
+        ? step.assignedTo.name || 'Unknown'
+        : 'Unassigned';
+
+      const current = assigneeMap.get(assigneeName) || {
+        total: 0,
+        completed: 0,
+      };
+      current.total++;
+      if (step.status === WorkflowStepStatus.COMPLETED) {
+        current.completed++;
+      }
+      assigneeMap.set(assigneeName, current);
+
+      if (step.workflow) {
+        summary.byType[step.workflow.type]++;
+      }
+    });
+
+    summary.byAssignee = Array.from(assigneeMap.entries()).map(
+      ([name, stats]) => ({
+        name,
+        ...stats,
+      }),
+    );
+
+    return summary;
   }
 }

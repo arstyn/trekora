@@ -7,6 +7,7 @@ export interface IWorkflowStep {
     description?: string;
     isMandatory: boolean;
     status: "pending" | "completed" | "skipped";
+    type: "individual" | "common";
     sortOrder: number;
     assignedToId?: string;
     assignedTo?: {
@@ -22,6 +23,7 @@ export interface IWorkflowStep {
     };
     completedAt?: string;
     config?: any;
+    workflow?: IWorkflow;
     createdAt: string;
     updatedAt: string;
 }
@@ -88,9 +90,38 @@ class WorkflowService {
         await axiosInstance.delete(`/workflow/steps/${stepId}`);
     }
 
+    async getAssignedSteps(): Promise<IWorkflowStep[]> {
+        const response = await axiosInstance.get(`/workflow/steps/assigned`);
+        return response.data;
+    }
+
+    async getAllSteps(): Promise<IWorkflowStep[]> {
+        const response = await axiosInstance.get(`/workflow/steps/all`);
+        return response.data;
+    }
+
+    async getSummary(): Promise<{
+        total: number;
+        pending: number;
+        completed: number;
+        skipped: number;
+        byAssignee: { name: string; total: number; completed: number }[];
+        byType: { booking: number; package: number; customer: number };
+    }> {
+        const response = await axiosInstance.get("/workflow/summary");
+        return response.data;
+    }
+
     async getHistory(workflowId: string): Promise<IWorkflowLog[]> {
         const response = await axiosInstance.get(
             `/workflow/${workflowId}/history`,
+        );
+        return response.data;
+    }
+
+    async getStepHistory(stepId: string): Promise<IWorkflowLog[]> {
+        const response = await axiosInstance.get(
+            `/workflow/steps/${stepId}/history`,
         );
         return response.data;
     }

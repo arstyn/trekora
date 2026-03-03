@@ -75,7 +75,7 @@ export class BatchesService {
   async findOne(id: string): Promise<Batch> {
     const batch = await this.batchRepo.findOne({
       where: { id },
-      relations: ['package', 'coordinators', 'coordinators.role', 'customers'],
+      relations: ['package', 'coordinators', 'customers'],
       select: {
         package: {
           id: true,

@@ -90,6 +90,30 @@ export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
         }
     };
 
+    const toggleIndividualStatus = async (
+        step: IWorkflowStep,
+        customerId: string,
+    ) => {
+        try {
+            const completions = [...(step.config?.completions || [])];
+            const customerIndex = completions.findIndex(
+                (c) => c.customerId === customerId,
+            );
+            if (customerIndex > -1) {
+                const updatedCompletions = completions.map((c, i) =>
+                    i === customerIndex ? { ...c, completed: !c.completed } : c,
+                );
+                await WorkflowService.updateStep(step.id, {
+                    config: { ...step.config, completions: updatedCompletions },
+                });
+                toast.success("Customer status updated");
+                loadWorkflow();
+            }
+        } catch (error) {
+            toast.error("Failed to update status");
+        }
+    };
+
     const handleAddStep = async () => {
         if (!newStep.label) return;
         try {
@@ -274,12 +298,60 @@ export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
                                             {step.description}
                                         </p>
                                     )}
+
+                                    {step.type === "individual" &&
+                                        step.config?.completions && (
+                                            <div className="mt-3 space-y-2 border-t pt-3">
+                                                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                                                    Customer Completion
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                    {step.config.completions.map(
+                                                        (c: any) => (
+                                                            <div
+                                                                key={
+                                                                    c.customerId
+                                                                }
+                                                                className="flex items-center gap-2 text-xs bg-muted/30 p-1.5 rounded-md hover:bg-muted/50 transition-colors"
+                                                            >
+                                                                <button
+                                                                    onClick={() =>
+                                                                        toggleIndividualStatus(
+                                                                            step,
+                                                                            c.customerId,
+                                                                        )
+                                                                    }
+                                                                    className="transition-transform active:scale-95"
+                                                                >
+                                                                    {c.completed ? (
+                                                                        <CheckCircle2 className="w-4 h-4 text-primary" />
+                                                                    ) : (
+                                                                        <Circle className="w-4 h-4 text-muted-foreground" />
+                                                                    )}
+                                                                </button>
+                                                                <span
+                                                                    className={`truncate ${c.completed ? "line-through opacity-60" : ""}`}
+                                                                >
+                                                                    {
+                                                                        c.customerName
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
                                     {step.status === "completed" &&
                                         step.completedBy && (
-                                            <div className="flex items-center gap-2 mt-2 text-[11px] text-muted-foreground">
+                                            <div className="flex items-center gap-2 mt-3 text-[11px] text-muted-foreground bg-primary/5 p-1.5 rounded-md w-fit">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                                Completed by{" "}
-                                                {step.completedBy.name} on{" "}
+                                                Fully Completed by{" "}
+                                                <span className="font-medium text-foreground">
+                                                    {step.completedBy.name}
+                                                </span>{" "}
+                                                on{" "}
                                                 {format(
                                                     new Date(step.completedAt!),
                                                     "MMM d, h:mm a",

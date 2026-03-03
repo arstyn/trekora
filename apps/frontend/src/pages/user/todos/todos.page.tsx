@@ -1,37 +1,50 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import BookingService from "@/services/booking.service";
-import type { ChecklistItemResponse } from "@/services/booking.service";
-import {
-    CheckCircle2,
-    ClipboardList,
-    Clock,
-    FileCheck,
-    LayoutList,
-    Search,
-    User,
-    Check,
-    Loader2,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import axiosInstance from "@/lib/axios";
-import type { IBookingListItem } from "@/types/booking.types";
+import workflowService, {
+    type IWorkflowStep,
+} from "@/services/workflow.service";
 import type { IEmployee } from "@/types/employee.types";
+import { Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { TaskHistoryDialog } from "./components/TaskHistoryDialog";
+import { TaskList } from "./components/TaskList";
+import { TodoAnalytics } from "./components/TodoAnalytics";
+import { TodoFilters } from "./components/TodoFilters";
+import { TodoSummary } from "./components/TodoSummary";
 
 export default function TodosPage() {
     const [userData, setUserData] = useState<IEmployee | null>(null);
-    const [myTasks, setMyTasks] = useState<ChecklistItemResponse[]>([]);
-    const [pendingDocs, setPendingDocs] = useState<IBookingListItem[]>([]);
-    const [pendingPayments, setPendingPayments] = useState<IBookingListItem[]>(
-        [],
-    );
+    const [tasks, setTasks] = useState<IWorkflowStep[]>([]);
+    const [summary, setSummary] = useState<any>(null);
+    const [employees, setEmployees] = useState<IEmployee[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+    const [activeTab, setActiveTab] = useState("my-tasks");
+
+    // Filters state
+    const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [filterType, setFilterType] = useState<string>("all");
+    const [filterWorkflow, setFilterWorkflow] = useState<string>("all");
+    const [filterEmployee, setFilterEmployee] = useState<string>("all");
+
+    // History state
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [selectedTask, setSelectedTask] = useState<IWorkflowStep | null>(
+        null,
+    );
+    const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
+    const isAdmin = useMemo(() => {
+        if (!userData?.permissionSets) return false;
+        return userData.permissionSets.some(
+            (ps) =>
+                ps.name.toLowerCase().includes("admin") ||
+                ps.name.toLowerCase().includes("manager"),
+        );
+    }, [userData]);
 
     const fetchProfileData = async () => {
         try {
@@ -44,27 +57,39 @@ export default function TodosPage() {
         }
     };
 
-    const fetchData = async (userId?: string) => {
+    const fetchEmployees = async () => {
+        try {
+            const res = await axiosInstance.get<IEmployee[]>("/employee");
+            setEmployees(res.data);
+        } catch (error) {
+            console.error("Error fetching employees:", error);
+        }
+    };
+
+    const fetchData = async () => {
         try {
             setLoading(true);
+            const profile = await fetchProfileData();
+            if (!profile) return;
 
-            const currentUserId = userId || userData?.id;
-            if (!currentUserId) return;
+            const isUserAdmin = profile.permissionSets?.some(
+                (ps) =>
+                    ps.name.toLowerCase().includes("admin") ||
+                    ps.name.toLowerCase().includes("manager"),
+            );
 
-            // Fetch my tasks
-            const tasks = await BookingService.getAllChecklists({
-                assignedToId: currentUserId,
-                completed: false,
-            });
-            setMyTasks(tasks);
-
-            // Fetch pending verification bookings
-            const allBookings = await BookingService.getAllBookings();
-
-            // In a real app, you'd have specific endpoints for these filters
-            const docs = allBookings.filter((b) => b.status === "pending");
-            setPendingDocs(docs);
-            setPendingPayments(docs);
+            if (isUserAdmin) {
+                const [allTasks, stats] = await Promise.all([
+                    workflowService.getAllSteps(),
+                    workflowService.getSummary(),
+                ]);
+                setTasks(allTasks);
+                setSummary(stats);
+                await fetchEmployees();
+            } else {
+                const myTasks = await workflowService.getAssignedSteps();
+                setTasks(myTasks);
+            }
         } catch (error) {
             console.error("Error fetching todos:", error);
             toast.error("Failed to load todos");
@@ -74,313 +99,316 @@ export default function TodosPage() {
     };
 
     useEffect(() => {
-        const loadPage = async () => {
-            const profile = await fetchProfileData();
-            if (profile) {
-                fetchData(profile.id);
-            }
-        };
-        loadPage();
+        fetchData();
     }, []);
 
-    const handleToggleTask = async (taskId: string) => {
+    const handleToggleTask = async (task: IWorkflowStep) => {
         try {
-            await BookingService.toggleChecklistItem(taskId);
-            setMyTasks((prev) => prev.filter((t) => t.id !== taskId));
-            toast.success("Task completed!");
+            const newStatus =
+                task.status === "completed" ? "pending" : "completed";
+            await workflowService.updateStep(task.id, { status: newStatus });
+
+            setTasks((prev) =>
+                prev.map((t) =>
+                    t.id === task.id ? { ...t, status: newStatus } : t,
+                ),
+            );
+
+            toast.success(
+                newStatus === "completed" ? "Task completed!" : "Task reopened",
+            );
+
+            if (isAdmin) {
+                const stats = await workflowService.getSummary();
+                setSummary(stats);
+            }
         } catch (error) {
             toast.error("Failed to update task");
         }
     };
 
-    const handleVerifyDocs = async (bookingId: string) => {
+    const handleAssignTask = async (taskId: string, employeeId: string) => {
         try {
-            await BookingService.verifyDocumentation(bookingId);
-            setPendingDocs((prev) => prev.filter((b) => b.id !== bookingId));
-            toast.success("Documentation verified");
+            const targetEmployeeId =
+                employeeId === "unassigned" ? null : employeeId;
+
+            await workflowService.updateStep(taskId, {
+                assignedToId: targetEmployeeId || undefined,
+            });
+
+            const assignedTo = targetEmployeeId
+                ? employees.find((e) => e.userId === targetEmployeeId)
+                : null;
+
+            setTasks((prev) =>
+                prev.map((t) =>
+                    t.id === taskId
+                        ? {
+                              ...t,
+                              assignedToId: targetEmployeeId || undefined,
+                              assignedTo: assignedTo
+                                  ? {
+                                        id: assignedTo.id,
+                                        name: assignedTo.name,
+                                        email: assignedTo.email || "",
+                                    }
+                                  : undefined,
+                          }
+                        : t,
+                ),
+            );
+
+            toast.success(
+                targetEmployeeId
+                    ? "Task assigned successfully"
+                    : "Task unassigned",
+            );
+
+            if (isAdmin) {
+                const stats = await workflowService.getSummary();
+                setSummary(stats);
+            }
         } catch (error) {
-            toast.error("Failed to verify documentation");
+            toast.error("Failed to assign task");
         }
     };
 
-    const handleVerifyPayment = async (bookingId: string) => {
+    const handleViewHistory = async (task: IWorkflowStep) => {
+        setSelectedTask(task);
+        setIsHistoryOpen(true);
+        setLoadingHistory(true);
         try {
-            await BookingService.verifyPayment(bookingId);
-            setPendingPayments((prev) =>
-                prev.filter((b) => b.id !== bookingId),
-            );
-            toast.success("Payment verified");
+            const history = await workflowService.getStepHistory(task.id);
+            setHistoryLogs(history);
         } catch (error) {
-            toast.error("Failed to verify payment");
+            toast.error("Failed to load history");
+        } finally {
+            setLoadingHistory(false);
         }
     };
+
+    const workflowOptions = useMemo(() => {
+        const unique = new Map();
+        tasks.forEach((t) => {
+            if (t.workflow) {
+                unique.set(t.workflow.id, t.workflow.name);
+            }
+        });
+        return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
+    }, [tasks]);
+
+    const baseFilteredTasks = useMemo(() => {
+        return tasks.filter((task) => {
+            const matchesSearch =
+                task.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                task.description
+                    ?.toLowerCase()
+                    .includes(searchQuery.toLowerCase()) ||
+                task.assignedTo?.name
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase());
+
+            const matchesStatus =
+                filterStatus === "all" || task.status === filterStatus;
+            const matchesType =
+                filterType === "all" || task.type === filterType;
+            const matchesWorkflow =
+                filterWorkflow === "all" || task.workflowId === filterWorkflow;
+            const matchesEmployee =
+                filterEmployee === "all" ||
+                (filterEmployee === "unassigned"
+                    ? !task.assignedToId
+                    : task.assignedToId === filterEmployee);
+
+            return (
+                matchesSearch &&
+                matchesStatus &&
+                matchesType &&
+                matchesWorkflow &&
+                matchesEmployee
+            );
+        });
+    }, [
+        tasks,
+        searchQuery,
+        filterStatus,
+        filterType,
+        filterWorkflow,
+        filterEmployee,
+    ]);
+
+    const tabCounts = useMemo(() => {
+        return {
+            "my-tasks": baseFilteredTasks.filter(
+                (t) => t.assignedToId === userData?.userId,
+            ).length,
+            unassigned: baseFilteredTasks.filter((t) => !t.assignedToId).length,
+            "all-tasks": baseFilteredTasks.length,
+        };
+    }, [baseFilteredTasks, userData]);
+
+    const filteredTasks = useMemo(() => {
+        if (activeTab === "my-tasks") {
+            return baseFilteredTasks.filter(
+                (t) => t.assignedToId === userData?.userId,
+            );
+        } else if (activeTab === "unassigned") {
+            return baseFilteredTasks.filter((t) => !t.assignedToId);
+        }
+        return baseFilteredTasks;
+    }, [baseFilteredTasks, activeTab, userData]);
+
+    const chartData = useMemo(() => {
+        if (!summary) return [];
+        return [
+            { name: "Completed", value: summary.completed, color: "#10b981" },
+            { name: "Pending", value: summary.pending, color: "#f59e0b" },
+            { name: "Skipped", value: summary.skipped, color: "#6b7280" },
+        ];
+    }, [summary]);
+
+    if (loading && !tasks.length) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground animate-pulse">
+                    Loading your workspace...
+                </p>
+            </div>
+        );
+    }
 
     return (
-        <div className="container mx-auto p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Todos</h1>
-                    <p className="text-muted-foreground">
-                        Manage your assigned tasks and verifications.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative w-full md:w-64">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search tasks..."
-                            className="pl-8"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => fetchData()}
-                    >
-                        {loading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Clock className="h-4 w-4" />
+        <div className="container mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+            <TodoFilters
+                isAdmin={isAdmin}
+                employees={employees}
+                filterEmployee={filterEmployee}
+                filterStatus={filterStatus}
+                filterType={filterType}
+                filterWorkflow={filterWorkflow}
+                searchQuery={searchQuery}
+                setFilterEmployee={setFilterEmployee}
+                setFilterStatus={setFilterStatus}
+                setFilterType={setFilterType}
+                setFilterWorkflow={setFilterWorkflow}
+                setSearchQuery={setSearchQuery}
+                workflowOptions={workflowOptions}
+                onReset={() => {
+                    setFilterStatus("all");
+                    setFilterType("all");
+                    setFilterWorkflow("all");
+                    setFilterEmployee("all");
+                    setSearchQuery("");
+                    fetchData();
+                }}
+            />
+
+            {isAdmin && summary && <TodoSummary summary={summary} />}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div
+                    className={`${isAdmin ? "lg:col-span-8" : "lg:col-span-12"} space-y-6`}
+                >
+                    <Tabs defaultValue="my-tasks" onValueChange={setActiveTab}>
+                        <TabsList className="grid w-fit grid-cols-3 bg-muted/40 p-1 rounded-lg">
+                            <TabsTrigger
+                                value="my-tasks"
+                                className="rounded-md px-4 gap-2"
+                            >
+                                My Tasks
+                                <Badge
+                                    variant="secondary"
+                                    className="px-1.5 py-0 rounded-full text-[10px] h-4 min-w-[20px] justify-center bg-muted/50"
+                                >
+                                    {tabCounts["my-tasks"]}
+                                </Badge>
+                            </TabsTrigger>
+                            {isAdmin && (
+                                <>
+                                    <TabsTrigger
+                                        value="unassigned"
+                                        className="rounded-md px-4 gap-2"
+                                    >
+                                        Unassigned
+                                        <Badge
+                                            variant="secondary"
+                                            className="px-1.5 py-0 rounded-full text-[10px] h-4 min-w-[20px] justify-center bg-muted/50"
+                                        >
+                                            {tabCounts.unassigned}
+                                        </Badge>
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="all-tasks"
+                                        className="rounded-md px-4 gap-2"
+                                    >
+                                        All Team Tasks
+                                        <Badge
+                                            variant="secondary"
+                                            className="px-1.5 py-0 rounded-full text-[10px] h-4 min-w-[20px] justify-center bg-muted/50"
+                                        >
+                                            {tabCounts["all-tasks"]}
+                                        </Badge>
+                                    </TabsTrigger>
+                                </>
+                            )}
+                        </TabsList>
+
+                        <TabsContent value="my-tasks" className="mt-6">
+                            <TaskList
+                                tasks={filteredTasks}
+                                onToggle={handleToggleTask}
+                                employees={employees}
+                                isAdmin={isAdmin}
+                                onAssign={handleAssignTask}
+                                onHistory={handleViewHistory}
+                                emptyMessage="Everything's done! You have no pending tasks assigned to you."
+                            />
+                        </TabsContent>
+
+                        {isAdmin && (
+                            <>
+                                <TabsContent
+                                    value="unassigned"
+                                    className="mt-6"
+                                >
+                                    <TaskList
+                                        tasks={filteredTasks}
+                                        onToggle={handleToggleTask}
+                                        employees={employees}
+                                        isAdmin={isAdmin}
+                                        onAssign={handleAssignTask}
+                                        onHistory={handleViewHistory}
+                                        emptyMessage="No unassigned tasks found."
+                                    />
+                                </TabsContent>
+                                <TabsContent value="all-tasks" className="mt-6">
+                                    <TaskList
+                                        tasks={filteredTasks}
+                                        onToggle={handleToggleTask}
+                                        employees={employees}
+                                        isAdmin={isAdmin}
+                                        onAssign={handleAssignTask}
+                                        onHistory={handleViewHistory}
+                                    />
+                                </TabsContent>
+                            </>
                         )}
-                    </Button>
+                    </Tabs>
                 </div>
+
+                {isAdmin && (
+                    <TodoAnalytics chartData={chartData} summary={summary} />
+                )}
             </div>
 
-            <Tabs defaultValue="tasks" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-md">
-                    <TabsTrigger value="tasks" className="flex gap-2">
-                        <LayoutList className="h-4 w-4" />
-                        My Tasks
-                        {myTasks.length > 0 && (
-                            <Badge
-                                variant="secondary"
-                                className="ml-1 text-[10px] h-4 min-w-[16px] px-1"
-                            >
-                                {myTasks.length}
-                            </Badge>
-                        )}
-                    </TabsTrigger>
-                    <TabsTrigger value="ops" className="flex gap-2">
-                        <FileCheck className="h-4 w-4" />
-                        Operations
-                    </TabsTrigger>
-                    <TabsTrigger value="finance" className="flex gap-2">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Finance
-                    </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="tasks" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                                <ClipboardList className="h-5 w-5 text-primary" />
-                                Tasks Assigned to Me
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {myTasks.length === 0 ? (
-                                    <div className="text-center py-12 text-muted-foreground">
-                                        <div className="inline-flex items-center justify-center p-4 bg-muted rounded-full mb-4">
-                                            <Check className="h-8 w-8" />
-                                        </div>
-                                        <p>No pending tasks assigned to you.</p>
-                                    </div>
-                                ) : (
-                                    myTasks.map((task) => (
-                                        <div
-                                            key={task.id}
-                                            className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors group"
-                                        >
-                                            <Checkbox
-                                                id={task.id}
-                                                checked={false}
-                                                onCheckedChange={() =>
-                                                    handleToggleTask(task.id)
-                                                }
-                                                className="mt-1 h-5 w-5"
-                                            />
-                                            <div className="flex-1 space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <label
-                                                        htmlFor={task.id}
-                                                        className="font-medium cursor-pointer"
-                                                    >
-                                                        {task.item}
-                                                    </label>
-                                                    {task.mandatory && (
-                                                        <Badge
-                                                            variant="destructive"
-                                                            className="h-5 scale-90"
-                                                        >
-                                                            Required
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                                {task.notes && (
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {task.notes}
-                                                    </p>
-                                                )}
-                                                <div className="flex items-center gap-4 pt-1 text-xs text-muted-foreground">
-                                                    <span className="flex items-center gap-1">
-                                                        <User className="h-3 w-3" />
-                                                        Created by{" "}
-                                                        {task.createdBy?.name ||
-                                                            "System"}
-                                                    </span>
-                                                    <span>•</span>
-                                                    <span>
-                                                        Due:{" "}
-                                                        {new Date(
-                                                            task.createdAt,
-                                                        ).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col items-end gap-2">
-                                                <Badge
-                                                    variant="outline"
-                                                    className="capitalize"
-                                                >
-                                                    {task.type}
-                                                </Badge>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="ops" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                                <FileCheck className="h-5 w-5 text-primary" />
-                                Documentation Verification
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {pendingDocs.length === 0 ? (
-                                    <div className="text-center py-12 text-muted-foreground">
-                                        <p>
-                                            No bookings pending documentation
-                                            verification.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    pendingDocs.map((booking) => (
-                                        <div
-                                            key={booking.id}
-                                            className="flex items-center justify-between p-4 border rounded-lg"
-                                        >
-                                            <div>
-                                                <p className="font-bold">
-                                                    {booking.bookingNumber}
-                                                </p>
-                                                <p className="text-sm">
-                                                    {booking.customerName}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {booking.packageName}
-                                                </p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                >
-                                                    View Docs
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        handleVerifyDocs(
-                                                            booking.id,
-                                                        )
-                                                    }
-                                                >
-                                                    Verify
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="finance" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                                <CheckCircle2 className="h-5 w-5 text-primary" />
-                                Payment Verification
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {pendingPayments.length === 0 ? (
-                                    <div className="text-center py-12 text-muted-foreground">
-                                        <p>
-                                            No bookings pending payment
-                                            verification.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    pendingPayments.map((booking) => (
-                                        <div
-                                            key={booking.id}
-                                            className="flex items-center justify-between p-4 border rounded-lg"
-                                        >
-                                            <div>
-                                                <p className="font-bold text-lg">
-                                                    {booking.bookingNumber}
-                                                </p>
-                                                <p className="font-medium">
-                                                    {booking.customerName}
-                                                </p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Amount:{" "}
-                                                    {BookingService.formatCurrency(
-                                                        booking.totalAmount,
-                                                    )}
-                                                </p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                >
-                                                    View Payments
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-green-600 hover:bg-green-700"
-                                                    onClick={() =>
-                                                        handleVerifyPayment(
-                                                            booking.id,
-                                                        )
-                                                    }
-                                                >
-                                                    Verify Payment
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+            <TaskHistoryDialog
+                isOpen={isHistoryOpen}
+                onOpenChange={setIsHistoryOpen}
+                selectedTask={selectedTask}
+                loadingHistory={loadingHistory}
+                historyLogs={historyLogs}
+            />
         </div>
     );
 }

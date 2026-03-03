@@ -3,7 +3,6 @@ export class IEmployeeCreateDTO {
   name?: string;
   email?: string;
   departments?: string[];
-  roleId?: string;
   status: 'active' | 'inactive' | 'suspended' | 'terminated';
   joinDate?: string;
   avatar?: string;
