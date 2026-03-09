@@ -214,7 +214,9 @@ export default function Packages() {
                                         {
                                             packages.filter(
                                                 (pkg) =>
-                                                    pkg.status === "published"
+                                                    pkg.status ===
+                                                        "published" ||
+                                                    pkg.status === "edited",
                                             ).length
                                         }
                                     </p>
@@ -236,7 +238,7 @@ export default function Packages() {
                                     <p className="text-2xl font-bold">
                                         {
                                             packages.filter(
-                                                (pkg) => pkg.status === "draft"
+                                                (pkg) => pkg.status === "draft",
                                             ).length
                                         }
                                     </p>
@@ -262,8 +264,8 @@ export default function Packages() {
                                                 (sum, pkg) =>
                                                     sum +
                                                     parseInt(pkg.price ?? "0"),
-                                                0
-                                            ) / packages.length
+                                                0,
+                                            ) / packages.length,
                                         )}
                                     </p>
                                 </div>
@@ -302,7 +304,7 @@ export default function Packages() {
                                     src={(() => {
                                         if (pkg?.thumbnail) {
                                             return getFileUrl(
-                                                getServeFileUrl(pkg.thumbnail)
+                                                getServeFileUrl(pkg.thumbnail),
                                             );
                                         }
                                         return "/placeholder.svg";
@@ -314,7 +316,9 @@ export default function Packages() {
                                     className={`absolute top-2 right-2 ${
                                         pkg.status === "published"
                                             ? "bg-green-500 hover:bg-green-600"
-                                            : "bg-yellow-500 hover:bg-yellow-600"
+                                            : pkg.status === "edited"
+                                              ? "bg-amber-500 hover:bg-amber-600"
+                                              : "bg-yellow-500 hover:bg-yellow-600"
                                     }`}
                                 >
                                     {pkg.status}

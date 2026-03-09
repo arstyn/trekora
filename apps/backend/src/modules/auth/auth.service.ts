@@ -5,7 +5,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
@@ -14,25 +13,16 @@ import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { User } from 'src/database/entity/user.entity';
 import { ILoginResponse } from 'src/dto/auth.types';
 import { SignupFormDTO } from 'src/dto/signup.schema';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { EmployeeService } from '../employee/employee.service';
 import { MailerService } from '../mailer/mailer.service';
 import { PermissionSetService } from '../permission/permission-set.service';
-import { PermissionService } from '../permission/permission.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { UserService } from '../user/user.service';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(Organization)
-    private readonly organizationRepository: Repository<Organization>,
-    @InjectRepository(Employee)
-    private readonly employeeRepository: Repository<Employee>,
-    @InjectRepository(UserInvite)
-    private readonly userInviteRepository: Repository<UserInvite>,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly userInviteService: UserInviteService,
@@ -40,19 +30,12 @@ export class AuthService {
     private readonly dataSource: DataSource,
     private readonly mailerService: MailerService,
     private readonly permissionSetService: PermissionSetService,
-    private readonly permissionService: PermissionService,
   ) {}
 
   private async generateAccessToken(
     userId: string,
     organizationId: string,
   ): Promise<string> {
-    // Fetch user to get role
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: ['role'],
-    });
-
     const payload: any = { userId, organizationId };
 
     return jwt.sign(payload, process.env.JWT_ACCESS_SECRET as string, {

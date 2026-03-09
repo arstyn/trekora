@@ -74,12 +74,14 @@ export class Package {
   exclusions: Exclusion[];
 
   @Column({
-    type: 'enum',
-    enum: ['draft', 'published'],
+    enum: ['draft', 'published', 'edited', 'archived'],
     default: 'draft',
     nullable: true,
   })
   status: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  draftContent: any;
 
   @Column({ nullable: true })
   thumbnail: string;

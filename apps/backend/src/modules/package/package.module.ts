@@ -13,6 +13,7 @@ import { PackageLocation } from '../../database/entity/package-related/package-l
 import { Package } from '../../database/entity/package-related/package.entity';
 import { PaymentMilestone } from '../../database/entity/package-related/payment-milestones.entity';
 import { Transportation } from '../../database/entity/package-related/transportations.entity';
+import { PackageActivity } from 'src/database/entity/package-related/package-activities.entity';
 import { PackageController } from './package.controller';
 import { PackageService } from './package.service';
 import { FileManager } from 'src/database/entity/file-manager.entity';
@@ -35,6 +36,7 @@ import { PermissionModule } from '../permission/permission.module';
       Transportation,
       ItineraryDay,
       FileManager,
+      PackageActivity,
     ]),
     FileManagerModule,
     JwtModule.register({}),
@@ -43,4 +45,4 @@ import { PermissionModule } from '../permission/permission.module';
   providers: [PackageService],
   controllers: [PackageController],
 })
-export class PackageModule { }
+export class PackageModule {}

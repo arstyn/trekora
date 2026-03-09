@@ -293,44 +293,6 @@ export const permissions = [
     description: 'View department details',
   },
 
-  // Role permissions
-  {
-    name: 'role.create',
-    resource: 'role',
-    action: 'create',
-    description: 'Create new roles',
-  },
-  {
-    name: 'role.read',
-    resource: 'role',
-    action: 'read',
-    description: 'View roles',
-  },
-  {
-    name: 'role.update',
-    resource: 'role',
-    action: 'update',
-    description: 'Update existing roles',
-  },
-  {
-    name: 'role.delete',
-    resource: 'role',
-    action: 'delete',
-    description: 'Delete roles',
-  },
-  {
-    name: 'role.view',
-    resource: 'role',
-    action: 'view',
-    description: 'View role details',
-  },
-  {
-    name: 'role.manage',
-    resource: 'role',
-    action: 'manage',
-    description: 'Manage roles (full access)',
-  },
-
   // Permission permissions
   {
     name: 'permission.create',

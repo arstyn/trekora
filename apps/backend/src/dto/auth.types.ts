@@ -9,7 +9,6 @@ export class ILoginResponse {
   accessToken: string;
   refreshToken: string;
   name: string;
-  role?: string;
 }
 
 export class IRefreshResponseDto {

@@ -72,7 +72,8 @@ export interface IPackages {
         | "wildlife"
         | "luxury"
         | "budget";
-    status?: "draft" | "published";
+    status?: "draft" | "published" | "edited" | "archived";
+    draftContent?: any;
     thumbnail?: string;
     preTripChecklist?: IPreTripChecklist[];
     cancellationPolicy?: ICancellationPolicy[];
@@ -194,7 +195,7 @@ export const packageFormSchema = z
                 "budget",
             ])
             .optional(),
-        status: z.enum(["draft", "published"]).optional(),
+        status: z.enum(["draft", "published", "edited", "archived"]).optional(),
         thumbnail: z.file().optional(),
         inclusions: z.array(z.string()).optional(),
         exclusions: z.array(z.string()).optional(),

@@ -25,7 +25,6 @@ export class UserService {
   async findOneWithEmail(email: string): Promise<User | null> {
     return await this.userRepository.findOne({
       where: { email },
-      relations: ['role'],
     });
   }
 
