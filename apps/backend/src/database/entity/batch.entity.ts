@@ -12,7 +12,7 @@ import { Customer } from './customer.entity';
 import { Employee } from './employee.entity';
 import { Organization } from './organization.entity';
 import { Package } from './package-related/package.entity';
-import { BookingChecklist } from './booking-checklist.entity';
+import { Booking } from './booking.entity';
 
 export enum BatchStatus {
   UPCOMING = 'upcoming',
@@ -69,16 +69,6 @@ export class Batch {
   })
   coordinators: Employee[];
 
-  @ManyToMany(() => Customer, { cascade: true })
-  @JoinTable({
-    name: 'batch_customers',
-    joinColumn: { name: 'batchId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'customerId', referencedColumnName: 'id' },
-  })
-  customers: Customer[];
-
-  @OneToMany(() => BookingChecklist, (checklist) => checklist.batch, {
-    cascade: true,
-  })
-  checklists: BookingChecklist[];
+  @OneToMany(() => Booking, (booking) => booking.batch)
+  bookings: Booking[];
 }

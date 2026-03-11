@@ -59,21 +59,6 @@ export class BookingChecklist {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // Relations
-  @ManyToOne(() => Booking, (booking) => booking.checklists, {
-    onDelete: 'CASCADE',
-    nullable: true,
-  })
-  @JoinColumn({ name: 'bookingId' })
-  booking: Booking;
-
-  @ManyToOne(() => Batch, (batch) => batch.checklists, {
-    onDelete: 'CASCADE',
-    nullable: true,
-  })
-  @JoinColumn({ name: 'batchId' })
-  batch: Batch;
-
   @ManyToOne(() => Customer, (customer) => customer.id, {
     onDelete: 'CASCADE',
     nullable: true,

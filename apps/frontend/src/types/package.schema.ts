@@ -34,17 +34,6 @@ export interface ICancellationPolicy {
     packageId?: string;
 }
 
-export interface IPreTripChecklist {
-    id: string;
-    task: string;
-    description: string;
-    category: "documents" | "booking" | "preparation" | "communication";
-    type: "individual" | "common";
-    packagedId: string;
-    completed: boolean;
-    dueDate: string;
-}
-
 export interface IPaymentStructure {
     name?: string;
     amount?: number;
@@ -75,7 +64,6 @@ export interface IPackages {
     status?: "draft" | "published" | "edited" | "archived";
     draftContent?: any;
     thumbnail?: string;
-    preTripChecklist?: IPreTripChecklist[];
     cancellationPolicy?: ICancellationPolicy[];
     inclusions?: string[];
     exclusions?: string[];
@@ -88,6 +76,7 @@ export interface IPackages {
     paymentStructure?: IPaymentStructure[];
     cancellationStructure?: ICancellationStructure[];
     documentRequirements?: DocumentRequirement[];
+    preTripChecklist?: IChecklistItem[];
     mealsBreakdown?: MealsBreakdown;
     transportation?: Transportation;
 }
@@ -168,7 +157,6 @@ export const checklistItemSchema = z.object({
         .optional(),
     type: z.enum(["individual", "common"]).optional(),
     dueDate: z.string().optional(),
-    completed: z.boolean().optional(),
 });
 
 export const packageLocationSchema = z.object({
@@ -232,5 +220,5 @@ export type MealsBreakdown = z.infer<typeof mealsBreakdownSchema>;
 export type Transportation = z.infer<typeof transportationSchema>;
 export type ItineraryDay = z.infer<typeof itineraryDaySchema>;
 export type DocumentRequirement = z.infer<typeof documentRequirementSchema>;
-export type ChecklistItem = z.infer<typeof checklistItemSchema>;
+export type IChecklistItem = z.infer<typeof checklistItemSchema>;
 export type PackageLocation = z.infer<typeof packageLocationSchema>;

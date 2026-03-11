@@ -87,8 +87,6 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     try {
-      console.log('Starting signup process for:', userData.email);
-
       // Check if user already exists
       const existingUser = await queryRunner.manager.findOne(User, {
         where: { email: userData?.email },
@@ -107,9 +105,6 @@ export class AuthService {
       });
 
       const savedOrganization = await queryRunner.manager.save(organization);
-      console.log('Organization created:', savedOrganization.id);
-
-      // Roles are removed, we'll assign permission sets later
 
       // Create user
       const hashedPassword = await bcrypt.hash(userData.password, 10);
@@ -125,7 +120,6 @@ export class AuthService {
       });
 
       const savedUser = await queryRunner.manager.save(newUser);
-      console.log('User created:', savedUser.id);
 
       // Create employee
       const employee = queryRunner.manager.create(Employee, {
@@ -140,12 +134,9 @@ export class AuthService {
       });
 
       const savedEmployee = await queryRunner.manager.save(employee);
-      console.log('Employee created:', savedEmployee.id);
 
       // Process team members if any
       if (userData.teamMembers && userData.teamMembers.length > 0) {
-        console.log('Processing team members:', userData.teamMembers.length);
-
         for (const member of userData.teamMembers) {
           try {
             // In new system, we assign permission sets via UI or defaults
@@ -173,8 +164,6 @@ export class AuthService {
                 teamEmployee.email,
                 savedInvite.token,
               );
-
-            console.log('Team member processed:', member.email);
           } catch (memberError) {
             console.error(
               'Error processing team member:',
@@ -188,7 +177,6 @@ export class AuthService {
 
       // CRITICAL: Commit the transaction
       await queryRunner.commitTransaction();
-      console.log('Transaction committed successfully');
 
       // Create default permissions and permission sets for the organization
       try {
@@ -206,10 +194,6 @@ export class AuthService {
             savedEmployee.id,
           );
         }
-
-        console.log(
-          'Default permissions and permission sets created and assigned for organization',
-        );
       } catch (error) {
         console.error(
           'Error creating default permissions and permission sets (non-critical):',

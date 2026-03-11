@@ -663,23 +663,16 @@ export class ImportService {
   }
 
   async generateTemplateExcel(template: any): Promise<Buffer> {
-    console.log('🔄 Template:', template);
-
     // Filter and sort columns
     const sortedColumns = template.columns
       .filter((col: any) => col.isVisible)
       .sort((a: any, b: any) => a.order - b.order);
 
-    console.log('🔄 Sorted Columns:', sortedColumns);
-
     // Extract headers as strings
     const headers = sortedColumns.map((col: any) => {
       const header = col.excelColumnName;
-      console.log('🔄 Column header:', header, typeof header);
       return String(header); // Ensure it's a string
     });
-
-    console.log('🔄 Final headers:', headers);
 
     // Generate sample data that matches the number of columns
     const sampleDataRow1: string[] = [];
@@ -719,8 +712,6 @@ export class ImportService {
     }
 
     const sampleData = [sampleDataRow1, sampleDataRow2];
-
-    console.log('🔄 Sample data:', sampleData);
 
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);

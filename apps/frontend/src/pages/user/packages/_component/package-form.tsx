@@ -226,6 +226,14 @@ export function PackageForm({
                     ) || [];
             }
 
+            if (backendData.preTripChecklist !== undefined) {
+                transformed.preTripChecklist =
+                    backendData.preTripChecklist?.map((item: any) => ({
+                        ...item,
+                        dueDate: item.dueDate?.toString() || "",
+                    })) || [];
+            }
+
             return transformed as Partial<PackageFormData>;
         },
         [],

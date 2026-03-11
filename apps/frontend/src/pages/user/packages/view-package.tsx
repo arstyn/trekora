@@ -131,11 +131,6 @@ export default function ViewPackagePage() {
                     `/packages/${id}/logistics`,
                 );
 
-                console.log(
-                    "🚀 ~ view-package.tsx:131 ~ fetchLogistics ~ res:",
-                    res,
-                );
-
                 setLogistics(res.data);
             } catch (error: any) {
                 toast.error(error.message || "Failed to load logistics");
@@ -614,118 +609,138 @@ export default function ViewPackagePage() {
                             </>
                         )}
 
-                        {/* Document Requirements */}
+                        {/* Requirements & Checklist */}
                         {loadingRequirements ? (
                             <RequirementsSkeleton />
                         ) : (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Document Requirements</CardTitle>
-                                    <CardDescription>
-                                        Required documents for all travelers
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <h4 className="font-semibold mb-3 text-blue-600">
-                                                All Travelers
-                                            </h4>
-                                            <div className="space-y-3">
-                                                {requirements?.documentRequirements &&
-                                                requirements
-                                                    .documentRequirements
-                                                    .length > 0 ? (
-                                                    requirements.documentRequirements
-                                                        .filter(
-                                                            (doc) =>
-                                                                doc?.applicableFor ===
-                                                                "all",
-                                                        )
-                                                        .map((doc, index) => (
-                                                            <div
-                                                                key={index}
-                                                                className="p-3 border rounded-lg"
-                                                            >
-                                                                <div className="flex items-center gap-2 mb-1">
-                                                                    <h5 className="font-medium">
-                                                                        {doc?.name ||
-                                                                            "Document"}
-                                                                    </h5>
-                                                                    {doc?.mandatory && (
-                                                                        <Badge
-                                                                            variant="destructive"
-                                                                            className="text-xs"
-                                                                        >
-                                                                            Required
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
-                                                                <p className="text-sm ">
-                                                                    {doc?.description ||
-                                                                        "No description available"}
-                                                                </p>
-                                                            </div>
-                                                        ))
-                                                ) : (
-                                                    <div className="text-muted-foreground text-sm">
-                                                        No documents required
-                                                        for all travelers.
-                                                    </div>
-                                                )}
+                            <div className="space-y-8">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>
+                                            Document Requirements
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Required documents for all travelers
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <h4 className="font-semibold mb-3 text-blue-600">
+                                                    All Travelers
+                                                </h4>
+                                                <div className="space-y-3">
+                                                    {requirements?.documentRequirements &&
+                                                    requirements
+                                                        .documentRequirements
+                                                        .length > 0 ? (
+                                                        requirements.documentRequirements
+                                                            .filter(
+                                                                (doc) =>
+                                                                    doc?.applicableFor ===
+                                                                    "all",
+                                                            )
+                                                            .map(
+                                                                (
+                                                                    doc,
+                                                                    index,
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            index
+                                                                        }
+                                                                        className="p-3 border rounded-lg"
+                                                                    >
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <h5 className="font-medium">
+                                                                                {doc?.name ||
+                                                                                    "Document"}
+                                                                            </h5>
+                                                                            {doc?.mandatory && (
+                                                                                <Badge
+                                                                                    variant="destructive"
+                                                                                    className="text-xs"
+                                                                                >
+                                                                                    Required
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-sm ">
+                                                                            {doc?.description ||
+                                                                                "No description available"}
+                                                                        </p>
+                                                                    </div>
+                                                                ),
+                                                            )
+                                                    ) : (
+                                                        <div className="text-muted-foreground text-sm">
+                                                            No documents
+                                                            required for all
+                                                            travelers.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold mb-3 text-green-600">
+                                                    Children Only
+                                                </h4>
+                                                <div className="space-y-3">
+                                                    {requirements?.documentRequirements &&
+                                                    requirements
+                                                        .documentRequirements
+                                                        .length > 0 ? (
+                                                        requirements.documentRequirements
+                                                            .filter(
+                                                                (doc) =>
+                                                                    doc?.applicableFor ===
+                                                                    "children",
+                                                            )
+                                                            .map(
+                                                                (
+                                                                    doc,
+                                                                    index,
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            index
+                                                                        }
+                                                                        className="p-3 border rounded-lg"
+                                                                    >
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <h5 className="font-medium">
+                                                                                {doc?.name ||
+                                                                                    "Document"}
+                                                                            </h5>
+                                                                            {doc?.mandatory && (
+                                                                                <Badge
+                                                                                    variant="destructive"
+                                                                                    className="text-xs"
+                                                                                >
+                                                                                    Required
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-sm ">
+                                                                            {doc?.description ||
+                                                                                "No description available"}
+                                                                        </p>
+                                                                    </div>
+                                                                ),
+                                                            )
+                                                    ) : (
+                                                        <div className="text-muted-foreground text-sm">
+                                                            No specific
+                                                            documents required
+                                                            for children.
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <h4 className="font-semibold mb-3 text-green-600">
-                                                Children Only
-                                            </h4>
-                                            <div className="space-y-3">
-                                                {requirements?.documentRequirements &&
-                                                requirements
-                                                    .documentRequirements
-                                                    .length > 0 ? (
-                                                    requirements.documentRequirements
-                                                        .filter(
-                                                            (doc) =>
-                                                                doc?.applicableFor ===
-                                                                "children",
-                                                        )
-                                                        .map((doc, index) => (
-                                                            <div
-                                                                key={index}
-                                                                className="p-3 border rounded-lg"
-                                                            >
-                                                                <div className="flex items-center gap-2 mb-1">
-                                                                    <h5 className="font-medium">
-                                                                        {doc?.name ||
-                                                                            "Document"}
-                                                                    </h5>
-                                                                    {doc?.mandatory && (
-                                                                        <Badge
-                                                                            variant="destructive"
-                                                                            className="text-xs"
-                                                                        >
-                                                                            Required
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
-                                                                <p className="text-sm ">
-                                                                    {doc?.description ||
-                                                                        "No description available"}
-                                                                </p>
-                                                            </div>
-                                                        ))
-                                                ) : (
-                                                    <div className="text-muted-foreground text-sm">
-                                                        No specific documents
-                                                        required for children.
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                    </CardContent>
+                                </Card>
+                            </div>
                         )}
 
                         {/* Meals Breakdown */}
@@ -1011,63 +1026,6 @@ export default function ViewPackagePage() {
                             </CardContent>
                         </Card>
 
-                        {/* Pre-Trip Checklist Progress */}
-                        {loadingRequirements ? (
-                            <div className="h-40 w-full animate-pulse bg-muted rounded-lg" />
-                        ) : (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Pre-Trip Checklist</CardTitle>
-                                    <CardDescription>
-                                        General Checklist for this trip
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        {requirements?.preTripChecklist &&
-                                        requirements.preTripChecklist.length >
-                                            0 ? (
-                                            requirements.preTripChecklist.map(
-                                                (item, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="flex items-center gap-2 p-2 rounded border"
-                                                    >
-                                                        <div className="flex-1">
-                                                            <div className="text-sm font-medium">
-                                                                {item?.task ||
-                                                                    "Untitled task"}
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="text-xs text-muted-foreground uppercase">
-                                                                    {item?.category ||
-                                                                        "General"}
-                                                                </div>
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className="text-[10px] h-4 py-0"
-                                                                >
-                                                                    {item?.type ||
-                                                                        "common"}
-                                                                </Badge>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ),
-                                            )
-                                        ) : (
-                                            <div className="text-center py-4 text-muted-foreground">
-                                                <p className="text-sm">
-                                                    No checklist items have been
-                                                    created yet.
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
                         {/* Inclusions & Exclusions */}
                         <Card>
                             <CardHeader>
@@ -1137,6 +1095,59 @@ export default function ViewPackagePage() {
                                             </div>
                                         )}
                                     </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Pre-trip Checklist</CardTitle>
+                                <CardDescription>
+                                    Tasks to complete before departure
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-5">
+                                    {requirements?.preTripChecklist &&
+                                    requirements.preTripChecklist.length > 0 ? (
+                                        requirements.preTripChecklist.map(
+                                            (item, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="p-4 border rounded-lg bg-secondary/5"
+                                                >
+                                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                                        <h5 className="font-semibold text-sm leading-tight">
+                                                            {item.task}
+                                                        </h5>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="text-[10px] uppercase font-bold px-1.5 h-4"
+                                                        >
+                                                            {item.type}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                                                        {item.description ||
+                                                            "No description"}
+                                                    </p>
+                                                    <div className="flex items-center justify-between mt-auto">
+                                                        <Badge className="text-[10px] capitalize h-5">
+                                                            {item.category}
+                                                        </Badge>
+                                                        <span className="text-[10px] text-muted-foreground font-medium">
+                                                            Due:{" "}
+                                                            {item.dueDate ||
+                                                                "N/A"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ),
+                                        )
+                                    ) : (
+                                        <div className="col-span-full py-4 text-center text-muted-foreground text-sm">
+                                            No checklist items defined.
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>

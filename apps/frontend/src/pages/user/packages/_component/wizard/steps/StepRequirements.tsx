@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import type { PackageFormData } from "@/types/package.schema";
 import { Plus, Save, Trash2 } from "lucide-react";
-import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
 
@@ -49,32 +48,14 @@ export function StepRequirements({
         name: "documentRequirements",
     });
 
-    const [newChecklistItem, setNewChecklistItem] = useState("");
-
-    const addChecklistItem = () => {
-        if (!newChecklistItem.trim()) return;
-        const current = form.getValues("preTripChecklist") || [];
-        form.setValue("preTripChecklist", [
-            ...current,
-            {
-                task: newChecklistItem.trim(),
-                description: "",
-                category: "preparation",
-                type: "common",
-                dueDate: "departure",
-                completed: false,
-            },
-        ]);
-        setNewChecklistItem("");
-    };
-
-    const removeChecklistItem = (index: number) => {
-        const current = form.getValues("preTripChecklist") || [];
-        form.setValue(
-            "preTripChecklist",
-            current.filter((_, i) => i !== index),
-        );
-    };
+    const {
+        fields: checklistFields,
+        append: appendChecklist,
+        remove: removeChecklist,
+    } = useFieldArray({
+        control: form.control,
+        name: "preTripChecklist",
+    });
 
     return (
         <div className="space-y-6">
@@ -203,59 +184,172 @@ export function StepRequirements({
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Pre-trip Checklist</CardTitle>
-                    <CardDescription>
-                        Items travelers should check before leaving
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                        <Input
-                            placeholder="Add checklist item..."
-                            value={newChecklistItem}
-                            onChange={(e) =>
-                                setNewChecklistItem(e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    addChecklistItem();
-                                }
-                            }}
-                        />
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Pre-trip Checklist</CardTitle>
+                            <CardDescription>
+                                Common tasks to be completed before the trip.
+                            </CardDescription>
+                        </div>
                         <Button
                             type="button"
-                            onClick={addChecklistItem}
-                            variant="secondary"
+                            onClick={() =>
+                                appendChecklist({
+                                    task: "",
+                                    description: "",
+                                    category: "documents",
+                                    type: "common",
+                                    dueDate: "",
+                                })
+                            }
+                            size="sm"
                         >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Item
                         </Button>
                     </div>
-                    <div className="space-y-2">
-                        {(form.watch("preTripChecklist") || []).map(
-                            (item, index) => (
-                                <div
-                                    key={index}
-                                    className="flex gap-2 items-center p-2 border rounded-md"
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {checklistFields.map((field, index) => (
+                        <div
+                            key={field.id}
+                            className="border rounded-lg p-4 space-y-3"
+                        >
+                            <div className="flex justify-between items-center">
+                                <h4 className="font-medium">
+                                    Item {index + 1}
+                                </h4>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeChecklist(index)}
                                 >
-                                    <div className="w-2 h-2 rounded-full bg-primary" />
-                                    <span className="flex-1 text-sm">
-                                        {item.task}
-                                    </span>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                            removeChecklistItem(index)
-                                        }
-                                    >
-                                        <Trash2 className="w-4 h-4 text-red-500" />
-                                    </Button>
-                                </div>
-                            ),
-                        )}
-                    </div>
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <FormField
+                                    control={form.control}
+                                    name={`preTripChecklist.${index}.task`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Task</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    placeholder="Enter task name"
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`preTripChecklist.${index}.category`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Category</FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="documents">
+                                                        Documents
+                                                    </SelectItem>
+                                                    <SelectItem value="booking">
+                                                        Booking
+                                                    </SelectItem>
+                                                    <SelectItem value="preparation">
+                                                        Preparation
+                                                    </SelectItem>
+                                                    <SelectItem value="communication">
+                                                        Communication
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <FormField
+                                    control={form.control}
+                                    name={`preTripChecklist.${index}.type`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Type</FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="common">
+                                                        Common (Per Booking)
+                                                    </SelectItem>
+                                                    <SelectItem value="individual">
+                                                        Individual (Per
+                                                        Traveler)
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`preTripChecklist.${index}.dueDate`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                Due In (Days before trip)
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    type="number"
+                                                    placeholder="Optional"
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                            <FormField
+                                control={form.control}
+                                name={`preTripChecklist.${index}.description`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Description</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                {...field}
+                                                placeholder="Enter task description"
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    ))}
+                    {checklistFields.length === 0 && (
+                        <div className="text-center py-6 border-2 border-dashed rounded-lg bg-muted/30">
+                            <p className="text-sm text-muted-foreground">
+                                No pre-trip checklist items added yet.
+                            </p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 

@@ -31,11 +31,6 @@ export class PermissionCheckService {
       where: { id: userId, organizationId },
     });
 
-    console.log(
-      '🚀 ~ permission-check.service.ts:37 ~ PermissionCheckService ~ hasPermission ~ user:',
-      user,
-    );
-
     if (!user) {
       return false;
     }
@@ -44,20 +39,10 @@ export class PermissionCheckService {
     const userPermissionSets =
       await this.permissionSetService.getPermissionSetsForUser(userId);
 
-    console.log(
-      '🚀 ~ permission-check.service.ts:48 ~ PermissionCheckService ~ hasPermission ~ userPermissionSets:',
-      userPermissionSets,
-    );
-
     // Also check if user has a linked employee and get their permission sets
     const employee = await this.employeeRepository.findOne({
       where: { userId, organizationId },
     });
-
-    console.log(
-      '🚀 ~ permission-check.service.ts:56 ~ PermissionCheckService ~ hasPermission ~ employee:',
-      employee,
-    );
 
     let employeePermissionSets: PermissionSet[] = [];
     if (employee) {
@@ -92,8 +77,6 @@ export class PermissionCheckService {
         allPermissions.push(...permissions);
       }
     }
-
-    console.log(allPermissions);
 
     // Check if the required permission exists
     return allPermissions.some(

@@ -9,7 +9,7 @@ import {
     MoreVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
     Dialog,
@@ -29,18 +29,23 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import WorkflowService, {
-    type IWorkflow,
-    type IWorkflowStep,
-    type IWorkflowLog,
-} from "@/services/workflow.service";
+import WorkflowService from "@/services/workflow.service";
+import type {
+    IWorkflow,
+    IWorkflowStep,
+    IWorkflowLog,
+} from "@/types/workflow.types";
 import { format } from "date-fns";
 
 interface WorkflowManagerProps {
     workflowId: string;
+    onUpdate?: () => void;
 }
 
-export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
+export function WorkflowManager({
+    workflowId,
+    onUpdate,
+}: WorkflowManagerProps) {
     const [workflow, setWorkflow] = useState<IWorkflow | null>(null);
     const [logs, setLogs] = useState<IWorkflowLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -85,6 +90,7 @@ export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
             await WorkflowService.updateStep(step.id, { status: newStatus });
             toast.success(`Step marked as ${newStatus}`);
             loadWorkflow();
+            if (onUpdate) onUpdate();
         } catch (error) {
             toast.error("Failed to update step");
         }
@@ -108,6 +114,7 @@ export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
                 });
                 toast.success("Customer status updated");
                 loadWorkflow();
+                if (onUpdate) onUpdate();
             }
         } catch (error) {
             toast.error("Failed to update status");
@@ -122,6 +129,7 @@ export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
             setIsAddingStep(false);
             setNewStep({ label: "", description: "", isMandatory: true });
             loadWorkflow();
+            if (onUpdate) onUpdate();
         } catch (error) {
             toast.error("Failed to add step");
         }
@@ -133,6 +141,7 @@ export function WorkflowManager({ workflowId }: WorkflowManagerProps) {
             await WorkflowService.deleteStep(stepId);
             toast.success("Step deleted");
             loadWorkflow();
+            if (onUpdate) onUpdate();
         } catch (error) {
             toast.error("Failed to delete step");
         }

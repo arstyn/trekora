@@ -1,875 +1,378 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
-import axiosInstance from "@/lib/axios";
-import type { ICustomer } from "@/types/booking.types";
-import type { IBatchChecklist } from "@/types/checklist.types";
 import {
-	AlertCircle,
-	Heart,
-	Loader2,
-	Mail,
-	MapPin,
-	Phone,
-	Plus,
-	Save,
-	Shield,
-	User,
-	X,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { ICustomer } from "@/types/booking.types";
+import {
+    AlertCircle,
+    Heart,
+    Mail,
+    MapPin,
+    Phone,
+    Shield,
+    User,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
 
 interface CustomerModalProps {
-	customer: ICustomer;
-	batchId: string;
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	reloadBatchList: () => void;
+    customer: ICustomer;
+    batchId: string;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    reloadBatchList: () => void;
 }
 
 export function CustomerModal({
-	customer,
-	batchId,
-	open,
-	onOpenChange,
-	reloadBatchList,
+    customer,
+    open,
+    onOpenChange,
 }: CustomerModalProps) {
-	const [batchChecklists, setBatchChecklists] = useState<IBatchChecklist[]>([]);
-	const [isLoadingChecklists, setIsLoadingChecklists] = useState(true);
-	const [isSaving, setIsSaving] = useState(false);
-	const [hasChanges, setHasChanges] = useState(false);
-	const [isAddingNewItem, setIsAddingNewItem] = useState(false);
-	const [newItemText, setNewItemText] = useState("");
-	const [isCreatingItem, setIsCreatingItem] = useState(false);
+    if (!customer) return null;
 
-	const fetchBatchChecklists = useCallback(async () => {
-		setIsLoadingChecklists(true);
-		try {
-			const response = await axiosInstance.get<IBatchChecklist[]>(
-				`/batches/${batchId}/checklists/customer/${customer.id}`
-			);
-			setBatchChecklists(response.data);
-		} catch (error) {
-			console.error("Error fetching checklists:", error);
-			toast.error("Failed to load checklists");
-		} finally {
-			setIsLoadingChecklists(false);
-		}
-	}, [batchId, customer.id]);
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
+    };
 
-	useEffect(() => {
-		if (open && batchId) {
-			fetchBatchChecklists();
-		}
-	}, [open, batchId, fetchBatchChecklists]);
+    const getAge = (dateOfBirth: string) => {
+        const today = new Date();
+        const birthDate = new Date(dateOfBirth);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
 
-	if (!customer) return null;
+        if (
+            monthDiff < 0 ||
+            (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+            age--;
+        }
 
-	const handleChecklistToggle = (checklistId: string) => {
-		setBatchChecklists((prev) =>
-			prev.map((item) =>
-				item.id === checklistId ? { ...item, completed: !item.completed } : item
-			)
-		);
-		setHasChanges(true);
-	};
+        return age;
+    };
 
-	const handleSaveChecklists = async () => {
-		setIsSaving(true);
-		try {
-			// Update each changed checklist item
-			const updatePromises = batchChecklists.map((item) =>
-				axiosInstance.patch(`/batches/checklists/${item.id}`, {
-					completed: item.completed,
-				})
-			);
+    const getGenderDisplay = (gender: string) => {
+        switch (gender) {
+            case "male":
+                return "Male";
+            case "female":
+                return "Female";
+            case "other":
+                return "Other";
+            case "prefer_not_to_say":
+                return "Prefer not to say";
+            default:
+                return gender;
+        }
+    };
 
-			await Promise.all(updatePromises);
-			setHasChanges(false);
-			reloadBatchList()
-			toast.success("Checklists updated successfully");
-		} catch (error) {
-			console.error("Error saving checklists:", error);
-			toast.error("Failed to save checklists");
-		} finally {
-			setIsSaving(false);
-		}
-	};
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+                <DialogHeader className="px-6 py-4 border-b">
+                    <DialogTitle className="flex items-center gap-2 text-xl">
+                        <User className="w-5 h-5 text-primary" />
+                        Customer Details: {customer.firstName}{" "}
+                        {customer.lastName}
+                    </DialogTitle>
+                </DialogHeader>
 
-	const handleAddNewChecklistItem = async () => {
-		if (!newItemText.trim()) {
-			toast.error("Please enter a checklist item");
-			return;
-		}
+                <ScrollArea className="h-[calc(90vh-120px)] px-4 sm:px-6">
+                    <div className="space-y-4 sm:space-y-6 py-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                            {/* Personal Information */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <User className="w-4 h-4 text-primary" />
+                                        Personal Information
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                Full Name
+                                            </label>
+                                            <p className="text-sm font-semibold">
+                                                {customer.firstName}{" "}
+                                                {customer.middleName &&
+                                                    `${customer.middleName} `}
+                                                {customer.lastName}
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                Age
+                                            </label>
+                                            <p className="text-sm font-semibold">
+                                                {getAge(customer.dateOfBirth)}{" "}
+                                                years
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                Date of Birth
+                                            </label>
+                                            <p className="text-sm font-semibold">
+                                                {formatDate(
+                                                    customer.dateOfBirth,
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                Gender
+                                            </label>
+                                            <div>
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="text-xs"
+                                                >
+                                                    {getGenderDisplay(
+                                                        customer.gender,
+                                                    )}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-		setIsCreatingItem(true);
-		try {
-			const response = await axiosInstance.post<IBatchChecklist>(
-				`/batches/${batchId}/checklists`,
-				{
-					item: newItemText.trim(),
-					type: "user",
-					customerId: customer.id,
-					completed: false,
-					mandatory: false,
-					sortOrder: userChecklists.length,
-				}
-			);
+                            {/* Contact Information */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Phone className="w-4 h-4 text-primary" />
+                                        Contact Information
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-muted-foreground flex items-center gap-1 uppercase tracking-wider text-[10px]">
+                                                <Mail className="w-3 h-3" />
+                                                Email
+                                            </label>
+                                            <p className="text-sm font-semibold truncate">
+                                                {customer.email}
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-muted-foreground flex items-center gap-1 uppercase tracking-wider text-[10px]">
+                                                <Phone className="w-3 h-3" />
+                                                Phone
+                                            </label>
+                                            <p className="text-sm font-semibold">
+                                                {customer.phone}
+                                            </p>
+                                        </div>
+                                        {customer.alternativePhone && (
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                    Alternative Phone
+                                                </label>
+                                                <p className="text-sm font-semibold">
+                                                    {customer.alternativePhone}
+                                                </p>
+                                            </div>
+                                        )}
+                                        <div className="space-y-2 sm:col-span-2">
+                                            <label className="text-sm font-medium text-muted-foreground flex items-center gap-1 uppercase tracking-wider text-[10px]">
+                                                <MapPin className="w-3 h-3" />
+                                                Address
+                                            </label>
+                                            <p className="text-sm font-semibold">
+                                                {customer.address}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-			// Add the new item to the list
-			setBatchChecklists((prev) => [...prev, response.data]);
-			setNewItemText("");
-			setIsAddingNewItem(false);
-			toast.success("Checklist item added successfully");
-		} catch (error) {
-			console.error("Error adding checklist item:", error);
-			toast.error("Failed to add checklist item");
-		} finally {
-			setIsCreatingItem(false);
-		}
-	};
+                            {/* Emergency Contact */}
+                            {(customer.emergencyContactName ||
+                                customer.emergencyContactPhone) && (
+                                <Card className="lg:col-span-2">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <AlertCircle className="w-4 h-4 text-destructive" />
+                                            Emergency Contact
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                                            {customer.emergencyContactName && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                        Contact Name
+                                                    </label>
+                                                    <p className="text-sm font-semibold">
+                                                        {
+                                                            customer.emergencyContactName
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {customer.emergencyContactPhone && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                        Contact Phone
+                                                    </label>
+                                                    <p className="text-sm font-semibold">
+                                                        {
+                                                            customer.emergencyContactPhone
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {customer.emergencyContactRelation && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                        Relation
+                                                    </label>
+                                                    <div>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="text-xs"
+                                                        >
+                                                            {
+                                                                customer.emergencyContactRelation
+                                                            }
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
 
-	const handleCancelAddItem = () => {
-		setNewItemText("");
-		setIsAddingNewItem(false);
-	};
+                            {/* Travel & Health Information */}
+                            {(customer.specialRequests ||
+                                customer.medicalConditions ||
+                                customer.dietaryRestrictions) && (
+                                <Card className="lg:col-span-2">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Heart className="w-4 h-4 text-pink-500" />
+                                            Travel & Health Info
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                                            {customer.specialRequests && (
+                                                <div className="space-y-2 border-l-2 border-primary/20 pl-3">
+                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                        Special Requests
+                                                    </label>
+                                                    <p className="text-sm italic">
+                                                        "
+                                                        {
+                                                            customer.specialRequests
+                                                        }
+                                                        "
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {customer.medicalConditions && (
+                                                <div className="space-y-2 border-l-2 border-destructive/20 pl-3">
+                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                        Medical Conditions
+                                                    </label>
+                                                    <p className="text-sm">
+                                                        {
+                                                            customer.medicalConditions
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {customer.dietaryRestrictions && (
+                                                <div className="space-y-2 border-l-2 border-green-200 pl-3">
+                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                        Dietary Restrictions
+                                                    </label>
+                                                    <p className="text-sm">
+                                                        {
+                                                            customer.dietaryRestrictions
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
 
-	// Group checklists by type
-	const packageChecklists = batchChecklists.filter((item) => item.type === "package");
-	const individualChecklists = batchChecklists.filter(
-		(item) => item.type === "individual" && item.customerId === customer.id
-	);
-	const userChecklists = batchChecklists.filter(
-		(item) => item.type === "user" && item.customerId === customer.id
-	);
-
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "long",
-			day: "numeric",
-		});
-	};
-
-	const getAge = (dateOfBirth: string) => {
-		const today = new Date();
-		const birthDate = new Date(dateOfBirth);
-		let age = today.getFullYear() - birthDate.getFullYear();
-		const monthDiff = today.getMonth() - birthDate.getMonth();
-
-		if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-			age--;
-		}
-
-		return age;
-	};
-
-	const getGenderDisplay = (gender: string) => {
-		switch (gender) {
-			case "male":
-				return "Male";
-			case "female":
-				return "Female";
-			case "other":
-				return "Other";
-			case "prefer_not_to_say":
-				return "Prefer not to say";
-			default:
-				return gender;
-		}
-	};
-
-	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="min-w-6xl max-h-[90vh] p-0">
-				<DialogHeader className="px-6 py-4 border-b">
-					<DialogTitle className="flex items-center gap-2 text-xl">
-						<User className="w-5 h-5 text-primary" />
-						Customer Details
-					</DialogTitle>
-				</DialogHeader>
-
-				<ScrollArea className="h-[calc(90vh-120px)] px-4 sm:px-6">
-					<div className="space-y-4 sm:space-y-6 py-4">
-						<div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-							{/* Personal Information */}
-							<Card>
-								<CardHeader className="pb-3">
-									<CardTitle className="text-lg flex items-center gap-2">
-										<User className="w-4 h-4 text-primary" />
-										Personal Information
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-										<div className="space-y-2">
-											<label className="text-sm font-medium text-muted-foreground">
-												Full Name
-											</label>
-											<p className="text-sm font-medium">
-												{customer.firstName}{" "}
-												{customer.middleName &&
-													`${customer.middleName} `}
-												{customer.lastName}
-											</p>
-										</div>
-										<div className="space-y-2">
-											<label className="text-sm font-medium text-muted-foreground">
-												Age
-											</label>
-											<p className="text-sm font-medium">
-												{getAge(customer.dateOfBirth)} years
-											</p>
-										</div>
-										<div className="space-y-2">
-											<label className="text-sm font-medium text-muted-foreground">
-												Date of Birth
-											</label>
-											<p className="text-sm font-medium">
-												{formatDate(customer.dateOfBirth)}
-											</p>
-										</div>
-										<div className="space-y-2">
-											<label className="text-sm font-medium text-muted-foreground">
-												Gender
-											</label>
-											<Badge
-												variant="secondary"
-												className="text-xs"
-											>
-												{getGenderDisplay(customer.gender)}
-											</Badge>
-										</div>
-									</div>
-								</CardContent>
-							</Card>
-
-							{/* Contact Information */}
-							<Card>
-								<CardHeader className="pb-3">
-									<CardTitle className="text-lg flex items-center gap-2">
-										<Phone className="w-4 h-4 text-primary" />
-										Contact Information
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-										<div className="space-y-2">
-											<label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-												<Mail className="w-3 h-3" />
-												Email
-											</label>
-											<p className="text-sm font-medium">
-												{customer.email}
-											</p>
-										</div>
-										<div className="space-y-2">
-											<label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-												<Phone className="w-3 h-3" />
-												Phone
-											</label>
-											<p className="text-sm font-medium">
-												{customer.phone}
-											</p>
-										</div>
-										{customer.alternativePhone && (
-											<div className="space-y-2">
-												<label className="text-sm font-medium text-muted-foreground">
-													Alternative Phone
-												</label>
-												<p className="text-sm font-medium">
-													{customer.alternativePhone}
-												</p>
-											</div>
-										)}
-										<div className="space-y-2 sm:col-span-2">
-											<label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-												<MapPin className="w-3 h-3" />
-												Address
-											</label>
-											<p className="text-sm font-medium">
-												{customer.address}
-											</p>
-										</div>
-									</div>
-								</CardContent>
-							</Card>
-
-							{/* Emergency Contact */}
-							{(customer.emergencyContactName ||
-								customer.emergencyContactPhone) && (
-								<Card className="lg:col-span-2">
-									<CardHeader className="pb-3">
-										<CardTitle className="text-lg flex items-center gap-2">
-											<AlertCircle className="w-4 h-4 text-destructive" />
-											Emergency Contact
-										</CardTitle>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-											{customer.emergencyContactName && (
-												<div className="space-y-2">
-													<label className="text-sm font-medium text-muted-foreground">
-														Name
-													</label>
-													<p className="text-sm font-medium">
-														{customer.emergencyContactName}
-													</p>
-												</div>
-											)}
-											{customer.emergencyContactPhone && (
-												<div className="space-y-2">
-													<label className="text-sm font-medium text-muted-foreground">
-														Phone
-													</label>
-													<p className="text-sm font-medium">
-														{customer.emergencyContactPhone}
-													</p>
-												</div>
-											)}
-											{customer.emergencyContactRelation && (
-												<div className="space-y-2">
-													<label className="text-sm font-medium text-muted-foreground">
-														Relation
-													</label>
-													<Badge
-														variant="outline"
-														className="text-xs"
-													>
-														{
-															customer.emergencyContactRelation
-														}
-													</Badge>
-												</div>
-											)}
-										</div>
-									</CardContent>
-								</Card>
-							)}
-
-							{/* Travel Information */}
-							{(customer.specialRequests ||
-								customer.medicalConditions ||
-								customer.dietaryRestrictions) && (
-								<Card className="lg:col-span-2">
-									<CardHeader className="pb-3">
-										<CardTitle className="text-lg flex items-center gap-2">
-											<Heart className="w-4 h-4 text-pink-500" />
-											Travel Information
-										</CardTitle>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-											{customer.specialRequests && (
-												<div className="space-y-2">
-													<label className="text-sm font-medium text-muted-foreground">
-														Special Requests
-													</label>
-													<p className="text-sm font-medium">
-														{customer.specialRequests}
-													</p>
-												</div>
-											)}
-											{customer.medicalConditions && (
-												<div className="space-y-2">
-													<label className="text-sm font-medium text-muted-foreground">
-														Medical Conditions
-													</label>
-													<p className="text-sm font-medium">
-														{customer.medicalConditions}
-													</p>
-												</div>
-											)}
-											{customer.dietaryRestrictions && (
-												<div className="space-y-2">
-													<label className="text-sm font-medium text-muted-foreground">
-														Dietary Restrictions
-													</label>
-													<p className="text-sm font-medium">
-														{customer.dietaryRestrictions}
-													</p>
-												</div>
-											)}
-										</div>
-									</CardContent>
-								</Card>
-							)}
-
-							{/* Document Information */}
-							{(customer.passportNumber ||
-								customer.voterId ||
-								customer.aadhaarId) && (
-								<Card className="lg:col-span-2">
-									<CardHeader className="pb-3">
-										<CardTitle className="text-lg flex items-center gap-2">
-											<Shield className="w-4 h-4 text-blue-500" />
-											Document Information
-										</CardTitle>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-											{customer.passportNumber && (
-												<div className="space-y-2">
-													<label className="text-sm font-medium text-muted-foreground">
-														Passport Number
-													</label>
-													<p className="text-sm font-medium">
-														{customer.passportNumber}
-													</p>
-													{customer.passportExpiryDate && (
-														<Badge
-															variant="outline"
-															className="text-xs"
-														>
-															Expires:{" "}
-															{formatDate(
-																customer.passportExpiryDate
-															)}
-														</Badge>
-													)}
-												</div>
-											)}
-											{customer.voterId && (
-												<div className="space-y-2">
-													<label className="text-sm font-medium text-muted-foreground">
-														Voter ID
-													</label>
-													<p className="text-sm font-medium">
-														{customer.voterId}
-													</p>
-												</div>
-											)}
-											{customer.aadhaarId && (
-												<div className="space-y-2">
-													<label className="text-sm font-medium text-muted-foreground">
-														Aadhaar ID
-													</label>
-													<p className="text-sm font-medium">
-														{customer.aadhaarId}
-													</p>
-												</div>
-											)}
-										</div>
-									</CardContent>
-								</Card>
-							)}
-						</div>
-
-						{/* Checklist Section - Full Width */}
-						<Card>
-							<CardHeader>
-								<div className="flex items-center justify-between">
-									<CardTitle className="text-lg flex items-center gap-2">
-										<AlertCircle className="w-4 h-4 text-orange-500" />
-										Travel Checklist
-									</CardTitle>
-									{hasChanges && (
-										<Button
-											size="sm"
-											onClick={handleSaveChecklists}
-											disabled={isSaving}
-										>
-											{isSaving ? (
-												<>
-													<Loader2 className="w-4 h-4 mr-2 animate-spin" />
-													Saving...
-												</>
-											) : (
-												<>
-													<Save className="w-4 h-4 mr-2" />
-													Save Changes
-												</>
-											)}
-										</Button>
-									)}
-								</div>
-							</CardHeader>
-							<CardContent className="space-y-6">
-								{isLoadingChecklists ? (
-									<div className="space-y-4">
-										<Skeleton className="h-8 w-full" />
-										<Skeleton className="h-8 w-full" />
-										<Skeleton className="h-8 w-full" />
-										<Skeleton className="h-8 w-full" />
-									</div>
-								) : (
-									<>
-										{/* Package Checklist Items */}
-										{packageChecklists.length > 0 && (
-											<div className="space-y-3">
-												<div className="flex items-center justify-between">
-													<h4 className="font-medium text-sm text-muted-foreground">
-														Package Checklist
-													</h4>
-													<Badge
-														variant="outline"
-														className="text-xs"
-													>
-														{
-															packageChecklists.filter(
-																(item) => item.completed
-															).length
-														}
-														/{packageChecklists.length}{" "}
-														Complete
-													</Badge>
-												</div>
-												<div className="space-y-2">
-													{packageChecklists.map((item) => (
-														<div
-															key={item.id}
-															className="flex items-center space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
-														>
-															<Checkbox
-																id={`package-${item.id}`}
-																checked={item.completed}
-																onCheckedChange={() =>
-																	handleChecklistToggle(
-																		item.id
-																	)
-																}
-															/>
-															<div className="flex-1 space-y-1">
-																<label
-																	htmlFor={`package-${item.id}`}
-																	className={`text-sm font-medium leading-none cursor-pointer ${
-																		item.completed
-																			? "line-through text-muted-foreground"
-																			: ""
-																	}`}
-																>
-																	{item.item}
-																	{item.mandatory && (
-																		<Badge
-																			variant="destructive"
-																			className="ml-2 text-xs"
-																		>
-																			Required
-																		</Badge>
-																	)}
-																</label>
-																{item.notes && (
-																	<p className="text-xs text-muted-foreground">
-																		{item.notes}
-																	</p>
-																)}
-															</div>
-														</div>
-													))}
-												</div>
-											</div>
-										)}
-
-										{/* User Checklist Items */}
-										<div className="space-y-3">
-											<div className="flex items-center justify-between">
-												<h4 className="font-medium text-sm text-muted-foreground">
-													User Checklist
-												</h4>
-												<div className="flex items-center gap-2">
-													{userChecklists.length > 0 && (
-														<Badge
-															variant="outline"
-															className="text-xs"
-														>
-															{
-																userChecklists.filter(
-																	(item) =>
-																		item.completed
-																).length
-															}
-															/{userChecklists.length}{" "}
-															Complete
-														</Badge>
-													)}
-													{!isAddingNewItem && (
-														<Button
-															size="sm"
-															variant="outline"
-															onClick={() =>
-																setIsAddingNewItem(true)
-															}
-														>
-															<Plus className="w-4 h-4 mr-1" />
-															Add Item
-														</Button>
-													)}
-												</div>
-											</div>
-											{userChecklists.length > 0 ||
-											isAddingNewItem ? (
-												<div className="space-y-2">
-													{userChecklists.map((item) => (
-														<div
-															key={item.id}
-															className="flex items-center space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
-														>
-															<Checkbox
-																id={`group-${item.id}`}
-																checked={item.completed}
-																onCheckedChange={() =>
-																	handleChecklistToggle(
-																		item.id
-																	)
-																}
-															/>
-															<div className="flex-1 space-y-1">
-																<label
-																	htmlFor={`group-${item.id}`}
-																	className={`text-sm font-medium leading-none cursor-pointer ${
-																		item.completed
-																			? "line-through text-muted-foreground"
-																			: ""
-																	}`}
-																>
-																	{item.item}
-																	{item.mandatory && (
-																		<Badge
-																			variant="destructive"
-																			className="ml-2 text-xs"
-																		>
-																			Required
-																		</Badge>
-																	)}
-																</label>
-																{item.notes && (
-																	<p className="text-xs text-muted-foreground">
-																		{item.notes}
-																	</p>
-																)}
-															</div>
-														</div>
-													))}
-
-													{/* Add New Item Input */}
-													{isAddingNewItem && (
-														<div className="flex items-center space-x-2 p-3 rounded-md border border-primary/50 bg-primary/5">
-															<div className="flex-1 space-y-2">
-																<Input
-																	placeholder="Enter new checklist item..."
-																	value={newItemText}
-																	onChange={(e) =>
-																		setNewItemText(
-																			e.target.value
-																		)
-																	}
-																	onKeyDown={(e) => {
-																		if (
-																			e.key ===
-																			"Enter"
-																		) {
-																			handleAddNewChecklistItem();
-																		} else if (
-																			e.key ===
-																			"Escape"
-																		) {
-																			handleCancelAddItem();
-																		}
-																	}}
-																	disabled={
-																		isCreatingItem
-																	}
-																	autoFocus
-																/>
-																<div className="flex items-center gap-2">
-																	<Button
-																		size="sm"
-																		onClick={
-																			handleAddNewChecklistItem
-																		}
-																		disabled={
-																			isCreatingItem ||
-																			!newItemText.trim()
-																		}
-																	>
-																		{isCreatingItem ? (
-																			<>
-																				<Loader2 className="w-3 h-3 mr-1 animate-spin" />
-																				Adding...
-																			</>
-																		) : (
-																			<>
-																				<Plus className="w-3 h-3 mr-1" />
-																				Add
-																			</>
-																		)}
-																	</Button>
-																	<Button
-																		size="sm"
-																		variant="outline"
-																		onClick={
-																			handleCancelAddItem
-																		}
-																		disabled={
-																			isCreatingItem
-																		}
-																	>
-																		<X className="w-3 h-3 mr-1" />
-																		Cancel
-																	</Button>
-																</div>
-															</div>
-														</div>
-													)}
-												</div>
-											) : (
-												<div className="text-center py-6 text-muted-foreground border rounded-md">
-													<p className="text-sm mb-2">
-														No user checklist items yet
-													</p>
-													<p className="text-xs">
-														Click "Add Item" above to create
-														custom checklist items
-													</p>
-												</div>
-											)}
-										</div>
-
-										{/* Individual Checklist Items */}
-										{individualChecklists.length > 0 && (
-											<div className="space-y-3">
-												<div className="flex items-center justify-between">
-													<h4 className="font-medium text-sm text-muted-foreground">
-														Individual Checklist
-													</h4>
-													<Badge
-														variant="outline"
-														className="text-xs"
-													>
-														{
-															individualChecklists.filter(
-																(item) => item.completed
-															).length
-														}
-														/{individualChecklists.length}{" "}
-														Complete
-													</Badge>
-												</div>
-												<div className="space-y-2">
-													{individualChecklists.map((item) => (
-														<div
-															key={item.id}
-															className="flex items-start space-x-3 p-3 rounded-md hover:bg-muted/50 transition-colors border"
-														>
-															<Checkbox
-																id={`individual-${item.id}`}
-																checked={item.completed}
-																onCheckedChange={() =>
-																	handleChecklistToggle(
-																		item.id
-																	)
-																}
-															/>
-															<div className="flex-1 space-y-1">
-																<label
-																	htmlFor={`individual-${item.id}`}
-																	className={`text-sm font-medium leading-none cursor-pointer ${
-																		item.completed
-																			? "line-through text-muted-foreground"
-																			: ""
-																	}`}
-																>
-																	{item.item}
-																	{item.mandatory && (
-																		<Badge
-																			variant="destructive"
-																			className="ml-2 text-xs"
-																		>
-																			Required
-																		</Badge>
-																	)}
-																</label>
-																{item.notes && (
-																	<p className="text-xs text-muted-foreground">
-																		{item.notes}
-																	</p>
-																)}
-															</div>
-														</div>
-													))}
-												</div>
-											</div>
-										)}
-
-										{/* No Checklists Message */}
-										{packageChecklists.length === 0 &&
-											userChecklists.length === 0 &&
-											individualChecklists.length === 0 && (
-												<div className="text-center py-8 text-muted-foreground">
-													<AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-													<p>
-														No checklists available for this
-														customer
-													</p>
-												</div>
-											)}
-
-										{/* Checklist Progress */}
-										{(packageChecklists.length > 0 ||
-											userChecklists.length > 0 ||
-											individualChecklists.length > 0) && (
-											<div className="pt-4 border-t">
-												<div className="flex items-center justify-between">
-													<span className="text-sm font-medium text-muted-foreground">
-														Overall Progress:
-													</span>
-													<div className="flex items-center gap-2">
-														<div className="text-sm font-medium">
-															{
-																batchChecklists.filter(
-																	(item) =>
-																		item.completed &&
-																		(item.type !==
-																			"individual" ||
-																			item.customerId ===
-																				customer.id)
-																).length
-															}{" "}
-															/{" "}
-															{packageChecklists.length +
-																userChecklists.length +
-																individualChecklists.length}
-														</div>
-														<Badge
-															variant="secondary"
-															className="text-xs"
-														>
-															{Math.round(
-																(batchChecklists.filter(
-																	(item) =>
-																		item.completed &&
-																		(item.type !==
-																			"individual" ||
-																			item.customerId ===
-																				customer.id)
-																).length /
-																	(packageChecklists.length +
-																		userChecklists.length +
-																		individualChecklists.length ||
-																		1)) *
-																	100
-															)}
-															% Complete
-														</Badge>
-													</div>
-												</div>
-											</div>
-										)}
-									</>
-								)}
-							</CardContent>
-						</Card>
-					</div>
-				</ScrollArea>
-			</DialogContent>
-		</Dialog>
-	);
+                            {/* Identification */}
+                            {(customer.passportNumber ||
+                                customer.voterId ||
+                                customer.aadhaarId) && (
+                                <Card className="lg:col-span-2">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Shield className="w-4 h-4 text-blue-500" />
+                                            Identification Documents
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                                            {customer.passportNumber && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                        Passport Number
+                                                    </label>
+                                                    <p className="text-sm font-mono font-bold">
+                                                        {
+                                                            customer.passportNumber
+                                                        }
+                                                    </p>
+                                                    {customer.passportExpiryDate && (
+                                                        <p className="text-[10px] text-muted-foreground">
+                                                            Expires:{" "}
+                                                            {formatDate(
+                                                                customer.passportExpiryDate,
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {customer.voterId && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                        Voter ID
+                                                    </label>
+                                                    <p className="text-sm font-mono font-bold">
+                                                        {customer.voterId}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {customer.aadhaarId && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                        Aadhaar ID
+                                                    </label>
+                                                    <p className="text-sm font-mono font-bold">
+                                                        {customer.aadhaarId}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    </div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
+    );
 }

@@ -13,7 +13,6 @@ import { Organization } from '../organization.entity';
 import { User } from '../user.entity';
 import { CancellationPolicy } from './cancellation-policies.entity';
 import { CancellationTier } from './cancellation-tiers.entity';
-import { ChecklistItem } from './checklist-items.entity';
 import { DocumentRequirement } from './document-requirements.entity';
 import { Exclusion } from './exclusions.entity';
 import { Inclusion } from './inclusions.entity';
@@ -22,6 +21,7 @@ import { MealsBreakdown } from './meals-breakdowns.entity';
 import { PackageLocation } from './package-locations.entity';
 import { PaymentMilestone } from './payment-milestones.entity';
 import { Transportation } from './transportations.entity';
+import { ChecklistItem } from './checklist-items.entity';
 import { Booking } from '../booking.entity';
 
 @Entity('packages')
@@ -134,7 +134,7 @@ export class Package {
   })
   documentRequirements: DocumentRequirement[];
 
-  @OneToMany(() => ChecklistItem, (item) => item.package, {
+  @OneToMany(() => ChecklistItem, (checklist) => checklist.package, {
     cascade: true,
     nullable: true,
   })

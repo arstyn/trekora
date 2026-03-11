@@ -390,13 +390,10 @@ async function seed() {
       }
 
       // Create pre-trip checklist
-      if (packageData.preTripChecklist) {
-        for (const item of packageData.preTripChecklist) {
+      if ((packageData as any).preTripChecklist) {
+        for (const item of (packageData as any).preTripChecklist) {
           const checklistItem = queryRunner.manager.create(ChecklistItem, {
-            task: item.task,
-            description: item.description,
-            category: item.category,
-            dueDate: item.dueDate,
+            ...item,
             packageId: savedPackage.id,
           });
           await queryRunner.manager.save(checklistItem);

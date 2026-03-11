@@ -10,7 +10,6 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { ChecklistType } from 'src/database/entity/booking-checklist.entity';
 import { BookingStatus } from 'src/database/entity/booking.entity';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import {
@@ -18,10 +17,6 @@ import {
   CreatePaymentDto,
   UpdateBookingDto,
 } from 'src/dto/booking.dto';
-import {
-  CreateChecklistItemDto,
-  UpdateChecklistItemDto,
-} from 'src/dto/checklist.dto';
 import { RequirePermission } from '../auth/decorator/require-permission.decorator';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../auth/guard/permission.guard';
@@ -114,64 +109,6 @@ export class BookingController {
     );
   }
 
-  @Get('checklists')
-  @RequirePermission('booking', 'read')
-  findAllChecklists(
-    @Request() req: ApiRequestJWT,
-    @Query('assignedToId') assignedToId?: string,
-    @Query('completed') completed?: boolean,
-  ) {
-    return this.bookingService.findAllChecklists(
-      req.user.organizationId,
-      assignedToId,
-      completed,
-    );
-  }
-
-  // Checklist endpoints (must come before :id routes)
-  @Post(':id/checklist')
-  addChecklistItem(
-    @Param('id') bookingId: string,
-    @Body() createChecklistDto: CreateChecklistItemDto,
-  ) {
-    return this.bookingService.addChecklistItem(bookingId, createChecklistDto);
-  }
-
-  @Get(':id/checklist/stats')
-  getChecklistStats(
-    @Param('id') bookingId: string,
-    @Query('type') type?: ChecklistType,
-  ) {
-    return this.bookingService.getChecklistStats(bookingId, type);
-  }
-
-  @Patch('checklist/:checklistId')
-  updateChecklistItem(
-    @Param('checklistId') checklistId: string,
-    @Body() updateChecklistDto: UpdateChecklistItemDto,
-  ) {
-    return this.bookingService.updateChecklistItem(
-      checklistId,
-      updateChecklistDto,
-    );
-  }
-
-  @Delete('checklist/:checklistId')
-  deleteChecklistItem(@Param('checklistId') checklistId: string) {
-    return this.bookingService.deleteChecklistItem(checklistId);
-  }
-
-  @Patch('checklist/:checklistId/toggle')
-  toggleChecklistItem(
-    @Param('checklistId') checklistId: string,
-    @Request() req: ApiRequestJWT,
-  ) {
-    return this.bookingService.toggleChecklistItem(
-      checklistId,
-      req.user.userId,
-    );
-  }
-
   @Post(':id/payments')
   addPayment(
     @Param('id') id: string,
@@ -200,5 +137,40 @@ export class BookingController {
   @RequirePermission('booking', 'delete')
   remove(@Param('id') id: string) {
     return this.bookingService.remove(id);
+  }
+
+  @Post(':id/cancel')
+  @RequirePermission('booking', 'update')
+  cancel(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.bookingService.cancelBooking(id, req.user.userId);
+  }
+
+  @Post(':id/cancel-customer/:customerId')
+  @RequirePermission('booking', 'update')
+  cancelCustomer(
+    @Param('id') id: string,
+    @Param('customerId') customerId: string,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.bookingService.cancelCustomerFromBooking(
+      id,
+      customerId,
+      req.user.userId,
+    );
+  }
+
+  @Post(':id/move/:batchId')
+  @RequirePermission('booking', 'update')
+  move(
+    @Param('id') id: string,
+    @Param('batchId') batchId: string,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.bookingService.moveBooking(id, batchId, req.user.userId);
+  }
+  @Get(':id/logs')
+  @RequirePermission('booking', 'read')
+  getLogs(@Param('id') id: string) {
+    return this.bookingService.getLogs(id);
   }
 }

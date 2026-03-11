@@ -404,6 +404,14 @@ export function StepReview({
                                 Required
                             </span>
                         </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">
+                                Checklist Items
+                            </span>
+                            <span>
+                                {values.preTripChecklist?.length || 0} Items
+                            </span>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

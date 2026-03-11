@@ -17,7 +17,6 @@ import { Package } from './package-related/package.entity';
 import { User } from './user.entity';
 import { BookingPayment } from './booking-payment.entity';
 import { BookingDocument } from './booking-document.entity';
-import { BookingChecklist } from './booking-checklist.entity';
 import { Workflow } from './workflow/workflow.entity';
 
 export enum BookingStatus {
@@ -25,6 +24,7 @@ export enum BookingStatus {
   CONFIRMED = 'confirmed',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',
+  ON_HOLD = 'on_hold',
 }
 
 @Entity('bookings')
@@ -104,11 +104,6 @@ export class Booking {
     cascade: true,
   })
   documents: BookingDocument[];
-
-  @OneToMany(() => BookingChecklist, (checklist) => checklist.booking, {
-    cascade: true,
-  })
-  checklists: BookingChecklist[];
 
   @Column({ type: 'uuid', name: 'current_workflow_id', nullable: true })
   currentWorkflowId: string;

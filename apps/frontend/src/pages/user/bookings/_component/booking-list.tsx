@@ -26,12 +26,15 @@ import {
 	Search,
 	Users,
 	AlertCircle,
+	XCircle,
+	Trash2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import BookingService from "@/services/booking.service";
 import type { IBookingListItem, BookingStatus } from "@/types/booking.types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 interface BookingListProps {
 	status: "all" | "pending" | "confirmed" | "cancelled" | "completed";
@@ -65,6 +68,28 @@ export function BookingList({ status }: BookingListProps) {
 			setError("Failed to load bookings. Please try again.");
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const handleCancelBooking = async (id: string) => {
+		if (!confirm("Are you sure you want to cancel this booking?")) return;
+		try {
+			await BookingService.cancelBooking(id);
+			toast.success("Booking cancelled successfully");
+			fetchBookings();
+		} catch (error: any) {
+			toast.error(error.response?.data?.message || "Failed to cancel booking");
+		}
+	};
+
+	const handleDeleteBooking = async (id: string) => {
+		if (!confirm("Are you sure you want to PERMANENTLY DELETE this booking?")) return;
+		try {
+			await BookingService.deleteBooking(id);
+			toast.success("Booking deleted successfully");
+			fetchBookings();
+		} catch (error: any) {
+			toast.error(error.response?.data?.message || "Failed to delete booking");
 		}
 	};
 
@@ -277,6 +302,22 @@ export function BookingList({ status }: BookingListProps) {
 													<Edit className="mr-2 h-4 w-4" />
 													Edit Booking
 												</NavLink>
+											</DropdownMenuItem>
+											{booking.status !== 'cancelled' && (
+												<DropdownMenuItem 
+													className="text-amber-600 focus:text-amber-600"
+													onClick={() => handleCancelBooking(booking.id)}
+												>
+													<XCircle className="mr-2 h-4 w-4" />
+													Cancel Booking
+												</DropdownMenuItem>
+											)}
+											<DropdownMenuItem 
+												className="text-destructive focus:text-destructive"
+												onClick={() => handleDeleteBooking(booking.id)}
+											>
+												<Trash2 className="mr-2 h-4 w-4" />
+												Delete Booking
 											</DropdownMenuItem>
 										</DropdownMenuContent>
 									</DropdownMenu>

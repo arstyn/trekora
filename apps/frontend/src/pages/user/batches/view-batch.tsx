@@ -19,21 +19,32 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import axiosInstance from "@/lib/axios";
+import BookingService from "@/services/booking.service";
 import type { IBatches } from "@/types/batches.types";
-import type { ICustomer } from "@/types/booking.types";
+import type { IBooking } from "@/types/booking.types";
 import type { IEmployee } from "@/types/employee.types";
-import { Calendar, Edit, Mail, Phone, Users } from "lucide-react";
+import type { IWorkflowStep } from "@/types/workflow.types";
+import {
+    Calendar,
+    Edit,
+    Mail,
+    Phone,
+    Users,
+    ClipboardList,
+    Trash2,
+    XCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { CoordinatorModal } from "./_component/coordinator-modal";
-import { CustomerModal } from "./_component/customer-modal";
+import { BookingModal } from "./_component/booking-modal";
 
 export default function BatchDetailsPage() {
     const { id } = useParams<{ id: string }>();
 
     const [batch, setBatch] = useState<IBatches>();
-    const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(
+    const [selectedBooking, setSelectedBooking] = useState<IBooking | null>(
         null,
     );
     const [selectedCoordinator, setSelectedCoordinator] =
@@ -63,6 +74,20 @@ export default function BatchDetailsPage() {
     const handleStatusUpdate = async (newStatus: string) => {
         if (!batch || newStatus === batch.status) return;
 
+        // Check if all active bookings have completed workflows before activating batch
+        if (newStatus === 'active') {
+            const incompleteBookings = activeBookings.filter(booking => {
+                const completedSteps = booking.currentWorkflow?.steps?.filter(s => s.status === 'completed').length || 0;
+                const totalSteps = booking.currentWorkflow?.steps?.length || 0;
+                return totalSteps === 0 || completedSteps < totalSteps;
+            });
+
+            if (incompleteBookings.length > 0) {
+                toast.error(`Cannot activate batch: ${incompleteBookings.length} bookings have incomplete workflows. Please move them to another batch or put them on hold.`);
+                return;
+            }
+        }
+
         setIsUpdatingStatus(true);
         try {
             await axiosInstance.patch(`/batches/${id}`, { status: newStatus });
@@ -78,6 +103,31 @@ export default function BatchDetailsPage() {
             setIsUpdatingStatus(false);
         }
     };
+
+    const handleCancelBooking = async (bookingId: string) => {
+        if (!confirm("Are you sure you want to cancel this booking?")) return;
+        try {
+            await BookingService.cancelBooking(bookingId);
+            toast.success("Booking cancelled successfully");
+            getBranch();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to cancel booking");
+        }
+    };
+
+    const handleDeleteBooking = async (bookingId: string) => {
+        if (!confirm("Are you sure you want to PERMANENTLY DELETE this booking and all related data? This action cannot be undone.")) return;
+        try {
+            await BookingService.deleteBooking(bookingId);
+            toast.success("Booking deleted permanently");
+            getBranch();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to delete booking. You might not have permission.");
+        }
+    };
+
+    const activeBookings = batch?.bookings?.filter(b => b.status !== 'cancelled') || [];
+    const cancelledBookings = batch?.bookings?.filter(b => b.status === 'cancelled') || [];
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -97,6 +147,12 @@ export default function BatchDetailsPage() {
                 return (
                     <Badge className="bg-gray-100 text-gray-800">
                         Completed
+                    </Badge>
+                );
+            case "on_hold":
+                return (
+                    <Badge className="bg-amber-100 text-amber-800">
+                        On Hold
                     </Badge>
                 );
             default:
@@ -229,7 +285,7 @@ export default function BatchDetailsPage() {
                                 Price
                             </p>
                             <p className="text-lg font-bold">
-                                {batch && batch.package?.price}
+                                {batch && BookingService.formatCurrency(Number(batch.package?.price || 0))}
                             </p>
                         </div>
                     </CardContent>
@@ -304,142 +360,291 @@ export default function BatchDetailsPage() {
                 </CardContent>
             </Card>
 
-            {/* Customers */}
+            {/* Bookings */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Users className="w-5 h-5" />
-                        Customers ({(batch && batch.customers?.length) || 0})
+                        <ClipboardList className="w-5 h-5 text-primary" />
+                        Bookings & Workflow Progress (
+                        {activeBookings.length})
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Contact</TableHead>
-                                <TableHead>Age</TableHead>
-                                <TableHead>Emergency Contact</TableHead>
-                                <TableHead>Special Info</TableHead>
-                                <TableHead>Checklist Status</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {batch &&
-                                batch.customers?.map((customer) => {
-                                    const getAge = (dateOfBirth: string) => {
-                                        const today = new Date();
-                                        const birthDate = new Date(dateOfBirth);
-                                        let age =
-                                            today.getFullYear() -
-                                            birthDate.getFullYear();
-                                        const monthDiff =
-                                            today.getMonth() -
-                                            birthDate.getMonth();
+                    <div className="space-y-6">
+                        {activeBookings.map((booking) => {
+                                const completedSteps =
+                                    booking.currentWorkflow?.steps?.filter(
+                                        (s) => s.status === "completed",
+                                    ).length || 0;
+                                const totalSteps =
+                                    booking.currentWorkflow?.steps?.length || 0;
+                                const progress =
+                                    totalSteps > 0
+                                        ? Math.round(
+                                              (completedSteps / totalSteps) *
+                                                  100,
+                                          )
+                                        : 0;
 
-                                        if (
-                                            monthDiff < 0 ||
-                                            (monthDiff === 0 &&
-                                                today.getDate() <
-                                                    birthDate.getDate())
-                                        ) {
-                                            age--;
+                                return (
+                                    <div
+                                        key={booking.id}
+                                        className="border rounded-xl overflow-hidden hover:border-primary/50 transition-colors cursor-pointer"
+                                        onClick={() =>
+                                            setSelectedBooking(booking)
                                         }
-
-                                        return age;
-                                    };
-
-                                    return (
-                                        <TableRow
-                                            key={customer.id}
-                                            className="cursor-pointer hover:bg-muted/50"
-                                            onClick={() =>
-                                                setSelectedCustomer(customer)
-                                            }
-                                        >
-                                            <TableCell className="font-medium">
-                                                {customer.firstName}{" "}
-                                                {customer.lastName}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-1 text-sm">
-                                                        <Phone className="w-3 h-3" />
-                                                        {customer.phone}
-                                                    </div>
-                                                    <div className="flex items-center gap-1 text-sm">
+                                    >
+                                        <div className="bg-muted/30 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b">
+                                            <div className="flex items-center gap-4">
+                                                <div className="bg-primary/10 text-primary w-36 h-12 rounded-lg flex items-center justify-center font-bold text-lg">
+                                                    #{booking.bookingNumber}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-lg">
+                                                        {
+                                                            booking
+                                                                .primaryCustomer
+                                                                ?.firstName
+                                                        }{" "}
+                                                        {
+                                                            booking
+                                                                .primaryCustomer
+                                                                ?.lastName
+                                                        }
+                                                    </h3>
+                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                         <Mail className="w-3 h-3" />
-                                                        {customer.email}
+                                                        {
+                                                            booking
+                                                                .primaryCustomer
+                                                                ?.email
+                                                        }
+                                                        <Phone className="w-3 h-3 ml-2" />
+                                                        {
+                                                            booking
+                                                                .primaryCustomer
+                                                                ?.phone
+                                                        }
                                                     </div>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                {getAge(customer.dateOfBirth)}
-                                            </TableCell>
-                                            <TableCell className="text-sm">
-                                                {customer.emergencyContactName &&
-                                                customer.emergencyContactPhone
-                                                    ? `${customer.emergencyContactName} - ${customer.emergencyContactPhone}`
-                                                    : "N/A"}
-                                            </TableCell>
-                                            <TableCell>
-                                                {customer.specialRequests ||
-                                                customer.medicalConditions ||
-                                                customer.dietaryRestrictions ? (
-                                                    <Badge variant="outline">
-                                                        Has Special Info
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge variant="secondary">
-                                                        No Special Info
-                                                    </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-3">
                                                 <Badge
-                                                    variant={
-                                                        customer.checklistStats
-                                                            ?.completed ===
-                                                        customer.checklistStats
-                                                            ?.total
-                                                            ? "default"
-                                                            : "secondary"
-                                                    }
+                                                    variant="outline"
+                                                    className="capitalize"
                                                 >
-                                                    {
-                                                        customer.checklistStats
-                                                            ?.completed
-                                                    }
-                                                    /
-                                                    {
-                                                        customer.checklistStats
-                                                            ?.total
-                                                    }{" "}
-                                                    Complete
+                                                    {booking.status}
                                                 </Badge>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                        </TableBody>
-                    </Table>
-                    {batch &&
-                        (!batch.customers || batch.customers?.length === 0) && (
-                            <div className="text-center py-8 text-muted-foreground">
-                                No customers were added
+                                                <div className="flex flex-col items-end gap-1 min-w-[120px]">
+                                                    <div className="flex justify-between w-full text-xs font-medium">
+                                                        <span>Workflow</span>
+                                                        <span>
+                                                            {completedSteps}/
+                                                            {totalSteps} Steps
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-primary transition-all duration-500"
+                                                            style={{
+                                                                width: `${progress}%`,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedBooking(
+                                                            booking,
+                                                        );
+                                                    }}
+                                                >
+                                                    Details
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCancelBooking(booking.id);
+                                                    }}
+                                                >
+                                                    <XCircle className="w-4 h-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteBooking(booking.id);
+                                                    }}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            {/* Customers List Under Booking */}
+                                            <div className="space-y-3">
+                                                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                    <Users className="w-3 h-3" />
+                                                    Travelers (
+                                                    {booking.customers?.length})
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    {booking.customers?.map(
+                                                        (c) => (
+                                                            <div
+                                                                key={c.id}
+                                                                className="flex items-center gap-2 p-2 rounded-lg bg-background border text-sm"
+                                                            >
+                                                                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
+                                                                    {
+                                                                        c
+                                                                            .firstName[0]
+                                                                    }
+                                                                    {
+                                                                        c
+                                                                            .lastName[0]
+                                                                    }
+                                                                </div>
+                                                                <span className="truncate">
+                                                                    {
+                                                                        c.firstName
+                                                                    }{" "}
+                                                                    {c.lastName}
+                                                                </span>
+                                                            </div>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Workflow Tasks Preview */}
+                                            <div className="space-y-3">
+                                                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                    <ClipboardList className="w-3 h-3" />
+                                                    Workflow Status
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {booking.currentWorkflow?.steps
+                                                        ?.slice(0, 5)
+                                                        .map(
+                                                            (
+                                                                step: IWorkflowStep,
+                                                            ) => (
+                                                                <Badge
+                                                                    key={
+                                                                        step.id
+                                                                    }
+                                                                    variant={
+                                                                        step.status ===
+                                                                        "completed"
+                                                                            ? "default"
+                                                                            : "secondary"
+                                                                    }
+                                                                    className="text-[10px] flex items-center gap-1"
+                                                                >
+                                                                    {step.status ===
+                                                                    "completed" ? (
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                                                                    ) : (
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                                                                    )}
+                                                                    {step.label}
+                                                                </Badge>
+                                                            ),
+                                                        )}
+                                                    {totalSteps > 5 && (
+                                                        <span className="text-[10px] text-muted-foreground flex items-center px-2">
+                                                            +{totalSteps - 5}{" "}
+                                                            more...
+                                                        </span>
+                                                    )}
+                                                    {totalSteps === 0 && (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            No workflow assigned
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                    </div>
+                    {activeBookings.length === 0 && (
+                            <div className="text-center py-12 border-2 border-dashed rounded-xl border-muted">
+                                <Users className="w-12 h-12 text-muted/50 mx-auto mb-3" />
+                                <p className="text-muted-foreground">
+                                    No active bookings found
+                                </p>
                             </div>
                         )}
                 </CardContent>
             </Card>
 
+            {/* Cancelled Bookings */}
+            {cancelledBookings.length > 0 && (
+                <Card className="border-destructive/20 bg-destructive/5">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-destructive">
+                            <XCircle className="w-5 h-5" />
+                            Cancelled Bookings ({cancelledBookings.length})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4 opacity-70">
+                            {cancelledBookings.map((booking) => (
+                                <div
+                                    key={booking.id}
+                                    className="p-4 border rounded-xl bg-background flex flex-col md:flex-row md:items-center justify-between gap-4"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="bg-muted text-muted-foreground w-36 h-12 rounded-lg flex items-center justify-center font-bold text-lg line-through">
+                                            #{booking.bookingNumber}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-lg text-muted-foreground line-through">
+                                                {booking.primaryCustomer?.firstName} {booking.primaryCustomer?.lastName}
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground">{booking.primaryCustomer?.email}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <Badge variant="destructive" className="uppercase">
+                                            {booking.status}
+                                        </Badge>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            className="text-destructive"
+                                            onClick={() => handleDeleteBooking(booking.id)}
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Delete
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Modals */}
-            {selectedCustomer && batch && (
-                <CustomerModal
-                    customer={selectedCustomer}
-                    batchId={batch.id}
-                    open={!!selectedCustomer}
-                    onOpenChange={(open) => !open && setSelectedCustomer(null)}
-                    reloadBatchList={getBranch}
+            {selectedBooking && batch && (
+                <BookingModal
+                    booking={selectedBooking}
+                    open={!!selectedBooking}
+                    onOpenChange={(open) => !open && setSelectedBooking(null)}
+                    onUpdate={getBranch}
                 />
             )}
 

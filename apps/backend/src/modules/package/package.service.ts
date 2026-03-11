@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CancellationTier } from 'src/database/entity/package-related/cancellation-tiers.entity';
-import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
 import { DocumentRequirement } from 'src/database/entity/package-related/document-requirements.entity';
 import { Exclusion } from 'src/database/entity/package-related/exclusions.entity';
 import { Inclusion } from 'src/database/entity/package-related/inclusions.entity';
@@ -14,6 +13,7 @@ import { MealsBreakdown } from 'src/database/entity/package-related/meals-breakd
 import { PackageLocation } from 'src/database/entity/package-related/package-locations.entity';
 import { PaymentMilestone } from 'src/database/entity/package-related/payment-milestones.entity';
 import { Transportation } from 'src/database/entity/package-related/transportations.entity';
+import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
 import { DataSource, Repository } from 'typeorm';
 import { CancellationPolicy } from '../../database/entity/package-related/cancellation-policies.entity';
 import { Package } from '../../database/entity/package-related/package.entity';
@@ -37,8 +37,6 @@ export class PackageService {
     private readonly cancellationPolicyRepository: Repository<CancellationPolicy>,
     @InjectRepository(CancellationTier)
     private readonly cancellationTierRepository: Repository<CancellationTier>,
-    @InjectRepository(ChecklistItem)
-    private readonly checklistItemRepository: Repository<ChecklistItem>,
     @InjectRepository(DocumentRequirement)
     private readonly documentRequirementRepository: Repository<DocumentRequirement>,
     @InjectRepository(Exclusion)
@@ -57,6 +55,8 @@ export class PackageService {
     private readonly itineraryDayRepository: Repository<ItineraryDay>,
     @InjectRepository(PackageActivity)
     private readonly packageActivityRepository: Repository<PackageActivity>,
+    @InjectRepository(ChecklistItem)
+    private readonly checklistItemRepository: Repository<ChecklistItem>,
     private readonly fileManagerService: FileManagerService,
   ) {}
 
@@ -69,10 +69,10 @@ export class PackageService {
       cancellationPolicy,
       cancellationStructure,
       documentRequirements,
+      preTripChecklist,
       inclusions,
       exclusions,
       itinerary,
-      preTripChecklist,
       paymentStructure,
       packageLocation,
       transportation,
@@ -148,12 +148,25 @@ export class PackageService {
       }
 
       if (documentRequirements) {
-        const cancellationStructureData = JSON.parse(
+        const documentRequirementsData = JSON.parse(
           documentRequirements,
         ) as DocumentRequirement[];
-        for (const doc of cancellationStructureData) {
+        for (const doc of documentRequirementsData) {
           const entity = this.documentRequirementRepository.create({
             ...doc,
+            packageId: savedPackage.id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (preTripChecklist) {
+        const preTripChecklistData = JSON.parse(
+          preTripChecklist,
+        ) as ChecklistItem[];
+        for (const item of preTripChecklistData) {
+          const entity = this.checklistItemRepository.create({
+            ...item,
             packageId: savedPackage.id,
           });
           await queryRunner.manager.save(entity);
@@ -207,19 +220,6 @@ export class PackageService {
             packageId: savedPackage.id,
           });
 
-          await queryRunner.manager.save(entity);
-        }
-      }
-
-      if (preTripChecklist) {
-        const preTripChecklistData = JSON.parse(
-          preTripChecklist,
-        ) as ChecklistItem[];
-        for (const item of preTripChecklistData) {
-          const entity = this.checklistItemRepository.create({
-            ...item,
-            packageId: savedPackage.id,
-          });
           await queryRunner.manager.save(entity);
         }
       }
@@ -417,8 +417,12 @@ export class PackageService {
 
   async findRequirements(id: string) {
     const [documentRequirements, preTripChecklist] = await Promise.all([
-      this.documentRequirementRepository.find({ where: { packageId: id } }),
-      this.checklistItemRepository.find({ where: { packageId: id } }),
+      this.documentRequirementRepository.find({
+        where: { packageId: id },
+      }),
+      this.checklistItemRepository.find({
+        where: { packageId: id },
+      }),
     ]);
 
     return {
@@ -498,10 +502,10 @@ export class PackageService {
       cancellationPolicy,
       cancellationStructure,
       documentRequirements,
+      preTripChecklist,
       inclusions,
       exclusions,
       itinerary,
-      preTripChecklist,
       paymentStructure,
       packageLocation,
       transportation,
@@ -580,10 +584,10 @@ export class PackageService {
       await queryRunner.manager.delete(CancellationPolicy, { packageId: id });
       await queryRunner.manager.delete(CancellationTier, { packageId: id });
       await queryRunner.manager.delete(DocumentRequirement, { packageId: id });
+      await queryRunner.manager.delete(ChecklistItem, { packageId: id });
       await queryRunner.manager.delete(Inclusion, { packageId: id });
       await queryRunner.manager.delete(Exclusion, { packageId: id });
       await queryRunner.manager.delete(ItineraryDay, { packageId: id });
-      await queryRunner.manager.delete(ChecklistItem, { packageId: id });
       await queryRunner.manager.delete(PaymentMilestone, { packageId: id });
       await queryRunner.manager.delete(MealsBreakdown, { packageId: id });
       await queryRunner.manager.delete(Transportation, { packageId: id });
@@ -618,12 +622,25 @@ export class PackageService {
       }
 
       if (documentRequirements) {
-        const cancellationStructureData = JSON.parse(
+        const documentRequirementsData = JSON.parse(
           documentRequirements,
         ) as DocumentRequirement[];
-        for (const doc of cancellationStructureData) {
+        for (const doc of documentRequirementsData) {
           const entity = this.documentRequirementRepository.create({
             ...doc,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (preTripChecklist) {
+        const preTripChecklistData = JSON.parse(
+          preTripChecklist,
+        ) as ChecklistItem[];
+        for (const item of preTripChecklistData) {
+          const entity = this.checklistItemRepository.create({
+            ...item,
             packageId: id,
           });
           await queryRunner.manager.save(entity);
@@ -690,19 +707,6 @@ export class PackageService {
             packageId: id,
           });
 
-          await queryRunner.manager.save(entity);
-        }
-      }
-
-      if (preTripChecklist) {
-        const preTripChecklistData = JSON.parse(
-          preTripChecklist,
-        ) as ChecklistItem[];
-        for (const item of preTripChecklistData) {
-          const entity = this.checklistItemRepository.create({
-            ...item,
-            packageId: id,
-          });
           await queryRunner.manager.save(entity);
         }
       }
@@ -801,14 +805,6 @@ export class PackageService {
     }
 
     await this.packageRepository.delete(id);
-  }
-
-  async getPackageChecklist(id: string) {
-    return await this.checklistItemRepository.find({
-      where: {
-        packageId: id,
-      },
-    });
   }
 
   async validatePackageForPublishing(id: string) {
@@ -925,13 +921,6 @@ export class PackageService {
     });
     if (!packageLocation) {
       errors.push('Package location details are required');
-    }
-
-    const preTripChecklist = await this.checklistItemRepository.find({
-      where: { packageId: id },
-    });
-    if (preTripChecklist.length === 0) {
-      errors.push('Pre-trip checklist is required');
     }
 
     return {

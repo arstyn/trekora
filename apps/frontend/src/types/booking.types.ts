@@ -1,4 +1,6 @@
-export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
+import type { IWorkflow } from "./workflow.types";
+
+export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed" | "on_hold";
 
 export type PaymentMethod =
     | "bank_transfer"
@@ -9,31 +11,6 @@ export type PaymentMethod =
     | "other";
 
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
-
-// Checklist item interface for both individual and group checklists
-export interface IChecklistItem {
-    id: string;
-    item: string;
-    completed: boolean;
-}
-
-// Group checklist item with mandatory flag
-export interface IGroupChecklistItem extends IChecklistItem {
-    mandatory: boolean;
-    notes?: string;
-    assignedTo?: {
-        id: string;
-        name: string;
-        email: string;
-    };
-    updatedBy?: {
-        id: string;
-        name: string;
-        email: string;
-    };
-}
-
-// Remove IBookingPassenger as we're using customers directly
 
 export interface IBookingPayment {
     id?: string;
@@ -71,7 +48,6 @@ export interface ICustomer {
     voterId?: string;
     aadhaarId?: string;
     profilePhoto?: string;
-    checklist?: Record<string, boolean>;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -108,8 +84,9 @@ export interface IBooking {
     status: BookingStatus;
     specialRequests?: string;
     payments: IBookingPayment[];
-    groupChecklist?: IGroupChecklistItem[]; // Group-level checklist items
+    documents?: any[]; // Added to support document management
     currentWorkflowId?: string;
+    currentWorkflow?: IWorkflow; // Added to support workflow steps display in frontend
     createdAt: string;
     updatedAt: string;
 }
@@ -144,15 +121,6 @@ export interface ICreateBookingRequest {
     totalAmount: number;
     specialRequests?: string;
     initialPayment?: Omit<IBookingPayment, "id" | "status">;
-    checklistItems?: {
-        item: string;
-        completed?: boolean;
-        mandatory?: boolean;
-        type?: "individual" | "package" | "user";
-        customerId?: string;
-        notes?: string;
-        sortOrder?: number;
-    }[];
 }
 
 // For updating bookings
@@ -161,7 +129,6 @@ export interface IUpdateBookingRequest {
     totalAmount?: number;
     specialRequests?: string;
     customerIds?: string[];
-    groupChecklist?: IGroupChecklistItem[]; // Allow updating group checklist
 }
 
 // Dashboard statistics
@@ -190,4 +157,18 @@ export interface IBookingResponse {
 
 export interface IBookingStatisticsResponse {
     data: IBookingStatistics;
+}
+
+export interface IBookingLog {
+    id: string;
+    bookingId: string;
+    action: string;
+    previousData: any;
+    newData: any;
+    createdAt: string;
+    changedBy: {
+        id: string;
+        name: string;
+        email: string;
+    };
 }

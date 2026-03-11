@@ -7,58 +7,9 @@ import type {
     IUpdateBookingRequest,
     IBookingPayment,
     BookingStatus,
+    IBookingLog,
 } from "@/types/booking.types";
 import type { IBatches } from "@/types/batches.types";
-
-/* -------------------- Checklist Types -------------------- */
-export interface ChecklistItemRequest {
-    item: string;
-    completed?: boolean;
-    mandatory?: boolean;
-    type: "INDIVIDUAL" | "GROUP" | "PACKAGE" | "USER";
-    customerId?: string;
-    assignedToId?: string;
-    updatedById?: string;
-    notes?: string;
-    sortOrder?: number;
-}
-
-export interface ChecklistItemResponse {
-    id: string;
-    item: string;
-    completed: boolean;
-    mandatory: boolean;
-    type: "individual" | "group" | "package" | "user";
-    customerId?: string;
-    assignedTo?: {
-        id: string;
-        name: string;
-        email: string;
-    };
-    createdBy?: {
-        id: string;
-        name: string;
-        email: string;
-    };
-    updatedBy?: {
-        id: string;
-        name: string;
-        email: string;
-    };
-    notes?: string;
-    sortOrder: number;
-    createdAt: string;
-    updatedAt: string;
-}
-
-export interface ChecklistStatsResponse {
-    totalItems: number;
-    completedItems: number;
-    mandatoryItems: number;
-    completedMandatoryItems: number;
-    completionPercentage: number;
-    mandatoryCompletionPercentage: number;
-}
 
 /* -------------------- Booking Service -------------------- */
 export class BookingService {
@@ -93,6 +44,11 @@ export class BookingService {
         return response.data;
     }
 
+    static async getBookingLogs(id: string): Promise<IBookingLog[]> {
+        const response = await axiosInstance.get(`${this.baseUrl}/${id}/logs`);
+        return response.data;
+    }
+
     static async createBooking(
         bookingData: ICreateBookingRequest,
     ): Promise<IBooking> {
@@ -113,6 +69,31 @@ export class BookingService {
 
     static async deleteBooking(id: string): Promise<void> {
         await axiosInstance.delete(`${this.baseUrl}/${id}`);
+    }
+
+    static async cancelBooking(id: string): Promise<IBooking> {
+        const response = await axiosInstance.post(`${this.baseUrl}/${id}/cancel`);
+        return response.data;
+    }
+
+    static async cancelCustomerFromBooking(
+        bookingId: string,
+        customerId: string,
+    ): Promise<IBooking> {
+        const response = await axiosInstance.post(
+            `${this.baseUrl}/${bookingId}/cancel-customer/${customerId}`,
+        );
+        return response.data;
+    }
+
+    static async moveBooking(
+        bookingId: string,
+        batchId: string,
+    ): Promise<IBooking> {
+        const response = await axiosInstance.post(
+            `${this.baseUrl}/${bookingId}/move/${batchId}`,
+        );
+        return response.data;
     }
 
     static async addPayment(
@@ -136,22 +117,6 @@ export class BookingService {
     ): Promise<IBookingListItem[]> {
         const response = await axiosInstance.get(
             `${this.baseUrl}/recent?limit=${limit}`,
-        );
-        return response.data;
-    }
-
-    static async getAllChecklists(params?: {
-        assignedToId?: string;
-        completed?: boolean;
-    }): Promise<ChecklistItemResponse[]> {
-        const queryParams = new URLSearchParams();
-        if (params?.assignedToId)
-            queryParams.append("assignedToId", params.assignedToId);
-        if (params?.completed !== undefined)
-            queryParams.append("completed", params.completed.toString());
-
-        const response = await axiosInstance.get(
-            `${this.baseUrl}/checklists${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
         );
         return response.data;
     }
@@ -265,54 +230,6 @@ export class BookingService {
         return response.data;
     }
 
-    /* -------- Checklist APIs -------- */
-    static async addChecklistItem(
-        bookingId: string,
-        checklistItem: ChecklistItemRequest,
-    ): Promise<ChecklistItemResponse> {
-        const response = await axiosInstance.post(
-            `${this.baseUrl}/${bookingId}/checklist`,
-            checklistItem,
-        );
-        return response.data;
-    }
-
-    static async updateChecklistItem(
-        checklistId: string,
-        updates: Partial<ChecklistItemRequest>,
-    ): Promise<ChecklistItemResponse> {
-        const response = await axiosInstance.patch(
-            `${this.baseUrl}/checklist/${checklistId}`,
-            updates,
-        );
-        return response.data;
-    }
-
-    static async deleteChecklistItem(checklistId: string): Promise<void> {
-        await axiosInstance.delete(`${this.baseUrl}/checklist/${checklistId}`);
-    }
-
-    static async toggleChecklistItem(
-        checklistId: string,
-    ): Promise<ChecklistItemResponse> {
-        const response = await axiosInstance.patch(
-            `${this.baseUrl}/checklist/${checklistId}/toggle`,
-            {},
-        );
-        return response.data;
-    }
-
-    static async getChecklistStats(
-        bookingId: string,
-        type?: "INDIVIDUAL" | "GROUP",
-    ): Promise<ChecklistStatsResponse> {
-        const response = await axiosInstance.get(
-            `${this.baseUrl}/${bookingId}/checklist/stats`,
-            { params: type ? { type } : {} },
-        );
-        return response.data;
-    }
-
     /* -------- Helpers -------- */
     static formatBookingNumber(bookingNumber: string): string {
         return bookingNumber || "N/A";
@@ -332,10 +249,11 @@ export class BookingService {
     }
 
     static formatCurrency(amount: number): string {
-        return new Intl.NumberFormat("en-US", {
+        return new Intl.NumberFormat("en-IN", {
             style: "currency",
             currency: "INR",
-        }).format(amount);
+            maximumFractionDigits: 0,
+        }).format(amount || 0);
     }
 
     static validateBookingData(data: ICreateBookingRequest): {

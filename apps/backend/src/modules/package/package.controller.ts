@@ -41,11 +41,6 @@ export class PackageController {
     return this.packageService.findAll(req.user.organizationId, status);
   }
 
-  @Get(':id/checklist')
-  getPackageChecklist(@Param('id') id: string) {
-    return this.packageService.getPackageChecklist(id);
-  }
-
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.packageService.findOne(id);
