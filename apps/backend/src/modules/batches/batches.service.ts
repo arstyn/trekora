@@ -8,14 +8,42 @@ import { In, Repository } from 'typeorm';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
 
+import { BatchLog } from 'src/database/entity/batch-log.entity';
+
 @Injectable()
 export class BatchesService {
   constructor(
     @InjectRepository(Batch) private batchRepo: Repository<Batch>,
     @InjectRepository(Employee) private empRepo: Repository<Employee>,
+    @InjectRepository(BatchLog) private logRepo: Repository<BatchLog>,
   ) {}
 
-  async create(data: CreateBatchDto, organizationId: string): Promise<Batch> {
+  async logAction(
+    batchId: string,
+    userId: string,
+    action: string,
+    previousData: any,
+    newData: any,
+  ): Promise<void> {
+    const log = this.logRepo.create({
+      batchId,
+      changedById: userId,
+      action,
+      previousData,
+      newData,
+    });
+    await this.logRepo.save(log);
+  }
+
+  async getLogs(batchId: string) {
+    return this.logRepo.find({
+      where: { batchId },
+      relations: ['changedBy'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async create(data: CreateBatchDto, organizationId: string, userId: string): Promise<Batch> {
     const { packageId, coordinators, ...rest } = data;
 
     const coordinatorsData = await this.empRepo.findBy({
@@ -31,7 +59,9 @@ export class BatchesService {
       status: BatchStatus.UPCOMING,
     });
 
-    return this.batchRepo.save(batch);
+    const savedBatch = await this.batchRepo.save(batch);
+    await this.logAction(savedBatch.id, userId, 'create', null, savedBatch);
+    return savedBatch;
   }
 
   async findAll(
@@ -87,10 +117,9 @@ export class BatchesService {
     return batch;
   }
 
-  async update(id: string, data: UpdateBatchDto): Promise<Batch> {
+  async update(id: string, data: UpdateBatchDto, userId: string): Promise<Batch> {
     const { coordinators, ...rest } = data;
 
-    // Fetch current batch including coordinators relation
     const existingBatch = await this.batchRepo.findOne({
       where: { id },
       relations: ['coordinators'],
@@ -98,8 +127,8 @@ export class BatchesService {
 
     if (!existingBatch) throw new NotFoundException('Batch not found');
 
-    // Prepare update object by comparing fields
     const updateData: Partial<Batch> = {};
+    const previousData: any = {};
 
     for (const key in rest) {
       if (
@@ -107,10 +136,10 @@ export class BatchesService {
         rest[key] !== (existingBatch as any)[key]
       ) {
         (updateData as any)[key] = rest[key];
+        (previousData as any)[key] = (existingBatch as any)[key];
       }
     }
 
-    // Handle coordinators comparison
     if (coordinators) {
       const coordinatorsData = await this.empRepo.findBy({
         id: In(coordinators),
@@ -125,29 +154,30 @@ export class BatchesService {
 
       if (isDifferent) {
         updateData.coordinators = coordinatorsData;
+        previousData.coordinatorIds = existingIds;
       }
     }
 
-    // Only update if there is something to update
     if (Object.keys(updateData).length > 0) {
       await this.batchRepo.save({
         ...existingBatch,
         ...updateData,
       });
+      await this.logAction(id, userId, 'update', previousData, updateData);
     }
 
     return this.findOne(id);
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findOne(id);
+  async remove(id: string, userId: string): Promise<void> {
+    const batch = await this.findOne(id);
+    await this.logAction(id, userId, 'delete', batch, null);
     await this.batchRepo.delete(id);
   }
 
-  async markActive(id: string): Promise<Batch> {
+  async markActive(id: string, userId: string): Promise<Batch> {
     const batch = await this.findOne(id);
 
-    // Validate that all mandatory steps for all non-cancelled bookings are completed
     const incompleteBookings = (batch.bookings || []).filter((booking) => {
       if (booking.status === BookingStatus.CANCELLED) return false;
 
@@ -173,29 +203,40 @@ export class BatchesService {
       );
     }
 
+    const prevStatus = batch.status;
     batch.status = BatchStatus.ACTIVE;
-    return this.batchRepo.save(batch);
+    const saved = await this.batchRepo.save(batch);
+    await this.logAction(id, userId, 'status_change', prevStatus, BatchStatus.ACTIVE);
+    return saved;
   }
 
-  async markCompleted(id: string): Promise<Batch> {
+  async markCompleted(id: string, userId: string): Promise<Batch> {
     const batch = await this.findOne(id);
+    const prevStatus = batch.status;
     batch.status = BatchStatus.COMPLETED;
-    return this.batchRepo.save(batch);
+    const saved = await this.batchRepo.save(batch);
+    await this.logAction(id, userId, 'status_change', prevStatus, BatchStatus.COMPLETED);
+    return saved;
   }
 
-  async addCoordinator(batchId: string, employeeId: string): Promise<Batch> {
+  async addCoordinator(batchId: string, employeeId: string, userId: string): Promise<Batch> {
     const batch = await this.findOne(batchId);
     const employee = await this.empRepo.findOneBy({ id: employeeId });
     if (!employee) throw new NotFoundException('Employee not found');
 
     batch.coordinators = [...(batch.coordinators || []), employee];
-    return this.batchRepo.save(batch);
+    const saved = await this.batchRepo.save(batch);
+    await this.logAction(batchId, userId, 'coordinator_add', null, { employeeId, name: employee.name });
+    return saved;
   }
 
-  async removeCoordinator(batchId: string, employeeId: string): Promise<Batch> {
+  async removeCoordinator(batchId: string, employeeId: string, userId: string): Promise<Batch> {
     const batch = await this.findOne(batchId);
+    const employee = batch.coordinators.find((e) => e.id === employeeId);
     batch.coordinators = batch.coordinators.filter((e) => e.id !== employeeId);
-    return this.batchRepo.save(batch);
+    const saved = await this.batchRepo.save(batch);
+    await this.logAction(batchId, userId, 'coordinator_remove', { employeeId, name: employee?.name }, null);
+    return saved;
   }
 
   async getFastFillingBatches(organizationId: string): Promise<Batch[]> {
@@ -212,7 +253,6 @@ export class BatchesService {
       .limit(5)
       .getMany();
 
-    // Optional: Add fillRate to each result (computed on the fly)
     return batches.map((batch) => ({
       ...batch,
       fillRate:
@@ -245,18 +285,15 @@ export class BatchesService {
       const start = new Date(batch.startDate);
       const end = new Date(batch.endDate);
 
-      // Active: today is between start and end
       if (start <= now && now <= end) {
         activeBatches++;
       }
 
-      // Upcoming: starts in the future
       if (start > now) {
         upcomingBatches++;
         availableSeats += (batch.totalSeats ?? 0) - (batch.bookedSeats ?? 0);
       }
 
-      // Fast Filling: booked ≥ 80% or only 5 seats left
       if (
         batch.totalSeats &&
         (batch.bookedSeats / batch.totalSeats >= 0.8 ||

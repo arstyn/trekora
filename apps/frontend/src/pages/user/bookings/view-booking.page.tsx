@@ -62,6 +62,7 @@ import {
     Mail,
     MapPin,
     MoreVertical,
+    Navigation,
     Phone,
     Plus,
     Trash2,
@@ -112,6 +113,7 @@ export default function BookingDetailsPage() {
             setError(null);
             const bookingData = await BookingService.getBookingById(id);
             setBooking(bookingData);
+            fetchBookingLogs();
         } catch (err) {
             console.error("Error fetching booking details:", err);
             setError(
@@ -635,28 +637,24 @@ export default function BookingDetailsPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Summary Package Card */}
-                        <Card className="border-none shadow-md rounded-2xl h-full">
+                        <Card className="border shadow-md rounded-2xl h-full bg-primary/5">
                             <CardContent className="p-6 h-full flex flex-col justify-between">
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="p-2.5 bg-white/20 rounded-xl">
-                                            <MapPin className="w-6 h-6 text-white" />
+                                        <div className="p-2.5 bg-primary/10 rounded-xl border border-primary/20">
+                                            <MapPin className="w-6 h-6 text-primary" />
                                         </div>
-                                        <Badge className="bg-white/20 hover:bg-white/30 text-white border-none px-3">
+                                        <Badge className="bg-primary/20 text-primary hover:bg-primary/30 border-none px-3 font-bold uppercase tracking-tighter text-[10px]">
                                             Trip Active
                                         </Badge>
                                     </div>
                                     <div>
-                                        <h3 className="text-2xl font-black mb-1 leading-tight">
+                                        <h3 className="text-2xl font-black mb-1 leading-tight text-foreground">
                                             {booking.package.name}
                                         </h3>
-                                        <p className="text-white/80 text-sm font-medium flex items-center gap-2">
-                                            {booking.package.destination ||
-                                                "Global Destination"}{" "}
-                                            •{" "}
-                                            {booking.package.duration ||
-                                                "N/A Duration"}
+                                        <p className="text-muted-foreground text-sm font-semibold flex items-center gap-2">
+                                            <Navigation className="w-3.5 h-3.5 text-primary" />
+                                            {booking.package.destination || "Global Destination"} • {booking.package.duration || "N/A Duration"}
                                         </p>
                                     </div>
                                 </div>
@@ -1099,34 +1097,68 @@ export default function BookingDetailsPage() {
                                                 </p>
                                                 {log.newData && (
                                                     <div className="rounded-xl border bg-card/50 p-3 shadow-inner group-hover:bg-card transition-all overflow-hidden max-w-full">
-                                                        <div className="text-[10px] font-mono whitespace-pre-wrap break-all text-muted-foreground/80">
-                                                            {log.action ===
-                                                            "status_change" ? (
-                                                                <div className="flex items-center gap-2">
-                                                                    <Badge
-                                                                        variant="outline"
-                                                                        className="opacity-50 text-[9px]"
-                                                                    >
-                                                                        {
-                                                                            log.previousData as string
-                                                                        }
-                                                                    </Badge>
-                                                                    <ChevronRight className="w-3 h-3" />
-                                                                    <Badge className="text-[9px]">
-                                                                        {
-                                                                            log.newData as string
-                                                                        }
-                                                                    </Badge>
-                                                                </div>
-                                                            ) : (
-                                                                <code className="block max-h-[120px] overflow-auto custom-scrollbar italic font-normal">
-                                                                    {JSON.stringify(
-                                                                        log.newData,
-                                                                        null,
-                                                                        2,
-                                                                    )}
-                                                                </code>
-                                                            )}
+                                                        <div className="text-[11px] font-medium text-muted-foreground/90">
+                                                            {(() => {
+                                                                if (log.action === "status_change") {
+                                                                    return (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Badge variant="outline" className="opacity-50 text-[9px] uppercase">{log.previousData as string}</Badge>
+                                                                            <ChevronRight className="w-3 h-3 text-primary" />
+                                                                            <Badge className="text-[9px] uppercase">{log.newData as string}</Badge>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                if (log.action === "create") {
+                                                                    return (
+                                                                        <div className="flex items-center gap-2 text-emerald-600 font-bold">
+                                                                            <span>Created new booking record</span>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                if (log.action === "cancel") {
+                                                                    return (
+                                                                        <div className="flex items-center gap-2 text-rose-600 font-bold">
+                                                                            <span>Booking has been cancelled</span>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                if (log.action === "batch_change") {
+                                                                    return (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="opacity-70 font-bold">Transfered Batch:</span>
+                                                                            <Badge variant="outline" className="text-[9px]">OLD</Badge>
+                                                                            <ChevronRight className="w-3 h-3" />
+                                                                            <Badge className="text-[9px] bg-primary/20 text-primary border-primary/30">NEW</Badge>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                if (log.action === "payment_add" || log.action === "payment") {
+                                                                    const data = log.newData as any;
+                                                                    return (
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <p><span className="font-bold text-foreground">Amount:</span> {BookingService.formatCurrency(data.amount)}</p>
+                                                                            <p><span className="font-bold text-foreground">Method:</span> <span className="uppercase">{data.paymentMethod}</span></p>
+                                                                            {data.transactionId && <p><span className="font-bold text-foreground">ID:</span> {data.transactionId}</p>}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                if (typeof log.newData === 'object' && log.newData !== null) {
+                                                                    return (
+                                                                        <div className="space-y-1">
+                                                                            {Object.entries(log.newData).map(([key, value]) => {
+                                                                                if (key === 'updatedAt' || key === 'id') return null;
+                                                                                return (
+                                                                                    <div key={key} className="flex items-baseline gap-2">
+                                                                                        <span className="font-bold text-foreground capitalize min-w-[80px]">{key.replace(/([A-Z])/g, ' $1')}:</span>
+                                                                                        <span className="truncate">{JSON.stringify(value)}</span>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return <span className="italic">{String(log.newData)}</span>;
+                                                            })()}
                                                         </div>
                                                     </div>
                                                 )}

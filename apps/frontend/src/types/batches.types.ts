@@ -25,3 +25,17 @@ export interface IBatchStats {
     availableSeats: number;
     fastFilling: number;
 }
+export interface IBatchLog {
+    id: string;
+    batchId: string;
+    changedById: string;
+    changedBy: {
+        id: string;
+        name: string;
+        email: string;
+    };
+    action: string;
+    previousData: any;
+    newData: any;
+    createdAt: Date;
+}

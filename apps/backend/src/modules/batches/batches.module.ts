@@ -6,9 +6,11 @@ import { Employee } from 'src/database/entity/employee.entity';
 import { BatchesController } from './batches.controller';
 import { BatchesService } from './batches.service';
 
+import { BatchLog } from 'src/database/entity/batch-log.entity';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Batch, Employee]),
+    TypeOrmModule.forFeature([Batch, Employee, BatchLog]),
     JwtModule.register({}),
   ],
   controllers: [BatchesController],

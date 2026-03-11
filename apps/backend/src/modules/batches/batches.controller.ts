@@ -24,7 +24,11 @@ export class BatchesController {
 
   @Post()
   create(@Body() dto: CreateBatchDto, @Request() req: ApiRequestJWT) {
-    return this.batchService.create(dto, req.user.organizationId);
+    return this.batchService.create(
+      dto,
+      req.user.organizationId,
+      req.user.userId,
+    );
   }
 
   @Get()
@@ -61,38 +65,49 @@ export class BatchesController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateBatchDto) {
-    return this.batchService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateBatchDto,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.batchService.update(id, dto, req.user.userId);
   }
 
   @Patch(':id/active')
-  markActive(@Param('id') id: string) {
-    return this.batchService.markActive(id);
+  markActive(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.batchService.markActive(id, req.user.userId);
   }
 
   @Patch(':id/complete')
-  markCompleted(@Param('id') id: string) {
-    return this.batchService.markCompleted(id);
+  markCompleted(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.batchService.markCompleted(id, req.user.userId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.batchService.remove(id);
+  remove(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.batchService.remove(id, req.user.userId);
   }
 
   @Post(':id/coordinators/:employeeId')
   addCoordinator(
     @Param('id') id: string,
     @Param('employeeId') employeeId: string,
+    @Request() req: ApiRequestJWT,
   ) {
-    return this.batchService.addCoordinator(id, employeeId);
+    return this.batchService.addCoordinator(id, employeeId, req.user.userId);
   }
 
   @Delete(':id/coordinators/:employeeId')
   removeCoordinator(
     @Param('id') id: string,
     @Param('employeeId') employeeId: string,
+    @Request() req: ApiRequestJWT,
   ) {
-    return this.batchService.removeCoordinator(id, employeeId);
+    return this.batchService.removeCoordinator(id, employeeId, req.user.userId);
+  }
+
+  @Get(':id/logs')
+  getLogs(@Param('id') id: string) {
+    return this.batchService.getLogs(id);
   }
 }
