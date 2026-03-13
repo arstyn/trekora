@@ -4,10 +4,12 @@ import * as fs from 'fs';
 
 const sslMode = process.env.DB_SSL_MODE === 'true';
 
+const dbUrl = process.env.DATABASE_URL || (process.env.DB_HOST?.includes('://') ? process.env.DB_HOST : undefined);
+
 export default new DataSource({
   type: 'postgres',
-  ...(process.env.DATABASE_URL
-    ? { url: process.env.DATABASE_URL }
+  ...(dbUrl
+    ? { url: dbUrl }
     : {
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT ?? '5432'),
@@ -23,10 +25,10 @@ export default new DataSource({
   logging: false,
 
   // SSL configuration
-  ...(sslMode || process.env.DATABASE_URL
+  ...(sslMode || dbUrl
     ? {
         ssl:
-          fs.existsSync('/etc/ssl/certs/global-bundle.pem') && !process.env.DATABASE_URL
+          fs.existsSync('/etc/ssl/certs/global-bundle.pem') && !dbUrl
             ? {
                 rejectUnauthorized: true,
                 ca: fs

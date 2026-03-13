@@ -44,10 +44,12 @@ config();
 const appConfig = configuration();
 const databaseConfig = appConfig.database;
 
+const dbUrl = databaseConfig.url || (databaseConfig.host?.includes('://') ? databaseConfig.host : undefined);
+
 const AppDataSource = new DataSource({
   type: 'postgres',
-  ...(databaseConfig.url
-    ? { url: databaseConfig.url }
+  ...(dbUrl
+    ? { url: dbUrl }
     : {
         host: databaseConfig.host,
         port: Number(databaseConfig.port),
@@ -58,7 +60,7 @@ const AppDataSource = new DataSource({
   entities: [path.join(__dirname, '../**/*.entity.{ts,js}')],
   synchronize: true,
   ssl:
-    databaseConfig.ssl_mode || !!databaseConfig.url
+    databaseConfig.ssl_mode || !!dbUrl
       ? { rejectUnauthorized: false }
       : false,
 });
