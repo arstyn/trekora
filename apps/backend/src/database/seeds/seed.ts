@@ -46,12 +46,15 @@ const databaseConfig = appConfig.database;
 
 const AppDataSource = new DataSource({
   type: 'postgres',
-  url: databaseConfig.url,
-  host: databaseConfig.host,
-  port: Number(databaseConfig.port),
-  username: databaseConfig.username,
-  password: databaseConfig.password,
-  database: databaseConfig.database,
+  ...(databaseConfig.url
+    ? { url: databaseConfig.url }
+    : {
+        host: databaseConfig.host,
+        port: Number(databaseConfig.port),
+        username: databaseConfig.username,
+        password: databaseConfig.password,
+        database: databaseConfig.database,
+      }),
   entities: [path.join(__dirname, '../**/*.entity.{ts,js}')],
   synchronize: true,
   ssl:
