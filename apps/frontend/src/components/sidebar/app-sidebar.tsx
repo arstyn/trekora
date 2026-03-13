@@ -7,13 +7,15 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
 import {
     ArrowUpCircleIcon,
     Banknote,
+    BarChart3,
     BookUser,
-    ClipboardList,
+    CheckCircle2,
     FileChartColumnIncreasing,
     FileSpreadsheet,
     FolderIcon,
@@ -21,6 +23,8 @@ import {
     LayoutDashboardIcon,
     ListIcon,
     SettingsIcon,
+    Shield,
+    ShieldCheck,
     Tickets,
     UsersIcon,
 } from "lucide-react";
@@ -33,12 +37,29 @@ import { NavUser } from "./nav-user";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const [userData, setUserData] = useState<IEmployee>();
+    const { hasPermission: canManagePermissions } = useHasPermission(
+        "permission",
+        "manage",
+    );
+    const { hasPermission: canManagePermissionSets } = useHasPermission(
+        "permission-set",
+        "manage",
+    );
+    const { hasPermission: canReadEmployees } = useHasPermission(
+        "employee",
+        "read",
+    );
 
     useEffect(() => {
         const getProfile = async () => {
-            const res = await axiosInstance.get<IEmployee>(`/employee/profile`);
-            if (res) {
-                setUserData(res.data);
+            try {
+                const res =
+                    await axiosInstance.get<IEmployee>(`/employee/profile`);
+                if (res) {
+                    setUserData(res.data);
+                }
+            } catch (error) {
+                console.error("Error fetching user profile:", error);
             }
         };
 
@@ -56,6 +77,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 title: "Dashboard",
                 url: "/",
                 icon: LayoutDashboardIcon,
+            },
+            {
+                title: "Todos",
+                url: "/todos",
+                icon: CheckCircle2,
             },
             // {
             // 	title: "Branches",
@@ -90,11 +116,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 icon: FileChartColumnIncreasing,
             },
             {
-                name: "Pre-Bookings",
-                url: "/pre-bookings",
-                icon: ClipboardList,
-            },
-            {
                 name: "Customers",
                 url: "/customers",
                 icon: BookUser,
@@ -111,6 +132,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             },
         ],
         navSecondary: [
+            ...(canManagePermissions
+                ? [
+                      {
+                          title: "Admin Overview",
+                          url: "/admin/overview",
+                          icon: ShieldCheck,
+                      },
+                      {
+                          title: "Permissions",
+                          url: "/permissions",
+                          icon: ShieldCheck,
+                      },
+                  ]
+                : []),
+            ...(canReadEmployees && !canManagePermissions
+                ? [
+                      {
+                          title: "Team Overview",
+                          url: "/manager/overview",
+                          icon: BarChart3,
+                      },
+                  ]
+                : []),
+            ...(canManagePermissionSets
+                ? [
+                      {
+                          title: "Permission Sets",
+                          url: "/permission-sets",
+                          icon: Shield,
+                      },
+                  ]
+                : []),
             {
                 title: "Settings",
                 url: "/settings",

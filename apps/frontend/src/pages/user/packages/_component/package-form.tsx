@@ -1,3010 +1,757 @@
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { Form } from "@/components/ui/form";
 import axiosInstance from "@/lib/axios";
-import { indianStates } from "@/lib/constants/indian-states";
 import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
 import { getFileUrl } from "@/lib/utils";
 import {
-	packageFormSchema,
-	type IPackages,
-	type PackageFormData,
+    packageFormSchema,
+    type IPackages,
+    type PackageFormData,
 } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AxiosError } from "axios";
 import {
-	AlertCircle,
-	Eye,
-	Loader2,
-	Plus,
-	Save,
-	Trash,
-	Trash2,
-	Upload,
+    CheckCircle2,
+    Loader2,
+    Package as PackageIcon,
+    Rocket,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { StepBasicInfo } from "./wizard/steps/StepBasicInfo";
+import { StepDetails } from "./wizard/steps/StepDetails";
+import { StepFinance } from "./wizard/steps/StepFinance";
+import { StepItinerary } from "./wizard/steps/StepItinerary";
+import { StepLogistics } from "./wizard/steps/StepLogistics";
+import { StepRequirements } from "./wizard/steps/StepRequirements";
+import { StepReview } from "./wizard/steps/StepReview";
 
 interface PackageFormProps {
-	isEditing?: boolean;
-	packageId?: string;
-	onSuccess?: () => void;
+    isEditing?: boolean;
+    packageId?: string;
+    onSuccess?: () => void;
 }
 
 const defaultValues: PackageFormData = {
-	name: "",
-	destination: "",
-	duration: "",
-	price: 0,
-	description: "",
-	maxGuests: 0,
-	category: "adventure",
-	inclusions: [],
-	exclusions: [],
-	status: "draft",
-	thumbnail: undefined,
-	itinerary: [
-		{
-			day: 1,
-			title: "",
-			description: "",
-			activities: [""],
-			meals: [],
-			accommodation: "",
-			images: [],
-		},
-	],
-	paymentStructure: [
-		{
-			name: "Booking Advance",
-			amount: 0,
-			description: "Initial booking amount",
-			dueDate: "booking",
-		},
-		{
-			name: "Confirmation",
-			amount: 0,
-			description: "Confirmation payment",
-			dueDate: "30_days_before",
-		},
-		{
-			name: "Pre-departure",
-			amount: 0,
-			description: "Final payment",
-			dueDate: "2_weeks_before",
-		},
-	],
-	cancellationStructure: [
-		{
-			timeframe: "30+ days before",
-			amount: 0,
-			description: "Minimal cancellation fee",
-		},
-		{
-			timeframe: "15-29 days before",
-			amount: 0,
-			description: "Standard cancellation fee",
-		},
-		{
-			timeframe: "7-14 days before",
-			amount: 0,
-			description: "High cancellation fee",
-		},
-		{
-			timeframe: "Less than 7 days",
-			amount: 0,
-			description: "No refund",
-		},
-	],
-	cancellationPolicy: [
-		"Cancellation must be made in writing",
-		"Refunds will be processed within 7-10 business days",
-		"Travel insurance is recommended",
-	],
-	mealsBreakdown: {
-		breakfast: ["Continental breakfast", "Fresh fruits", "Coffee/Tea"],
-		lunch: ["Local cuisine", "Vegetarian options available"],
-		dinner: ["3-course dinner", "Local specialties", "Beverages included"],
-	},
-	transportation: {
-		toDestination: { mode: "flight", details: "", included: false },
-		fromDestination: { mode: "flight", details: "", included: false },
-		duringTrip: { mode: "bus", details: "", included: true },
-	},
-	documentRequirements: [
-		{
-			name: "Valid Passport",
-			description: "Passport valid for at least 6 months",
-			mandatory: true,
-			applicableFor: "all",
-		},
-		{
-			name: "Visa",
-			description: "Tourist visa for destination country",
-			mandatory: true,
-			applicableFor: "all",
-		},
-	],
-	preTripChecklist: [
-		{
-			task: "Collect all documents",
-			description: "Verify all required documents are collected",
-			category: "documents",
-			dueDate: "2_weeks_before",
-			completed: false,
-		},
-		{
-			task: "Confirm bookings",
-			description: "Confirm all hotel and transport bookings",
-			category: "booking",
-			dueDate: "1_week_before",
-			completed: false,
-		},
-	],
-	packageLocation: {
-		type: "international",
-		country: "",
-		state: "",
-	},
+    name: "",
+    destination: "",
+    duration: "",
+    price: 0,
+    description: "",
+    maxGuests: 0,
+    category: "adventure",
+    inclusions: [],
+    exclusions: [],
+    status: "draft",
+    thumbnail: undefined,
+    itinerary: [
+        {
+            day: 1,
+            title: "",
+            description: "",
+            activities: [""],
+            meals: [],
+            accommodation: "",
+            images: [],
+        },
+    ],
+    paymentStructure: [
+        {
+            name: "Booking Advance",
+            amount: 0,
+            description: "Initial booking amount",
+            dueDate: "booking",
+        },
+    ],
+    cancellationStructure: [
+        {
+            timeframe: "30+ days before",
+            amount: 0,
+            description: "Minimal cancellation fee",
+        },
+    ],
+    cancellationPolicy: [
+        "Cancellation must be made in writing",
+        "Refunds will be processed within 7-10 business days",
+    ],
+    mealsBreakdown: {
+        breakfast: [],
+        lunch: [],
+        dinner: [],
+    },
+    transportation: {
+        toDestination: { mode: "flight", details: "", included: false },
+        fromDestination: { mode: "flight", details: "", included: false },
+        duringTrip: { mode: "bus", details: "", included: true },
+    },
+    documentRequirements: [],
+    preTripChecklist: [],
+    packageLocation: {
+        type: "local",
+        country: "India",
+        state: "",
+    },
 };
 
+const SECTION_KEYS: Record<string, string[]> = {
+    basic: [
+        "name",
+        "destination",
+        "duration",
+        "price",
+        "description",
+        "maxGuests",
+        "category",
+        "thumbnail",
+        "inclusions",
+        "exclusions",
+        "status",
+    ],
+    itinerary: ["itinerary"],
+    logistics: ["transportation", "mealsBreakdown", "packageLocation"],
+    "payments-cancellation": [
+        "paymentStructure",
+        "cancellationStructure",
+        "cancellationPolicy",
+    ],
+    requirements: ["documentRequirements", "preTripChecklist"],
+};
+
+const STEPS = [
+    { title: "Basic Info", icon: PackageIcon },
+    { title: "Details", icon: PackageIcon },
+    { title: "Itinerary", icon: PackageIcon },
+    { title: "Logistics", icon: PackageIcon },
+    { title: "Finance", icon: PackageIcon },
+    { title: "Requirements", icon: PackageIcon },
+    { title: "Review", icon: Rocket },
+];
+
 export function PackageForm({
-	isEditing = false,
-	packageId: initialPackageId,
-	onSuccess,
+    isEditing = false,
+    packageId: initialPackageId,
+    onSuccess,
 }: PackageFormProps) {
-	const navigate = useNavigate();
-
-	const [isLoading, setIsLoading] = useState(false);
-	const [isDeletionLoading, setIsDeletionLoading] = useState(false);
-	const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-	const [packageId] = useState<string | undefined>(initialPackageId);
-	const [thumbnailFile, setThumbnailFile] = useState<string>();
-	const [itineraryPreviewUrls, setItineraryPreviewUrls] = useState<
-		Record<number, string[]>
-	>({});
-	const [existingItineraryImages, setExistingItineraryImages] = useState<
-		Record<number, string[]>
-	>({});
-	const [newInclusion, setNewInclusion] = useState("");
-	const [newExclusion, setNewExclusion] = useState("");
-	const [validationErrors, setValidationErrors] = useState<string[]>([]);
-	const [isValidating, setIsValidating] = useState(false);
-
-	const form = useForm<PackageFormData>({
-		resolver: zodResolver(packageFormSchema),
-		defaultValues,
-	});
-
-	// Clear validation errors when form values change
-	useEffect(() => {
-		const subscription = form.watch(() => {
-			if (validationErrors.length > 0) {
-				setValidationErrors([]);
-			}
-		});
-		return () => subscription.unsubscribe();
-	}, [form, validationErrors.length]);
-
-	const transformBackendDataToForm = useCallback((backendData: IPackages) => {
-		return {
-			...backendData,
-			thumbnail: undefined,
-			price:
-				typeof backendData.price === "string"
-					? Number(backendData.price) || 0
-					: backendData.price,
-			maxGuests:
-				typeof backendData.maxGuests === "string"
-					? Number(backendData.maxGuests) || 0
-					: backendData.maxGuests,
-			inclusions:
-				backendData.inclusions?.map((inc: string | { item: string }) =>
-					typeof inc === "object" ? inc?.item : inc
-				) || [],
-			exclusions:
-				backendData.exclusions?.map((exc: string | { item: string }) =>
-					typeof exc === "object" ? exc?.item : exc
-				) || [],
-			itinerary: backendData.itinerary?.map((iti, index) => {
-				const { images, ...rest } = iti;
-				// Store existing images for later use
-				if (images && Array.isArray(images)) {
-					setExistingItineraryImages((prev) => ({
-						...prev,
-						[index]: images,
-					}));
-				}
-				// Return without images since we handle them separately
-				return {
-					...rest,
-					images: [], // Clear images from form data since we handle them separately
-				};
-			}),
-			paymentStructure: backendData.paymentStructure?.map((pay) => {
-				return {
-					...pay,
-					amount: parseFloat(pay.amount?.toString() ?? "0"),
-				};
-			}),
-			cancellationStructure: backendData.cancellationStructure?.map((can) => {
-				return {
-					...can,
-					amount: parseFloat(can.amount?.toString() ?? "0"),
-				};
-			}),
-			cancellationPolicy: backendData.cancellationPolicy?.map((can) => can.text),
-		};
-	}, []);
-
-	const {
-		fields: itineraryFields,
-		append: appendItinerary,
-		remove: removeItinerary,
-	} = useFieldArray({
-		control: form.control,
-		name: "itinerary",
-	});
-
-	const {
-		fields: paymentFields,
-		append: appendPayment,
-		remove: removePayment,
-	} = useFieldArray({
-		control: form.control,
-		name: "paymentStructure",
-	});
-
-	const {
-		fields: cancellationFields,
-		append: appendCancellation,
-		remove: removeCancellation,
-	} = useFieldArray({
-		control: form.control,
-		name: "cancellationStructure",
-	});
-
-	const {
-		fields: documentFields,
-		append: appendDocument,
-		remove: removeDocument,
-	} = useFieldArray({
-		control: form.control,
-		name: "documentRequirements",
-	});
-
-	const {
-		fields: checklistFields,
-		append: appendChecklist,
-		remove: removeChecklist,
-	} = useFieldArray({
-		control: form.control,
-		name: "preTripChecklist",
-	});
-
-	useEffect(() => {
-		// Reset state when switching between edit and create modes
-		if (!isEditing) {
-			setItineraryPreviewUrls({});
-			setExistingItineraryImages({});
-		}
-
-		if (isEditing && packageId) {
-			const loadPackage = async () => {
-				try {
-					setIsLoading(true);
-					const res = await axiosInstance.get<IPackages>(
-						`/packages/${packageId}`
-					);
-					if (res.data) {
-						const transformedData = transformBackendDataToForm(res.data);
-
-						form.reset(transformedData);
-
-						if (res.data.thumbnail) {
-							const url = getFileUrl(getServeFileUrl(res.data.thumbnail));
-							setThumbnailFile(url);
-						}
-
-						if (res.data.itinerary) {
-							for (
-								let dayIndex = 0;
-								dayIndex < res.data.itinerary.length;
-								dayIndex++
-							) {
-								const itinerary = res.data.itinerary[dayIndex];
-
-								if (itinerary.images) {
-									const urls: string[] = [];
-									const imageIds: string[] = [];
-
-									for (const img of itinerary.images) {
-										const url = getFileUrl(getServeFileUrl(img));
-										urls.push(url);
-										imageIds.push(img);
-									}
-
-									setItineraryPreviewUrls((prev) => ({
-										...prev,
-										[dayIndex]: urls,
-									}));
-
-									setExistingItineraryImages((prev) => ({
-										...prev,
-										[dayIndex]: imageIds,
-									}));
-								}
-							}
-						}
-					}
-				} catch (error) {
-					if (error instanceof Error) {
-						toast.error(error.message);
-					} else {
-						toast.error("Failed to load package");
-					}
-				} finally {
-					setIsLoading(false);
-				}
-			};
-			loadPackage();
-		}
-	}, [isEditing, packageId, form, transformBackendDataToForm]);
-
-	const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-		const file = event.target.files?.[0];
-		if (file) {
-			try {
-				const reader = new FileReader();
-				reader.onload = (e) => {
-					if (e.target?.result && typeof e.target.result === "string") {
-						setThumbnailFile(e.target.result);
-					}
-				};
-				reader.readAsDataURL(file);
-
-				form.setValue("thumbnail", file);
-			} catch (error) {
-				console.log(error);
-			}
-		}
-	};
-
-	const handleDayImageUpload = async (
-		dayIndex: number,
-		event: React.ChangeEvent<HTMLInputElement>
-	) => {
-		const files = Array.from(event.target.files || []);
-		if (files) {
-			try {
-				const urls = files.map((file) => URL.createObjectURL(file));
-				setItineraryPreviewUrls((prev) => ({
-					...prev,
-					[dayIndex]: [...(prev[dayIndex] || []), ...urls],
-				}));
-
-				const currentImages =
-					form.getValues(`itinerary.${dayIndex}.images`) || [];
-				form.setValue(`itinerary.${dayIndex}.images`, [
-					...currentImages,
-					...files,
-				]);
-			} catch (error) {
-				console.log(error);
-				toast.error("Failed to upload image");
-			}
-		}
-	};
-
-	const removeDayImage = async (dayIndex: number, imageIndex: number) => {
-		try {
-			const currentUrls = itineraryPreviewUrls[dayIndex] || [];
-			const currentExistingImages = existingItineraryImages[dayIndex] || [];
-			const currentFormImages =
-				form.getValues(`itinerary.${dayIndex}.images`) || [];
-
-			// Determine if we're removing an existing image or a new one
-			const isExistingImage = imageIndex < currentExistingImages.length;
-
-			if (isExistingImage) {
-				// Remove from existing images
-				const newExistingImages = currentExistingImages.filter(
-					(_, idx) => idx !== imageIndex
-				);
-				setExistingItineraryImages((prev) => ({
-					...prev,
-					[dayIndex]: newExistingImages,
-				}));
-			} else {
-				// Remove from new images (adjust index for new images array)
-				const newImageIndex = imageIndex - currentExistingImages.length;
-				const newFormImages = currentFormImages.filter(
-					(_, idx) => idx !== newImageIndex
-				);
-				form.setValue(`itinerary.${dayIndex}.images`, newFormImages);
-			}
-
-			// Update preview URLs
-			setItineraryPreviewUrls((prev) => ({
-				...prev,
-				[dayIndex]: currentUrls.filter((_, idx) => idx !== imageIndex),
-			}));
-		} catch (error) {
-			console.log(error);
-			toast.error("Failed to remove image");
-		}
-	};
-
-	const addActivity = (dayIndex: number) => {
-		const currentActivities = form.getValues(`itinerary.${dayIndex}.activities`);
-		if (currentActivities)
-			form.setValue(`itinerary.${dayIndex}.activities`, [...currentActivities, ""]);
-	};
-
-	const removeActivity = (dayIndex: number, activityIndex: number) => {
-		const currentActivities = form.getValues(`itinerary.${dayIndex}.activities`);
-		if (currentActivities) {
-			const newActivities = currentActivities.filter((_, i) => i !== activityIndex);
-			form.setValue(`itinerary.${dayIndex}.activities`, newActivities);
-		}
-	};
-
-	const addInclusion = () => {
-		if (newInclusion.trim()) {
-			const currentInclusions = form.getValues("inclusions");
-			if (currentInclusions)
-				form.setValue("inclusions", [...currentInclusions, newInclusion.trim()]);
-			setNewInclusion("");
-		}
-	};
-
-	const removeInclusion = (index: number) => {
-		const currentInclusions = form.getValues("inclusions");
-		if (currentInclusions)
-			form.setValue(
-				"inclusions",
-				currentInclusions.filter((_, i) => i !== index)
-			);
-	};
-
-	const addExclusion = () => {
-		if (newExclusion.trim()) {
-			const currentExclusions = form.getValues("exclusions");
-			if (currentExclusions)
-				form.setValue("exclusions", [...currentExclusions, newExclusion.trim()]);
-			setNewExclusion("");
-		}
-	};
-
-	const removeExclusion = (index: number) => {
-		const currentExclusions = form.getValues("exclusions");
-		if (currentExclusions)
-			form.setValue(
-				"exclusions",
-				currentExclusions.filter((_, i) => i !== index)
-			);
-	};
-
-	const addMealItem = (mealType: "breakfast" | "lunch" | "dinner") => {
-		const currentMeals = form.getValues(`mealsBreakdown.${mealType}`);
-		if (currentMeals)
-			form.setValue(`mealsBreakdown.${mealType}`, [...currentMeals, ""]);
-	};
-
-	const removeMealItem = (
-		mealType: "breakfast" | "lunch" | "dinner",
-		index: number
-	) => {
-		const currentMeals = form.getValues(`mealsBreakdown.${mealType}`);
-		if (currentMeals)
-			form.setValue(
-				`mealsBreakdown.${mealType}`,
-				currentMeals.filter((_, i) => i !== index)
-			);
-	};
-
-	const addDocumentsToChecklist = () => {
-		const documentRequirements = form.getValues("documentRequirements");
-		const currentChecklist = form.getValues("preTripChecklist");
-
-		const documentTasks = documentRequirements?.map((doc) => ({
-			task: `Collect ${doc.name}`,
-			description: doc.description,
-			category: "documents" as const,
-			dueDate: "2_weeks_before",
-			completed: false,
-		}));
-
-		if (currentChecklist && documentTasks)
-			form.setValue("preTripChecklist", [...currentChecklist, ...documentTasks]);
-	};
-
-	const addCancellationPolicy = () => {
-		const current = form.getValues("cancellationPolicy");
-		if (current) form.setValue("cancellationPolicy", [...current, ""]);
-	};
-
-	const removeCancellationPolicy = (index: number) => {
-		const current = form.getValues("cancellationPolicy");
-		if (current)
-			form.setValue(
-				"cancellationPolicy",
-				current.filter((_, i) => i !== index)
-			);
-	};
-
-	const packageFormDataToFormData = (data: PackageFormData): FormData => {
-		const formData = new FormData();
-
-		console.log("Form data being sent:", {
-			itinerary: data.itinerary,
-			existingImages: existingItineraryImages,
-			previewUrls: itineraryPreviewUrls,
-		});
-
-		const appendIfDefined = (
-			key: string,
-			value?: null | File | string | number | string[] | object
-		) => {
-			if (value !== undefined && value !== null) {
-				// If it's a File, append directly
-				if (value instanceof File) {
-					formData.append(key, value);
-				}
-				// If it's an array or object, stringify it
-				else if (Array.isArray(value) || typeof value === "object") {
-					formData.append(key, JSON.stringify(value));
-				}
-				// Otherwise, append as string
-				else {
-					formData.append(key, String(value));
-				}
-			}
-		};
-
-		// Top-level fields
-		appendIfDefined("name", data.name);
-		appendIfDefined("destination", data.destination);
-		appendIfDefined("duration", data.duration);
-		appendIfDefined("price", data.price);
-		appendIfDefined("description", data.description);
-		appendIfDefined("maxGuests", data.maxGuests);
-		appendIfDefined("category", data.category);
-		appendIfDefined("status", data.status);
-		appendIfDefined("thumbnail", data.thumbnail);
-		appendIfDefined("inclusions", data.inclusions);
-		appendIfDefined("exclusions", data.exclusions);
-		appendIfDefined("paymentStructure", data.paymentStructure);
-		appendIfDefined("cancellationStructure", data.cancellationStructure);
-		appendIfDefined("mealsBreakdown", data.mealsBreakdown);
-		appendIfDefined("transportation", data.transportation);
-		appendIfDefined("documentRequirements", data.documentRequirements);
-		appendIfDefined("preTripChecklist", data.preTripChecklist);
-		appendIfDefined("packageLocation", data.packageLocation);
-		appendIfDefined("cancellationPolicy", data.cancellationPolicy);
-
-		// Handle itinerary with existing and new images
-		const itineraryData = data.itinerary?.map((val, dayIndex) => {
-			const { images, ...rest } = val;
-
-			// Combine existing images with new images
-			const existingImages = existingItineraryImages[dayIndex] || [];
-			const newImages = images || [];
-
-			return {
-				...rest,
-				images: [...existingImages, ...newImages],
-			};
-		});
-
-		appendIfDefined("itinerary", itineraryData);
-
-		// Special case: itinerary with new image files
-		if (data.itinerary) {
-			data.itinerary.forEach((day, idx) => {
-				// Append only new image files separately so backend can parse as files
-				if (day.images) {
-					day.images.forEach((file, fileIdx) => {
-						if (file instanceof File) {
-							formData.append(`itinerary[${idx}].images[${fileIdx}]`, file);
-						}
-					});
-				}
-			});
-		}
-
-		return formData;
-	};
-
-	const onSubmit = async (data: PackageFormData, status: "draft" | "published") => {
-		setIsLoading(true);
-		try {
-			const formData = packageFormDataToFormData(data);
-
-			if (isEditing && packageId) {
-				const response = await axiosInstance.patch(
-					`/packages/${packageId}`,
-					formData,
-					{
-						headers: {
-							"Content-Type": "multipart/form-data",
-						},
-					}
-				);
-
-				if (response.data) {
-					const action = status === "published" ? "published" : "saved";
-					toast.success(`Package ${action} successfully!`);
-					setValidationErrors([]); // Clear validation errors on success
-					onSuccess?.();
-				}
-			} else {
-				const response = await axiosInstance.post(`/packages`, formData, {
-					headers: {
-						"Content-Type": "multipart/form-data",
-					},
-				});
-
-				if (response.data) {
-					const action = status === "published" ? "published" : "saved";
-					toast.success(`Package ${action} successfully!`);
-					setValidationErrors([]); // Clear validation errors on success
-					onSuccess?.();
-				}
-			}
-		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			if ((error as any)?.response?.data?.message) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				toast.error((error as any)?.response.data.message);
-			} else if (error instanceof Error) {
-				toast.error(error.message);
-			} else {
-				toast.error(
-					`Failed to ${status === "published" ? "publish" : "save"} package`
-				);
-			}
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	const validatePackage = async () => {
-		if (!packageId) return { isValid: false, errors: ["Package ID is required"] };
-
-		try {
-			setIsValidating(true);
-			const response = await axiosInstance.post(`/packages/${packageId}/validate`);
-			return response.data;
-		} catch (error) {
-			if (error instanceof AxiosError && error.response?.data?.errors) {
-				return {
-					isValid: false,
-					errors: error.response.data.errors,
-				};
-			}
-			return {
-				isValid: false,
-				errors: ["Failed to validate package"],
-			};
-		} finally {
-			setIsValidating(false);
-		}
-	};
-
-	const handleSaveAsDraft = async () => {
-		// For draft, bypass validation and submit directly
-		const formData = form.getValues();
-		formData.status = "draft";
-		await onSubmit(formData, "draft");
-	};
-
-	const handlePublish = async (data: PackageFormData) => {
-		// First validate the package
-		const validation = await validatePackage();
-
-		if (!validation.isValid) {
-			setValidationErrors(validation.errors);
-			toast.error("Package validation failed. Please check the errors below.");
-			return;
-		}
-
-		// If validation passes, proceed with publishing
-		data.status = "published";
-		await onSubmit(data, "published");
-	};
-
-	const getTotalPaymentAmount = () => {
-		const paymentStructure = form.watch("paymentStructure") || [];
-		return paymentStructure.reduce(
-			(total: number, milestone: { amount?: number }) =>
-				total + (milestone?.amount ?? 0),
-			0
-		);
-	};
-
-	const deletePackage = async () => {
-		try {
-			setIsDeletionLoading(true);
-			const res = await axiosInstance.delete(`/packages/${packageId}`);
-			if (res) {
-				navigate("/packages");
-			}
-		} catch (error) {
-			if (error instanceof AxiosError) {
-				toast.error(error.response?.data.message);
-			} else if (error instanceof Error) {
-				toast.error(error.message);
-			} else {
-				toast.error("Failed to load updates");
-			}
-		} finally {
-			setIsDeletionLoading(false);
-		}
-	};
-
-	return (
-		<div className="min-h-screen ">
-			<Form {...form}>
-				<form>
-					<div className="px-4 sm:px-6 lg:px-8 py-8">
-						{/* Validation Errors Display */}
-						{validationErrors.length > 0 && (
-							<Card className="mb-6 bg-transparent border-red-400">
-								<CardHeader>
-									<CardTitle className="text-red-400 flex items-center gap-2">
-										<AlertCircle className="w-5 h-5" />
-										Validation Errors
-									</CardTitle>
-									<CardDescription className="text-red-400">
-										Please fix the following issues before publishing:
-									</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<ul className="space-y-2">
-										{validationErrors.map((error, index) => (
-											<li
-												key={index}
-												className="flex items-start gap-2 text-red-700"
-											>
-												<span className="text-red-400 mt-1">
-													•
-												</span>
-												<span>{error}</span>
-											</li>
-										))}
-									</ul>
-								</CardContent>
-							</Card>
-						)}
-						<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-							{/* Main Form */}
-							<div className="lg:col-span-2 space-y-6">
-								{/* Package Thumbnail */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Package Thumbnail</CardTitle>
-										<CardDescription>
-											Upload a main image for your package
-										</CardDescription>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div className="flex items-center gap-4">
-											<div className="relative">
-												<img
-													src={(() => {
-														if (thumbnailFile) {
-															return thumbnailFile;
-														}
-														return "/placeholder.svg";
-													})()}
-													alt="Package thumbnail"
-													width={200}
-													height={150}
-													className="rounded-lg object-cover border"
-												/>
-											</div>
-											<div className="space-y-2">
-												<Label htmlFor="thumbnail">
-													Upload Thumbnail
-												</Label>
-												<Input
-													id="thumbnail"
-													type="file"
-													accept="image/*"
-													onChange={handleThumbnailUpload}
-													className="w-full"
-												/>
-												<p className="text-sm">
-													Recommended: 400x300px, JPG or PNG
-												</p>
-											</div>
-										</div>
-									</CardContent>
-								</Card>
-
-								{/* Basic Information */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Basic Information</CardTitle>
-										<CardDescription>
-											Enter the basic details of your tour package
-										</CardDescription>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-											<FormField
-												control={form.control}
-												name="name"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>
-															Package Name
-														</FormLabel>
-														<FormControl>
-															<Input
-																placeholder="e.g., Bali Paradise Getaway"
-																{...field}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-											<FormField
-												control={form.control}
-												name="destination"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>Destination</FormLabel>
-														<FormControl>
-															<Input
-																placeholder="e.g., Bali, Indonesia"
-																{...field}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-										</div>
-
-										<FormField
-											control={form.control}
-											name="description"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Description</FormLabel>
-													<FormControl>
-														<Textarea
-															placeholder="Describe your tour package..."
-															className="min-h-[100px]"
-															{...field}
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-											<FormField
-												control={form.control}
-												name="duration"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>Duration</FormLabel>
-														<FormControl>
-															<Input
-																placeholder="e.g., 7 Days, 6 Nights"
-																{...field}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-											<FormField
-												control={form.control}
-												name="price"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>Price (INR)</FormLabel>
-														<FormControl>
-															<Input
-																type="number"
-																min="0"
-																placeholder="1299"
-																{...field}
-																onChange={(e) =>
-																	field.onChange(
-																		Number.parseFloat(
-																			e.target.value
-																		) || 0
-																	)
-																}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-											<FormField
-												control={form.control}
-												name="maxGuests"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>Max Guests</FormLabel>
-														<FormControl>
-															<Input
-																type="number"
-																min="0"
-																placeholder="12"
-																{...field}
-																onChange={(e) =>
-																	field.onChange(
-																		Number.parseInt(
-																			e.target.value
-																		) || 0
-																	)
-																}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-										</div>
-
-										<FormField
-											control={form.control}
-											name="category"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Category</FormLabel>
-													<Select
-														onValueChange={field.onChange}
-														defaultValue={field.value}
-													>
-														<FormControl>
-															<SelectTrigger>
-																<SelectValue placeholder="Select category" />
-															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															<SelectItem value="adventure">
-																Adventure
-															</SelectItem>
-															<SelectItem value="cultural">
-																Cultural
-															</SelectItem>
-															<SelectItem value="relaxation">
-																Relaxation
-															</SelectItem>
-															<SelectItem value="wildlife">
-																Wildlife
-															</SelectItem>
-															<SelectItem value="luxury">
-																Luxury
-															</SelectItem>
-															<SelectItem value="budget">
-																Budget
-															</SelectItem>
-														</SelectContent>
-													</Select>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-									</CardContent>
-								</Card>
-
-								{/* Itinerary */}
-								<Card>
-									<CardHeader>
-										<div className="flex justify-between items-center">
-											<div>
-												<CardTitle>Itinerary</CardTitle>
-												<CardDescription>
-													Plan the day-by-day activities
-												</CardDescription>
-											</div>
-											<Button
-												type="button"
-												onClick={() => {
-													const newDayIndex =
-														itineraryFields.length;
-													appendItinerary({
-														day: newDayIndex + 1,
-														title: "",
-														description: "",
-														activities: [""],
-														meals: [],
-														accommodation: "",
-														images: [],
-													});
-													// Initialize empty arrays for the new day
-													setItineraryPreviewUrls((prev) => ({
-														...prev,
-														[newDayIndex]: [],
-													}));
-													setExistingItineraryImages(
-														(prev) => ({
-															...prev,
-															[newDayIndex]: [],
-														})
-													);
-												}}
-												size="sm"
-											>
-												<Plus className="w-4 h-4 mr-2" />
-												Add Day
-											</Button>
-										</div>
-									</CardHeader>
-									<CardContent className="space-y-6">
-										{itineraryFields.map((field, dayIndex) => (
-											<div
-												key={field.id}
-												className="border rounded-lg p-4 space-y-4"
-											>
-												<div className="flex justify-between items-center">
-													<h3 className="text-lg font-semibold">
-														Day {dayIndex + 1}
-													</h3>
-													{itineraryFields.length > 1 && (
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() => {
-																removeItinerary(dayIndex);
-																// Clean up state for removed day
-																setItineraryPreviewUrls(
-																	(prev) => {
-																		const newState = {
-																			...prev,
-																		};
-																		delete newState[
-																			dayIndex
-																		];
-																		return newState;
-																	}
-																);
-																setExistingItineraryImages(
-																	(prev) => {
-																		const newState = {
-																			...prev,
-																		};
-																		delete newState[
-																			dayIndex
-																		];
-																		return newState;
-																	}
-																);
-															}}
-														>
-															<Trash2 className="w-4 h-4" />
-														</Button>
-													)}
-												</div>
-
-												{/* Day Images */}
-												<div className="space-y-3">
-													<Label>Day Images</Label>
-													<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-														{itineraryPreviewUrls[
-															dayIndex
-														]?.map((url, imageIndex) => (
-															<div
-																key={imageIndex}
-																className="relative group"
-															>
-																<img
-																	src={url}
-																	alt={`Day ${
-																		dayIndex + 1
-																	} image ${
-																		imageIndex + 1
-																	}`}
-																	width={150}
-																	height={100}
-																	className="rounded-lg object-cover border w-full h-full"
-																/>
-																<Button
-																	type="button"
-																	variant="destructive"
-																	size="sm"
-																	className="absolute top-1 right-5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-																	onClick={() =>
-																		removeDayImage(
-																			dayIndex,
-																			imageIndex
-																		)
-																	}
-																>
-																	<Trash className="w-3 h-3" />
-																</Button>
-															</div>
-														))}
-														<div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center min-h-[100px]">
-															<Upload className="w-6 h-6 text-muted-foreground mb-2" />
-															<Label
-																htmlFor={`day-${dayIndex}-image`}
-																className="cursor-pointer text-sm "
-															>
-																Add Images
-															</Label>
-															<Input
-																id={`day-${dayIndex}-image`}
-																type="file"
-																accept="image/*"
-																multiple
-																className="hidden"
-																onChange={(e) =>
-																	handleDayImageUpload(
-																		dayIndex,
-																		e
-																	)
-																}
-															/>
-														</div>
-													</div>
-												</div>
-
-												<FormField
-													control={form.control}
-													name={`itinerary.${dayIndex}.title`}
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>
-																Day Title
-															</FormLabel>
-															<FormControl>
-																<Input
-																	placeholder="e.g., Arrival in Bali"
-																	{...field}
-																/>
-															</FormControl>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-
-												<FormField
-													control={form.control}
-													name={`itinerary.${dayIndex}.description`}
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>
-																Description
-															</FormLabel>
-															<FormControl>
-																<Textarea
-																	placeholder="Describe the day's overview..."
-																	{...field}
-																/>
-															</FormControl>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-
-												{/* Activities */}
-												<div className="space-y-2">
-													<div className="flex justify-between items-center">
-														<Label>Activities</Label>
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																addActivity(dayIndex)
-															}
-														>
-															<Plus className="w-4 h-4 mr-2" />
-															Add Activity
-														</Button>
-													</div>
-													{form
-														.watch(
-															`itinerary.${dayIndex}.activities`
-														)
-														?.map(
-															(activity, activityIndex) => (
-																<div
-																	key={activityIndex}
-																	className="flex gap-2"
-																>
-																	<FormField
-																		control={
-																			form.control
-																		}
-																		name={`itinerary.${dayIndex}.activities.${activityIndex}`}
-																		render={({
-																			field,
-																		}) => (
-																			<FormItem className="flex-1">
-																				<FormControl>
-																					<Input
-																						placeholder={
-																							activity
-																						}
-																						{...field}
-																					/>
-																				</FormControl>
-																				<FormMessage />
-																			</FormItem>
-																		)}
-																	/>
-																	{(form.watch(
-																		`itinerary.${dayIndex}.activities`
-																	)?.length ?? 0) >
-																		1 && (
-																		<Button
-																			type="button"
-																			variant="ghost"
-																			size="sm"
-																			onClick={() =>
-																				removeActivity(
-																					dayIndex,
-																					activityIndex
-																				)
-																			}
-																		>
-																			<Trash2 className="w-4 h-4" />
-																		</Button>
-																	)}
-																</div>
-															)
-														)}
-												</div>
-
-												<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-													<div className="space-y-2">
-														<Label>Meals Included</Label>
-														<div className="space-y-2">
-															{[
-																"Breakfast",
-																"Lunch",
-																"Dinner",
-															].map((meal) => (
-																<FormField
-																	key={meal}
-																	control={form.control}
-																	name={`itinerary.${dayIndex}.meals`}
-																	render={({
-																		field,
-																	}) => (
-																		<FormItem className="flex flex-row items-start space-x-3 space-y-0">
-																			<FormControl>
-																				<Checkbox
-																					checked={field.value?.includes(
-																						meal
-																					)}
-																					onCheckedChange={(
-																						checked
-																					) => {
-																						const updatedMeals =
-																							checked
-																								? [
-																										...(field.value ||
-																											[]),
-																										meal,
-																								  ]
-																								: field.value?.filter(
-																										(
-																											value
-																										) =>
-																											value !==
-																											meal
-																								  ) ||
-																								  [];
-																						field.onChange(
-																							updatedMeals
-																						);
-																					}}
-																				/>
-																			</FormControl>
-																			<FormLabel className="font-normal">
-																				{meal}
-																			</FormLabel>
-																		</FormItem>
-																	)}
-																/>
-															))}
-														</div>
-													</div>
-													<FormField
-														control={form.control}
-														name={`itinerary.${dayIndex}.accommodation`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Accommodation
-																</FormLabel>
-																<FormControl>
-																	<Input
-																		placeholder="e.g., Luxury Beach Resort"
-																		{...field}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-												</div>
-											</div>
-										))}
-									</CardContent>
-								</Card>
-
-								{/* Payment Structure */}
-								<Card>
-									<CardHeader>
-										<div className="flex justify-between items-center">
-											<div>
-												<CardTitle>Payment Structure</CardTitle>
-												<CardDescription>
-													Define payment milestones and amounts
-												</CardDescription>
-											</div>
-											<Button
-												type="button"
-												onClick={() =>
-													appendPayment({
-														name: "",
-														amount: 0,
-														description: "",
-														dueDate: "booking",
-													})
-												}
-												size="sm"
-											>
-												<Plus className="w-4 h-4 mr-2" />
-												Add Milestone
-											</Button>
-										</div>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div className="flex justify-between items-center p-3  rounded-lg">
-											<span className="font-medium">
-												Total Payment Amount:
-											</span>
-											<Badge
-												variant={
-													getTotalPaymentAmount() ===
-													form.watch("price")
-														? "default"
-														: "destructive"
-												}
-											>
-												₹{getTotalPaymentAmount().toFixed(2)}
-											</Badge>
-										</div>
-
-										{paymentFields.map((field, index) => (
-											<div
-												key={field.id}
-												className="border rounded-lg p-4 space-y-3"
-											>
-												<div className="flex justify-between items-center">
-													<h4 className="font-medium">
-														Payment Milestone
-													</h4>
-													{paymentFields.length > 1 && (
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																removePayment(index)
-															}
-														>
-															<Trash2 className="w-4 h-4" />
-														</Button>
-													)}
-												</div>
-
-												<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-													<FormField
-														control={form.control}
-														name={`paymentStructure.${index}.name`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Milestone Name
-																</FormLabel>
-																<FormControl>
-																	<Input
-																		placeholder="e.g., Booking Advance"
-																		{...field}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-													<FormField
-														control={form.control}
-														name={`paymentStructure.${index}.amount`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Amount (₹)
-																</FormLabel>
-																<FormControl>
-																	<Input
-																		type="number"
-																		min="0"
-																		step="0.01"
-																		placeholder="0.00"
-																		{...field}
-																		onChange={(e) =>
-																			field.onChange(
-																				Number.parseFloat(
-																					e
-																						.target
-																						.value
-																				) || 0
-																			)
-																		}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-													<FormField
-														control={form.control}
-														name={`paymentStructure.${index}.dueDate`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Due Date
-																</FormLabel>
-																<Select
-																	onValueChange={
-																		field.onChange
-																	}
-																	defaultValue={
-																		field.value
-																	}
-																>
-																	<FormControl>
-																		<SelectTrigger>
-																			<SelectValue />
-																		</SelectTrigger>
-																	</FormControl>
-																	<SelectContent>
-																		<SelectItem value="booking">
-																			At Booking
-																		</SelectItem>
-																		<SelectItem value="30_days_before">
-																			30 Days Before
-																		</SelectItem>
-																		<SelectItem value="2_weeks_before">
-																			2 Weeks Before
-																		</SelectItem>
-																		<SelectItem value="1_week_before">
-																			1 Week Before
-																		</SelectItem>
-																		<SelectItem value="departure">
-																			At Departure
-																		</SelectItem>
-																	</SelectContent>
-																</Select>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-												</div>
-
-												<FormField
-													control={form.control}
-													name={`paymentStructure.${index}.description`}
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>
-																Description
-															</FormLabel>
-															<FormControl>
-																<Input
-																	placeholder="Description of this payment milestone"
-																	{...field}
-																/>
-															</FormControl>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-											</div>
-										))}
-									</CardContent>
-								</Card>
-
-								{/* Cancellation Structure */}
-								<Card>
-									<CardHeader>
-										<div className="flex justify-between items-center">
-											<div>
-												<CardTitle>
-													Cancellation Structure
-												</CardTitle>
-												<CardDescription>
-													Define cancellation fees based on
-													timing
-												</CardDescription>
-											</div>
-											<Button
-												type="button"
-												onClick={() =>
-													appendCancellation({
-														timeframe: "",
-														amount: 0,
-														description: "",
-													})
-												}
-												size="sm"
-											>
-												<Plus className="w-4 h-4 mr-2" />
-												Add Tier
-											</Button>
-										</div>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										{cancellationFields.map((field, index) => (
-											<div
-												key={field.id}
-												className="border rounded-lg p-4 space-y-3"
-											>
-												<div className="flex justify-between items-center">
-													<h4 className="font-medium">
-														Cancellation Tier
-													</h4>
-													{cancellationFields.length > 1 && (
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																removeCancellation(index)
-															}
-														>
-															<Trash2 className="w-4 h-4" />
-														</Button>
-													)}
-												</div>
-
-												<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-													<FormField
-														control={form.control}
-														name={`cancellationStructure.${index}.timeframe`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Timeframe
-																</FormLabel>
-																<FormControl>
-																	<Input
-																		placeholder="e.g., 30+ days before"
-																		{...field}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-													<FormField
-														control={form.control}
-														name={`cancellationStructure.${index}.amount`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Cancellation Fee (₹)
-																</FormLabel>
-																<FormControl>
-																	<Input
-																		type="number"
-																		min="0"
-																		step="0.01"
-																		placeholder="0.00"
-																		{...field}
-																		onChange={(e) =>
-																			field.onChange(
-																				Number.parseFloat(
-																					e
-																						.target
-																						.value
-																				) || 0
-																			)
-																		}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-													<FormField
-														control={form.control}
-														name={`cancellationStructure.${index}.description`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Description
-																</FormLabel>
-																<FormControl>
-																	<Input
-																		placeholder="Description of this tier"
-																		{...field}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-												</div>
-											</div>
-										))}
-									</CardContent>
-								</Card>
-
-								{/* Cancellation Policy */}
-								<Card>
-									<CardHeader>
-										<div className="flex justify-between items-center">
-											<div>
-												<CardTitle>Cancellation Policy</CardTitle>
-												<CardDescription>
-													Additional policy points and terms
-												</CardDescription>
-											</div>
-											<Button
-												type="button"
-												onClick={addCancellationPolicy}
-												size="sm"
-											>
-												<Plus className="w-4 h-4 mr-2" />
-												Add Point
-											</Button>
-										</div>
-									</CardHeader>
-									<CardContent className="space-y-3">
-										{form
-											.watch("cancellationPolicy")
-											?.map((policy, index) => (
-												<div key={index} className="flex gap-2">
-													<FormField
-														control={form.control}
-														name={`cancellationPolicy.${index}`}
-														render={({ field }) => (
-															<FormItem className="flex-1">
-																<FormControl>
-																	<Input
-																		placeholder={
-																			policy
-																		}
-																		{...field}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-													{form.watch("cancellationPolicy") &&
-														form.watch("cancellationPolicy")!
-															.length > 1 && (
-															<Button
-																type="button"
-																variant="ghost"
-																size="sm"
-																onClick={() =>
-																	removeCancellationPolicy(
-																		index
-																	)
-																}
-															>
-																<Trash2 className="w-4 h-4" />
-															</Button>
-														)}
-												</div>
-											))}
-									</CardContent>
-								</Card>
-
-								{/* Meals Breakdown */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Meals Breakdown</CardTitle>
-										<CardDescription>
-											Define what's included in each meal type
-										</CardDescription>
-									</CardHeader>
-									<CardContent className="space-y-6">
-										{(["breakfast", "lunch", "dinner"] as const).map(
-											(mealType) => (
-												<div key={mealType} className="space-y-3">
-													<div className="flex justify-between items-center">
-														<Label className="text-base font-medium capitalize">
-															{mealType}
-														</Label>
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																addMealItem(mealType)
-															}
-														>
-															<Plus className="w-4 h-4 mr-2" />
-															Add Item
-														</Button>
-													</div>
-													<div className="space-y-2">
-														{form
-															.watch(
-																`mealsBreakdown.${mealType}`
-															)
-															?.map((_, index) => (
-																<div
-																	key={index}
-																	className="flex gap-2"
-																>
-																	<FormField
-																		control={
-																			form.control
-																		}
-																		name={`mealsBreakdown.${mealType}.${index}`}
-																		render={({
-																			field,
-																		}) => (
-																			<FormItem className="flex-1">
-																				<FormControl>
-																					<Input
-																						placeholder={`Enter ${mealType} item...`}
-																						{...field}
-																					/>
-																				</FormControl>
-																				<FormMessage />
-																			</FormItem>
-																		)}
-																	/>
-																	{form.watch(
-																		`mealsBreakdown.${mealType}`
-																	)?.length &&
-																		form.watch(
-																			`mealsBreakdown.${mealType}`
-																		)!.length > 1 && (
-																			<Button
-																				type="button"
-																				variant="ghost"
-																				size="sm"
-																				onClick={() =>
-																					removeMealItem(
-																						mealType,
-																						index
-																					)
-																				}
-																			>
-																				<Trash2 className="w-4 h-4" />
-																			</Button>
-																		)}
-																</div>
-															))}
-													</div>
-												</div>
-											)
-										)}
-									</CardContent>
-								</Card>
-
-								{/* Transportation */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Transportation</CardTitle>
-										<CardDescription>
-											Define transportation arrangements
-										</CardDescription>
-									</CardHeader>
-									<CardContent className="space-y-6">
-										{/* To Destination */}
-										<div className="space-y-3">
-											<Label className="text-base font-medium">
-												To Destination
-											</Label>
-											<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-												<FormField
-													control={form.control}
-													name="transportation.toDestination.mode"
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>
-																Mode of Transport
-															</FormLabel>
-															<Select
-																onValueChange={
-																	field.onChange
-																}
-																defaultValue={field.value}
-															>
-																<FormControl>
-																	<SelectTrigger>
-																		<SelectValue />
-																	</SelectTrigger>
-																</FormControl>
-																<SelectContent>
-																	<SelectItem value="flight">
-																		Flight
-																	</SelectItem>
-																	<SelectItem value="train">
-																		Train
-																	</SelectItem>
-																	<SelectItem value="bus">
-																		Bus
-																	</SelectItem>
-																	<SelectItem value="car">
-																		Car
-																	</SelectItem>
-																	<SelectItem value="ship">
-																		Ship
-																	</SelectItem>
-																</SelectContent>
-															</Select>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name="transportation.toDestination.details"
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>Details</FormLabel>
-															<FormControl>
-																<Input
-																	placeholder="e.g., Economy class, Direct flight"
-																	{...field}
-																/>
-															</FormControl>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name="transportation.toDestination.included"
-													render={({ field }) => (
-														<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-															<FormControl>
-																<Checkbox
-																	checked={field.value}
-																	onCheckedChange={
-																		field.onChange
-																	}
-																/>
-															</FormControl>
-															<div className="space-y-1 leading-none">
-																<FormLabel>
-																	Included in Package
-																</FormLabel>
-															</div>
-														</FormItem>
-													)}
-												/>
-											</div>
-										</div>
-
-										{/* From Destination */}
-										<div className="space-y-3">
-											<Label className="text-base font-medium">
-												From Destination
-											</Label>
-											<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-												<FormField
-													control={form.control}
-													name="transportation.fromDestination.mode"
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>
-																Mode of Transport
-															</FormLabel>
-															<Select
-																onValueChange={
-																	field.onChange
-																}
-																defaultValue={field.value}
-															>
-																<FormControl>
-																	<SelectTrigger>
-																		<SelectValue />
-																	</SelectTrigger>
-																</FormControl>
-																<SelectContent>
-																	<SelectItem value="flight">
-																		Flight
-																	</SelectItem>
-																	<SelectItem value="train">
-																		Train
-																	</SelectItem>
-																	<SelectItem value="bus">
-																		Bus
-																	</SelectItem>
-																	<SelectItem value="car">
-																		Car
-																	</SelectItem>
-																	<SelectItem value="ship">
-																		Ship
-																	</SelectItem>
-																</SelectContent>
-															</Select>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name="transportation.fromDestination.details"
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>Details</FormLabel>
-															<FormControl>
-																<Input
-																	placeholder="e.g., Economy class, Direct flight"
-																	{...field}
-																/>
-															</FormControl>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name="transportation.fromDestination.included"
-													render={({ field }) => (
-														<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-															<FormControl>
-																<Checkbox
-																	checked={field.value}
-																	onCheckedChange={
-																		field.onChange
-																	}
-																/>
-															</FormControl>
-															<div className="space-y-1 leading-none">
-																<FormLabel>
-																	Included in Package
-																</FormLabel>
-															</div>
-														</FormItem>
-													)}
-												/>
-											</div>
-										</div>
-
-										{/* During Trip */}
-										<div className="space-y-3">
-											<Label className="text-base font-medium">
-												During Trip
-											</Label>
-											<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-												<FormField
-													control={form.control}
-													name="transportation.duringTrip.mode"
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>
-																Mode of Transport
-															</FormLabel>
-															<Select
-																onValueChange={
-																	field.onChange
-																}
-																defaultValue={field.value}
-															>
-																<FormControl>
-																	<SelectTrigger>
-																		<SelectValue />
-																	</SelectTrigger>
-																</FormControl>
-																<SelectContent>
-																	<SelectItem value="bus">
-																		Bus
-																	</SelectItem>
-																	<SelectItem value="car">
-																		Car
-																	</SelectItem>
-																	<SelectItem value="train">
-																		Train
-																	</SelectItem>
-																	<SelectItem value="boat">
-																		Boat
-																	</SelectItem>
-																	<SelectItem value="walking">
-																		Walking
-																	</SelectItem>
-																	<SelectItem value="mixed">
-																		Mixed
-																	</SelectItem>
-																</SelectContent>
-															</Select>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name="transportation.duringTrip.details"
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>Details</FormLabel>
-															<FormControl>
-																<Input
-																	placeholder="e.g., Air-conditioned coach, Private transfers"
-																	{...field}
-																/>
-															</FormControl>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name="transportation.duringTrip.included"
-													render={({ field }) => (
-														<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-															<FormControl>
-																<Checkbox
-																	checked={field.value}
-																	onCheckedChange={
-																		field.onChange
-																	}
-																/>
-															</FormControl>
-															<div className="space-y-1 leading-none">
-																<FormLabel>
-																	Included in Package
-																</FormLabel>
-															</div>
-														</FormItem>
-													)}
-												/>
-											</div>
-										</div>
-									</CardContent>
-								</Card>
-
-								{/* Package Location */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Package Location</CardTitle>
-										<CardDescription>
-											Specify if this is an international or local
-											package
-										</CardDescription>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<FormField
-											control={form.control}
-											name="packageLocation.type"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Package Type</FormLabel>
-													<Select
-														onValueChange={field.onChange}
-														defaultValue={field.value}
-													>
-														<FormControl>
-															<SelectTrigger>
-																<SelectValue />
-															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															<SelectItem value="international">
-																International
-															</SelectItem>
-															<SelectItem value="local">
-																Local/Domestic
-															</SelectItem>
-														</SelectContent>
-													</Select>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={form.control}
-											name="packageLocation.country"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Country</FormLabel>
-													<FormControl>
-														<Input
-															placeholder="e.g., Indonesia, India, Thailand"
-															{...field}
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										{form.watch("packageLocation.type") ===
-											"local" && (
-											<FormField
-												control={form.control}
-												name="packageLocation.state"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>
-															State/Region
-														</FormLabel>
-														<Select
-															onValueChange={field.onChange}
-															defaultValue={field.value}
-														>
-															<FormControl>
-																<SelectTrigger>
-																	<SelectValue placeholder="Select state" />
-																</SelectTrigger>
-															</FormControl>
-															<SelectContent>
-																{indianStates.map(
-																	(state) => (
-																		<SelectItem
-																			key={state}
-																			value={state}
-																		>
-																			{state}
-																		</SelectItem>
-																	)
-																)}
-															</SelectContent>
-														</Select>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-										)}
-									</CardContent>
-								</Card>
-
-								{/* Document Requirements */}
-								<Card>
-									<CardHeader>
-										<div className="flex justify-between items-center">
-											<div>
-												<CardTitle>
-													Document Requirements
-												</CardTitle>
-												<CardDescription>
-													Specify documents required for
-													travelers
-												</CardDescription>
-											</div>
-											<Button
-												type="button"
-												onClick={() =>
-													appendDocument({
-														name: "",
-														description: "",
-														mandatory: true,
-														applicableFor: "all",
-													})
-												}
-												size="sm"
-											>
-												<Plus className="w-4 h-4 mr-2" />
-												Add Document
-											</Button>
-										</div>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										{documentFields.map((field, index) => (
-											<div
-												key={field.id}
-												className="border rounded-lg p-4 space-y-3"
-											>
-												<div className="flex justify-between items-center">
-													<h4 className="font-medium">
-														Document Requirement
-													</h4>
-													{documentFields.length > 1 && (
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																removeDocument(index)
-															}
-														>
-															<Trash2 className="w-4 h-4" />
-														</Button>
-													)}
-												</div>
-
-												<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-													<FormField
-														control={form.control}
-														name={`documentRequirements.${index}.name`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Document Name
-																</FormLabel>
-																<FormControl>
-																	<Input
-																		placeholder="e.g., Valid Passport"
-																		{...field}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-													<FormField
-														control={form.control}
-														name={`documentRequirements.${index}.applicableFor`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Applicable For
-																</FormLabel>
-																<Select
-																	onValueChange={
-																		field.onChange
-																	}
-																	defaultValue={
-																		field.value
-																	}
-																>
-																	<FormControl>
-																		<SelectTrigger>
-																			<SelectValue />
-																		</SelectTrigger>
-																	</FormControl>
-																	<SelectContent>
-																		<SelectItem value="all">
-																			All Travelers
-																		</SelectItem>
-																		<SelectItem value="adults">
-																			Adults Only
-																		</SelectItem>
-																		<SelectItem value="children">
-																			Children Only
-																		</SelectItem>
-																	</SelectContent>
-																</Select>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-												</div>
-
-												<FormField
-													control={form.control}
-													name={`documentRequirements.${index}.description`}
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>
-																Description
-															</FormLabel>
-															<FormControl>
-																<Input
-																	placeholder="e.g., Passport valid for at least 6 months from travel date"
-																	{...field}
-																/>
-															</FormControl>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-
-												<FormField
-													control={form.control}
-													name={`documentRequirements.${index}.mandatory`}
-													render={({ field }) => (
-														<FormItem className="flex flex-row items-start space-x-3 space-y-0">
-															<FormControl>
-																<Checkbox
-																	checked={field.value}
-																	onCheckedChange={
-																		field.onChange
-																	}
-																/>
-															</FormControl>
-															<div className="space-y-1 leading-none">
-																<FormLabel>
-																	Mandatory Document
-																</FormLabel>
-															</div>
-														</FormItem>
-													)}
-												/>
-											</div>
-										))}
-
-										{/* Document Categories */}
-										<div className="mt-6 p-4  rounded-lg">
-											<h4 className="font-medium mb-3">
-												Document Categories
-											</h4>
-											<div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-												<div>
-													<h5 className="font-medium text-primary mb-2">
-														Adults Documents
-													</h5>
-													<ul className="space-y-1 ">
-														{form
-															.watch("documentRequirements")
-															?.filter(
-																(doc) =>
-																	doc.applicableFor ===
-																		"adults" ||
-																	doc.applicableFor ===
-																		"all"
-															)
-															.map((doc, index) => (
-																<li key={index}>
-																	• {doc.name}
-																</li>
-															))}
-													</ul>
-												</div>
-												<div>
-													<h5 className="font-medium text-primary mb-2">
-														Children Documents
-													</h5>
-													<ul className="space-y-1 ">
-														{form
-															.watch("documentRequirements")
-															?.filter(
-																(doc) =>
-																	doc.applicableFor ===
-																		"children" ||
-																	doc.applicableFor ===
-																		"all"
-															)
-															.map((doc, index) => (
-																<li key={index}>
-																	• {doc.name}
-																</li>
-															))}
-													</ul>
-												</div>
-												<div>
-													<h5 className="font-medium text-primary mb-2">
-														Mandatory
-													</h5>
-													<ul className="space-y-1 ">
-														{form
-															.watch("documentRequirements")
-															?.filter(
-																(doc) => doc.mandatory
-															)
-															.map((doc, index) => (
-																<li key={index}>
-																	• {doc.name}
-																</li>
-															))}
-													</ul>
-												</div>
-											</div>
-										</div>
-									</CardContent>
-								</Card>
-
-								{/* Pre-Trip Checklist - Not Needed */}
-								<Card>
-									<CardHeader>
-										<div className="flex justify-between items-center">
-											<div>
-												<CardTitle>Pre-Trip Checklist</CardTitle>
-												<CardDescription>
-													Tasks for operators to complete before
-													departure
-												</CardDescription>
-											</div>
-											<div className="flex gap-2">
-												<Button
-													type="button"
-													variant="outline"
-													onClick={addDocumentsToChecklist}
-													size="sm"
-												>
-													<Plus className="w-4 h-4 mr-2" />
-													Add Documents
-												</Button>
-												<Button
-													type="button"
-													onClick={() =>
-														appendChecklist({
-															task: "",
-															description: "",
-															category: "preparation",
-															dueDate: "1_week_before",
-															completed: false,
-														})
-													}
-													size="sm"
-												>
-													<Plus className="w-4 h-4 mr-2" />
-													Add Task
-												</Button>
-											</div>
-										</div>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										{checklistFields.map((field, index) => (
-											<div
-												key={field.id}
-												className="border rounded-lg p-4 space-y-3"
-											>
-												<div className="flex justify-between items-center">
-													<div className="flex items-center gap-2">
-														<h4 className="font-medium">
-															Checklist Item
-														</h4>
-														<Badge
-															variant={
-																form.watch(
-																	`preTripChecklist.${index}.category`
-																) === "documents"
-																	? "default"
-																	: "secondary"
-															}
-														>
-															{form.watch(
-																`preTripChecklist.${index}.category`
-															)}
-														</Badge>
-													</div>
-													{checklistFields.length > 1 && (
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																removeChecklist(index)
-															}
-														>
-															<Trash2 className="w-4 h-4" />
-														</Button>
-													)}
-												</div>
-
-												<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-													<FormField
-														control={form.control}
-														name={`preTripChecklist.${index}.task`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Task
-																</FormLabel>
-																<FormControl>
-																	<Input
-																		placeholder="e.g., Collect all documents"
-																		{...field}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-													<FormField
-														control={form.control}
-														name={`preTripChecklist.${index}.category`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Category
-																</FormLabel>
-																<Select
-																	onValueChange={
-																		field.onChange
-																	}
-																	defaultValue={
-																		field.value
-																	}
-																>
-																	<FormControl>
-																		<SelectTrigger>
-																			<SelectValue />
-																		</SelectTrigger>
-																	</FormControl>
-																	<SelectContent>
-																		<SelectItem value="documents">
-																			Documents
-																		</SelectItem>
-																		<SelectItem value="booking">
-																			Booking
-																		</SelectItem>
-																		<SelectItem value="preparation">
-																			Preparation
-																		</SelectItem>
-																		<SelectItem value="communication">
-																			Communication
-																		</SelectItem>
-																	</SelectContent>
-																</Select>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-												</div>
-
-												<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-													<FormField
-														control={form.control}
-														name={`preTripChecklist.${index}.description`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Description
-																</FormLabel>
-																<FormControl>
-																	<Input
-																		placeholder="Detailed description of the task"
-																		{...field}
-																	/>
-																</FormControl>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-													<FormField
-														control={form.control}
-														name={`preTripChecklist.${index}.dueDate`}
-														render={({ field }) => (
-															<FormItem>
-																<FormLabel>
-																	Due Date
-																</FormLabel>
-																<Select
-																	onValueChange={
-																		field.onChange
-																	}
-																	defaultValue={
-																		field.value
-																	}
-																>
-																	<FormControl>
-																		<SelectTrigger>
-																			<SelectValue />
-																		</SelectTrigger>
-																	</FormControl>
-																	<SelectContent>
-																		<SelectItem value="30_days_before">
-																			30 Days Before
-																		</SelectItem>
-																		<SelectItem value="2_weeks_before">
-																			2 Weeks Before
-																		</SelectItem>
-																		<SelectItem value="1_week_before">
-																			1 Week Before
-																		</SelectItem>
-																		<SelectItem value="3_days_before">
-																			3 Days Before
-																		</SelectItem>
-																		<SelectItem value="departure_day">
-																			Departure Day
-																		</SelectItem>
-																	</SelectContent>
-																</Select>
-																<FormMessage />
-															</FormItem>
-														)}
-													/>
-												</div>
-											</div>
-										))}
-									</CardContent>
-								</Card>
-							</div>
-
-							{/* Sidebar */}
-							<div className="space-y-6">
-								{/* Actions */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Actions</CardTitle>
-									</CardHeader>
-									<CardContent className="space-y-2">
-										{isEditing && (
-											<Button
-												type="button"
-												variant="outline"
-												className="w-full bg-transparent cursor-pointer"
-												onClick={async () => {
-													const result =
-														await validatePackage();
-													if (result.isValid) {
-														toast.success(
-															"Package validation passed!"
-														);
-														setValidationErrors([]);
-													} else {
-														setValidationErrors(
-															result.errors
-														);
-														toast.error(
-															"Package validation failed. Please check the errors below."
-														);
-													}
-												}}
-												disabled={isLoading || isValidating}
-											>
-												{isValidating ? (
-													<Loader2 className="w-4 h-4 mr-2 animate-spin" />
-												) : (
-													<AlertCircle className="w-4 h-4 mr-2" />
-												)}
-												{isValidating
-													? "Validating..."
-													: "Validate Package"}
-											</Button>
-										)}
-										<Button
-											type="button"
-											variant="outline"
-											className="w-full bg-transparent cursor-pointer"
-											onClick={handleSaveAsDraft}
-											disabled={isLoading}
-										>
-											<Save className="w-4 h-4 mr-2" />
-											Save as Draft
-										</Button>
-										{isEditing &&
-											form.watch(`status`) === "draft" && (
-												<AlertDialog
-													open={isDeleteAlertOpen}
-													onOpenChange={setIsDeleteAlertOpen}
-												>
-													<Button
-														type="button"
-														variant="destructive"
-														className="w-full bg-transparent cursor-pointer"
-														onClick={() =>
-															setIsDeleteAlertOpen(true)
-														}
-														disabled={isLoading}
-													>
-														<Trash className="w-4 h-4 mr-2" />
-														Delete the draft
-													</Button>
-													<AlertDialogContent>
-														<AlertDialogHeader>
-															<AlertDialogTitle>
-																Are you absolutely sure?
-															</AlertDialogTitle>
-															<AlertDialogDescription>
-																This action cannot be
-																undone. This will
-																permanently delete this
-																package data from our
-																servers.
-															</AlertDialogDescription>
-														</AlertDialogHeader>
-														<AlertDialogFooter>
-															<AlertDialogCancel className="cursor-pointer">
-																Cancel
-															</AlertDialogCancel>
-															<AlertDialogAction
-																onClick={() =>
-																	deletePackage()
-																}
-																className="flex items-center justify-between cursor-pointer"
-															>
-																Continue
-																{isDeletionLoading && (
-																	<Loader2 className="animate-spin" />
-																)}
-															</AlertDialogAction>
-														</AlertDialogFooter>
-													</AlertDialogContent>
-												</AlertDialog>
-											)}
-										<Button
-											type="button"
-											className="w-full cursor-pointer"
-											onClick={() =>
-												form.handleSubmit(handlePublish)()
-											}
-											disabled={
-												isLoading ||
-												isValidating ||
-												getTotalPaymentAmount() !==
-													form.watch("price")
-											}
-										>
-											{isValidating ? (
-												<Loader2 className="w-4 h-4 mr-2 animate-spin" />
-											) : (
-												<Eye className="w-4 h-4 mr-2" />
-											)}
-											{isValidating
-												? "Validating..."
-												: isEditing
-												? "Update & Publish"
-												: "Publish Package"}
-										</Button>
-										{getTotalPaymentAmount() !==
-											form.watch("price") && (
-											<p className="text-sm text-red-500 mt-2">
-												Payment structure must total exactly ₹
-												{form.watch("price") || 0} to publish
-											</p>
-										)}
-									</CardContent>
-								</Card>
-
-								{/* Inclusions */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Inclusions</CardTitle>
-										<CardDescription>
-											What's included in the package
-										</CardDescription>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div className="flex gap-2">
-											<Input
-												placeholder="Add inclusion..."
-												value={newInclusion}
-												onChange={(e) =>
-													setNewInclusion(e.target.value)
-												}
-												onKeyPress={(e) =>
-													e.key === "Enter" && addInclusion()
-												}
-											/>
-											<Button
-												type="button"
-												onClick={addInclusion}
-												size="sm"
-											>
-												<Plus className="w-4 h-4" />
-											</Button>
-										</div>
-										<div className="space-y-2">
-											{form
-												.watch("inclusions")
-												?.map((inclusion, index) => (
-													<div
-														key={index}
-														className="flex items-center justify-between"
-													>
-														<Badge variant="secondary">
-															{inclusion}
-														</Badge>
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																removeInclusion(index)
-															}
-														>
-															<Trash2 className="w-4 h-4" />
-														</Button>
-													</div>
-												))}
-										</div>
-									</CardContent>
-								</Card>
-
-								{/* Exclusions */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Exclusions</CardTitle>
-										<CardDescription>
-											What's not included
-										</CardDescription>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div className="flex gap-2">
-											<Input
-												placeholder="Add exclusion..."
-												value={newExclusion}
-												onChange={(e) =>
-													setNewExclusion(e.target.value)
-												}
-												onKeyPress={(e) =>
-													e.key === "Enter" && addExclusion()
-												}
-											/>
-											<Button
-												type="button"
-												onClick={addExclusion}
-												size="sm"
-											>
-												<Plus className="w-4 h-4" />
-											</Button>
-										</div>
-										<div className="space-y-2">
-											{form
-												.watch("exclusions")
-												?.map((exclusion, index) => (
-													<div
-														key={index}
-														className="flex items-center justify-between"
-													>
-														<Badge variant="outline">
-															{exclusion}
-														</Badge>
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																removeExclusion(index)
-															}
-														>
-															<Trash2 className="w-4 h-4" />
-														</Button>
-													</div>
-												))}
-										</div>
-									</CardContent>
-								</Card>
-
-								{/* Package Summary */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Package Summary</CardTitle>
-									</CardHeader>
-									<CardContent className="space-y-2">
-										<div className="flex justify-between">
-											<span className="text-sm ">Status:</span>
-											<Badge
-												variant={
-													form.watch("status") === "published"
-														? "default"
-														: "secondary"
-												}
-											>
-												{form.watch("status")}
-											</Badge>
-										</div>
-										<div className="flex justify-between">
-											<span className="text-sm ">Duration:</span>
-											<span className="text-sm font-medium">
-												{form.watch("duration") || "Not set"}
-											</span>
-										</div>
-										<div className="flex justify-between">
-											<span className="text-sm ">Price:</span>
-											<span className="text-sm font-medium">
-												{form.watch("price")
-													? `₹${form.watch("price")}`
-													: "Not set"}
-											</span>
-										</div>
-										<div className="flex justify-between">
-											<span className="text-sm ">Max Guests:</span>
-											<span className="text-sm font-medium">
-												{form.watch("maxGuests") || "Not set"}
-											</span>
-										</div>
-										<div className="flex justify-between">
-											<span className="text-sm ">
-												Itinerary Days:
-											</span>
-											<span className="text-sm font-medium">
-												{form.watch("itinerary")?.length || 0}
-											</span>
-										</div>
-										<div className="flex justify-between">
-											<span className="text-sm ">
-												Payment Structure:
-											</span>
-											<Badge
-												variant={
-													getTotalPaymentAmount() ===
-													form.watch("price")
-														? "default"
-														: "destructive"
-												}
-											>
-												₹{getTotalPaymentAmount().toFixed(2)}
-											</Badge>
-										</div>
-										<div className="flex justify-between">
-											<span className="text-sm ">
-												Cancellation Tiers:
-											</span>
-											<span className="text-sm font-medium">
-												{form.watch("cancellationStructure")
-													?.length || 0}
-											</span>
-										</div>
-										<div className="flex justify-between">
-											<span className="text-sm ">
-												Package Type:
-											</span>
-											<Badge
-												variant={
-													form.watch("packageLocation.type") ===
-													"international"
-														? "default"
-														: "secondary"
-												}
-											>
-												{form.watch("packageLocation.type")}
-											</Badge>
-										</div>
-										{form.watch("packageLocation.state") && (
-											<div className="flex justify-between">
-												<span className="text-sm ">State:</span>
-												<span className="text-sm font-medium">
-													{form.watch("packageLocation.state")}
-												</span>
-											</div>
-										)}
-										<div className="flex justify-between">
-											<span className="text-sm ">
-												Documents Required:
-											</span>
-											<span className="text-sm font-medium">
-												{form.watch("documentRequirements")
-													?.length || 0}
-											</span>
-										</div>
-										<div className="flex justify-between">
-											<span className="text-sm ">
-												Checklist Items:
-											</span>
-											<span className="text-sm font-medium">
-												{form.watch("preTripChecklist")?.length ||
-													0}
-											</span>
-										</div>
-									</CardContent>
-								</Card>
-							</div>
-						</div>
-					</div>
-				</form>
-			</Form>
-		</div>
-	);
+    const navigate = useNavigate();
+    const [currentStep, setCurrentStep] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [packageId, setPackageId] = useState<string | undefined>(
+        initialPackageId,
+    );
+    const [thumbnailFile, setThumbnailFile] = useState<string>();
+    const [itineraryPreviewUrls, setItineraryPreviewUrls] = useState<
+        Record<number, string[]>
+    >({});
+    const [existingItineraryImages, setExistingItineraryImages] = useState<
+        Record<number, string[]>
+    >({});
+    const [packageData, setPackageData] = useState<IPackages | null>(null);
+
+    const form = useForm<PackageFormData>({
+        resolver: zodResolver(packageFormSchema),
+        defaultValues,
+    });
+
+    const [loadedSections, setLoadedSections] = useState<Set<string>>(
+        new Set(),
+    );
+
+    const transformBackendDataToForm = useCallback(
+        (backendData: Partial<IPackages>) => {
+            const transformed: any = { ...backendData };
+
+            if (backendData.price !== undefined)
+                transformed.price = Number(backendData.price) || 0;
+            if (backendData.maxGuests !== undefined)
+                transformed.maxGuests = Number(backendData.maxGuests) || 0;
+
+            if (backendData.inclusions !== undefined) {
+                transformed.inclusions =
+                    backendData.inclusions?.map((inc: any) =>
+                        typeof inc === "object" ? inc?.item : inc,
+                    ) || [];
+            }
+            if (backendData.exclusions !== undefined) {
+                transformed.exclusions =
+                    backendData.exclusions?.map((exc: any) =>
+                        typeof exc === "object" ? exc?.item : exc,
+                    ) || [];
+            }
+
+            if (backendData.itinerary !== undefined) {
+                transformed.itinerary = backendData.itinerary?.map(
+                    (iti, index) => {
+                        const { images, ...rest } = iti;
+                        if (images && Array.isArray(images)) {
+                            setExistingItineraryImages((prev) => ({
+                                ...prev,
+                                [index]: images,
+                            }));
+                            const urls = images.map((img) =>
+                                getFileUrl(getServeFileUrl(img)),
+                            );
+                            setItineraryPreviewUrls((prev) => ({
+                                ...prev,
+                                [index]: urls,
+                            }));
+                        }
+                        return { ...rest, images: [] };
+                    },
+                );
+            }
+
+            if (backendData.paymentStructure !== undefined) {
+                transformed.paymentStructure =
+                    backendData.paymentStructure?.map((pay) => ({
+                        ...pay,
+                        amount: parseFloat(pay.amount?.toString() ?? "0"),
+                    }));
+            }
+
+            if (backendData.cancellationStructure !== undefined) {
+                transformed.cancellationStructure =
+                    backendData.cancellationStructure?.map((can) => ({
+                        ...can,
+                        amount: parseFloat(can.amount?.toString() ?? "0"),
+                    }));
+            }
+
+            if (backendData.cancellationPolicy !== undefined) {
+                transformed.cancellationPolicy =
+                    backendData.cancellationPolicy?.map(
+                        (can: any) => can.text || can,
+                    ) || [];
+            }
+
+            if (backendData.preTripChecklist !== undefined) {
+                transformed.preTripChecklist =
+                    backendData.preTripChecklist?.map((item: any) => ({
+                        ...item,
+                        dueDate: item.dueDate?.toString() || "",
+                    })) || [];
+            }
+
+            return transformed as Partial<PackageFormData>;
+        },
+        [],
+    );
+
+    const fetchSection = useCallback(
+        async (section: string) => {
+            if (!packageId || loadedSections.has(section)) return;
+
+            try {
+                setIsLoading(true);
+                const res = await axiosInstance.get<any>(
+                    `/packages/${packageId}/${section}`,
+                );
+                if (res.data) {
+                    const currentValues = form.getValues();
+
+                    // The itinerary endpoint returns an array, but transformBackendDataToForm expects Partial<IPackages>
+                    const dataToTransform =
+                        section === "itinerary" && Array.isArray(res.data)
+                            ? { itinerary: res.data }
+                            : res.data;
+
+                    const transformed =
+                        transformBackendDataToForm(dataToTransform);
+
+                    // Use reset with merged values to maintain form state while updating with fetched data
+                    form.reset({
+                        ...currentValues,
+                        ...transformed,
+                    });
+
+                    // Special state updates
+                    if (section === "basic") {
+                        if (res.data.thumbnail) {
+                            setThumbnailFile(
+                                getFileUrl(getServeFileUrl(res.data.thumbnail)),
+                            );
+                        }
+                        if (res.data.id) setPackageId(res.data.id);
+                    }
+
+                    setPackageData(
+                        (prev) =>
+                            ({
+                                ...(prev || {}),
+                                ...res.data,
+                            }) as IPackages,
+                    );
+                    setLoadedSections((prev) => new Set(prev).add(section));
+                }
+            } catch (error) {
+                console.error(`Failed to load ${section} data:`, error);
+                toast.error(`Failed to load ${section} details`);
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [packageId, loadedSections, form, transformBackendDataToForm],
+    );
+
+    // Progressive loading effect based on currentStep
+    useEffect(() => {
+        if (!isEditing || !packageId) return;
+
+        const loadSectionForStep = async () => {
+            // Always ensure basic is loaded for context
+            if (!loadedSections.has("basic")) {
+                await fetchSection("basic");
+            }
+
+            if (currentStep === 0 || currentStep === 1) {
+                // Done (basic already loading/loaded above)
+            } else if (currentStep === 2) {
+                await fetchSection("itinerary");
+            } else if (currentStep === 3) {
+                await fetchSection("logistics");
+            } else if (currentStep === 4) {
+                await fetchSection("payments-cancellation");
+            } else if (currentStep === 5) {
+                await fetchSection("requirements");
+            } else if (currentStep === 6) {
+                // For review step, ensure everything is loaded
+                const sections = [
+                    "itinerary",
+                    "logistics",
+                    "payments-cancellation",
+                    "requirements",
+                ];
+                for (const section of sections) {
+                    await fetchSection(section);
+                }
+            }
+        };
+
+        loadSectionForStep();
+    }, [currentStep, isEditing, packageId, fetchSection]);
+
+    const packageFormDataToFormData = (
+        data: PackageFormData,
+        keysToInclude?: Set<string>,
+    ): FormData => {
+        const formData = new FormData();
+        const appendIfDefined = (key: string, value: any) => {
+            if (value !== undefined && value !== null) {
+                if (value instanceof File) formData.append(key, value);
+                else if (Array.isArray(value) || typeof value === "object")
+                    formData.append(key, JSON.stringify(value));
+                else formData.append(key, String(value));
+            }
+        };
+
+        Object.keys(data).forEach((key) => {
+            if (keysToInclude && !keysToInclude.has(key)) return;
+
+            if (key !== "itinerary" && key !== "thumbnail") {
+                appendIfDefined(key, (data as any)[key]);
+            }
+        });
+
+        if (!keysToInclude || keysToInclude.has("thumbnail")) {
+            appendIfDefined("thumbnail", data.thumbnail);
+        }
+
+        if (!keysToInclude || keysToInclude.has("itinerary")) {
+            const itineraryData = data.itinerary?.map((val, idx) => {
+                const { images: _, ...rest } = val;
+                const existing = existingItineraryImages[idx] || [];
+                return { ...rest, images: [...existing] };
+            });
+            appendIfDefined("itinerary", itineraryData);
+
+            data.itinerary?.forEach((day, idx) => {
+                day.images?.forEach((file, fidx) => {
+                    if (file instanceof File) {
+                        formData.append(
+                            `itinerary[${idx}].images[${fidx}]`,
+                            file,
+                        );
+                    }
+                });
+            });
+        }
+
+        return formData;
+    };
+
+    const saveDraft = async (
+        data: PackageFormData,
+        isExplicitPublish = false,
+    ) => {
+        setIsSaving(true);
+        try {
+            const updateData = { ...data };
+
+            // If we are just saving progress and it's already published/edited,
+            // we don't want to send 'published' status because that triggers
+            // a full update in the backend. We want it to stay 'edited'.
+            if (
+                !isExplicitPublish &&
+                (updateData.status === "published" ||
+                    updateData.status === "edited")
+            ) {
+                delete (updateData as any).status;
+            }
+
+            // For new packages, default to draft
+            if (!updateData.status && !packageId) {
+                updateData.status = "draft";
+            }
+
+            // Determine which keys to include in the save
+            let keysToInclude: Set<string> | undefined;
+            if (packageId && !isExplicitPublish) {
+                const stepKey =
+                    currentStep === 0 || currentStep === 1
+                        ? "basic"
+                        : currentStep === 2
+                          ? "itinerary"
+                          : currentStep === 3
+                            ? "logistics"
+                            : currentStep === 4
+                              ? "payments-cancellation"
+                              : currentStep === 5
+                                ? "requirements"
+                                : "all";
+
+                if (stepKey !== "all") {
+                    const sections = new Set(loadedSections);
+                    sections.add(stepKey);
+                    keysToInclude = new Set(
+                        Array.from(sections).flatMap(
+                            (s) => SECTION_KEYS[s] || [],
+                        ),
+                    );
+                }
+            }
+
+            const formData = packageFormDataToFormData(
+                updateData,
+                keysToInclude,
+            );
+            let response;
+            if (packageId) {
+                response = await axiosInstance.patch(
+                    `/packages/${packageId}`,
+                    formData,
+                    {
+                        headers: { "Content-Type": "multipart/form-data" },
+                    },
+                );
+            } else {
+                response = await axiosInstance.post(`/packages`, formData, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+            }
+            if (response.data) {
+                if (!packageId) {
+                    setPackageId(response.data.id);
+                    // Update URL without refreshing if it's a new package
+                    window.history.replaceState(
+                        null,
+                        "",
+                        `/packages/${response.data.id}/edit`,
+                    );
+                }
+                setPackageData(response.data);
+                // Also update the form status if it changed
+                if (response.data.status) {
+                    form.setValue("status", response.data.status);
+                }
+                return true;
+            }
+            return false;
+        } catch (error) {
+            toast.error("Failed to save progress");
+            return false;
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleNext = async () => {
+        const success = await saveDraft(form.getValues());
+        if (success) {
+            setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+            window.scrollTo(0, 0);
+        }
+    };
+
+    const handleBack = () => {
+        setCurrentStep((prev) => Math.max(prev - 1, 0));
+        window.scrollTo(0, 0);
+    };
+
+    const handlePublish = async () => {
+        const data = form.getValues();
+        data.status = "published";
+        const success = await saveDraft(data, true);
+        if (success) {
+            toast.success("Package published successfully!");
+            onSuccess?.();
+            navigate("/packages");
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!packageId) return;
+        setIsSaving(true);
+        try {
+            await axiosInstance.delete(`/packages/${packageId}`);
+            toast.success("Package deleted successfully");
+            navigate("/packages");
+        } catch (error) {
+            toast.error("Failed to delete package");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleArchive = async () => {
+        if (!packageId) return;
+        setIsSaving(true);
+        try {
+            const formData = new FormData();
+            formData.append("status", "archived");
+            const response = await axiosInstance.patch(
+                `/packages/${packageId}`,
+                formData,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                },
+            );
+            if (response.data) {
+                toast.success("Package archived successfully");
+                setPackageData(response.data);
+                navigate("/packages");
+            }
+        } catch (error) {
+            toast.error("Failed to archive package");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleUnpublish = async () => {
+        if (!packageId) return;
+        setIsSaving(true);
+        try {
+            const isEdited = packageData?.status === "edited";
+            const newStatus = isEdited ? "published" : "draft";
+
+            const formData = new FormData();
+            formData.append("status", newStatus);
+            const response = await axiosInstance.patch(
+                `/packages/${packageId}`,
+                formData,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                },
+            );
+            if (response.data) {
+                toast.success(
+                    isEdited
+                        ? "Changes discarded successfully"
+                        : "Package unpublished and moved to draft",
+                );
+                setPackageData(response.data);
+                form.setValue("status", newStatus);
+            }
+        } catch (error) {
+            toast.error("Failed to unpublish package");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) =>
+                setThumbnailFile(ev.target?.result as string);
+            reader.readAsDataURL(file);
+            form.setValue("thumbnail", file);
+        }
+    };
+
+    const handleDayImageUpload = (
+        dayIndex: number,
+        e: React.ChangeEvent<HTMLInputElement>,
+    ) => {
+        const files = Array.from(e.target.files || []);
+        const urls = files.map((f) => URL.createObjectURL(f));
+        setItineraryPreviewUrls((prev) => ({
+            ...prev,
+            [dayIndex]: [...(prev[dayIndex] || []), ...urls],
+        }));
+        const current = form.getValues(`itinerary.${dayIndex}.images`) || [];
+        form.setValue(`itinerary.${dayIndex}.images`, [...current, ...files]);
+    };
+
+    const removeDayImage = (dayIndex: number, imageIndex: number) => {
+        const existing = existingItineraryImages[dayIndex] || [];
+        const isExisting = imageIndex < existing.length;
+        if (isExisting) {
+            setExistingItineraryImages((prev) => ({
+                ...prev,
+                [dayIndex]: existing.filter((_, i) => i !== imageIndex),
+            }));
+        } else {
+            const formImages =
+                form.getValues(`itinerary.${dayIndex}.images`) || [];
+            const newIndex = imageIndex - existing.length;
+            form.setValue(
+                `itinerary.${dayIndex}.images`,
+                formImages.filter((_, i) => i !== newIndex),
+            );
+        }
+        setItineraryPreviewUrls((prev) => ({
+            ...prev,
+            [dayIndex]: (prev[dayIndex] || []).filter(
+                (_, i) => i !== imageIndex,
+            ),
+        }));
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                <p className="text-muted-foreground animate-pulse">
+                    Loading package details...
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="max-w-5xl mx-auto px-4 py-8">
+            {/* Multi-step Header */}
+            <div className="mb-10">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold">Package Wizard</h2>
+                    {packageId && (
+                        <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            className="text-primary gap-2"
+                            onClick={() => setCurrentStep(STEPS.length - 1)}
+                        >
+                            Skip to Review
+                            <Rocket className="w-4 h-4" />
+                        </Button>
+                    )}
+                </div>
+                <div className="flex justify-between items-center mb-8 relative">
+                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-secondary -z-10 transform -translate-y-1/2" />
+                    {STEPS.map((step, idx) => (
+                        <div
+                            key={idx}
+                            className="flex flex-col items-center gap-2 bg-background px-2"
+                        >
+                            <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer ${
+                                    idx < currentStep
+                                        ? "bg-primary border-primary text-primary-foreground"
+                                        : idx === currentStep
+                                          ? "border-primary text-primary ring-4 ring-primary/10"
+                                          : "bg-background border-muted text-muted-foreground hover:border-primary/50"
+                                }`}
+                                onClick={() => setCurrentStep(idx)}
+                            >
+                                {idx < currentStep ? (
+                                    <CheckCircle2 className="w-6 h-6" />
+                                ) : (
+                                    <span>{idx + 1}</span>
+                                )}
+                            </div>
+                            <span
+                                className={`text-xs font-medium hidden md:block ${idx === currentStep ? "text-primary" : "text-muted-foreground"}`}
+                            >
+                                {step.title}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <Form {...form}>
+                <form className="space-y-8">
+                    {currentStep === 0 && (
+                        <StepBasicInfo
+                            form={form}
+                            thumbnailFile={thumbnailFile}
+                            handleThumbnailUpload={handleThumbnailUpload}
+                            onNext={handleNext}
+                            isLoading={isSaving}
+                        />
+                    )}
+                    {currentStep === 1 && (
+                        <StepDetails
+                            form={form}
+                            onNext={handleNext}
+                            onBack={handleBack}
+                            isLoading={isSaving}
+                        />
+                    )}
+                    {currentStep === 2 && (
+                        <StepItinerary
+                            form={form}
+                            itineraryPreviewUrls={itineraryPreviewUrls}
+                            handleDayImageUpload={handleDayImageUpload}
+                            removeDayImage={removeDayImage}
+                            onNext={handleNext}
+                            onBack={handleBack}
+                            isLoading={isSaving}
+                        />
+                    )}
+                    {currentStep === 3 && (
+                        <StepLogistics
+                            form={form}
+                            onNext={handleNext}
+                            onBack={handleBack}
+                            isLoading={isSaving}
+                        />
+                    )}
+                    {currentStep === 4 && (
+                        <StepFinance
+                            form={form}
+                            onNext={handleNext}
+                            onBack={handleBack}
+                            isLoading={isSaving}
+                        />
+                    )}
+                    {currentStep === 5 && (
+                        <StepRequirements
+                            form={form}
+                            onNext={handleNext}
+                            onBack={handleBack}
+                            isLoading={isSaving}
+                        />
+                    )}
+                    {currentStep === 6 && (
+                        <StepReview
+                            form={form}
+                            onBack={handleBack}
+                            onPublish={handlePublish}
+                            onDelete={handleDelete}
+                            onArchive={handleArchive}
+                            onUnpublish={handleUnpublish}
+                            isLoading={isSaving}
+                            packageData={packageData}
+                        />
+                    )}
+                </form>
+            </Form>
+        </div>
+    );
 }

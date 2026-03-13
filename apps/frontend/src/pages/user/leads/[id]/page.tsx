@@ -16,7 +16,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
-import { preBookingService } from "@/services/pre-booking.service";
 import type { ILead } from "@/types/lead/lead.entity";
 import { format } from "date-fns";
 import { ArrowLeft, Building, Mail, Phone, User } from "lucide-react";
@@ -33,7 +32,6 @@ export default function LeadDetailsPage() {
     const [lead, setLead] = useState<ILead | null>(null);
     const [loading, setLoading] = useState(true);
     const [showEditForm, setShowEditForm] = useState(false);
-    const [isConverting, setIsConverting] = useState(false);
     const [note, setNote] = useState("");
     const [savingNote, setSavingNote] = useState(false);
 
@@ -61,25 +59,6 @@ export default function LeadDetailsPage() {
         toast.success("Lead updated successfully");
     };
 
-    const handleConvert = async () => {
-        if (!lead) return;
-        try {
-            setIsConverting(true);
-            const preBooking = await preBookingService.convertLeadToPreBooking({
-                leadId: lead.id,
-            });
-            toast.success("Lead converted to pre-booking successfully!");
-            navigate(`/pre-bookings?selected=${preBooking.id}`);
-        } catch (error) {
-            if (error instanceof Error) {
-                toast.error(error.message);
-            } else {
-                toast.error("Failed to convert lead");
-            }
-        } finally {
-            setIsConverting(false);
-        }
-    };
 
     const handleSaveNote = async () => {
         if (!lead) return;
@@ -144,12 +123,6 @@ export default function LeadDetailsPage() {
                         onClick={() => setShowEditForm(true)}
                     >
                         Edit
-                    </Button>
-                    <Button
-                        onClick={handleConvert}
-                        disabled={isConverting || lead.status === "converted"}
-                    >
-                        {isConverting ? "Converting..." : "Convert"}
                     </Button>
                 </div>
             </div>

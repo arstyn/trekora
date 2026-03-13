@@ -11,13 +11,17 @@ import Contact from "@/pages/general/contact";
 import Pricing from "@/pages/general/pricing";
 import Team from "@/pages/general/team";
 import Dashboard from "@/pages/user/dashboard";
-import { Leads } from "@/pages/user/leads/page";
 import LeadDetailsPage from "@/pages/user/leads/[id]/page";
+import { Leads } from "@/pages/user/leads/page";
 import CreatePackagePage from "@/pages/user/packages/create-package";
 import EditPackagePage from "@/pages/user/packages/edit-package";
 import Packages from "@/pages/user/packages/package-list";
 import ViewPackagePage from "@/pages/user/packages/view-package";
 import { Route, Routes } from "react-router-dom";
+import ActivatePage from "./pages/auth/activate-account";
+import ActivateUserPage from "./pages/auth/activate-user-account";
+import GoogleCallbackPage from "./pages/auth/google-callback";
+import ResendActivationPage from "./pages/auth/resend-activation";
 import { Home } from "./pages/general/home";
 import BatchesPage from "./pages/user/batches/batches-pages";
 import EditBatchPage from "./pages/user/batches/edit-batch";
@@ -27,17 +31,18 @@ import EditBookingPage from "./pages/user/bookings/edit-booking.page";
 import BookingDetailsPage from "./pages/user/bookings/view-booking.page";
 import { BranchPage } from "./pages/user/branch/branch-page";
 import CustomerManagement from "./pages/user/customers/customer";
+import { EmployeesPage } from "./pages/user/employees/employees-table";
+import TeamHierarchyPage from "./pages/user/employees/team-hierarchy.page";
+import ImportPage from "./pages/user/import/page";
 import EditPaymentPage from "./pages/user/payments/edit-payment.page";
 import PaymentsPage from "./pages/user/payments/payments.page";
 import PaymentDetailsPage from "./pages/user/payments/view-payment.page";
+import PermissionSetsPage from "./pages/user/permissions/permission-sets.page";
+import PermissionsPage from "./pages/user/permissions/permissions.page";
+import AdminOverviewPage from "./pages/user/admin/overview.page";
+import ManagerOverviewPage from "./pages/user/manager/overview.page";
 import SettingsPage from "./pages/user/settings/page";
-import ImportPage from "./pages/user/import/page";
-import ActivatePage from "./pages/auth/activate-account";
-import ResendActivationPage from "./pages/auth/resend-activation";
-import ActivateUserPage from "./pages/auth/activate-user-account";
-import { EmployeesPage } from "./pages/user/employees/employees-table";
-import PreBookingsPage from "./pages/user/pre-bookings/pre-bookings.page";
-import GoogleCallbackPage from "./pages/auth/google-callback";
+import TodosPage from "./pages/user/todos/todos.page";
 
 function AuthenticatedApp() {
     // Add your dashboard and other protected routes here
@@ -50,7 +55,6 @@ function AuthenticatedApp() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/leads" element={<Leads />} />
                     <Route path="/leads/:id" element={<LeadDetailsPage />} />
-                    <Route path="/pre-bookings" element={<PreBookingsPage />} />
                     <Route path="/packages" element={<Packages />} />
                     <Route
                         path="/packages/create"
@@ -63,7 +67,24 @@ function AuthenticatedApp() {
                     <Route path="/packages/:id" element={<ViewPackagePage />} />
                     <Route path="/customers" element={<CustomerManagement />} />
                     <Route path="/settings" element={<SettingsPage />} />
+                    <Route
+                        path="/permission-sets"
+                        element={<PermissionSetsPage />}
+                    />
+                    <Route path="/permissions" element={<PermissionsPage />} />
                     <Route path="/employees" element={<EmployeesPage />} />
+                    <Route
+                        path="/employees/hierarchy"
+                        element={<TeamHierarchyPage />}
+                    />
+                    <Route
+                        path="/admin/overview"
+                        element={<AdminOverviewPage />}
+                    />
+                    <Route
+                        path="/manager/overview"
+                        element={<ManagerOverviewPage />}
+                    />
                     <Route path="/branches" element={<BranchPage />} />
                     <Route path="/batches" element={<BatchesPage />} />
                     <Route path="/batches/:id" element={<BatchDetailsPage />} />
@@ -90,6 +111,7 @@ function AuthenticatedApp() {
                         element={<EditPaymentPage />}
                     />
                     <Route path="/import" element={<ImportPage />} />
+                    <Route path="/todos" element={<TodosPage />} />
                 </Routes>
             </SidebarInset>
         </SidebarProvider>

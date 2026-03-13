@@ -20,7 +20,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
-    "migration:generate": "npm run typeorm -- migration:generate src/database/migrations/InitMigration -d data-source.ts",
+    "migration:generate": "node -e \"const name = process.argv[1] || 'NewMigration'; require('child_process').execSync('npm run typeorm -- migration:generate src/database/migrations/' + name + ' -d data-source.ts', {stdio: 'inherit'})\" --",
     "migration:run": "npm run typeorm -- migration:run -d data-source.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d data-source.ts",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/seed.ts"
@@ -60,7 +60,10 @@
     "socket.io": "^4.8.1",
     "typeorm": "^0.3.25",
     "xlsx": "^0.18.5",
-    "yoctocolors-cjs": "^2.1.2"
+    "yoctocolors-cjs": "^2.1.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
@@ -82,10 +85,10 @@
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "jest": {
     "moduleFileExtensions": [

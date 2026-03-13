@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Lead } from 'src/database/entity/lead.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class LeadService {
   constructor(
     @InjectRepository(Lead)
     private readonly leadRepository: Repository<Lead>,
-  ) {}
+  ) { }
 
   async create(
     user: { organizationId: string; userId: string },
@@ -40,10 +40,41 @@ export class LeadService {
     });
   }
 
+  async findByManagerTeam(organizationId: string, teamUserIds: string[]): Promise<Lead[]> {
+    if (teamUserIds.length === 0) {
+      return [];
+    }
+
+    return this.leadRepository.find({
+      order: { createdAt: 'DESC' },
+      where: {
+        organizationId,
+        createdById: In(teamUserIds),
+      },
+      relations: ['createdBy', 'preferredPackage'],
+      select: {
+        createdBy: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+    });
+  }
+
   async findOne(id: string): Promise<Lead | null> {
     return this.leadRepository.findOne({
       where: { id },
-      relations: ['preferredPackage'],
+      relations: ['preferredPackage', 'createdBy'],
+      select: {
+        createdBy: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
     });
   }
 

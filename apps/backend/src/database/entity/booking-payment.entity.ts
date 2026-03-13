@@ -39,6 +39,9 @@ export class BookingPayment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ unique: true, name: 'payment_number' })
+  paymentNumber: string;
+
   @Column('decimal', { precision: 10, scale: 2 })
   amount: number;
 
@@ -102,4 +105,4 @@ export class BookingPayment {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-} 
+}

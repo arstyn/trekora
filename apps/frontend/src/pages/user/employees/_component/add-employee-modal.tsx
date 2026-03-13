@@ -28,26 +28,24 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import axiosInstance from "@/lib/axios";
-import type { IDepartment } from "@/types/department.type";
 import type { IEmployee } from "@/types/employee.types";
-import type { IRole } from "@/types/role.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Table } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { CalendarIcon, ChevronDown, X, Upload, Image as ImageIcon } from "lucide-react";
-import { type Dispatch, type SetStateAction, useState, useRef } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { PermissionService } from "@/services/permission.service";
+import type { PermissionSet } from "@/types/permission.types";
 
 // Define the form schema with Zod
 const formSchema = z.object({
 	name: z.string().min(2, { message: "Name must be at least 2 characters" }),
 	email: z.string().email({ message: "Please enter a valid email address" }),
-	departments: z
-		.array(z.string())
-		.min(1, { message: "Please select at least one departments" }),
-	roleId: z.string().min(1, { message: "Role is required" }),
+	departments: z.array(z.string()).optional(),
+	roleId: z.string().optional(),
 	status: z.enum(["active", "inactive", "terminated", "suspended"], {
 		error: "Please select a status",
 	}),
@@ -91,8 +89,6 @@ type AddEmployeeModalProps = {
 	onOpenChange: (open: boolean) => void;
 	employees: IEmployee[];
 	setEmployees: Dispatch<SetStateAction<IEmployee[]>>;
-	roles: IRole[];
-	departments: IDepartment[];
 };
 
 export function AddEmployeeModal({
@@ -101,8 +97,6 @@ export function AddEmployeeModal({
 	onOpenChange,
 	employees,
 	setEmployees,
-	roles,
-	departments,
 }: AddEmployeeModalProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
@@ -113,6 +107,40 @@ export function AddEmployeeModal({
 	);
 	const profilePhotoRef = useRef<HTMLInputElement>(null);
 	const verificationDocRef = useRef<HTMLInputElement>(null);
+
+	// Permission sets state
+	const [allPermissionSets, setAllPermissionSets] = useState<PermissionSet[]>([]);
+	const [selectedPermissionSetIds, setSelectedPermissionSetIds] = useState<string[]>([]);
+	const [loadingPermissionSets, setLoadingPermissionSets] = useState(false);
+
+	// Load permission sets when dialog opens
+	useEffect(() => {
+		if (open) {
+			loadPermissionSets();
+		}
+	}, [open]);
+
+	const loadPermissionSets = async () => {
+		try {
+			setLoadingPermissionSets(true);
+			const allSets = await PermissionService.getAllPermissionSets();
+			setAllPermissionSets(allSets);
+			setSelectedPermissionSetIds([]); // Reset selection for new employee
+		} catch (error) {
+			console.error("Failed to load permission sets:", error);
+			toast.error("Failed to load permission sets");
+		} finally {
+			setLoadingPermissionSets(false);
+		}
+	};
+
+	const handlePermissionSetToggle = (permissionSetId: string, checked: boolean) => {
+		if (checked) {
+			setSelectedPermissionSetIds((prev) => [...prev, permissionSetId]);
+		} else {
+			setSelectedPermissionSetIds((prev) => prev.filter((id) => id !== permissionSetId));
+		}
+	};
 
 	// Initialize the form
 	const form = useForm<ICreateEmployeeFormValues>({
@@ -147,10 +175,14 @@ export function AddEmployeeModal({
 		// Add all form fields
 		formDataToSubmit.append("name", data.name);
 		formDataToSubmit.append("email", data.email);
-		data.departments.forEach((dept, index) => {
-			formDataToSubmit.append(`departments[${index}]`, dept);
-		});
-		formDataToSubmit.append("roleId", data.roleId);
+		if (data.departments && data.departments.length > 0) {
+			data.departments.forEach((dept, index) => {
+				formDataToSubmit.append(`departments[${index}]`, dept);
+			});
+		}
+		if (data.roleId) {
+			formDataToSubmit.append("roleId", data.roleId);
+		}
 		formDataToSubmit.append("status", data.status);
 		formDataToSubmit.append("joinDate", format(data.joinDate, "yyyy-MM-dd"));
 
@@ -188,6 +220,16 @@ export function AddEmployeeModal({
 					headers: { "Content-Type": "multipart/form-data" },
 				}
 			);
+
+			// Assign permission sets to the newly created employee
+			if (res.data.id && selectedPermissionSetIds.length > 0) {
+				for (const setId of selectedPermissionSetIds) {
+					await PermissionService.assignPermissionSet(setId, {
+						employeeId: res.data.id,
+					});
+				}
+			}
+
 			setEmployees([res.data, ...employees]);
 			table.setPageIndex(0);
 			table.resetColumnFilters();
@@ -196,6 +238,7 @@ export function AddEmployeeModal({
 			setProfilePhotoPreview(null);
 			setVerificationDocFile(null);
 			setVerificationDocPreview(null);
+			setSelectedPermissionSetIds([]); // Reset permission set selection
 			onOpenChange(false);
 		} catch (error) {
 			if (error instanceof Error) {
@@ -457,122 +500,62 @@ export function AddEmployeeModal({
 								</div>
 							</div>
 
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<FormField
-									control={form.control}
-									name="departments"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Departments</FormLabel>
-											<FormControl>
-												<Popover>
-													<PopoverTrigger asChild>
-														<Button
-															variant="outline"
-															className={`w-full justify-between text-left truncate ${
-																field.value.length === 0
-																	? "text-muted-foreground"
-																	: ""
-															}`}
+							{/* Permission Sets Assignment */}
+							<div className="space-y-2">
+								<Label>Permission Sets</Label>
+								{loadingPermissionSets ? (
+									<div className="text-sm text-muted-foreground">
+										Loading permission sets...
+									</div>
+								) : (
+									<Popover>
+										<PopoverTrigger asChild>
+											<Button
+												variant="outline"
+												className={`w-full justify-between text-left truncate ${selectedPermissionSetIds.length === 0
+													? "text-muted-foreground"
+													: ""
+													}`}
+											>
+												{selectedPermissionSetIds.length > 0
+													? `${selectedPermissionSetIds.length} selected`
+													: "Select permission sets"}
+												<ChevronDown className="ml-2 h-4 w-4" />
+											</Button>
+										</PopoverTrigger>
+										<PopoverContent className="w-full p-2">
+											<div className="flex flex-col space-y-2 max-h-60 overflow-y-auto">
+												{allPermissionSets.map((set) => (
+													<div
+														key={set.id}
+														className="flex items-center space-x-2"
+													>
+														<Checkbox
+															id={`permission-set-create-${set.id}`}
+															checked={selectedPermissionSetIds.includes(
+																set.id
+															)}
+															onCheckedChange={(checked) =>
+																handlePermissionSetToggle(set.id, checked as boolean)
+															}
+														/>
+														<label
+															htmlFor={`permission-set-create-${set.id}`}
+															className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
 														>
-															{field.value.length > 0
-																? departments
-																		.filter((dep) =>
-																			field.value.find(
-																				(a) =>
-																					a ===
-																					dep.id
-																			)
-																		)
-																		.map(
-																			(d) => d.name
-																		)
-																		.join(", ")
-																: "Select departments"}
-															<ChevronDown className="ml-2 h-4 w-4" />
-														</Button>
-													</PopoverTrigger>
-													<PopoverContent className="w-full p-2">
-														<div className="flex flex-col space-y-2">
-															{departments.map((dept) => (
-																<div
-																	key={dept.id}
-																	className="flex items-center space-x-2"
-																>
-																	<Checkbox
-																		checked={field.value.includes(
-																			dept.id
-																		)}
-																		onCheckedChange={(
-																			checked
-																		) => {
-																			if (checked) {
-																				field.onChange(
-																					[
-																						...field.value,
-																						dept.id,
-																					]
-																				);
-																			} else {
-																				field.onChange(
-																					field.value.filter(
-																						(
-																							item
-																						) =>
-																							item !==
-																							dept.id
-																					)
-																				);
-																			}
-																		}}
-																	/>
-																	<span>
-																		{dept.name}
-																	</span>
-																</div>
-															))}
-														</div>
-													</PopoverContent>
-												</Popover>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									control={form.control}
-									name="roleId"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Role</FormLabel>
-											<FormControl>
-												<Select
-													onValueChange={field.onChange}
-													defaultValue={field.value}
-												>
-													<FormControl>
-														<SelectTrigger className="capitalize w-full">
-															<SelectValue placeholder="Select role" />
-														</SelectTrigger>
-													</FormControl>
-													<SelectContent>
-														{roles.map((role) => (
-															<SelectItem
-																key={role.id}
-																value={role.id}
-																className="capitalize"
-															>
-																{role.name}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+															{set.name}
+														</label>
+													</div>
+												))}
+											</div>
+										</PopoverContent>
+									</Popover>
+								)}
+								<div className="text-sm text-muted-foreground">
+									{selectedPermissionSetIds.length} permission set(s) selected
+								</div>
 							</div>
+
 							<FormField
 								control={form.control}
 								name="status"
@@ -626,18 +609,17 @@ export function AddEmployeeModal({
 												<FormControl>
 													<Button
 														variant={"outline"}
-														className={`w-full pl-3 text-left font-normal ${
-															!field.value
-																? "text-muted-foreground"
-																: ""
-														}`}
+														className={`w-full pl-3 text-left font-normal ${!field.value
+															? "text-muted-foreground"
+															: ""
+															}`}
 													>
 														{field.value &&
-														!isNaN(
-															new Date(
-																field.value
-															).getTime()
-														) ? (
+															!isNaN(
+																new Date(
+																	field.value
+																).getTime()
+															) ? (
 															format(
 																new Date(field.value),
 																"PPP"
@@ -708,18 +690,17 @@ export function AddEmployeeModal({
 												<FormControl>
 													<Button
 														variant={"outline"}
-														className={`w-full pl-3 text-left font-normal ${
-															!field.value
-																? "text-muted-foreground"
-																: ""
-														}`}
+														className={`w-full pl-3 text-left font-normal ${!field.value
+															? "text-muted-foreground"
+															: ""
+															}`}
 													>
 														{field.value &&
-														!isNaN(
-															new Date(
-																field.value
-															).getTime()
-														) ? (
+															!isNaN(
+																new Date(
+																	field.value
+																).getTime()
+															) ? (
 															format(
 																new Date(field.value),
 																"PPP"

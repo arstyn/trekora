@@ -1,40 +1,44 @@
 import {
-  Controller,
-  Get,
-  Post,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
-  Request,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
+  Request,
   UploadedFile,
   UploadedFiles,
+  UseGuards,
   UseInterceptors,
-  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { PaymentService } from './payment.service';
-import { 
-  CreatePaymentDto, 
-  UpdatePaymentDto, 
-  PaymentFilterDto,
-  PaymentStatsDto,
-  OverduePaymentDto,
-  PaymentResponseDto,
-  PaymentListResponseDto,
-  BookingSearchDto,
-  BookingForPaymentDto
-} from 'src/dto/payment.dto';
-import { AuthGuard } from '../auth/guard/auth.guard';
-import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { FileManager } from 'src/database/entity/file-manager.entity';
+import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
+import {
+  BookingForPaymentDto,
+  BookingSearchDto,
+  CreatePaymentDto,
+  OverduePaymentDto,
+  PaymentFilterDto,
+  PaymentListResponseDto,
+  PaymentResponseDto,
+  PaymentStatsDto,
+  UpdatePaymentDto
+} from 'src/dto/payment.dto';
+import { RequirePermission } from '../auth/decorator/require-permission.decorator';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { PermissionGuard } from '../auth/guard/permission.guard';
+import { PaymentService } from './payment.service';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 @Controller('api/payments')
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(
+    private readonly paymentService: PaymentService,
+  ) { }
 
   @Get('bookings/search')
   searchBookings(
@@ -48,6 +52,7 @@ export class PaymentController {
   }
 
   @Post()
+  @RequirePermission('payment', 'create')
   create(
     @Body() createPaymentDto: CreatePaymentDto,
     @Request() req: ApiRequestJWT,
@@ -60,6 +65,7 @@ export class PaymentController {
   }
 
   @Get()
+  @RequirePermission('payment', 'read')
   findAll(
     @Query() filterDto: PaymentFilterDto,
     @Request() req: ApiRequestJWT,
@@ -88,6 +94,7 @@ export class PaymentController {
   }
 
   @Patch(':id')
+  @RequirePermission('payment', 'update')
   update(
     @Param('id') id: string,
     @Body() updatePaymentDto: UpdatePaymentDto,
@@ -101,6 +108,7 @@ export class PaymentController {
   }
 
   @Delete(':id')
+  @RequirePermission('payment', 'delete')
   remove(
     @Param('id') id: string,
     @Request() req: ApiRequestJWT,

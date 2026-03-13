@@ -1,12 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as path from 'path';
-import * as fs from 'fs';
 
 export const DatabaseModule = TypeOrmModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => {
     const databaseConfig = configService.get('database');
+
     return {
       type: 'postgres',
       host: databaseConfig.host as string,
@@ -19,37 +19,18 @@ export const DatabaseModule = TypeOrmModule.forRootAsync({
       migrationsRun: true,
       logging: ['error', 'query', 'schema'],
       synchronize: databaseConfig.sync,
-      ...(databaseConfig.ssl_mode === true
-        ? {
-            ssl: {
-              rejectUnauthorized: true,
-              ca: fs
-                .readFileSync('/etc/ssl/certs/global-bundle.pem')
-                .toString(),
-            },
-            extra: {
-              max: 10,
-              idleTimeoutMillis: 30000,
-              ssl: {
-                rejectUnauthorized: true,
-                ca: fs
-                  .readFileSync('/etc/ssl/certs/global-bundle.pem')
-                  .toString(),
-              },
-            },
-          }
-        : {
-            ssl: {
-              rejectUnauthorized: false,
-            },
-            extra: {
-              max: 10,
-              idleTimeoutMillis: 30000,
-              ssl: {
-                rejectUnauthorized: false,
-              },
-            },
-          }),
+      ...(databaseConfig.ssl_mode === true && {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+        extra: {
+          max: 10,
+          idleTimeoutMillis: 30000,
+          ssl: {
+            rejectUnauthorized: false,
+          },
+        },
+      }),
     };
   },
 });

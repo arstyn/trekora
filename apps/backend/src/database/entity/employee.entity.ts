@@ -10,7 +10,6 @@ import {
 } from 'typeorm';
 import { Branch } from './branch.entity';
 import { Organization } from './organization.entity';
-import { Role } from './role.entity';
 import { UserDepartments } from './user-departments.entity';
 import { User } from './user.entity';
 
@@ -52,18 +51,21 @@ export class Employee {
   @JoinColumn({ name: 'organization_id' })
   organization: Organization;
 
-  @ManyToOne(() => Role, (role) => role.id, {
+  @OneToMany(() => UserDepartments, (ud) => ud.employee)
+  employeeDepartments: UserDepartments[];
+
+  @Column({ type: 'uuid', nullable: true, name: 'manager_id' })
+  managerId?: string;
+
+  @ManyToOne(() => Employee, (employee) => employee.directReports, {
     nullable: true,
     onDelete: 'SET NULL',
   })
-  @JoinColumn({ name: 'role_id' })
-  role: Role;
+  @JoinColumn({ name: 'manager_id' })
+  manager?: Employee;
 
-  @Column('uuid', { nullable: true, name: 'role_id' })
-  roleId?: string;
-
-  @OneToMany(() => UserDepartments, (ud) => ud.employee)
-  employeeDepartments: UserDepartments[];
+  @OneToMany(() => Employee, (employee) => employee.manager)
+  directReports: Employee[];
 
   @Column({ type: 'varchar', name: 'name' })
   name: string;

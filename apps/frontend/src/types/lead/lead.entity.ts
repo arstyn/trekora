@@ -19,4 +19,10 @@ export interface ILead {
 		destination: string;
 		price: number;
 	};
+	createdBy?: {
+		id: string;
+		name?: string;
+		email?: string;
+		phone?: string;
+	};
 }

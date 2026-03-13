@@ -1,31 +1,41 @@
-import type { ICustomer } from "./booking.types";
+import type { IBooking, ICustomer } from "./booking.types";
 import type { IEmployee } from "./employee.types";
 import type { IPackages } from "./package.schema";
 
-export interface IBatchCustomer extends ICustomer {
-	checklistStats?: {
-		total: number;
-		completed: number;
-	};
-}
+export interface IBatchCustomer extends ICustomer {}
 
 export interface IBatches {
-	id: string;
-	startDate: Date;
-	endDate: Date;
-	totalSeats: number;
-	bookedSeats: number;
-	status: string;
-	packageId: string;
-	package?: IPackages;
-	coordinators?: IEmployee[];
-	customers?: IBatchCustomer[];
-	fillRate?: number;
+    id: string;
+    startDate: Date;
+    endDate: Date;
+    totalSeats: number;
+    bookedSeats: number;
+    status: string;
+    packageId: string;
+    package?: IPackages;
+    coordinators?: IEmployee[];
+    customers?: IBatchCustomer[];
+    bookings?: IBooking[];
+    fillRate?: number;
 }
 
 export interface IBatchStats {
-	activeBatches: number;
-	upcomingBatches: number;
-	availableSeats: number;
-	fastFilling: number;
+    activeBatches: number;
+    upcomingBatches: number;
+    availableSeats: number;
+    fastFilling: number;
+}
+export interface IBatchLog {
+    id: string;
+    batchId: string;
+    changedById: string;
+    changedBy: {
+        id: string;
+        name: string;
+        email: string;
+    };
+    action: string;
+    previousData: any;
+    newData: any;
+    createdAt: Date;
 }

@@ -11,7 +11,6 @@ export interface IPackages {
   category?: 'documents' | 'booking' | 'preparation' | 'communication';
   status?: 'draft' | 'published';
   thumbnail?: string;
-  preTripChecklist?: [];
   createdById: string;
   organizationId: string;
   createdAt: Date;
@@ -92,8 +91,8 @@ export const checklistItemSchema = z.object({
   category: z
     .enum(['documents', 'booking', 'preparation', 'communication'])
     .optional(),
+  type: z.enum(['individual', 'common']).optional(),
   dueDate: z.string().optional(),
-  completed: z.boolean().optional(),
 });
 
 export const packageLocationSchema = z.object({
@@ -141,5 +140,5 @@ export type MealsBreakdown = z.infer<typeof mealsBreakdownSchema>;
 export type ITransportation = z.infer<typeof transportationSchema>;
 export type ItineraryDay = z.infer<typeof itineraryDaySchema>;
 export type DocumentRequirement = z.infer<typeof documentRequirementSchema>;
-export type ChecklistItem = z.infer<typeof checklistItemSchema>;
 export type PackageLocation = z.infer<typeof packageLocationSchema>;
+export type ChecklistItem = z.infer<typeof checklistItemSchema>;

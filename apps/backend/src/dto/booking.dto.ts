@@ -11,10 +11,6 @@ import {
 import { Type } from 'class-transformer';
 import { BookingStatus } from 'src/database/entity/booking.entity';
 import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
-import {
-  CreateBookingChecklistDto,
-  ChecklistItemResponseDto,
-} from './checklist.dto';
 
 export class CreatePaymentDto {
   @IsNumber()
@@ -73,12 +69,6 @@ export class CreateBookingDto {
   @ValidateNested()
   @Type(() => CreatePaymentDto)
   initialPayment?: CreatePaymentDto;
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreateBookingChecklistDto)
-  checklistItems?: CreateBookingChecklistDto[];
 }
 
 export class UpdateBookingDto {
@@ -127,6 +117,12 @@ export class BookingStatsDto {
   totalCustomers: number;
 }
 
+export class CreatedByDto {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export class BookingSummaryDto {
   id: string;
   bookingNumber: string;
@@ -140,6 +136,7 @@ export class BookingSummaryDto {
   balanceAmount: number;
   status: BookingStatus;
   createdAt: Date;
+  createdBy?: CreatedByDto | null;
 }
 
 export class BookingCustomerResponseDto {
@@ -165,7 +162,6 @@ export class BookingResponseDto {
   id: string;
   bookingNumber: string;
   customers: BookingCustomerResponseDto[];
-  groupChecklist?: ChecklistItemResponseDto[];
   primaryCustomer: {
     id: string;
     firstName: string;
@@ -203,6 +199,8 @@ export class BookingResponseDto {
     paymentDate?: Date;
     paymentReference?: string;
   }[];
+  currentWorkflowId?: string;
+  currentWorkflow?: any;
   createdAt: Date;
   updatedAt: Date;
 }

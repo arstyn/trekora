@@ -3,7 +3,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CancellationPolicy } from '../../database/entity/package-related/cancellation-policies.entity';
 import { CancellationTier } from '../../database/entity/package-related/cancellation-tiers.entity';
-import { ChecklistItem } from '../../database/entity/package-related/checklist-items.entity';
 import { DocumentRequirement } from '../../database/entity/package-related/document-requirements.entity';
 import { Exclusion } from '../../database/entity/package-related/exclusions.entity';
 import { Inclusion } from '../../database/entity/package-related/inclusions.entity';
@@ -13,10 +12,13 @@ import { PackageLocation } from '../../database/entity/package-related/package-l
 import { Package } from '../../database/entity/package-related/package.entity';
 import { PaymentMilestone } from '../../database/entity/package-related/payment-milestones.entity';
 import { Transportation } from '../../database/entity/package-related/transportations.entity';
+import { PackageActivity } from 'src/database/entity/package-related/package-activities.entity';
+import { ChecklistItem } from '../../database/entity/package-related/checklist-items.entity';
 import { PackageController } from './package.controller';
 import { PackageService } from './package.service';
 import { FileManager } from 'src/database/entity/file-manager.entity';
 import { FileManagerModule } from '../file-manager/file-manager.module';
+import { PermissionModule } from '../permission/permission.module';
 
 @Module({
   imports: [
@@ -24,7 +26,6 @@ import { FileManagerModule } from '../file-manager/file-manager.module';
       Package,
       CancellationPolicy,
       CancellationTier,
-      ChecklistItem,
       DocumentRequirement,
       Exclusion,
       Inclusion,
@@ -34,9 +35,12 @@ import { FileManagerModule } from '../file-manager/file-manager.module';
       Transportation,
       ItineraryDay,
       FileManager,
+      PackageActivity,
+      ChecklistItem,
     ]),
     FileManagerModule,
     JwtModule.register({}),
+    PermissionModule,
   ],
   providers: [PackageService],
   controllers: [PackageController],

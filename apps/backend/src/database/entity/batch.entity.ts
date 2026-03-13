@@ -12,7 +12,13 @@ import { Customer } from './customer.entity';
 import { Employee } from './employee.entity';
 import { Organization } from './organization.entity';
 import { Package } from './package-related/package.entity';
-import { BookingChecklist } from './booking-checklist.entity';
+import { Booking } from './booking.entity';
+
+export enum BatchStatus {
+  UPCOMING = 'upcoming',
+  ACTIVE = 'active',
+  COMPLETED = 'completed',
+}
 
 @Entity()
 export class Batch {
@@ -31,8 +37,12 @@ export class Batch {
   @Column({ name: 'booked_seats', nullable: true, default: 0 })
   bookedSeats: number;
 
-  @Column()
-  status: string;
+  @Column({
+    type: 'enum',
+    enum: BatchStatus,
+    default: BatchStatus.UPCOMING,
+  })
+  status: BatchStatus;
 
   @Column({ type: 'uuid', name: 'organization_id' })
   organizationId: string;
@@ -59,16 +69,6 @@ export class Batch {
   })
   coordinators: Employee[];
 
-  @ManyToMany(() => Customer, { cascade: true })
-  @JoinTable({
-    name: 'batch_customers',
-    joinColumn: { name: 'batchId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'customerId', referencedColumnName: 'id' },
-  })
-  customers: Customer[];
-
-  @OneToMany(() => BookingChecklist, (checklist) => checklist.batch, {
-    cascade: true,
-  })
-  checklists: BookingChecklist[];
+  @OneToMany(() => Booking, (booking) => booking.batch)
+  bookings: Booking[];
 }

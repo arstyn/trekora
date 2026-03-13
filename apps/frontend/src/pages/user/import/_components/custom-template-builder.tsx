@@ -100,10 +100,8 @@ export function CustomTemplateBuilder() {
         setIsLoading(true);
         try {
             const response = await AxiosRequest.get("/import/schemas");
-            console.log("🔄 API Response for schemas:", response);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const schemasData = (response.data as any)?.schemas || [];
-            console.log("📋 Loaded schemas:", schemasData);
             setSchemas(schemasData);
         } catch (error) {
             console.error("❌ Failed to load schemas:", error);
@@ -137,13 +135,9 @@ export function CustomTemplateBuilder() {
     };
 
     const handleEntityTypeChange = (entityType: string) => {
-        console.log("handleEntityTypeChange called with:", entityType);
         const newSchema = schemas.find(
             (schema) => schema.entityType === entityType
         );
-        console.log("Schemas:", schemas);
-        console.log("New Schema:", newSchema);
-        console.log("Available Fields:", newSchema?.availableFields);
 
         setFormData((prev) => ({
             ...prev,

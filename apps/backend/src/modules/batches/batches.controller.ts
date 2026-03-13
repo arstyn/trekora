@@ -10,15 +10,12 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { BatchStatus } from 'src/database/entity/batch.entity';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { BatchesService } from './batches.service';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
-import {
-  CreateChecklistItemDto,
-  UpdateChecklistItemDto,
-} from 'src/dto/checklist.dto';
 
 @UseGuards(AuthGuard)
 @Controller('api/batches')
@@ -27,11 +24,18 @@ export class BatchesController {
 
   @Post()
   create(@Body() dto: CreateBatchDto, @Request() req: ApiRequestJWT) {
-    return this.batchService.create(dto, req.user.organizationId);
+    return this.batchService.create(
+      dto,
+      req.user.organizationId,
+      req.user.userId,
+    );
   }
 
   @Get()
-  findAll(@Request() req: ApiRequestJWT, @Query('status') status?: string) {
+  findAll(
+    @Request() req: ApiRequestJWT,
+    @Query('status') status?: BatchStatus,
+  ) {
     return this.batchService.findAll(req.user.organizationId, status);
   }
 
@@ -61,93 +65,49 @@ export class BatchesController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateBatchDto) {
-    return this.batchService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateBatchDto,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.batchService.update(id, dto, req.user.userId);
+  }
+
+  @Patch(':id/active')
+  markActive(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.batchService.markActive(id, req.user.userId);
+  }
+
+  @Patch(':id/complete')
+  markCompleted(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.batchService.markCompleted(id, req.user.userId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.batchService.remove(id);
+  remove(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.batchService.remove(id, req.user.userId);
   }
 
   @Post(':id/coordinators/:employeeId')
   addCoordinator(
     @Param('id') id: string,
     @Param('employeeId') employeeId: string,
+    @Request() req: ApiRequestJWT,
   ) {
-    return this.batchService.addCoordinator(id, employeeId);
+    return this.batchService.addCoordinator(id, employeeId, req.user.userId);
   }
 
   @Delete(':id/coordinators/:employeeId')
   removeCoordinator(
     @Param('id') id: string,
     @Param('employeeId') employeeId: string,
+    @Request() req: ApiRequestJWT,
   ) {
-    return this.batchService.removeCoordinator(id, employeeId);
+    return this.batchService.removeCoordinator(id, employeeId, req.user.userId);
   }
 
-  @Post(':id/customers/:customerId')
-  addCustomer(
-    @Param('id') id: string,
-    @Param('customerId') customerId: string,
-  ) {
-    return this.batchService.addCustomer(id, customerId);
-  }
-
-  @Delete(':id/customers/:customerId')
-  removeCustomer(
-    @Param('id') id: string,
-    @Param('customerId') customerId: string,
-  ) {
-    return this.batchService.removeCustomer(id, customerId);
-  }
-
-  // Checklist endpoints
-  @Get(':id/checklists')
-  getChecklistItems(@Param('id') id: string) {
-    return this.batchService.getChecklistItems(id);
-  }
-
-  // Checklist endpoints
-  @Get(':id/checklists/customer/:customerId')
-  getChecklistItemsByCustomer(
-    @Param('id') id: string,
-    @Param('customerId') customerId: string,
-  ) {
-    return this.batchService.getChecklistItemsByCustomer(id, customerId);
-  }
-
-  @Get(':id/checklists/individual')
-  getIndividualChecklistItems(
-    @Param('id') id: string,
-    @Query('customerId') customerId?: string,
-  ) {
-    return this.batchService.getIndividualChecklistItems(id, customerId);
-  }
-
-  @Post(':id/checklists')
-  addChecklistItem(
-    @Param('id') id: string,
-    @Body() dto: CreateChecklistItemDto,
-  ) {
-    return this.batchService.addChecklistItem(id, dto);
-  }
-
-  @Patch('checklists/:checklistId')
-  updateChecklistItem(
-    @Param('checklistId') checklistId: string,
-    @Body() dto: UpdateChecklistItemDto,
-  ) {
-    return this.batchService.updateChecklistItem(checklistId, dto);
-  }
-
-  @Patch('checklists/:checklistId/toggle')
-  toggleChecklistItem(@Param('checklistId') checklistId: string) {
-    return this.batchService.toggleChecklistItem(checklistId);
-  }
-
-  @Delete('checklists/:checklistId')
-  deleteChecklistItem(@Param('checklistId') checklistId: string) {
-    return this.batchService.deleteChecklistItem(checklistId);
+  @Get(':id/logs')
+  getLogs(@Param('id') id: string) {
+    return this.batchService.getLogs(id);
   }
 }

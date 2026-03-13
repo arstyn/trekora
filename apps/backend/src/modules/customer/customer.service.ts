@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Customer } from 'src/database/entity/customer.entity';
 import { RelatedType } from 'src/database/entity/file-manager.entity';
-import { DataSource, ILike, Repository } from 'typeorm';
+import { DataSource, ILike, In, Repository } from 'typeorm';
 import { CreateCustomerDto } from '../../dto/create-customer.dto';
 import { FileManagerService } from '../file-manager/file-manager.service';
 
@@ -14,7 +14,7 @@ export class CustomerService {
     private customerRepository: Repository<Customer>,
     private readonly fileManagerService: FileManagerService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async createCustomer(
     data: CreateCustomerDto,
@@ -143,6 +143,56 @@ export class CustomerService {
 
     // Get paginated results
     const customers = await queryBuilder
+      .leftJoinAndSelect('customer.createdBy', 'createdBy')
+      .orderBy('customer.createdAt', 'DESC')
+      .limit(limit)
+      .offset(offset)
+      .getMany();
+
+    const hasMore = offset + limit < total;
+
+    return {
+      customers,
+      total,
+      hasMore,
+    };
+  }
+
+  async findByManagerTeam(
+    organizationId: string,
+    teamUserIds: string[],
+    limit: number = 10,
+    offset: number = 0,
+    search?: string,
+  ): Promise<{
+    customers: Customer[];
+    total: number;
+    hasMore: boolean;
+  }> {
+    if (teamUserIds.length === 0) {
+      return {
+        customers: [],
+        total: 0,
+        hasMore: false,
+      };
+    }
+
+    const queryBuilder = this.customerRepository
+      .createQueryBuilder('customer')
+      .where('customer.organizationId = :organizationId', { organizationId })
+      .andWhere('customer.createdById IN (:...teamUserIds)', { teamUserIds });
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const total = await queryBuilder.getCount();
+
+    const customers = await queryBuilder
+      .leftJoinAndSelect('customer.createdBy', 'createdBy')
       .orderBy('customer.createdAt', 'DESC')
       .limit(limit)
       .offset(offset)

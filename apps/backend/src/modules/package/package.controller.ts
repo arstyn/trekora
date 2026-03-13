@@ -15,14 +15,17 @@ import {
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { PermissionGuard } from '../auth/guard/permission.guard';
+import { RequirePermission } from '../auth/decorator/require-permission.decorator';
 import { PackageService } from './package.service';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 @Controller('api/packages')
 export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 
   @Post()
+  @RequirePermission('package', 'create')
   @UseInterceptors(AnyFilesInterceptor())
   create(
     @Request() req: ApiRequestJWT,
@@ -33,13 +36,9 @@ export class PackageController {
   }
 
   @Get()
+  @RequirePermission('package', 'read')
   findAll(@Request() req: ApiRequestJWT, @Query('status') status?: string) {
     return this.packageService.findAll(req.user.organizationId, status);
-  }
-
-  @Get(':id/checklist')
-  getPackageChecklist(@Param('id') id: string) {
-    return this.packageService.getPackageChecklist(id);
   }
 
   @Get(':id')
@@ -47,19 +46,47 @@ export class PackageController {
     return this.packageService.findOne(id);
   }
 
+  @Get(':id/basic')
+  findBasic(@Param('id') id: string) {
+    return this.packageService.findBasicInfo(id);
+  }
+
+  @Get(':id/itinerary')
+  findItinerary(@Param('id') id: string) {
+    return this.packageService.findItinerary(id);
+  }
+
+  @Get(':id/payments-cancellation')
+  findPaymentsAndCancellation(@Param('id') id: string) {
+    return this.packageService.findPaymentsAndCancellation(id);
+  }
+
+  @Get(':id/requirements')
+  findRequirements(@Param('id') id: string) {
+    return this.packageService.findRequirements(id);
+  }
+
+  @Get(':id/logistics')
+  findLogistics(@Param('id') id: string) {
+    return this.packageService.findLogistics(id);
+  }
+
   @Patch(':id')
+  @RequirePermission('package', 'update')
   @UseInterceptors(AnyFilesInterceptor())
   update(
     @Param('id') id: string,
     @Body() updatePackageDto: any,
     @UploadedFiles() files: Express.Multer.File[],
+    @Request() req: ApiRequestJWT,
   ) {
-    return this.packageService.update(id, updatePackageDto, files);
+    return this.packageService.update(id, updatePackageDto, files, req.user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.packageService.remove(id);
+  @RequirePermission('package', 'delete')
+  remove(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.packageService.remove(id, req.user);
   }
 
   @Post(':id/validate')
@@ -68,7 +95,14 @@ export class PackageController {
   }
 
   @Post(':id/publish')
-  publishPackage(@Param('id') id: string) {
-    return this.packageService.publishPackage(id);
+  @RequirePermission('package', 'update')
+  publishPackage(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.packageService.publishPackage(id, req.user);
+  }
+
+  @Get(':id/logs')
+  @RequirePermission('package', 'read')
+  getActivityLogs(@Param('id') id: string) {
+    return this.packageService.getActivityLogs(id);
   }
 }

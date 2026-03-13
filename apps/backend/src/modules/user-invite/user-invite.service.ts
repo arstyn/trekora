@@ -41,10 +41,7 @@ export class UserInviteService {
       where: { token },
       relations: ['employee'],
     });
-    console.log(
-      '🚀 ~ user-invite.service.ts:41 ~ UserInviteService ~ verifyToken ~ invite:',
-      invite,
-    );
+
     if (!invite || invite.used || invite.expiresAt < new Date()) {
       return null;
     }
@@ -73,7 +70,6 @@ export class UserInviteService {
       name: invite.employee.name,
       phone: invite.employee.phone,
       organizationId: invite.employee.organizationId,
-      roleId: invite.employee.roleId,
       password: hashedPassword,
     });
     invite.used = true;

@@ -10,6 +10,8 @@ import { FileManager } from 'src/database/entity/file-manager.entity';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { FileManagerService } from '../file-manager/file-manager.service';
+import { PermissionModule } from '../permission/permission.module';
+import { EmployeeModule } from '../employee/employee.module';
 
 @Module({
   imports: [
@@ -22,9 +24,11 @@ import { FileManagerService } from '../file-manager/file-manager.service';
       FileManager,
     ]),
     JwtModule.register({}),
+    PermissionModule,
+    EmployeeModule,
   ],
   controllers: [PaymentController],
   providers: [PaymentService, FileManagerService],
   exports: [PaymentService],
 })
-export class PaymentModule {} 
+export class PaymentModule { } 

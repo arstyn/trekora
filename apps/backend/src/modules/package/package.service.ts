@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CancellationTier } from 'src/database/entity/package-related/cancellation-tiers.entity';
-import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
 import { DocumentRequirement } from 'src/database/entity/package-related/document-requirements.entity';
 import { Exclusion } from 'src/database/entity/package-related/exclusions.entity';
 import { Inclusion } from 'src/database/entity/package-related/inclusions.entity';
@@ -14,6 +13,7 @@ import { MealsBreakdown } from 'src/database/entity/package-related/meals-breakd
 import { PackageLocation } from 'src/database/entity/package-related/package-locations.entity';
 import { PaymentMilestone } from 'src/database/entity/package-related/payment-milestones.entity';
 import { Transportation } from 'src/database/entity/package-related/transportations.entity';
+import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
 import { DataSource, Repository } from 'typeorm';
 import { CancellationPolicy } from '../../database/entity/package-related/cancellation-policies.entity';
 import { Package } from '../../database/entity/package-related/package.entity';
@@ -24,6 +24,7 @@ import {
   RelatedType,
 } from 'src/database/entity/file-manager.entity';
 import { FileManagerService } from '../file-manager/file-manager.service';
+import { PackageActivity } from 'src/database/entity/package-related/package-activities.entity';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -36,8 +37,6 @@ export class PackageService {
     private readonly cancellationPolicyRepository: Repository<CancellationPolicy>,
     @InjectRepository(CancellationTier)
     private readonly cancellationTierRepository: Repository<CancellationTier>,
-    @InjectRepository(ChecklistItem)
-    private readonly checklistItemRepository: Repository<ChecklistItem>,
     @InjectRepository(DocumentRequirement)
     private readonly documentRequirementRepository: Repository<DocumentRequirement>,
     @InjectRepository(Exclusion)
@@ -54,8 +53,10 @@ export class PackageService {
     private readonly transportationRepository: Repository<Transportation>,
     @InjectRepository(ItineraryDay)
     private readonly itineraryDayRepository: Repository<ItineraryDay>,
-    @InjectRepository(FileManager)
-    private readonly fileManagerRepository: Repository<FileManager>,
+    @InjectRepository(PackageActivity)
+    private readonly packageActivityRepository: Repository<PackageActivity>,
+    @InjectRepository(ChecklistItem)
+    private readonly checklistItemRepository: Repository<ChecklistItem>,
     private readonly fileManagerService: FileManagerService,
   ) {}
 
@@ -68,10 +69,10 @@ export class PackageService {
       cancellationPolicy,
       cancellationStructure,
       documentRequirements,
+      preTripChecklist,
       inclusions,
       exclusions,
       itinerary,
-      preTripChecklist,
       paymentStructure,
       packageLocation,
       transportation,
@@ -111,6 +112,15 @@ export class PackageService {
 
       const savedPackage = await queryRunner.manager.save(pkg);
 
+      // Log creation
+      const log = this.packageActivityRepository.create({
+        packageId: savedPackage.id,
+        userId: user.userId,
+        action: 'create',
+        details: { name: pkg.name },
+      });
+      await queryRunner.manager.save(log);
+
       if (cancellationPolicy) {
         const cancellationPolicyData = JSON.parse(
           cancellationPolicy,
@@ -138,12 +148,25 @@ export class PackageService {
       }
 
       if (documentRequirements) {
-        const cancellationStructureData = JSON.parse(
+        const documentRequirementsData = JSON.parse(
           documentRequirements,
         ) as DocumentRequirement[];
-        for (const doc of cancellationStructureData) {
+        for (const doc of documentRequirementsData) {
           const entity = this.documentRequirementRepository.create({
             ...doc,
+            packageId: savedPackage.id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (preTripChecklist) {
+        const preTripChecklistData = JSON.parse(
+          preTripChecklist,
+        ) as ChecklistItem[];
+        for (const item of preTripChecklistData) {
+          const entity = this.checklistItemRepository.create({
+            ...item,
             packageId: savedPackage.id,
           });
           await queryRunner.manager.save(entity);
@@ -197,19 +220,6 @@ export class PackageService {
             packageId: savedPackage.id,
           });
 
-          await queryRunner.manager.save(entity);
-        }
-      }
-
-      if (preTripChecklist) {
-        const preTripChecklistData = JSON.parse(
-          preTripChecklist,
-        ) as ChecklistItem[];
-        for (const item of preTripChecklistData) {
-          const entity = this.checklistItemRepository.create({
-            ...item,
-            packageId: savedPackage.id,
-          });
           await queryRunner.manager.save(entity);
         }
       }
@@ -327,6 +337,19 @@ export class PackageService {
     });
     if (!pkg) throw new NotFoundException('Package not found');
 
+    if (pkg.status === 'edited' && pkg.draftContent) {
+      // Merge draft content into the package data for the UI
+      Object.assign(pkg, pkg.draftContent);
+    }
+
+    if (pkg.transportation) {
+      this.transformTransportation(pkg);
+    }
+
+    return pkg;
+  }
+
+  private transformTransportation(pkg: Package) {
     if (pkg.transportation) {
       const transformedTransportation = {
         toDestination: {
@@ -347,23 +370,142 @@ export class PackageService {
       };
       (pkg as any).transportation = transformedTransportation;
     }
+  }
 
-    return pkg;
+  async findBasicInfo(id: string) {
+    const pkg = await this.packageRepository.findOne({
+      where: { id },
+    });
+    if (!pkg) throw new NotFoundException('Package not found');
+
+    const [inclusions, exclusions, packageLocation] = await Promise.all([
+      this.inclusionRepository.find({ where: { packageId: id } }),
+      this.exclusionRepository.find({ where: { packageId: id } }),
+      this.packageLocationRepository.findOne({ where: { packageId: id } }),
+    ]);
+
+    return {
+      ...pkg,
+      inclusions,
+      exclusions,
+      packageLocation,
+    };
+  }
+
+  async findItinerary(id: string) {
+    const itinerary = await this.itineraryDayRepository.find({
+      where: { packageId: id },
+      order: { day: 'ASC' },
+    });
+    return itinerary;
+  }
+
+  async findPaymentsAndCancellation(id: string) {
+    const [paymentStructure, cancellationStructure, cancellationPolicy] =
+      await Promise.all([
+        this.paymentMilestoneRepository.find({ where: { packageId: id } }),
+        this.cancellationTierRepository.find({ where: { packageId: id } }),
+        this.cancellationPolicyRepository.find({ where: { packageId: id } }),
+      ]);
+
+    return {
+      paymentStructure,
+      cancellationStructure,
+      cancellationPolicy,
+    };
+  }
+
+  async findRequirements(id: string) {
+    const [documentRequirements, preTripChecklist] = await Promise.all([
+      this.documentRequirementRepository.find({
+        where: { packageId: id },
+      }),
+      this.checklistItemRepository.find({
+        where: { packageId: id },
+      }),
+    ]);
+
+    return {
+      documentRequirements,
+      preTripChecklist,
+    };
+  }
+
+  async findLogistics(id: string) {
+    const [transportation, mealsBreakdown, packageLocation] = await Promise.all(
+      [
+        this.transportationRepository.findOne({ where: { packageId: id } }),
+        this.mealsBreakdownRepository.findOne({ where: { packageId: id } }),
+        this.packageLocationRepository.findOne({ where: { packageId: id } }),
+      ],
+    );
+
+    let transformedTransportation = transportation;
+    if (transportation) {
+      const pkg = { transportation } as any;
+      this.transformTransportation(pkg);
+      transformedTransportation = pkg.transportation;
+    }
+
+    return {
+      transportation: transformedTransportation,
+      mealsBreakdown,
+      packageLocation,
+    };
   }
 
   async update(
     id: string,
     updatePackageDto: PackageFormData,
     files: Express.Multer.File[],
+    user?: { userId: string; organizationId: string },
   ): Promise<Package> {
+    const pkg = await this.packageRepository.findOne({ where: { id } });
+    if (!pkg) throw new NotFoundException('Package not found');
+
+    const isPublishedOrEdited =
+      pkg.status === 'published' || pkg.status === 'edited';
+
+    // If it's a published/edited package and we are NOT explicitly publishing,
+    // store changes in draftContent
+    if (isPublishedOrEdited && updatePackageDto.status !== 'published') {
+      const draftData = { ...updatePackageDto };
+
+      // Handle file uploads for draftContent
+      const pkgFile = files.find((val) => val.fieldname === 'thumbnail');
+      if (pkgFile) {
+        const fileData = await this.fileManagerService.uploadOneFile(
+          { relatedId: id, relatedType: RelatedType.PACKAGE },
+          pkgFile,
+        );
+        draftData.thumbnail = fileData.id;
+      }
+
+      await this.packageRepository.update(id, {
+        status: 'edited',
+        draftContent: draftData as any,
+      } as any);
+
+      if (user) {
+        await this.packageActivityRepository.save({
+          packageId: id,
+          userId: user.userId,
+          action: 'edit_draft',
+          details: { name: pkg.name },
+        });
+      }
+
+      return this.findOne(id);
+    }
+
     const {
       cancellationPolicy,
       cancellationStructure,
       documentRequirements,
+      preTripChecklist,
       inclusions,
       exclusions,
       itinerary,
-      preTripChecklist,
       paymentStructure,
       packageLocation,
       transportation,
@@ -404,16 +546,48 @@ export class PackageService {
       };
 
       // Update main package
-      await queryRunner.manager.update(Package, id, cleanedData);
+      await queryRunner.manager.update(Package, id, {
+        ...(cleanedData as any),
+        draftContent: undefined, // Clear draft content on full update/publish
+      });
+
+      if (user && pkg) {
+        let action = 'update';
+        const newStatus = (cleanedData as any).status;
+
+        if (newStatus === 'published') {
+          action =
+            pkg.status === 'published' || pkg.status === 'edited'
+              ? 'publish_update'
+              : 'publish';
+        } else if (newStatus === 'archived') {
+          action = 'archive';
+        } else if (newStatus === 'draft' && pkg.status === 'published') {
+          action = 'unpublish';
+        } else if (newStatus === 'published' && pkg.status === 'edited') {
+          action = 'discard_changes';
+        }
+
+        await queryRunner.manager.save(PackageActivity, {
+          packageId: id,
+          userId: user.userId,
+          action,
+          details: {
+            name: pkg.name,
+            fromStatus: pkg.status,
+            toStatus: newStatus,
+          },
+        });
+      }
 
       // Delete existing related entities to recreate them
       await queryRunner.manager.delete(CancellationPolicy, { packageId: id });
       await queryRunner.manager.delete(CancellationTier, { packageId: id });
       await queryRunner.manager.delete(DocumentRequirement, { packageId: id });
+      await queryRunner.manager.delete(ChecklistItem, { packageId: id });
       await queryRunner.manager.delete(Inclusion, { packageId: id });
       await queryRunner.manager.delete(Exclusion, { packageId: id });
       await queryRunner.manager.delete(ItineraryDay, { packageId: id });
-      await queryRunner.manager.delete(ChecklistItem, { packageId: id });
       await queryRunner.manager.delete(PaymentMilestone, { packageId: id });
       await queryRunner.manager.delete(MealsBreakdown, { packageId: id });
       await queryRunner.manager.delete(Transportation, { packageId: id });
@@ -448,12 +622,25 @@ export class PackageService {
       }
 
       if (documentRequirements) {
-        const cancellationStructureData = JSON.parse(
+        const documentRequirementsData = JSON.parse(
           documentRequirements,
         ) as DocumentRequirement[];
-        for (const doc of cancellationStructureData) {
+        for (const doc of documentRequirementsData) {
           const entity = this.documentRequirementRepository.create({
             ...doc,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (preTripChecklist) {
+        const preTripChecklistData = JSON.parse(
+          preTripChecklist,
+        ) as ChecklistItem[];
+        for (const item of preTripChecklistData) {
+          const entity = this.checklistItemRepository.create({
+            ...item,
             packageId: id,
           });
           await queryRunner.manager.save(entity);
@@ -520,19 +707,6 @@ export class PackageService {
             packageId: id,
           });
 
-          await queryRunner.manager.save(entity);
-        }
-      }
-
-      if (preTripChecklist) {
-        const preTripChecklistData = JSON.parse(
-          preTripChecklist,
-        ) as ChecklistItem[];
-        for (const item of preTripChecklistData) {
-          const entity = this.checklistItemRepository.create({
-            ...item,
-            packageId: id,
-          });
           await queryRunner.manager.save(entity);
         }
       }
@@ -608,25 +782,29 @@ export class PackageService {
     }
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(
+    id: string,
+    user?: { userId: string; organizationId: string },
+  ): Promise<void> {
     const pkg = await this.packageRepository.findOneBy({ id });
 
     if (pkg?.status !== 'draft') {
       throw new HttpException(
-        'Packages in draft can only be deleted',
+        'Only draft packages can be deleted. Use Archive for published packages.',
         HttpStatus.CONFLICT,
       );
     }
 
-    await this.packageRepository.delete(id);
-  }
-
-  async getPackageChecklist(id: string) {
-    return await this.checklistItemRepository.find({
-      where: {
+    if (user && pkg) {
+      await this.packageActivityRepository.save({
         packageId: id,
-      },
-    });
+        userId: user.userId,
+        action: 'delete',
+        details: { name: pkg.name },
+      });
+    }
+
+    await this.packageRepository.delete(id);
   }
 
   async validatePackageForPublishing(id: string) {
@@ -745,13 +923,6 @@ export class PackageService {
       errors.push('Package location details are required');
     }
 
-    const preTripChecklist = await this.checklistItemRepository.find({
-      where: { packageId: id },
-    });
-    if (preTripChecklist.length === 0) {
-      errors.push('Pre-trip checklist is required');
-    }
-
     return {
       isValid: errors.length === 0,
       errors,
@@ -759,7 +930,10 @@ export class PackageService {
     };
   }
 
-  async publishPackage(id: string) {
+  async publishPackage(
+    id: string,
+    user?: { userId: string; organizationId: string },
+  ) {
     const validation = await this.validatePackageForPublishing(id);
 
     if (!validation.isValid) {
@@ -773,8 +947,26 @@ export class PackageService {
     }
 
     // Update package status to published
+    const pkg = await this.packageRepository.findOneBy({ id });
     await this.packageRepository.update(id, { status: 'published' });
 
+    if (user && pkg) {
+      await this.packageActivityRepository.save({
+        packageId: id,
+        userId: user.userId,
+        action: 'publish',
+        details: { name: pkg.name },
+      });
+    }
+
     return this.findOne(id);
+  }
+
+  async getActivityLogs(id: string): Promise<PackageActivity[]> {
+    return this.packageActivityRepository.find({
+      where: { packageId: id },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
   }
 }

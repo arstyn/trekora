@@ -86,7 +86,7 @@ export class AuthController {
     // Assuming FRONTEND_URL is set in env, e.g., http://localhost:5173
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     res.redirect(
-      `${frontendUrl}/google-callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}&userId=${result.userId}&name=${encodeURIComponent(result.name)}&role=${result.role}`,
+      `${frontendUrl}/google-callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}&userId=${result.userId}&name=${encodeURIComponent(result.name)}`,
     );
   }
 }

@@ -1,19 +1,19 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
-import { RoleService } from '../role/role.service';
-import { UserDepartmentsService } from '../user-departments/user-departments.service';
-import { UserService } from '../user/user.service';
-import { UserInviteService } from '../user-invite/user-invite.service';
-import { MailerService } from '../mailer/mailer.service';
-import { FileManagerService } from '../file-manager/file-manager.service';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
+import { RelatedType } from 'src/database/entity/file-manager.entity';
 import { UserDepartments } from 'src/database/entity/user-departments.entity';
 import { User } from 'src/database/entity/user.entity';
-import { RelatedType } from 'src/database/entity/file-manager.entity';
-import { IEmployeeCreateDTO } from '../../dto/create-employee.dto';
 import { IUserProfileDTO } from 'src/dto/user-profile.dto';
+import { DataSource, Repository } from 'typeorm';
+import { IEmployeeCreateDTO } from '../../dto/create-employee.dto';
+import { FileManagerService } from '../file-manager/file-manager.service';
+import { MailerService } from '../mailer/mailer.service';
+import { PermissionSetService } from '../permission/permission-set.service';
+import { UserDepartmentsService } from '../user-departments/user-departments.service';
+import { UserInviteService } from '../user-invite/user-invite.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class EmployeeService {
@@ -21,13 +21,32 @@ export class EmployeeService {
     @InjectRepository(Employee)
     private readonly employeeRepository: Repository<Employee>,
     private readonly userDepartmentsService: UserDepartmentsService,
-    private readonly roleService: RoleService,
     private readonly dataSource: DataSource,
     private readonly userService: UserService,
     private readonly userInviteService: UserInviteService,
     private readonly mailerService: MailerService,
     private readonly fileManagerService: FileManagerService,
+    private readonly permissionSetService: PermissionSetService,
   ) {}
+
+  /**
+   * Helper method to load permission sets for an employee
+   * Since user and employee are always kept in sync, we only need to check employee
+   */
+  private async loadPermissionSetsForEmployee(
+    employee: Employee,
+  ): Promise<void> {
+    // Get permission sets assigned to the employee
+    // User and employee are always kept in sync, so we only need to check employee
+    const permissionSets =
+      await this.permissionSetService.getPermissionSetsForUser(
+        undefined,
+        employee.id,
+      );
+
+    // Attach permission sets to employee object
+    (employee as any).permissionSets = permissionSets;
+  }
 
   private async handleFileUploads(
     employeeId: string,
@@ -69,7 +88,6 @@ export class EmployeeService {
     files: Express.Multer.File[] = [],
   ) {
     const {
-      roleId,
       emergencyContactName,
       departments,
       status,
@@ -77,23 +95,12 @@ export class EmployeeService {
       dateOfBirth,
       ...rest
     } = employeeData;
-    console.log(
-      '🚀 ~ employee.service.ts:39 ~ EmployeeService ~ create ~ rest:',
-      rest,
-    );
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      if (roleId) {
-        const role = await this.roleService.findOne(roleId);
-        if (!role) {
-          throw new Error('Role not found');
-        }
-      }
-
       const employeeId = randomUUID();
 
       // Handle file uploads
@@ -106,7 +113,6 @@ export class EmployeeService {
           EmployeeStatus[status.toUpperCase() as keyof typeof EmployeeStatus],
         joinDate: joinDate ? new Date(joinDate) : undefined,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
-        roleId,
         profilePhoto: fileUploads.profilePhoto,
         verificationDocument: fileUploads.verificationDocument,
       });
@@ -130,11 +136,7 @@ export class EmployeeService {
 
       const updatedEmployee = await queryRunner.manager.findOne(Employee, {
         where: { id: employee.id },
-        relations: [
-          'role',
-          'employeeDepartments',
-          'employeeDepartments.department',
-        ],
+        relations: ['employeeDepartments', 'employeeDepartments.department'],
       });
 
       await queryRunner.commitTransaction();
@@ -153,39 +155,84 @@ export class EmployeeService {
 
   // Get all employees
   async findAll(organizationId: string): Promise<Employee[]> {
-    return this.employeeRepository.find({
+    const employees = await this.employeeRepository.find({
       where: {
         organizationId,
       },
-      relations: [
-        'role',
-        'employeeDepartments',
-        'employeeDepartments.department',
-      ],
+      relations: ['manager'],
       order: { createdAt: 'DESC' },
     });
+
+    // Load permission sets for each employee
+    for (const employee of employees) {
+      await this.loadPermissionSetsForEmployee(employee);
+    }
+
+    return employees;
   }
 
   // Get a single employee by ID
   async findOne(id: string): Promise<Employee | null> {
-    return this.employeeRepository.findOne({ where: { id } });
+    const employee = await this.employeeRepository.findOne({ where: { id } });
+
+    if (!employee) {
+      return null;
+    }
+
+    await this.loadPermissionSetsForEmployee(employee);
+
+    return employee;
   }
   // Get a single employee by ID
   async findOneWithEmail(email: string): Promise<Employee | null> {
-    return this.employeeRepository.findOne({ where: { email } });
+    const employee = await this.employeeRepository.findOne({
+      where: { email },
+    });
+
+    if (!employee) {
+      return null;
+    }
+
+    await this.loadPermissionSetsForEmployee(employee);
+
+    return employee;
   }
 
   async findOneWithFiles(id: string): Promise<Employee | null> {
     const employee = await this.employeeRepository.findOne({
       where: { id },
-      relations: [
-        'role',
-        'employeeDepartments',
-        'employeeDepartments.department',
-        'user',
-      ],
+      relations: ['user', 'manager', 'directReports'],
     });
     if (!employee) return null;
+
+    // Get permission sets assigned directly to the employee
+    const employeePermissionSets =
+      await this.permissionSetService.getPermissionSetsForUser(
+        undefined,
+        employee.id,
+      );
+
+    // If employee has a linked user, also get permission sets assigned to the user
+    let userPermissionSets: any[] = [];
+    if (employee.userId) {
+      userPermissionSets =
+        await this.permissionSetService.getPermissionSetsForUser(
+          employee.userId,
+          undefined,
+        );
+    }
+
+    // Combine both sets and remove duplicates
+    const allPermissionSets = [
+      ...employeePermissionSets,
+      ...userPermissionSets,
+    ];
+    const uniquePermissionSets = Array.from(
+      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values(),
+    );
+
+    // Attach permission sets to employee object
+    (employee as any).permissionSets = uniquePermissionSets;
 
     // Get file URLs for photo fields
     const files = await this.fileManagerService.findByRelatedEntity(
@@ -210,11 +257,10 @@ export class EmployeeService {
   // Update an employee by ID
   async update(
     id: string,
-    updateData: IEmployeeCreateDTO,
+    updateData: Partial<IEmployeeCreateDTO>,
     files: Express.Multer.File[] = [],
   ): Promise<Employee> {
     const {
-      roleId,
       emergencyContactName,
       departments,
       status,
@@ -223,10 +269,6 @@ export class EmployeeService {
       avatar,
       ...rest
     } = updateData;
-    console.log(
-      '🚀 ~ employee.service.ts:141 ~ EmployeeService ~ update ~ rest:',
-      rest,
-    );
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -243,19 +285,11 @@ export class EmployeeService {
         throw new Error('Employee not found');
       }
 
-      if (roleId) {
-        const role = await this.roleService.findOne(roleId);
-        if (!role) {
-          throw new Error('Role not found');
-        }
-      }
-
       // Handle file uploads
       const fileUploads = await this.handleFileUploads(id, files);
 
       const updateObj: any = {
         ...rest,
-        roleId,
         status: status
           ? EmployeeStatus[status.toUpperCase() as keyof typeof EmployeeStatus]
           : undefined,
@@ -311,15 +345,16 @@ export class EmployeeService {
 
       const updatedEmployee = await queryRunner.manager.findOne(Employee, {
         where: { id },
-        relations: [
-          'role',
-          'employeeDepartments',
-          'employeeDepartments.department',
-          'user',
-        ],
+        relations: ['user'],
       });
 
       await queryRunner.commitTransaction();
+
+      // Load permission sets for the updated employee
+      if (updatedEmployee) {
+        await this.loadPermissionSetsForEmployee(updatedEmployee);
+      }
+
       return updatedEmployee!;
     } catch (error: any) {
       await queryRunner.rollbackTransaction();
@@ -358,14 +393,15 @@ export class EmployeeService {
 
       const terminatedEmployee = await queryRunner.manager.findOne(Employee, {
         where: { id },
-        relations: [
-          'role',
-          'employeeDepartments',
-          'employeeDepartments.department',
-        ],
+        relations: [],
       });
 
       await queryRunner.commitTransaction();
+
+      // Load permission sets for the terminated employee
+      if (terminatedEmployee) {
+        await this.loadPermissionSetsForEmployee(terminatedEmployee);
+      }
 
       return terminatedEmployee;
     } catch (error: any) {
@@ -380,18 +416,22 @@ export class EmployeeService {
   }
 
   async findProfile(id: string): Promise<Employee | null> {
-    return this.employeeRepository.findOne({
+    const employee = await this.employeeRepository.findOne({
       where: { userId: id },
       relations: {
-        role: true,
         branch: true,
         organization: true,
         user: true,
-        employeeDepartments: {
-          department: true,
-        },
       },
     });
+
+    if (!employee) {
+      return null;
+    }
+
+    await this.loadPermissionSetsForEmployee(employee);
+
+    return employee;
   }
 
   async activateUser(id: string) {
@@ -465,12 +505,7 @@ export class EmployeeService {
   async getProfile(userId: string): Promise<IUserProfileDTO | null> {
     const employee = await this.employeeRepository.findOne({
       where: { user: { id: userId } },
-      relations: [
-        'role',
-        'employeeDepartments',
-        'employeeDepartments.department',
-        'branch',
-      ],
+      relations: ['branch'],
     });
 
     if (!employee) return null;
@@ -484,9 +519,38 @@ export class EmployeeService {
       username: employee.name,
       email: employee.email ?? '',
       mobileNumber: employee.phone ?? '',
-      position: employee.role?.name ?? '',
+      position: (employee as any).permissionSets?.[0]?.name ?? '',
       department,
       location: employee.branch?.name ?? null,
     };
+  }
+
+  // Get team hierarchy (employees with their managers and direct reports)
+  async getTeamHierarchy(organizationId: string): Promise<Employee[]> {
+    return this.employeeRepository.find({
+      where: {
+        organizationId,
+        status: EmployeeStatus.ACTIVE,
+      },
+      relations: [
+        'employeeDepartments',
+        'employeeDepartments.department',
+        'manager',
+        'directReports',
+      ],
+      order: { name: 'ASC' },
+    });
+  }
+
+  // Get direct reports for a specific manager
+  async getDirectReports(managerId: string): Promise<Employee[]> {
+    return this.employeeRepository.find({
+      where: {
+        managerId,
+        status: EmployeeStatus.ACTIVE,
+      },
+      relations: ['directReports'],
+      order: { name: 'ASC' },
+    });
   }
 }

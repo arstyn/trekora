@@ -5,51 +5,42 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
 import { Organization } from 'src/database/entity/organization.entity';
-import { Role } from 'src/database/entity/role.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { User } from 'src/database/entity/user.entity';
 import { ILoginResponse } from 'src/dto/auth.types';
 import { SignupFormDTO } from 'src/dto/signup.schema';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { EmployeeService } from '../employee/employee.service';
+import { MailerService } from '../mailer/mailer.service';
+import { PermissionSetService } from '../permission/permission-set.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { UserService } from '../user/user.service';
-import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(Organization)
-    private readonly organizationRepository: Repository<Organization>,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
-    @InjectRepository(Employee)
-    private readonly employeeRepository: Repository<Employee>,
-    @InjectRepository(UserInvite)
-    private readonly userInviteRepository: Repository<UserInvite>,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly userInviteService: UserInviteService,
     private readonly employeeService: EmployeeService,
     private readonly dataSource: DataSource,
     private readonly mailerService: MailerService,
+    private readonly permissionSetService: PermissionSetService,
   ) {}
 
-  private generateAccessToken(userId: string, organizationId: string): string {
-    return jwt.sign(
-      { userId, organizationId },
-      process.env.JWT_ACCESS_SECRET as string,
-      {
-        expiresIn: process.env.JWT_ACCESS_SECRET_EXPIRATION ?? '15m', // Access token expires in 15 minutes
-      },
-    );
+  private async generateAccessToken(
+    userId: string,
+    organizationId: string,
+  ): Promise<string> {
+    const payload: any = { userId, organizationId };
+
+    return jwt.sign(payload, process.env.JWT_ACCESS_SECRET as string, {
+      expiresIn: process.env.JWT_ACCESS_SECRET_EXPIRATION ?? '15m', // Access token expires in 15 minutes
+    });
   }
 
   private generateRefreshToken(userId: string, organizationId: string): string {
@@ -76,7 +67,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      const newAccessToken = this.generateAccessToken(
+      const newAccessToken = await this.generateAccessToken(
         user.id,
         user.organizationId,
       );
@@ -96,8 +87,6 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     try {
-      console.log('Starting signup process for:', userData.email);
-
       // Check if user already exists
       const existingUser = await queryRunner.manager.findOne(User, {
         where: { email: userData?.email },
@@ -116,15 +105,6 @@ export class AuthService {
       });
 
       const savedOrganization = await queryRunner.manager.save(organization);
-      console.log('Organization created:', savedOrganization.id);
-
-      // Find admin role
-      const adminRole = await queryRunner.manager.findOne(Role, {
-        where: { name: 'admin' },
-      });
-      if (!adminRole) {
-        throw new Error('Admin role not found in database');
-      }
 
       // Create user
       const hashedPassword = await bcrypt.hash(userData.password, 10);
@@ -134,14 +114,12 @@ export class AuthService {
         password: hashedPassword,
         phone: userData.phone,
         organizationId: savedOrganization.id,
-        roleId: adminRole.id,
         notificationsEnabled: userData.notifications,
         newsletterSubscribed: userData.newsletter,
         isActive: false,
       });
 
       const savedUser = await queryRunner.manager.save(newUser);
-      console.log('User created:', savedUser.id);
 
       // Create employee
       const employee = queryRunner.manager.create(Employee, {
@@ -150,34 +128,23 @@ export class AuthService {
         phone: userData.phone,
         organizationId: savedOrganization.id,
         userId: savedUser.id,
-        roleId: adminRole.id,
         status: EmployeeStatus.INACTIVE,
         joinDate: new Date().toISOString(),
         isActive: false,
       });
 
       const savedEmployee = await queryRunner.manager.save(employee);
-      console.log('Employee created:', savedEmployee.id);
 
       // Process team members if any
       if (userData.teamMembers && userData.teamMembers.length > 0) {
-        console.log('Processing team members:', userData.teamMembers.length);
-
         for (const member of userData.teamMembers) {
           try {
-            const role = await queryRunner.manager.findOne(Role, {
-              where: { name: member.role },
-            });
-            if (!role) {
-              console.warn(`Role ${member.role} not found, skipping member`);
-              continue;
-            }
+            // In new system, we assign permission sets via UI or defaults
 
             const teamEmployee = queryRunner.manager.create(Employee, {
               name: member.email.split('@')[0],
               email: member.email,
               organizationId: savedOrganization.id,
-              roleId: role.id,
               status: EmployeeStatus.INACTIVE,
               joinDate: new Date().toISOString(),
             });
@@ -197,8 +164,6 @@ export class AuthService {
                 teamEmployee.email,
                 savedInvite.token,
               );
-
-            console.log('Team member processed:', member.email);
           } catch (memberError) {
             console.error(
               'Error processing team member:',
@@ -212,7 +177,30 @@ export class AuthService {
 
       // CRITICAL: Commit the transaction
       await queryRunner.commitTransaction();
-      console.log('Transaction committed successfully');
+
+      // Create default permissions and permission sets for the organization
+      try {
+        const permissionSets =
+          await this.permissionSetService.createDefaultPermissionSetsForOrganization(
+            savedOrganization.id,
+          );
+
+        // Find the admin permission set and assign to the new user and employee
+        const adminSet = permissionSets.find((ps) => ps.name.includes('Admin'));
+        if (adminSet) {
+          await this.permissionSetService.assignPermissionSet(
+            adminSet.id,
+            savedUser.id,
+            savedEmployee.id,
+          );
+        }
+      } catch (error) {
+        console.error(
+          'Error creating default permissions and permission sets (non-critical):',
+          error,
+        );
+        // Don't fail the signup if permission sets creation fails
+      }
 
       const invite = await this.userInviteService.createInvite(employee);
 
@@ -254,7 +242,10 @@ export class AuthService {
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) throw new UnauthorizedException('Invalid credentials');
 
-    const accessToken = this.generateAccessToken(user.id, user.organizationId);
+    const accessToken = await this.generateAccessToken(
+      user.id,
+      user.organizationId,
+    );
     const refreshToken = this.generateRefreshToken(
       user.id,
       user.organizationId,
@@ -264,7 +255,6 @@ export class AuthService {
       message: 'Login successful',
       userId: user.id,
       name: user.name,
-      role: user.role?.name,
       accessToken,
       refreshToken,
     };
@@ -479,20 +469,13 @@ export class AuthService {
 
         const savedOrganization = await queryRunner.manager.save(organization);
 
-        // Find admin role
-        const adminRole = await queryRunner.manager.findOne(Role, {
-          where: { name: 'admin' },
-        });
-        if (!adminRole) {
-          throw new Error('Admin role not found in database');
-        }
+        // Roles are removed, we'll assign permission sets later
 
         // Create user
         const newUser = queryRunner.manager.create(User, {
           name: `${firstName} ${lastName}`,
           email: email,
           organizationId: savedOrganization.id,
-          roleId: adminRole.id,
           isActive: true, // Auto-activate Google users
           notificationsEnabled: true,
           newsletterSubscribed: false,
@@ -506,7 +489,6 @@ export class AuthService {
           email: email,
           organizationId: savedOrganization.id,
           userId: user.id,
-          roleId: adminRole.id,
           status: EmployeeStatus.ACTIVE,
           joinDate: new Date().toISOString(),
           isActive: true,
@@ -515,6 +497,34 @@ export class AuthService {
         await queryRunner.manager.save(employee);
 
         await queryRunner.commitTransaction();
+        console.log('Google signup transaction committed successfully');
+
+        // Create default permissions and permission sets
+        try {
+          const permissionSets =
+            await this.permissionSetService.createDefaultPermissionSetsForOrganization(
+              savedOrganization.id,
+            );
+
+          const adminSet = permissionSets.find((ps) =>
+            ps.name.includes('Admin'),
+          );
+          if (adminSet) {
+            await this.permissionSetService.assignPermissionSet(
+              adminSet.id,
+              user.id,
+            );
+          }
+
+          console.log(
+            'Default permissions and permission sets created and assigned',
+          );
+        } catch (error) {
+          console.error(
+            'Error creating default permissions and permission sets (non-critical):',
+            error,
+          );
+        }
       } catch (error) {
         console.error('Google signup error:', error);
         await queryRunner.rollbackTransaction();
@@ -530,7 +540,7 @@ export class AuthService {
       throw new UnauthorizedException('User account is deactivated.');
     }
 
-    const accessToken = this.generateAccessToken(
+    const accessToken = await this.generateAccessToken(
       user.id,
       user.organizationId || '',
     );
@@ -543,7 +553,6 @@ export class AuthService {
       message: 'Login successful',
       userId: user.id,
       name: user.name,
-      role: user.role?.name,
       accessToken,
       refreshToken,
     };

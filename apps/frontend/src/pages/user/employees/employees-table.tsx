@@ -12,13 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
 	Table,
 	TableBody,
 	TableCell,
@@ -27,7 +20,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import axiosInstance from "@/lib/axios";
-import type { IDepartment } from "@/types/department.type";
 import type { IEmployee } from "@/types/employee.types";
 import {
 	type ColumnDef,
@@ -44,10 +36,10 @@ import {
 	ChevronDown,
 	ChevronUp,
 	Download,
-	Filter,
 	MoreHorizontal,
 	Search,
 	UserPlus,
+	Network,
 } from "lucide-react";
 import { useLayoutEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -57,21 +49,18 @@ import { AddEmployeeModal } from "./_component/add-employee-modal";
 import { DeactivateDialog } from "./_component/deactivate-dialog";
 import { EditEmployeeDialog } from "./_component/edit-employee-dialog";
 import { ViewEmployeeDialog } from "./_component/view-employee-dialog";
-import type { IRole } from "@/types/role.types";
 import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
 import { getFileUrl } from "@/lib/utils";
+import { PermissionGuard } from "@/components/permission-guard";
 
 export function EmployeesPage() {
 	const navigate = useNavigate();
 	const location = useLocation();
 
 	const [employees, setEmployees] = useState<IEmployee[]>([]);
-	const [departments, setDepartments] = useState<IDepartment[]>([]);
-	const [roles, setRoles] = useState<IRole[]>([]);
 
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-	const [departmentFilter, setDepartmentFilter] = useState<string>("all");
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -92,35 +81,8 @@ export function EmployeesPage() {
 			}
 		}
 	};
-	const getDepartments = async () => {
-		try {
-			const res = await axiosInstance.get<IDepartment[]>("/department");
-			setDepartments(res.data);
-		} catch (error) {
-			if (error instanceof Error) {
-				toast.error(error.message);
-			} else {
-				toast.error("Failed to load updates");
-			}
-		}
-	};
-	const getRoles = async () => {
-		try {
-			const res = await axiosInstance.get<IRole[]>("/role");
-			setRoles(res.data);
-		} catch (error) {
-			if (error instanceof Error) {
-				toast.error(error.message);
-			} else {
-				toast.error("Failed to load updates");
-			}
-		}
-	};
-
 	useLayoutEffect(() => {
 		getEmployees();
-		getDepartments();
-		getRoles();
 	}, []);
 
 	// Handle URL parameters for selected employee
@@ -173,57 +135,20 @@ export function EmployeesPage() {
 			},
 		},
 		{
-			accessorKey: "employeeDepartments",
-			header: ({ column }) => {
+			accessorKey: "permissionSets",
+			header: "Permission Sets",
+			cell: ({ row }) => {
+				const employee = row.original;
+				// Permission sets may not be loaded in the initial employee list
+				// They can be viewed in the employee detail dialog
+				const permissionSetCount = employee.permissionSets?.length ?? 0;
 				return (
-					<div
-						className="flex items-center cursor-pointer"
-						onClick={() =>
-							column.toggleSorting(column.getIsSorted() === "asc")
-						}
-					>
-						Department
-						{column.getIsSorted() === "asc" ? (
-							<ChevronUp className="ml-2 h-4 w-4" />
-						) : column.getIsSorted() === "desc" ? (
-							<ChevronDown className="ml-2 h-4 w-4" />
-						) : null}
-					</div>
+					<span className="text-sm text-muted-foreground">
+						{permissionSetCount > 0
+							? `${permissionSetCount} set(s)`
+							: "—"}
+					</span>
 				);
-			},
-			cell: ({ row }) => {
-				const employee = row.original;
-				// If employee.role is an object, display its name property
-				if (
-					employee.employeeDepartments &&
-					Array.isArray(employee.employeeDepartments) &&
-					employee.employeeDepartments.length > 0
-				) {
-					return (
-						<span className="capitalize">
-							{employee.employeeDepartments
-								.map((ed) => ed.department.name)
-								.join(", ") || ""}
-						</span>
-					);
-				}
-			},
-		},
-		{
-			accessorKey: "role",
-			header: "Role",
-			cell: ({ row }) => {
-				const employee = row.original;
-				// If employee.role is an object, display its name property
-				if (
-					employee.role &&
-					typeof employee.role === "object" &&
-					"name" in employee.role
-				) {
-					return <span className="capitalize">{employee.role.name || ""}</span>;
-				}
-				// Fallback: display as string
-				return <span className="capitalize">{employee.role || ""}</span>;
 			},
 		},
 		{
@@ -335,15 +260,6 @@ export function EmployeesPage() {
 		},
 	});
 
-	// Handle department filter change
-	const handleDepartmentChange = (value: string) => {
-		setDepartmentFilter(value);
-		if (value === "all") {
-			table.getColumn("department")?.setFilterValue("");
-		} else {
-			table.getColumn("department")?.setFilterValue(value);
-		}
-	};
 
 	// Handle deactivating an employee
 	const handleDeactivate = (terminatedEmployee: IEmployee) => {
@@ -426,38 +342,29 @@ export function EmployeesPage() {
 					/>
 				</div>
 				<div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-					<div className="flex items-center gap-2">
-						<Filter className="h-4 w-4 text-muted-foreground" />
-						<Select
-							value={departmentFilter}
-							onValueChange={handleDepartmentChange}
-						>
-							<SelectTrigger className="w-[180px]">
-								<SelectValue placeholder="Department" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All Departments</SelectItem>
-								{departments.map((department, index) => (
-									<SelectItem key={index} value={department.name}>
-										{department.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
 					<div className="flex gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => navigate("/employees/hierarchy")}
+						>
+							<Network className="mr-2 h-4 w-4" />
+							Team Hierarchy
+						</Button>
 						<Button variant="outline" size="sm">
 							<Download className="mr-2 h-4 w-4" />
 							Export
 						</Button>
-						<Button
-							size="sm"
-							onClick={() => setIsAddModalOpen(true)}
-							className="cursor-pointer"
-						>
-							<UserPlus className="mr-2 h-4 w-4" />
-							Add Employee
-						</Button>
+						<PermissionGuard resource="employee" action="create">
+							<Button
+								size="sm"
+								onClick={() => setIsAddModalOpen(true)}
+								className="cursor-pointer"
+							>
+								<UserPlus className="mr-2 h-4 w-4" />
+								Add Employee
+							</Button>
+						</PermissionGuard>
 					</div>
 				</div>
 			</div>
@@ -473,9 +380,9 @@ export function EmployeesPage() {
 											{header.isPlaceholder
 												? null
 												: flexRender(
-														header.column.columnDef.header,
-														header.getContext()
-												  )}
+													header.column.columnDef.header,
+													header.getContext()
+												)}
 										</TableHead>
 									);
 								})}
@@ -523,8 +430,6 @@ export function EmployeesPage() {
 				onOpenChange={setIsAddModalOpen}
 				employees={employees}
 				setEmployees={setEmployees}
-				departments={departments}
-				roles={roles}
 			/>
 
 			{selectedEmployee && (
@@ -554,8 +459,7 @@ export function EmployeesPage() {
 					}}
 					employee={selectedEmployee}
 					onUpdateEmployee={handleUpdateEmployee}
-					departments={departments}
-					roles={roles}
+					employees={employees}
 				/>
 			)}
 

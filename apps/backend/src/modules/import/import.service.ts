@@ -9,7 +9,6 @@ import { ImportTemplate } from '../../database/entity/import-template.entity';
 import { ImportHistory } from '../../database/entity/import-history.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Role } from '../../database/entity/role.entity';
 
 export interface ImportResult {
   success: boolean;
@@ -60,11 +59,12 @@ export class ImportService {
     private readonly importTemplateRepository: Repository<ImportTemplate>,
     @InjectRepository(ImportHistory)
     private readonly importHistoryRepository: Repository<ImportHistory>,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
   ) {}
 
-  async processExcelFile(filePath: string, options: ImportOptions): Promise<ImportResult> {
+  async processExcelFile(
+    filePath: string,
+    options: ImportOptions,
+  ): Promise<ImportResult> {
     try {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
@@ -72,13 +72,17 @@ export class ImportService {
       const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
       if (data.length < 2) {
-        throw new BadRequestException('Excel file must have at least a header row and one data row');
+        throw new BadRequestException(
+          'Excel file must have at least a header row and one data row',
+        );
       }
 
       const headers = data[0] as string[];
       const rows = data.slice(1) as any[][];
 
-      this.logger.log(`Processing ${rows.length} rows for ${options.entityType}`);
+      this.logger.log(
+        `Processing ${rows.length} rows for ${options.entityType}`,
+      );
 
       let importedRows = 0;
       let failedRows = 0;
@@ -86,8 +90,12 @@ export class ImportService {
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        const rowData = this.mapRowToObject(headers, row, options.columnMapping);
-        
+        const rowData = this.mapRowToObject(
+          headers,
+          row,
+          options.columnMapping,
+        );
+
         try {
           switch (options.entityType) {
             case 'customer':
@@ -103,13 +111,18 @@ export class ImportService {
               await this.importBranch(rowData, options);
               break;
             default:
-              throw new BadRequestException(`Unsupported entity type: ${options.entityType}`);
+              throw new BadRequestException(
+                `Unsupported entity type: ${options.entityType}`,
+              );
           }
           importedRows++;
         } catch (error) {
           failedRows++;
           errors.push(`Row ${i + 2}: ${(error as any)?.message}`);
-          this.logger.error(`Failed to import row ${i + 2}:`, (error as any)?.message);
+          this.logger.error(
+            `Failed to import row ${i + 2}:`,
+            (error as any)?.message,
+          );
         }
       }
 
@@ -151,25 +164,35 @@ export class ImportService {
       return result;
     } catch (error) {
       this.logger.error('Error processing Excel file:', error);
-      throw new BadRequestException(`Failed to process Excel file: ${(error as any)?.message}`);
+      throw new BadRequestException(
+        `Failed to process Excel file: ${(error as any)?.message}`,
+      );
     }
   }
 
-  private mapRowToObject(headers: string[], row: any[], columnMapping?: Record<string, string>): Record<string, any> {
+  private mapRowToObject(
+    headers: string[],
+    row: any[],
+    columnMapping?: Record<string, string>,
+  ): Record<string, any> {
     const obj: Record<string, any> = {};
-    
+
     headers.forEach((header, index) => {
       if (header && row[index] !== undefined) {
         const cleanHeader = header.trim();
-        const entityField = columnMapping?.[cleanHeader] || cleanHeader.toLowerCase();
+        const entityField =
+          columnMapping?.[cleanHeader] || cleanHeader.toLowerCase();
         obj[entityField] = row[index];
       }
     });
-    
+
     return obj;
   }
 
-  private async importCustomer(data: Record<string, any>, options: ImportOptions): Promise<void> {
+  private async importCustomer(
+    data: Record<string, any>,
+    options: ImportOptions,
+  ): Promise<void> {
     const requiredFields = ['name', 'email', 'phone'];
     this.validateRequiredFields(data, requiredFields);
 
@@ -197,12 +220,15 @@ export class ImportService {
     }
   }
 
-  private async importLead(data: Record<string, any>, options: ImportOptions): Promise<void> {
+  private async importLead(
+    data: Record<string, any>,
+    options: ImportOptions,
+  ): Promise<void> {
     const requiredFields = ['name'];
     this.validateRequiredFields(data, requiredFields);
 
     const existingLead = await this.leadRepository.findOne({
-      where: { 
+      where: {
         name: data.name,
         organizationId: options.organizationId,
       },
@@ -230,12 +256,15 @@ export class ImportService {
     }
   }
 
-  private async importEmployee(data: Record<string, any>, options: ImportOptions): Promise<void> {
+  private async importEmployee(
+    data: Record<string, any>,
+    options: ImportOptions,
+  ): Promise<void> {
     const requiredFields = ['name', 'email'];
     this.validateRequiredFields(data, requiredFields);
 
     const existingEmployee = await this.employeeRepository.findOne({
-      where: { 
+      where: {
         email: data.email,
         organizationId: options.organizationId,
       },
@@ -243,16 +272,6 @@ export class ImportService {
 
     if (existingEmployee && !options.updateExisting) {
       throw new Error(`Employee with email ${data.email} already exists`);
-    }
-
-    let roleId: string | null = null;
-    if (data.role) {
-      const role = await this.roleRepository.findOne({
-        where: { name: data.role },
-      });
-      if (role) {
-        roleId = role.id;
-      }
     }
 
     const employeeData = {
@@ -267,7 +286,6 @@ export class ImportService {
       joinDate: data.joinDate ? new Date(data.joinDate) : new Date(),
       status: data.status || 'active',
       organizationId: options.organizationId,
-      roleId: roleId || undefined,
     };
 
     if (existingEmployee && options.updateExisting) {
@@ -277,12 +295,15 @@ export class ImportService {
     }
   }
 
-  private async importBranch(data: Record<string, any>, options: ImportOptions): Promise<void> {
+  private async importBranch(
+    data: Record<string, any>,
+    options: ImportOptions,
+  ): Promise<void> {
     const requiredFields = ['name', 'location'];
     this.validateRequiredFields(data, requiredFields);
 
     const existingBranch = await this.branchRepository.findOne({
-      where: { 
+      where: {
         name: data.name,
         organizationId: options.organizationId,
       },
@@ -306,7 +327,10 @@ export class ImportService {
     }
   }
 
-  private validateRequiredFields(data: Record<string, any>, requiredFields: string[]): void {
+  private validateRequiredFields(
+    data: Record<string, any>,
+    requiredFields: string[],
+  ): void {
     for (const field of requiredFields) {
       if (!data[field] || data[field].toString().trim() === '') {
         throw new Error(`Required field '${field}' is missing or empty`);
@@ -321,12 +345,48 @@ export class ImportService {
         name: 'Customer',
         description: 'Import customer data with customizable field mapping',
         availableFields: [
-          { excelColumn: 'Name', entityField: 'name', required: true, dataType: 'string', description: 'Customer full name' },
-          { excelColumn: 'Email', entityField: 'email', required: true, dataType: 'email', description: 'Customer email address' },
-          { excelColumn: 'Phone', entityField: 'phone', required: true, dataType: 'phone', description: 'Customer phone number' },
-          { excelColumn: 'Address', entityField: 'address', required: false, dataType: 'string', description: 'Customer address' },
-          { excelColumn: 'Status', entityField: 'status', required: false, dataType: 'string', description: 'Customer status (active, inactive, pending)' },
-          { excelColumn: 'Notes', entityField: 'notes', required: false, dataType: 'string', description: 'Additional notes about the customer' },
+          {
+            excelColumn: 'Name',
+            entityField: 'name',
+            required: true,
+            dataType: 'string',
+            description: 'Customer full name',
+          },
+          {
+            excelColumn: 'Email',
+            entityField: 'email',
+            required: true,
+            dataType: 'email',
+            description: 'Customer email address',
+          },
+          {
+            excelColumn: 'Phone',
+            entityField: 'phone',
+            required: true,
+            dataType: 'phone',
+            description: 'Customer phone number',
+          },
+          {
+            excelColumn: 'Address',
+            entityField: 'address',
+            required: false,
+            dataType: 'string',
+            description: 'Customer address',
+          },
+          {
+            excelColumn: 'Status',
+            entityField: 'status',
+            required: false,
+            dataType: 'string',
+            description: 'Customer status (active, inactive, pending)',
+          },
+          {
+            excelColumn: 'Notes',
+            entityField: 'notes',
+            required: false,
+            dataType: 'string',
+            description: 'Additional notes about the customer',
+          },
         ],
       },
       {
@@ -334,12 +394,49 @@ export class ImportService {
         name: 'Lead',
         description: 'Import lead data with customizable field mapping',
         availableFields: [
-          { excelColumn: 'Name', entityField: 'name', required: true, dataType: 'string', description: 'Lead full name' },
-          { excelColumn: 'Email', entityField: 'email', required: false, dataType: 'email', description: 'Lead email address' },
-          { excelColumn: 'Phone', entityField: 'phone', required: false, dataType: 'phone', description: 'Lead phone number' },
-          { excelColumn: 'Company', entityField: 'company', required: false, dataType: 'string', description: 'Company name' },
-          { excelColumn: 'Status', entityField: 'status', required: false, dataType: 'string', description: 'Lead status (new, contacted, qualified, lost, converted)' },
-          { excelColumn: 'Notes', entityField: 'notes', required: false, dataType: 'string', description: 'Additional notes about the lead' },
+          {
+            excelColumn: 'Name',
+            entityField: 'name',
+            required: true,
+            dataType: 'string',
+            description: 'Lead full name',
+          },
+          {
+            excelColumn: 'Email',
+            entityField: 'email',
+            required: false,
+            dataType: 'email',
+            description: 'Lead email address',
+          },
+          {
+            excelColumn: 'Phone',
+            entityField: 'phone',
+            required: false,
+            dataType: 'phone',
+            description: 'Lead phone number',
+          },
+          {
+            excelColumn: 'Company',
+            entityField: 'company',
+            required: false,
+            dataType: 'string',
+            description: 'Company name',
+          },
+          {
+            excelColumn: 'Status',
+            entityField: 'status',
+            required: false,
+            dataType: 'string',
+            description:
+              'Lead status (new, contacted, qualified, lost, converted)',
+          },
+          {
+            excelColumn: 'Notes',
+            entityField: 'notes',
+            required: false,
+            dataType: 'string',
+            description: 'Additional notes about the lead',
+          },
         ],
       },
       {
@@ -347,16 +444,70 @@ export class ImportService {
         name: 'Employee',
         description: 'Import employee data with customizable field mapping',
         availableFields: [
-          { excelColumn: 'Name', entityField: 'name', required: true, dataType: 'string', description: 'Employee full name' },
-          { excelColumn: 'Email', entityField: 'email', required: true, dataType: 'email', description: 'Employee email address' },
-          { excelColumn: 'Phone', entityField: 'phone', required: false, dataType: 'phone', description: 'Employee phone number' },
-          { excelColumn: 'Role', entityField: 'role', required: false, dataType: 'string', description: 'Employee role (admin, manager, employee, user)' },
-          { excelColumn: 'Address', entityField: 'address', required: false, dataType: 'string', description: 'Employee address' },
-          { excelColumn: 'Gender', entityField: 'gender', required: false, dataType: 'string', description: 'Employee gender' },
-          { excelColumn: 'Nationality', entityField: 'nationality', required: false, dataType: 'string', description: 'Employee nationality' },
-          { excelColumn: 'Join Date', entityField: 'joinDate', required: false, dataType: 'date', description: 'Employee join date (YYYY-MM-DD)' },
-          { excelColumn: 'Date of Birth', entityField: 'dateOfBirth', required: false, dataType: 'date', description: 'Employee date of birth (YYYY-MM-DD)' },
-          { excelColumn: 'Status', entityField: 'status', required: false, dataType: 'string', description: 'Employee status (active, inactive, suspended, terminated)' },
+          {
+            excelColumn: 'Name',
+            entityField: 'name',
+            required: true,
+            dataType: 'string',
+            description: 'Employee full name',
+          },
+          {
+            excelColumn: 'Email',
+            entityField: 'email',
+            required: true,
+            dataType: 'email',
+            description: 'Employee email address',
+          },
+          {
+            excelColumn: 'Phone',
+            entityField: 'phone',
+            required: false,
+            dataType: 'phone',
+            description: 'Employee phone number',
+          },
+          {
+            excelColumn: 'Address',
+            entityField: 'address',
+            required: false,
+            dataType: 'string',
+            description: 'Employee address',
+          },
+          {
+            excelColumn: 'Gender',
+            entityField: 'gender',
+            required: false,
+            dataType: 'string',
+            description: 'Employee gender',
+          },
+          {
+            excelColumn: 'Nationality',
+            entityField: 'nationality',
+            required: false,
+            dataType: 'string',
+            description: 'Employee nationality',
+          },
+          {
+            excelColumn: 'Join Date',
+            entityField: 'joinDate',
+            required: false,
+            dataType: 'date',
+            description: 'Employee join date (YYYY-MM-DD)',
+          },
+          {
+            excelColumn: 'Date of Birth',
+            entityField: 'dateOfBirth',
+            required: false,
+            dataType: 'date',
+            description: 'Employee date of birth (YYYY-MM-DD)',
+          },
+          {
+            excelColumn: 'Status',
+            entityField: 'status',
+            required: false,
+            dataType: 'string',
+            description:
+              'Employee status (active, inactive, suspended, terminated)',
+          },
         ],
       },
       {
@@ -364,27 +515,62 @@ export class ImportService {
         name: 'Branch',
         description: 'Import branch data with customizable field mapping',
         availableFields: [
-          { excelColumn: 'Name', entityField: 'name', required: true, dataType: 'string', description: 'Branch name' },
-          { excelColumn: 'Location', entityField: 'location', required: true, dataType: 'string', description: 'Branch location/address' },
-          { excelColumn: 'Is Active', entityField: 'isActive', required: false, dataType: 'boolean', description: 'Branch active status (true/false)' },
+          {
+            excelColumn: 'Name',
+            entityField: 'name',
+            required: true,
+            dataType: 'string',
+            description: 'Branch name',
+          },
+          {
+            excelColumn: 'Location',
+            entityField: 'location',
+            required: true,
+            dataType: 'string',
+            description: 'Branch location/address',
+          },
+          {
+            excelColumn: 'Is Active',
+            entityField: 'isActive',
+            required: false,
+            dataType: 'boolean',
+            description: 'Branch active status (true/false)',
+          },
         ],
       },
     ];
   }
 
-  async generateCustomTemplate(entityType: string, columnMapping: Record<string, string>): Promise<any> {
+  async generateCustomTemplate(
+    entityType: string,
+    columnMapping: Record<string, string>,
+  ): Promise<any> {
     const schemas = await this.getEntitySchemas();
-    const schema = schemas.find(s => s.entityType === entityType);
-    
+    const schema = schemas.find((s) => s.entityType === entityType);
+
     if (!schema) {
       throw new BadRequestException(`Entity type ${entityType} not found`);
     }
 
     const headers = Object.keys(columnMapping);
-    
+
     const sampleData = [
-      ['John Doe', 'john@example.com', '+1234567890', '123 Main St', 'active', 'VIP customer'],
-      ['Jane Smith', 'jane@example.com', '+0987654321', '456 Oak Ave', 'pending', 'New customer'],
+      [
+        'John Doe',
+        'john@example.com',
+        '+1234567890',
+        '123 Main St',
+        'active',
+        'VIP customer',
+      ],
+      [
+        'Jane Smith',
+        'jane@example.com',
+        '+0987654321',
+        '456 Oak Ave',
+        'pending',
+        'New customer',
+      ],
     ];
 
     return {
@@ -396,17 +582,22 @@ export class ImportService {
     };
   }
 
-  async validateColumnMapping(entityType: string, columnMapping: Record<string, string>): Promise<{ valid: boolean; errors: string[] }> {
+  async validateColumnMapping(
+    entityType: string,
+    columnMapping: Record<string, string>,
+  ): Promise<{ valid: boolean; errors: string[] }> {
     const schemas = await this.getEntitySchemas();
-    const schema = schemas.find(s => s.entityType === entityType);
-    
+    const schema = schemas.find((s) => s.entityType === entityType);
+
     if (!schema) {
       return { valid: false, errors: [`Entity type ${entityType} not found`] };
     }
 
     const errors: string[] = [];
-    const requiredFields = schema.availableFields.filter(field => field.required);
-    
+    const requiredFields = schema.availableFields.filter(
+      (field) => field.required,
+    );
+
     // Check if all required fields are mapped
     for (const field of requiredFields) {
       const isMapped = Object.values(columnMapping).includes(field.entityField);
@@ -417,9 +608,13 @@ export class ImportService {
 
     // Check if mapped fields exist in schema
     for (const [excelColumn, entityField] of Object.entries(columnMapping)) {
-      const fieldExists = schema.availableFields.some(field => field.entityField === entityField);
+      const fieldExists = schema.availableFields.some(
+        (field) => field.entityField === entityField,
+      );
       if (!fieldExists) {
-        errors.push(`Field '${entityField}' is not valid for entity type '${entityType}'`);
+        errors.push(
+          `Field '${entityField}' is not valid for entity type '${entityType}'`,
+        );
       }
     }
 
@@ -445,16 +640,19 @@ export class ImportService {
     const template = await this.importTemplateRepository.findOne({
       where: { id, organizationId },
     });
-    
+
     if (!template) {
       throw new BadRequestException(`Template with id ${id} not found`);
     }
-    
+
     return template;
   }
 
   async updateTemplate(id: string, templateData: any): Promise<any> {
-    const template = await this.getTemplateById(id, templateData.organizationId);
+    const template = await this.getTemplateById(
+      id,
+      templateData.organizationId,
+    );
     Object.assign(template, templateData);
     return await this.importTemplateRepository.save(template);
   }
@@ -465,28 +663,21 @@ export class ImportService {
   }
 
   async generateTemplateExcel(template: any): Promise<Buffer> {
-    console.log("🔄 Template:", template);
-    
     // Filter and sort columns
     const sortedColumns = template.columns
       .filter((col: any) => col.isVisible)
       .sort((a: any, b: any) => a.order - b.order);
-    
-    console.log("🔄 Sorted Columns:", sortedColumns);
-    
+
     // Extract headers as strings
     const headers = sortedColumns.map((col: any) => {
       const header = col.excelColumnName;
-      console.log("🔄 Column header:", header, typeof header);
       return String(header); // Ensure it's a string
     });
-    
-    console.log("🔄 Final headers:", headers);
 
     // Generate sample data that matches the number of columns
     const sampleDataRow1: string[] = [];
     const sampleDataRow2: string[] = [];
-    
+
     for (let i = 0; i < headers.length; i++) {
       const column = sortedColumns[i];
       switch (column.entityField) {
@@ -521,8 +712,6 @@ export class ImportService {
     }
 
     const sampleData = [sampleDataRow1, sampleDataRow2];
-    
-    console.log("🔄 Sample data:", sampleData);
 
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
@@ -539,4 +728,4 @@ export class ImportService {
     });
     return history;
   }
-} 
+}
