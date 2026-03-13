@@ -11,6 +11,16 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
     Table,
     TableBody,
     TableCell,
@@ -54,6 +64,8 @@ export default function BatchDetailsPage() {
         useState<IEmployee | null>(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [batchLogs, setBatchLogs] = useState<IBatchLog[]>([]);
+    const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
     const fetchLogs = useCallback(async () => {
         try {
@@ -87,8 +99,15 @@ export default function BatchDetailsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleStatusUpdate = async (newStatus: string) => {
+    const handleStatusUpdate = (newStatus: string) => {
         if (!batch || newStatus === batch.status) return;
+        setPendingStatus(newStatus);
+        setShowStatusConfirm(true);
+    };
+
+    const confirmStatusUpdate = async () => {
+        if (!batch || !pendingStatus) return;
+        const newStatus = pendingStatus;
 
         // Check if all active bookings have completed workflows before activating batch
         if (newStatus === "active") {
@@ -105,6 +124,8 @@ export default function BatchDetailsPage() {
                 toast.error(
                     `Cannot activate batch: ${incompleteBookings.length} bookings have incomplete workflows. Please move them to another batch or put them on hold.`,
                 );
+                setShowStatusConfirm(false);
+                setPendingStatus(null);
                 return;
             }
         }
@@ -123,6 +144,8 @@ export default function BatchDetailsPage() {
             }
         } finally {
             setIsUpdatingStatus(false);
+            setShowStatusConfirm(false);
+            setPendingStatus(null);
         }
     };
 
@@ -781,6 +804,58 @@ export default function BatchDetailsPage() {
                     onUpdate={getBranch}
                 />
             )}
+
+            <AlertDialog
+                open={showStatusConfirm}
+                onOpenChange={setShowStatusConfirm}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Update Batch Status</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            <span className="block mb-2">
+                                Are you sure you want to change the batch status to{" "}
+                                <span className="font-bold underline capitalize">
+                                    {pendingStatus}
+                                </span>?
+                            </span>
+                            {batch && activeBookings.length === 0 && (
+                                <span className="block text-amber-600 font-medium mb-1 italic">
+                                    ⚠️ This batch has no active bookings.
+                                </span>
+                            )}
+                            {batch &&
+                                batch.bookedSeats < batch.totalSeats &&
+                                activeBookings.length > 0 && (
+                                    <span className="block text-amber-600 font-medium mb-1 italic">
+                                        ⚠️ This batch is not full yet ({batch.bookedSeats}/
+                                        {batch.totalSeats} seats booked).
+                                    </span>
+                                )}
+                            <span className="block mt-2">
+                                This action may affect the visibility and workflow of
+                                related bookings.
+                            </span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel
+                            onClick={() => {
+                                setShowStatusConfirm(false);
+                                setPendingStatus(null);
+                            }}
+                        >
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmStatusUpdate}
+                            disabled={isUpdatingStatus}
+                        >
+                            {isUpdatingStatus ? "Updating..." : "Confirm Change"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Audit Trail & History */}
             <Card className="border shadow-md rounded-2xl overflow-hidden bg-muted/5 mt-8">
