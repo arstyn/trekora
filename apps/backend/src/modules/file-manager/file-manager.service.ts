@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -7,13 +7,23 @@ import {
 } from '../../database/entity/file-manager.entity';
 import * as fs from 'fs';
 import { extname } from 'path';
+import { ConfigService } from '@nestjs/config';
+import { uploadFile } from '@uploadcare/upload-client';
 
 @Injectable()
 export class FileManagerService {
+  private readonly logger = new Logger(FileManagerService.name);
+  private readonly uploadMechanism: string;
+
   constructor(
     @InjectRepository(FileManager)
     private readonly fileManagerRepository: Repository<FileManager>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.uploadMechanism =
+      this.configService.get<string>('upload.mechanism') || 'local';
+    this.logger.log(`Using upload mechanism: ${this.uploadMechanism}`);
+  }
 
   create(data: Partial<FileManager>) {
     const file = this.fileManagerRepository.create(data);
@@ -24,86 +34,114 @@ export class FileManagerService {
     data: Partial<FileManager>,
     files: Array<Express.Multer.File>,
   ): Promise<FileManager[]> {
-    let filesData: Array<any> = [];
-
-    // Create upload directory for this related type
-    const uploadDir = `./uploads/${data.relatedType}`;
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    const filesData: Array<FileManager> = [];
 
     for (const file of files) {
       try {
-        // Generate unique filename with timestamp
-        const timestamp = Date.now();
-        const ext = extname(file.originalname);
-        const filename = `${data.relatedType}-${data.relatedId}-${timestamp}${ext}`;
-        const filePath = `${uploadDir}/${filename}`;
+        let savedFile: FileManager;
 
-        // Save file to filesystem
-        await fs.promises.writeFile(filePath, file.buffer);
+        if (this.uploadMechanism === 'uploadcare') {
+          savedFile = await this.uploadToUploadcare(file, data);
+        } else if (this.uploadMechanism === 's3') {
+          savedFile = await this.uploadToS3(file, data);
+        } else {
+          savedFile = await this.uploadToLocal(file, data);
+        }
 
-        // Create database record
-        const fileData = this.fileManagerRepository.create({
-          filename: file.originalname, // Store original filename for display
-          relatedId: data.relatedId,
-          relatedType: data.relatedType,
-          url: filePath, // Store actual file path
-        });
-
-        const savedFile = await this.fileManagerRepository.save(fileData);
-
-        // Return file with HTTP URL for frontend access
-        const fileWithHttpUrl = {
-          ...savedFile,
-          url: `/file-manager/serve/${savedFile.id}`,
-        };
-
-        filesData.push(fileWithHttpUrl);
+        filesData.push(this.formatFileUrl(savedFile));
       } catch (error: any) {
-        throw new Error(`Local file save failed: ${error.message}`);
+        this.logger.error(`Upload failed: ${error.message}`);
+        throw new Error(`Upload failed: ${error.message}`);
       }
     }
     return filesData;
   }
 
   async uploadOneFile(data: Partial<FileManager>, file: Express.Multer.File) {
-    // Create upload directory for this related type
+    try {
+      let savedFile: FileManager;
+
+      if (this.uploadMechanism === 'uploadcare') {
+        savedFile = await this.uploadToUploadcare(file, data);
+      } else if (this.uploadMechanism === 's3') {
+        savedFile = await this.uploadToS3(file, data);
+      } else {
+        savedFile = await this.uploadToLocal(file, data);
+      }
+
+      return this.formatFileUrl(savedFile);
+    } catch (error: any) {
+      this.logger.error(`Upload failed: ${error.message}`);
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+  }
+
+  private async uploadToLocal(
+    file: Express.Multer.File,
+    data: Partial<FileManager>,
+  ): Promise<FileManager> {
     const uploadDir = `./uploads/${data.relatedType}`;
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    try {
-      // Generate unique filename with timestamp
-      const timestamp = Date.now();
-      const ext = extname(file.originalname);
-      const filename = `${data.relatedType}-${data.relatedId}-${timestamp}${ext}`;
-      const filePath = `${uploadDir}/${filename}`;
+    const timestamp = Date.now();
+    const ext = extname(file.originalname);
+    const filename = `${data.relatedType}-${data.relatedId}-${timestamp}${ext}`;
+    const filePath = `${uploadDir}/${filename}`;
 
-      // Save file to filesystem
-      await fs.promises.writeFile(filePath, file.buffer);
+    await fs.promises.writeFile(filePath, file.buffer);
 
-      // Create database record
-      const fileData = this.fileManagerRepository.create({
-        filename: file.originalname, // Store original filename for display
-        relatedId: data.relatedId,
-        relatedType: data.relatedType,
-        url: filePath, // Store actual file path
-      });
+    const fileData = this.fileManagerRepository.create({
+      filename: file.originalname,
+      relatedId: data.relatedId,
+      relatedType: data.relatedType,
+      url: filePath,
+    });
 
-      const savedFile = await this.fileManagerRepository.save(fileData);
+    return this.fileManagerRepository.save(fileData);
+  }
 
-      // Return file with HTTP URL for frontend access
-      const fileWithHttpUrl = {
-        ...savedFile,
-        url: `/file-manager/serve/${savedFile.id}`,
-      };
-
-      return fileWithHttpUrl;
-    } catch (error: any) {
-      throw new Error(`Local file save failed: ${error.message}`);
+  private async uploadToUploadcare(
+    file: Express.Multer.File,
+    data: Partial<FileManager>,
+  ): Promise<FileManager> {
+    const publicKey = this.configService.get<string>('uploadcare.publicKey');
+    if (!publicKey) {
+      throw new Error('Uploadcare public key not configured');
     }
+
+    const result = await uploadFile(file.buffer, {
+      publicKey,
+      fileName: file.originalname,
+    });
+
+    const fileData = this.fileManagerRepository.create({
+      filename: file.originalname,
+      relatedId: data.relatedId,
+      relatedType: data.relatedType,
+      url: result.cdnUrl as string,
+    });
+
+    return this.fileManagerRepository.save(fileData);
+  }
+
+  private async uploadToS3(
+    file: Express.Multer.File,
+    data: Partial<FileManager>,
+  ): Promise<FileManager> {
+    this.logger.warn('S3 upload mechanism requested but not fully implemented');
+    return this.uploadToLocal(file, data);
+  }
+
+  private formatFileUrl(file: FileManager): FileManager {
+    if (file.url && file.url.startsWith('http')) {
+      return file;
+    }
+    return {
+      ...file,
+      url: `/file-manager/serve/${file.id}`,
+    } as FileManager;
   }
 
   findAll() {
@@ -116,26 +154,17 @@ export class FileManagerService {
       order: { createdAt: 'DESC' },
     });
 
-    // Convert file paths to HTTP URLs for frontend access
-    return files.map((file) => ({
-      ...file,
-      url: `/file-manager/serve/${file.id}`,
-    }));
+    return files.map((file) => this.formatFileUrl(file));
   }
 
   async findOne(id: string) {
     const file = await this.fileManagerRepository.findOne({ where: { id } });
     if (file) {
-      // For frontend access, return HTTP URL
-      return {
-        ...file,
-        url: `/file-manager/serve/${file.id}`,
-      };
+      return this.formatFileUrl(file);
     }
     return file;
   }
 
-  // Internal method to get file with actual file path (for file serving)
   async findOneWithPath(id: string) {
     return this.fileManagerRepository.findOne({ where: { id } });
   }
@@ -149,26 +178,26 @@ export class FileManagerService {
   }
 
   async remove(id: string) {
-    // Get file record to get file path (use internal method with actual path)
     const fileRecord = await this.fileManagerRepository.findOne({
       where: { id },
     });
 
     if (fileRecord) {
-      // Delete physical file if it exists
-      if (fs.existsSync(fileRecord.url)) {
+      if (
+        fileRecord.url &&
+        !fileRecord.url.startsWith('http') &&
+        fs.existsSync(fileRecord.url)
+      ) {
         try {
           await fs.promises.unlink(fileRecord.url);
         } catch (error) {
-          console.warn(
+          this.logger.warn(
             `Failed to delete physical file: ${fileRecord.url}`,
             error,
           );
-          // Continue with database deletion even if file deletion fails
         }
       }
 
-      // Delete database record
       await this.fileManagerRepository.delete(id);
     }
 

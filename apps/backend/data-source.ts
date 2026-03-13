@@ -6,6 +6,7 @@ const sslMode = process.env.DB_SSL_MODE === 'true';
 
 export default new DataSource({
   type: 'postgres',
+  url: process.env.DATABASE_URL,
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT ?? '5432'),
   username: process.env.DB_USERNAME || 'postgres',
@@ -19,18 +20,19 @@ export default new DataSource({
   logging: false,
 
   // SSL configuration
-  ...(sslMode
+  ...(sslMode || process.env.DATABASE_URL
     ? {
-        ssl: fs.existsSync('/etc/ssl/certs/global-bundle.pem')
-          ? {
-              rejectUnauthorized: true,
-              ca: fs
-                .readFileSync('/etc/ssl/certs/global-bundle.pem')
-                .toString(),
-            }
-          : {
-              rejectUnauthorized: false,
-            },
+        ssl:
+          fs.existsSync('/etc/ssl/certs/global-bundle.pem') && !process.env.DATABASE_URL
+            ? {
+                rejectUnauthorized: true,
+                ca: fs
+                  .readFileSync('/etc/ssl/certs/global-bundle.pem')
+                  .toString(),
+              }
+            : {
+                rejectUnauthorized: false,
+              },
       }
     : {}),
 });

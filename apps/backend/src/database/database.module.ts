@@ -9,6 +9,7 @@ export const DatabaseModule = TypeOrmModule.forRootAsync({
 
     return {
       type: 'postgres',
+      url: databaseConfig.url,
       host: databaseConfig.host as string,
       port: databaseConfig.port as number,
       username: databaseConfig.username as string,
@@ -19,18 +20,17 @@ export const DatabaseModule = TypeOrmModule.forRootAsync({
       migrationsRun: true,
       logging: ['error', 'query', 'schema'],
       synchronize: databaseConfig.sync,
-      ...(databaseConfig.ssl_mode === true && {
-        ssl: {
-          rejectUnauthorized: false,
-        },
-        extra: {
-          max: 10,
-          idleTimeoutMillis: 30000,
-          ssl: {
-            rejectUnauthorized: false,
-          },
-        },
-      }),
+      ssl: databaseConfig.ssl_mode || !!databaseConfig.url,
+      extra:
+        databaseConfig.ssl_mode || !!databaseConfig.url
+          ? {
+              max: 10,
+              idleTimeoutMillis: 30000,
+              ssl: {
+                rejectUnauthorized: false,
+              },
+            }
+          : {},
     };
   },
 });

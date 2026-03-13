@@ -4,7 +4,7 @@ import * as path from 'path';
 import { DataSource } from 'typeorm';
 import configuration from '../../config/configuration';
 import { defaultPermissionSets } from '../../modules/permission/default-permission-sets';
-import { Batch, BatchStatus } from '../entity/batch.entity';
+import { Batch } from '../entity/batch.entity';
 import { Branch } from '../entity/branch.entity';
 import { Customer } from '../entity/customer.entity';
 import { Employee, EmployeeStatus } from '../entity/employee.entity';
@@ -46,6 +46,7 @@ const databaseConfig = appConfig.database;
 
 const AppDataSource = new DataSource({
   type: 'postgres',
+  url: databaseConfig.url,
   host: databaseConfig.host,
   port: Number(databaseConfig.port),
   username: databaseConfig.username,
@@ -53,7 +54,10 @@ const AppDataSource = new DataSource({
   database: databaseConfig.database,
   entities: [path.join(__dirname, '../**/*.entity.{ts,js}')],
   synchronize: true,
-  ssl: databaseConfig.ssl_mode ? { rejectUnauthorized: false } : false,
+  ssl:
+    databaseConfig.ssl_mode || !!databaseConfig.url
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
 async function tableExists(
@@ -87,28 +91,25 @@ async function seed() {
     // Get all entity metadata
     const entities = AppDataSource.entityMetadatas;
 
-    // Disable foreign key checks temporarily
-    await queryRunner.query('SET session_replication_role = replica;');
-
     // Clear all tables in reverse order to handle foreign key constraints
+    // Using TRUNCATE CASCADE because session_replication_role requires superuser permissions (not available on Neon)
     for (const entity of entities.reverse()) {
       const tableName = entity.tableName;
 
       // Check if table exists before attempting to delete
       if (await tableExists(queryRunner, tableName)) {
         console.log(`Clearing table: ${tableName}`);
-        await queryRunner.query(`DELETE FROM "${tableName}";`);
+        await queryRunner.query(
+          `TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE;`,
+        );
       } else {
         console.log(`Table ${tableName} does not exist, skipping...`);
       }
     }
 
-    // Re-enable foreign key checks
-    await queryRunner.query('SET session_replication_role = DEFAULT;');
-
     console.log('Database cleared successfully');
     const userNotificationTypeRepository =
-      AppDataSource.getRepository(UserNotificationType);
+      queryRunner.manager.getRepository(UserNotificationType);
 
     console.log(
       'Skipping premature permission seeding (will be seeded per organization later)...',
