@@ -1,4 +1,5 @@
-import { Facebook, Instagram, Linkedin, Plane, Sparkles, Twitter } from "lucide-react";
+import { LogoIcon } from "@/components/logo";
+import { Facebook, Instagram, Linkedin, Twitter } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 export function Footer() {
@@ -14,8 +15,7 @@ export function Footer() {
 					<div className="col-span-1 md:col-span-2">
 						<div className="flex items-center space-x-2 mb-4 group">
 							<div className="relative">
-								<Plane className="h-8 w-8 transition-colors" />
-								<Sparkles className="h-3 w-3 absolute -top-2 -right-2 animate-pulse" />
+								<LogoIcon className="h-8 w-8 transition-colors" />
 							</div>
 							<span className="text-2xl font-bold ">Trekora</span>
 						</div>

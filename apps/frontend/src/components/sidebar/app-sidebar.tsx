@@ -10,8 +10,8 @@ import {
 import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
+import { LogoIcon } from "@/components/logo";
 import {
-    ArrowUpCircleIcon,
     Banknote,
     BarChart3,
     BookUser,
@@ -187,7 +187,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             className="data-[slot=sidebar-menu-button]:!p-1.5"
                         >
                             <NavLink to="/dashboard">
-                                <ArrowUpCircleIcon className="h-5 w-5" />
+                                <LogoIcon className="h-5 w-5" />
                                 <span className="text-base font-semibold">
                                     Trekora
                                 </span>
