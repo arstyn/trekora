@@ -7,7 +7,7 @@ import {
   Post,
   Put,
   Request,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Employee } from 'src/database/entity/employee.entity';
@@ -24,13 +24,13 @@ import {
 } from './permission-set.service';
 
 @UseGuards(AuthGuard, PermissionGuard)
-@Controller('api/permission-sets')
+@Controller('permission-sets')
 export class PermissionSetController {
   constructor(
     private readonly permissionSetService: PermissionSetService,
     @InjectRepository(Employee)
     private readonly employeeRepository: Repository<Employee>,
-  ) { }
+  ) {}
 
   // Get current user's own permission sets (no permission required)
   // Checks both user and employee permission sets (they should be in sync)
@@ -39,7 +39,8 @@ export class PermissionSetController {
     const userId = req.user.userId;
 
     // Get permission sets assigned to the user
-    const userPermissionSets = await this.permissionSetService.getPermissionSetsForUser(userId);
+    const userPermissionSets =
+      await this.permissionSetService.getPermissionSetsForUser(userId);
 
     // Also check if user has a linked employee and get their permission sets
     // (They should be in sync, but we check both to be safe)
@@ -49,16 +50,20 @@ export class PermissionSetController {
 
     let employeePermissionSets: PermissionSet[] = [];
     if (employee) {
-      employeePermissionSets = await this.permissionSetService.getPermissionSetsForUser(
-        undefined,
-        employee.id,
-      );
+      employeePermissionSets =
+        await this.permissionSetService.getPermissionSetsForUser(
+          undefined,
+          employee.id,
+        );
     }
 
     // Combine both sets and remove duplicates
-    const allPermissionSets = [...userPermissionSets, ...employeePermissionSets];
+    const allPermissionSets = [
+      ...userPermissionSets,
+      ...employeePermissionSets,
+    ];
     const uniquePermissionSets = Array.from(
-      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values()
+      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values(),
     );
 
     return uniquePermissionSets;
