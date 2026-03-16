@@ -1,10 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosInstance from "@/lib/axios";
-import workflowService, {
-    type IWorkflowStep,
-} from "@/services/workflow.service";
+import workflowService from "@/services/workflow.service";
 import type { IEmployee } from "@/types/employee.types";
+import type { IWorkflowStep } from "@/types/workflow.types";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";

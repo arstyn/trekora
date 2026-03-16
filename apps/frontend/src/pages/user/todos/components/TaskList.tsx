@@ -1,6 +1,6 @@
-import { Check } from "lucide-react";
-import type { IWorkflowStep } from "@/services/workflow.service";
 import type { IEmployee } from "@/types/employee.types";
+import type { IWorkflowStep } from "@/types/workflow.types";
+import { Check } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 
 interface TaskListProps {

@@ -54,7 +54,6 @@ export default function TeamHierarchyPage() {
         const content = contentRef.current;
 
         // Reset scale and position for measurement
-        const originalScale = 1;
         const padding = 100; // Safe margin around the tree
 
         const containerWidth = container.clientWidth;

@@ -9,9 +9,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { HistoryIcon, LayoutList, Clock, User } from "lucide-react";
-import type { IWorkflowStep } from "@/services/workflow.service";
 import type { IEmployee } from "@/types/employee.types";
+import type { IWorkflowStep } from "@/types/workflow.types";
+import { Clock, HistoryIcon, LayoutList, User } from "lucide-react";
 
 interface TaskCardProps {
     task: IWorkflowStep;
