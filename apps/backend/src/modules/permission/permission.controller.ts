@@ -18,9 +18,9 @@ import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 
 @UseGuards(AuthGuard, PermissionGuard)
 @RequirePermission('permission', 'manage')
-@Controller('api/permissions')
+@Controller('permissions')
 export class PermissionController {
-  constructor(private readonly permissionService: PermissionService) { }
+  constructor(private readonly permissionService: PermissionService) {}
 
   // Create a new permission
   @Post()

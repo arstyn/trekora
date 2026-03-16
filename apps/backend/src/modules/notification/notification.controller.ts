@@ -12,7 +12,7 @@ import { NotificationService } from './notification.service';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 
 @UseGuards(AuthGuard)
-@Controller('api/notification')
+@Controller('notification')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 

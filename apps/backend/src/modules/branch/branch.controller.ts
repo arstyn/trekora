@@ -9,15 +9,15 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { Branch } from '../../database/entity/branch.entity';
-import { BranchService } from './branch.service';
-import { AuthGuard } from '../auth/guard/auth.guard';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { IBranchCreateDTO } from 'src/dto/create-branch.dto';
 import { IBranchUpdateDTO } from 'src/dto/update-branch.dto';
+import { Branch } from '../../database/entity/branch.entity';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { BranchService } from './branch.service';
 
 @UseGuards(AuthGuard)
-@Controller('api/branches')
+@Controller('branches')
 export class BranchController {
   constructor(private readonly branchService: BranchService) {}
 

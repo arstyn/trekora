@@ -20,7 +20,7 @@ import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../auth/guard/permission.guard';
 import { WorkflowService } from './workflow.service';
 
-@Controller('api/workflow')
+@Controller('workflow')
 @UseGuards(AuthGuard, PermissionGuard)
 export class WorkflowController {
   constructor(private readonly workflowService: WorkflowService) {}

@@ -23,12 +23,12 @@ import { EmployeeService } from '../employee/employee.service';
 import { CustomerService } from './customer.service';
 
 @UseGuards(AuthGuard, PermissionGuard)
-@Controller('api/customers')
+@Controller('customers')
 export class CustomerController {
   constructor(
     private readonly customerService: CustomerService,
     private readonly employeeService: EmployeeService,
-  ) { }
+  ) {}
 
   //Creating Customers
   @Post()
@@ -105,7 +105,9 @@ export class CustomerController {
       return { customers: [], total: 0, hasMore: false };
     }
 
-    const directReports = await this.employeeService.getDirectReports(employee.id);
+    const directReports = await this.employeeService.getDirectReports(
+      employee.id,
+    );
     const teamUserIds = directReports
       .map((emp) => emp.userId)
       .filter((id): id is string => !!id);

@@ -1,17 +1,17 @@
 import {
-  Get,
   Body,
+  Controller,
+  Get,
   Patch,
   Request,
   UseGuards,
-  Controller,
 } from '@nestjs/common';
+import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { AuthGuard } from 'src/modules/auth/guard/auth.guard';
 import { UserNotificationService } from './user-notification.service';
-import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 
 @UseGuards(AuthGuard)
-@Controller('api/user-notification')
+@Controller('user-notification')
 export class UserNotificationController {
   constructor(
     private readonly userNotificationService: UserNotificationService,

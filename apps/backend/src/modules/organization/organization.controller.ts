@@ -13,7 +13,7 @@ import { AuthGuard } from 'src/modules/auth/guard/auth.guard';
 import { OrganizationService } from './organization.service';
 
 @UseGuards(AuthGuard)
-@Controller('api/organization')
+@Controller('organization')
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
 

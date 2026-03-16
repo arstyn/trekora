@@ -19,12 +19,12 @@ import { LeadDto } from 'src/dto/lead-create.dto';
 import { EmployeeService } from '../employee/employee.service';
 
 @UseGuards(AuthGuard, PermissionGuard)
-@Controller('api/lead')
+@Controller('lead')
 export class LeadController {
   constructor(
     private readonly leadService: LeadService,
     private readonly employeeService: EmployeeService,
-  ) { }
+  ) {}
 
   @Post()
   @RequirePermission('lead', 'create')
@@ -51,7 +51,9 @@ export class LeadController {
     }
 
     // Get direct reports
-    const directReports = await this.employeeService.getDirectReports(employee.id);
+    const directReports = await this.employeeService.getDirectReports(
+      employee.id,
+    );
     const teamUserIds = directReports
       .map((emp) => emp.userId)
       .filter((id): id is string => !!id);
@@ -60,7 +62,10 @@ export class LeadController {
       return [];
     }
 
-    return this.leadService.findByManagerTeam(req.user.organizationId, teamUserIds);
+    return this.leadService.findByManagerTeam(
+      req.user.organizationId,
+      teamUserIds,
+    );
   }
 
   @Get(':id')

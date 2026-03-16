@@ -26,7 +26,7 @@ import {
   PaymentListResponseDto,
   PaymentResponseDto,
   PaymentStatsDto,
-  UpdatePaymentDto
+  UpdatePaymentDto,
 } from 'src/dto/payment.dto';
 import { RequirePermission } from '../auth/decorator/require-permission.decorator';
 import { AuthGuard } from '../auth/guard/auth.guard';
@@ -34,11 +34,9 @@ import { PermissionGuard } from '../auth/guard/permission.guard';
 import { PaymentService } from './payment.service';
 
 @UseGuards(AuthGuard, PermissionGuard)
-@Controller('api/payments')
+@Controller('payments')
 export class PaymentController {
-  constructor(
-    private readonly paymentService: PaymentService,
-  ) { }
+  constructor(private readonly paymentService: PaymentService) {}
 
   @Get('bookings/search')
   searchBookings(
@@ -79,7 +77,9 @@ export class PaymentController {
   }
 
   @Get('overdue')
-  getOverduePayments(@Request() req: ApiRequestJWT): Promise<OverduePaymentDto[]> {
+  getOverduePayments(
+    @Request() req: ApiRequestJWT,
+  ): Promise<OverduePaymentDto[]> {
     return this.paymentService.getOverduePayments(req.user.organizationId);
   }
 
@@ -90,7 +90,11 @@ export class PaymentController {
     @Request() req: ApiRequestJWT,
   ): Promise<PaymentResponseDto> {
     const shouldIncludeReceipts = includeReceipts === 'true';
-    return this.paymentService.findOne(id, req.user.organizationId, shouldIncludeReceipts);
+    return this.paymentService.findOne(
+      id,
+      req.user.organizationId,
+      shouldIncludeReceipts,
+    );
   }
 
   @Patch(':id')
@@ -199,4 +203,4 @@ export class PaymentController {
       req.user.organizationId,
     );
   }
-} 
+}
