@@ -8,14 +8,15 @@ This repository is configured as a monorepo. To host the backend on Railway, fol
 3. Select this repository.
 
 ## 2. Configure Service Settings
-Once the service is created, you **must** set the root directory so Railway knows where the backend code lives:
+Railway needs to know where your `package.json` is located.
 1. Go to the **Settings** tab of your new service.
-2. Find the **General** section.
-3. Look for **Root Directory** and set it to: `apps/backend`
-4. Railway will automatically redeploy.
+2. Find the **General** / **Info** section.
+3. Set **Root Directory** to: `apps/backend`
+4. **Important**: Do not create a `railway.json` at the repository root; keep it inside `apps/backend`.
 
 ## 3. Environment Variables
 Add the following variables in the **Variables** tab:
+- `NPM_CONFIG_PRODUCTION`: `false` (Optional, but ensures all build tools are installed)
 - `NODE_ENV`: `production`
 - `PORT`: `3000` (Railway provides this automatically, but good to have)
 - `FRONTEND_URL`: (Your frontend URL, e.g., `https://trekora.up.railway.app`)

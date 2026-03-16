@@ -2,7 +2,8 @@ import 'dotenv/config';
 
 export default () => ({
   database: {
-    host: process.env.DB_HOST || 'localhost',
+    url: process.env.DATABASE_URL || (process.env.DB_HOST?.includes('://') ? process.env.DB_HOST : undefined),
+    host: process.env.DB_HOST?.includes('://') ? 'localhost' : (process.env.DB_HOST || 'localhost'),
     port: process.env.DB_PORT || 5432,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
@@ -24,5 +25,12 @@ export default () => ({
         ? true
         : false
       : false,
+  },
+  upload: {
+    mechanism: process.env.UPLOAD_MECHANISM || 'local', // 'local', 's3', 'uploadcare'
+  },
+  uploadcare: {
+    publicKey: process.env.UPLOADCARE_PUBLIC_KEY,
+    secretKey: process.env.UPLOADCARE_SECRET_KEY,
   },
 });

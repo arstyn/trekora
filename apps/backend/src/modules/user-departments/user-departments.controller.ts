@@ -13,7 +13,7 @@ import { AuthGuard } from '../auth/guard/auth.guard';
 import { UserDepartmentsService } from './user-departments.service';
 
 @UseGuards(AuthGuard)
-@Controller('api/user-departments')
+@Controller('user-departments')
 export class UserDepartmentsController {
   constructor(
     private readonly userDepartmentsService: UserDepartmentsService,

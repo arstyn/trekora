@@ -18,7 +18,7 @@ import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
 
 @UseGuards(AuthGuard)
-@Controller('api/batches')
+@Controller('batches')
 export class BatchesController {
   constructor(private readonly batchService: BatchesService) {}
 

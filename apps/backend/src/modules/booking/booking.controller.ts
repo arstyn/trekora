@@ -24,7 +24,7 @@ import { EmployeeService } from '../employee/employee.service';
 import { BookingService } from './booking.service';
 
 @UseGuards(AuthGuard, PermissionGuard)
-@Controller('api/bookings')
+@Controller('bookings')
 export class BookingController {
   constructor(
     private readonly bookingService: BookingService,

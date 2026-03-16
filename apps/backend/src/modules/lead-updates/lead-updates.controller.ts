@@ -16,7 +16,7 @@ import { AuthGuard } from '../auth/guard/auth.guard';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 
 @UseGuards(AuthGuard)
-@Controller('api/lead-updates')
+@Controller('lead-updates')
 export class LeadUpdatesController {
   constructor(private readonly leadUpdatesService: LeadUpdatesService) {}
 

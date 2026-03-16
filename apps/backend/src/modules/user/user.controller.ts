@@ -8,12 +8,12 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { UserService } from './user.service';
 import { User } from 'src/database/entity/user.entity';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { UserService } from './user.service';
 
 @UseGuards(AuthGuard)
-@Controller('api/users')
+@Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 

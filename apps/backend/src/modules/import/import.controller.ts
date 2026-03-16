@@ -1,23 +1,23 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Put,
-  Delete,
-  UseInterceptors,
-  UploadedFile,
-  Body,
-  UseGuards,
-  Req,
   BadRequestException,
-  Res,
+  Body,
+  Controller,
+  Delete,
+  Get,
   Param,
+  Post,
+  Put,
+  Req,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
-import { ImportService, ImportResult } from './import.service';
-import { AuthGuard } from '../auth/guard/auth.guard';
 import * as XLSX from 'xlsx';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { ImportResult, ImportService } from './import.service';
 
 interface ImportRequestDto {
   entityType: 'customer' | 'lead' | 'employee';
@@ -25,7 +25,7 @@ interface ImportRequestDto {
   columnMapping?: Record<string, string>;
 }
 
-@Controller('api/import')
+@Controller('import')
 @UseGuards(AuthGuard)
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
@@ -61,10 +61,15 @@ export class ImportController {
     @Param('entityType') entityType: string,
     @Res() res: Response,
   ): Promise<void> {
-    const template = await this.importService.generateCustomTemplate(entityType, {});
-    
+    const template = await this.importService.generateCustomTemplate(
+      entityType,
+      {},
+    );
+
     if (!template) {
-      throw new BadRequestException(`Template not found for entity type: ${entityType}`);
+      throw new BadRequestException(
+        `Template not found for entity type: ${entityType}`,
+      );
     }
 
     // Create workbook
@@ -81,9 +86,15 @@ export class ImportController {
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     // Set response headers
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${entityType}_import_template.xlsx"`);
-    
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${entityType}_import_template.xlsx"`,
+    );
+
     // Send file
     res.send(buffer);
   }
@@ -99,15 +110,23 @@ export class ImportController {
     @Body() body: { entityType: string; columnMapping: Record<string, string> },
   ): Promise<any> {
     const { entityType, columnMapping } = body;
-    
+
     // Validate the column mapping
-    const validation = await this.importService.validateColumnMapping(entityType, columnMapping);
+    const validation = await this.importService.validateColumnMapping(
+      entityType,
+      columnMapping,
+    );
     if (!validation.valid) {
-      throw new BadRequestException(`Invalid column mapping: ${validation.errors.join(', ')}`);
+      throw new BadRequestException(
+        `Invalid column mapping: ${validation.errors.join(', ')}`,
+      );
     }
 
-    const template = await this.importService.generateCustomTemplate(entityType, columnMapping);
-    
+    const template = await this.importService.generateCustomTemplate(
+      entityType,
+      columnMapping,
+    );
+
     // Create workbook
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([
@@ -132,13 +151,18 @@ export class ImportController {
     @Body() body: { entityType: string; columnMapping: Record<string, string> },
   ): Promise<any> {
     const { entityType, columnMapping } = body;
-    return await this.importService.validateColumnMapping(entityType, columnMapping);
+    return await this.importService.validateColumnMapping(
+      entityType,
+      columnMapping,
+    );
   }
 
   // Template Management Endpoints
   @Get('templates')
   async getTemplates(@Req() req: any): Promise<any> {
-    const templates = await this.importService.getTemplates(req.user.organizationId);
+    const templates = await this.importService.getTemplates(
+      req.user.organizationId,
+    );
     return { templates };
   }
 
@@ -156,8 +180,14 @@ export class ImportController {
   }
 
   @Get('templates/:id')
-  async getTemplateById(@Param('id') id: string, @Req() req: any): Promise<any> {
-    const template = await this.importService.getTemplateById(id, req.user.organizationId);
+  async getTemplateById(
+    @Param('id') id: string,
+    @Req() req: any,
+  ): Promise<any> {
+    const template = await this.importService.getTemplateById(
+      id,
+      req.user.organizationId,
+    );
     return { template };
   }
 
@@ -186,17 +216,29 @@ export class ImportController {
     @Req() req: any,
     @Res() res: Response,
   ): Promise<void> {
-    const template = await this.importService.getTemplateById(id, req.user.organizationId);
-    const excelBuffer = await this.importService.generateTemplateExcel(template);
-    
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${template.name}_template.xlsx"`);
+    const template = await this.importService.getTemplateById(
+      id,
+      req.user.organizationId,
+    );
+    const excelBuffer =
+      await this.importService.generateTemplateExcel(template);
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${template.name}_template.xlsx"`,
+    );
     res.send(excelBuffer);
   }
 
   @Get('history')
   async getImportHistory(@Req() req: any): Promise<any> {
-    const history = await this.importService.getImportHistory(req.user.organizationId);
+    const history = await this.importService.getImportHistory(
+      req.user.organizationId,
+    );
     return { history };
   }
-} 
+}

@@ -9,16 +9,16 @@ import {
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import {
+  BestPerformingPackage,
   ChartData,
   DashboardService,
   DashboardStats,
+  FastFillingBatch,
   LatestBooking,
   LatestLead,
-  FastFillingBatch,
-  BestPerformingPackage,
 } from './dashboard.service';
 
-@Controller('api/dashboard')
+@Controller('dashboard')
 @UseGuards(AuthGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

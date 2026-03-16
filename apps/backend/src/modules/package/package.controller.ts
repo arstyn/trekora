@@ -14,13 +14,13 @@ import {
 } from '@nestjs/common';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
+import { RequirePermission } from '../auth/decorator/require-permission.decorator';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../auth/guard/permission.guard';
-import { RequirePermission } from '../auth/decorator/require-permission.decorator';
 import { PackageService } from './package.service';
 
 @UseGuards(AuthGuard, PermissionGuard)
-@Controller('api/packages')
+@Controller('packages')
 export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 

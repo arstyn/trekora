@@ -15,7 +15,7 @@ import { AuthGuard } from '../auth/guard/auth.guard';
 import { Group } from 'src/database/entity/group.entity';
 
 @UseGuards(AuthGuard)
-@Controller('api/groups')
+@Controller('groups')
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 

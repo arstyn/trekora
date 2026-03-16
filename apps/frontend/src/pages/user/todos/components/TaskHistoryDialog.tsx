@@ -7,8 +7,8 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { IWorkflowStep } from "@/types/workflow.types";
 import { History, Loader2, User } from "lucide-react";
-import type { IWorkflowStep } from "@/services/workflow.service";
 
 interface TaskHistoryDialogProps {
     isOpen: boolean;

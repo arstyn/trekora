@@ -15,7 +15,7 @@ import { ReminderService } from './reminder.service';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 
 @UseGuards(AuthGuard)
-@Controller('api/reminder')
+@Controller('reminder')
 export class ReminderController {
   constructor(private readonly reminderService: ReminderService) {}
 
