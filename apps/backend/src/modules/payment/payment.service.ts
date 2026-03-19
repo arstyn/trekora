@@ -1,11 +1,9 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
 import {
   BookingPayment,
   PaymentStatus,
@@ -13,21 +11,18 @@ import {
 } from 'src/database/entity/booking-payment.entity';
 import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
 import {
-  FileManager,
-  RelatedType,
-} from 'src/database/entity/file-manager.entity';
-import {
-  CreatePaymentDto,
-  UpdatePaymentDto,
-  PaymentFilterDto,
-  PaymentStatsDto,
-  OverduePaymentDto,
-  PaymentResponseDto,
-  PaymentListResponseDto,
-  BookingSearchDto,
   BookingForPaymentDto,
+  BookingSearchDto,
+  CreatePaymentDto,
+  OverduePaymentDto,
+  PaymentFilterDto,
+  PaymentListResponseDto,
+  PaymentResponseDto,
+  PaymentStatsDto,
+  UpdatePaymentDto,
 } from 'src/dto/payment.dto';
-import { FileManagerService } from '../file-manager/file-manager.service';
+import { Repository } from 'typeorm';
+import { UploadService } from '../upload/upload.service';
 
 @Injectable()
 export class PaymentService {
@@ -36,7 +31,7 @@ export class PaymentService {
     private paymentRepository: Repository<BookingPayment>,
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
-    private fileManagerService: FileManagerService,
+    private uploadService: UploadService,
   ) {}
 
   async searchBookingsForPayment(
@@ -346,12 +341,10 @@ export class PaymentService {
     const paymentDto = this.transformToResponseDto(payment);
 
     // Include receipt files if requested
-    if (includeReceipts) {
-      const receiptFiles = await this.fileManagerService.findByRelatedEntity(
-        id,
-        RelatedType.PAYMENT,
-      );
-      (paymentDto as any).receiptFiles = receiptFiles;
+    if (includeReceipts && payment.receiptFilePath) {
+      (paymentDto as any).receiptFiles = [payment.receiptFilePath];
+    } else if (includeReceipts) {
+      (paymentDto as any).receiptFiles = [];
     }
 
     return paymentDto;
@@ -607,7 +600,7 @@ export class PaymentService {
     paymentId: string,
     files: Express.Multer.File[],
     organizationId: string,
-  ): Promise<FileManager[]> {
+  ): Promise<string[]> {
     // Verify payment exists and user has access
     const payment = await this.findOne(paymentId, organizationId);
     if (!payment) {
@@ -634,13 +627,8 @@ export class PaymentService {
       }
     }
 
-    // Use FileManagerService to upload files
-    const uploadData = {
-      relatedId: paymentId,
-      relatedType: RelatedType.PAYMENT,
-    };
-
-    return this.fileManagerService.upload(uploadData, files);
+    // Use UploadService to upload files
+    return this.uploadService.uploadMultiple(files, 'payment');
   }
 
   /**
@@ -650,7 +638,7 @@ export class PaymentService {
     paymentId: string,
     file: Express.Multer.File,
     organizationId: string,
-  ): Promise<FileManager> {
+  ): Promise<string> {
     const files = await this.uploadReceiptFiles(
       paymentId,
       [file],
@@ -666,11 +654,12 @@ export class PaymentService {
     // Verify payment exists and user has access
     await this.findOne(paymentId, organizationId);
 
-    // Get all files related to this payment using the new method
-    return this.fileManagerService.findByRelatedEntity(
-      paymentId,
-      RelatedType.PAYMENT,
-    );
+    // Return empty array since receipts are just stored as a single string field normally,
+    // or return the payment.receiptFilePath if found.
+    const payment = await this.paymentRepository.findOne({
+      where: { id: paymentId },
+    });
+    return payment?.receiptFilePath ? [payment.receiptFilePath] : [];
   }
 
   /**
@@ -682,19 +671,17 @@ export class PaymentService {
     organizationId: string,
   ): Promise<{ deleted: boolean }> {
     // Verify payment exists and user has access
-    await this.findOne(paymentId, organizationId);
-
-    // Verify file belongs to this payment
-    const file = await this.fileManagerService.findOne(fileId);
-    if (
-      !file ||
-      file.relatedId !== paymentId ||
-      file.relatedType !== RelatedType.PAYMENT
-    ) {
-      throw new NotFoundException('Receipt file not found or access denied');
+    const payment = await this.paymentRepository.findOne({
+      where: { id: paymentId },
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
     }
 
-    return this.fileManagerService.remove(fileId);
+    // As URLs strings, we just remove the string value from receiptFilePath
+    payment.receiptFilePath = '';
+    await this.paymentRepository.save(payment);
+    return { deleted: true };
   }
 
   private transformToResponseDto(payment: BookingPayment): PaymentResponseDto {

@@ -1,3 +1,4 @@
+import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,20 +9,17 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import axiosInstance from "@/lib/axios";
-import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
-import { getFileUrl } from "@/lib/utils";
 import type { IPackages } from "@/types/package.schema";
 import {
     Calendar,
     IndianRupee,
     MapPin,
+    Package,
     Plus,
     Users,
-    Package,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { PermissionGuard } from "@/components/permission-guard";
 
 export default function Packages() {
     const [packages, setPackages] = useState<IPackages[]>([]);
@@ -302,11 +300,8 @@ export default function Packages() {
                             <div className="relative">
                                 <img
                                     src={(() => {
-                                        if (pkg?.thumbnail) {
-                                            return getFileUrl(
-                                                getServeFileUrl(pkg.thumbnail),
-                                            );
-                                        }
+                                        if (pkg?.thumbnail)
+                                            return pkg.thumbnail;
                                         return "/placeholder.svg";
                                     })()}
                                     alt={pkg.name || ""}

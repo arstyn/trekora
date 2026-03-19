@@ -15,7 +15,6 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { FileManager } from 'src/database/entity/file-manager.entity';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import {
   BookingForPaymentDto,
@@ -150,7 +149,7 @@ export class PaymentController {
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @Request() req: ApiRequestJWT,
-  ): Promise<FileManager> {
+  ): Promise<string> {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -168,7 +167,7 @@ export class PaymentController {
     @Param('id') id: string,
     @UploadedFiles() files: Express.Multer.File[],
     @Request() req: ApiRequestJWT,
-  ): Promise<FileManager[]> {
+  ): Promise<string[]> {
     if (!files || files.length === 0) {
       throw new BadRequestException('At least one file is required');
     }

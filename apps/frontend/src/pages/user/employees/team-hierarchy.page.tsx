@@ -1,15 +1,13 @@
-import { useEffect, useState, useRef } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
-import { getFileUrl } from "@/lib/utils";
-import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
-import { toast } from "sonner";
-import { Users, Loader2, ZoomIn, ZoomOut, Maximize2, Move } from "lucide-react";
+import { Loader2, Maximize2, Move, Users, ZoomIn, ZoomOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface HierarchyNode {
     employee: IEmployee;
@@ -168,11 +166,7 @@ export default function TeamHierarchyPage() {
                                     <AvatarImage
                                         src={
                                             employee.profilePhoto
-                                                ? getFileUrl(
-                                                      getServeFileUrl(
-                                                          employee.profilePhoto,
-                                                      ),
-                                                  )
+                                                ? employee.profilePhoto
                                                 : "/placeholder.svg"
                                         }
                                         alt={employee.name}

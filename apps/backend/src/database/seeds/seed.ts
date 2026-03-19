@@ -8,7 +8,6 @@ import { Batch } from '../entity/batch.entity';
 import { Branch } from '../entity/branch.entity';
 import { Customer } from '../entity/customer.entity';
 import { Employee, EmployeeStatus } from '../entity/employee.entity';
-import { FileManager, RelatedType } from '../entity/file-manager.entity';
 import { Lead } from '../entity/lead.entity';
 import { Organization } from '../entity/organization.entity';
 import { CancellationPolicy } from '../entity/package-related/cancellation-policies.entity';
@@ -44,25 +43,25 @@ config();
 const appConfig = configuration();
 const databaseConfig = appConfig.database;
 
-const dbUrl = databaseConfig.url || (databaseConfig.host?.includes('://') ? databaseConfig.host : undefined);
+const dbUrl =
+  databaseConfig.url ||
+  (databaseConfig.host?.includes('://') ? databaseConfig.host : undefined);
 
 const AppDataSource = new DataSource({
   type: 'postgres',
   ...(dbUrl
     ? { url: dbUrl }
     : {
-        host: databaseConfig.host,
-        port: Number(databaseConfig.port),
-        username: databaseConfig.username,
-        password: databaseConfig.password,
-        database: databaseConfig.database,
-      }),
+      host: databaseConfig.host,
+      port: Number(databaseConfig.port),
+      username: databaseConfig.username,
+      password: databaseConfig.password,
+      database: databaseConfig.database,
+    }),
   entities: [path.join(__dirname, '../**/*.entity.{ts,js}')],
   synchronize: true,
   ssl:
-    databaseConfig.ssl_mode || !!dbUrl
-      ? { rejectUnauthorized: false }
-      : false,
+    databaseConfig.ssl_mode || !!dbUrl ? { rejectUnauthorized: false } : false,
 });
 
 async function tableExists(
@@ -81,6 +80,7 @@ async function tableExists(
 }
 
 async function seed() {
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
   await AppDataSource.initialize();
   console.log('Database connection initialized');
 
@@ -203,6 +203,7 @@ async function seed() {
           organizationId: org.id,
           notificationsEnabled: user.notificationsEnabled,
           newsletterSubscribed: user.newsletterSubscribed,
+          profilePhoto: user.profilePhoto,
         });
 
         const savedUser = await queryRunner.manager.save(newUser);
@@ -231,6 +232,7 @@ async function seed() {
           gender: detailedEmployee?.gender,
           nationality: detailedEmployee?.nationality,
           maritalStatus: detailedEmployee?.maritalStatus,
+          profilePhoto: user.profilePhoto || detailedEmployee?.profilePhoto,
         });
         const savedEmployee = await queryRunner.manager.save(employee);
         console.log('Employee created:', savedEmployee.id);
@@ -295,23 +297,11 @@ async function seed() {
         category: packageData.category,
         status: packageData.status,
         organizationId: org.id,
+        thumbnail: packageData.thumbnail,
       });
 
       const savedPackage = await queryRunner.manager.save(pkg);
       console.log('Package created:', savedPackage.id);
-
-      const fileManager = queryRunner.manager.create(FileManager, {
-        filename: packageData.thumbnail,
-        relatedId: savedPackage.id,
-        relatedType: RelatedType.PACKAGE,
-        url: `./uploads/package/${packageData.thumbnail}`,
-      });
-
-      const savedFileManager = await queryRunner.manager.save(fileManager);
-
-      await queryRunner.manager.update(Package, savedPackage.id, {
-        thumbnail: savedFileManager.id,
-      });
 
       // Create inclusions
       for (const inclusionItem of packageData.inclusions) {
@@ -463,32 +453,10 @@ async function seed() {
             meals: day.meals,
             accommodation: day.accommodation,
             packageId: savedPackage.id,
+            images: day.images,
           });
 
-          let images: string[] = [];
-          const savedItinerary = await queryRunner.manager.save(itineraryDay);
-
-          for (const itineraryImage of day.images) {
-            const fileManager = queryRunner.manager.create(FileManager, {
-              filename: itineraryImage,
-              relatedId: savedItinerary.id,
-              relatedType: RelatedType.ITINERARY,
-              url: `./uploads/itinerary/${itineraryImage}`,
-            });
-
-            const savedFileManager =
-              await queryRunner.manager.save(fileManager);
-
-            console.log('Package image created:', savedFileManager.id);
-
-            if (savedFileManager) {
-              images.push(savedFileManager.id);
-            }
-          }
-
-          await queryRunner.manager.update(ItineraryDay, savedItinerary.id, {
-            images: images,
-          });
+          await queryRunner.manager.save(itineraryDay);
         }
       }
     }
@@ -672,102 +640,16 @@ async function seed() {
         // System Fields
         organizationId: org.id,
         createdById: randomUser.id,
+
+        // File Uploads
+        profilePhoto: customerData.profilePhoto,
+        passportPhotos: customerData.passportPhotos,
+        voterIdPhotos: customerData.voterIdPhotos,
+        aadhaarIdPhotos: customerData.aadhaarIdPhotos,
       });
 
       const savedCustomer = await queryRunner.manager.save(customer);
       console.log('Customer created:', savedCustomer.id);
-
-      // Handle profile photo file
-      if (customerData.profilePhoto) {
-        const profilePhotoFile = queryRunner.manager.create(FileManager, {
-          filename: customerData.profilePhoto,
-          relatedId: savedCustomer.id,
-          relatedType: RelatedType.CUSTOMER,
-          url: `./uploads/customer/profile/${customerData.profilePhoto}`,
-        });
-        const savedProfilePhoto =
-          await queryRunner.manager.save(profilePhotoFile);
-
-        await queryRunner.manager.update(Customer, savedCustomer.id, {
-          profilePhoto: savedProfilePhoto.id,
-        });
-        console.log('Customer profile photo created:', savedProfilePhoto.id);
-      }
-
-      // Handle passport photos
-      if (
-        customerData.passportPhotos &&
-        customerData.passportPhotos.length > 0
-      ) {
-        const passportPhotoIds: string[] = [];
-        for (const passportPhoto of customerData.passportPhotos) {
-          const passportPhotoFile = queryRunner.manager.create(FileManager, {
-            filename: passportPhoto,
-            relatedId: savedCustomer.id,
-            relatedType: RelatedType.CUSTOMER,
-            url: `./uploads/customer/passport/${passportPhoto}`,
-          });
-          const savedPassportPhoto =
-            await queryRunner.manager.save(passportPhotoFile);
-          passportPhotoIds.push(savedPassportPhoto.id);
-          console.log(
-            'Customer passport photo created:',
-            savedPassportPhoto.id,
-          );
-        }
-
-        await queryRunner.manager.update(Customer, savedCustomer.id, {
-          passportPhotos: passportPhotoIds,
-        });
-      }
-
-      // Handle voter ID photos
-      if (customerData.voterIdPhotos && customerData.voterIdPhotos.length > 0) {
-        const voterIdPhotoIds: string[] = [];
-        for (const voterIdPhoto of customerData.voterIdPhotos) {
-          const voterIdPhotoFile = queryRunner.manager.create(FileManager, {
-            filename: voterIdPhoto,
-            relatedId: savedCustomer.id,
-            relatedType: RelatedType.CUSTOMER,
-            url: `./uploads/customer/voter-id/${voterIdPhoto}`,
-          });
-          const savedVoterIdPhoto =
-            await queryRunner.manager.save(voterIdPhotoFile);
-          voterIdPhotoIds.push(savedVoterIdPhoto.id);
-          console.log('Customer voter ID photo created:', savedVoterIdPhoto.id);
-        }
-
-        await queryRunner.manager.update(Customer, savedCustomer.id, {
-          voterIdPhotos: voterIdPhotoIds,
-        });
-      }
-
-      // Handle Aadhaar ID photos
-      if (
-        customerData.aadhaarIdPhotos &&
-        customerData.aadhaarIdPhotos.length > 0
-      ) {
-        const aadhaarIdPhotoIds: string[] = [];
-        for (const aadhaarIdPhoto of customerData.aadhaarIdPhotos) {
-          const aadhaarIdPhotoFile = queryRunner.manager.create(FileManager, {
-            filename: aadhaarIdPhoto,
-            relatedId: savedCustomer.id,
-            relatedType: RelatedType.CUSTOMER,
-            url: `./uploads/customer/aadhaar-id/${aadhaarIdPhoto}`,
-          });
-          const savedAadhaarIdPhoto =
-            await queryRunner.manager.save(aadhaarIdPhotoFile);
-          aadhaarIdPhotoIds.push(savedAadhaarIdPhoto.id);
-          console.log(
-            'Customer Aadhaar ID photo created:',
-            savedAadhaarIdPhoto.id,
-          );
-        }
-
-        await queryRunner.manager.update(Customer, savedCustomer.id, {
-          aadhaarIdPhotos: aadhaarIdPhotoIds,
-        });
-      }
     }
 
     // Create default permission sets for all organizations

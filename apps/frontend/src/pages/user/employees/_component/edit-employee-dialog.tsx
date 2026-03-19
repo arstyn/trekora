@@ -33,8 +33,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import axiosInstance from "@/lib/axios";
-import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
-import { getFileUrl } from "@/lib/utils";
 import { PermissionService } from "@/services/permission.service";
 import type { IDepartment } from "@/types/department.type";
 import type { IEmployee } from "@/types/employee.types";
@@ -123,10 +121,6 @@ export function EditEmployeeDialog({
     // Helper to extract departments from employeeDepartments
     const getDepartmentIds = (employee: IEmployee) =>
         employee.employeeDepartments?.map((ud) => ud.department.id) ?? [];
-
-    const getImageUrl = (filename: string) => {
-        return getFileUrl(getServeFileUrl(filename));
-    };
 
     // Load permission sets
     useEffect(() => {
@@ -466,9 +460,7 @@ export function EditEmployeeDialog({
                                                 />
                                             ) : employee.profilePhoto ? (
                                                 <img
-                                                    src={getImageUrl(
-                                                        employee.profilePhoto,
-                                                    )}
+                                                    src={employee.profilePhoto}
                                                     alt="Profile preview"
                                                     className="w-full h-full object-cover"
                                                 />
@@ -576,9 +568,9 @@ export function EditEmployeeDialog({
                                                 />
                                             ) : employee.verificationDocument ? (
                                                 <img
-                                                    src={getImageUrl(
-                                                        employee.verificationDocument,
-                                                    )}
+                                                    src={
+                                                        employee.verificationDocument
+                                                    }
                                                     alt="Document preview"
                                                     className="w-full h-full object-cover"
                                                 />

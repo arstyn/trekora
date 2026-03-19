@@ -1,45 +1,46 @@
 import DataTableFooter from "@/components/data-table-footer";
+import { PermissionGuard } from "@/components/permission-guard";
 import StatusBadge from "@/components/status-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "@/components/ui/table";
 import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
 import {
-	type ColumnDef,
-	type ColumnFiltersState,
-	type SortingState,
-	flexRender,
-	getCoreRowModel,
-	getFilteredRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
+    type ColumnDef,
+    type ColumnFiltersState,
+    type SortingState,
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    useReactTable,
 } from "@tanstack/react-table";
 import {
-	ChevronDown,
-	ChevronUp,
-	Download,
-	MoreHorizontal,
-	Search,
-	UserPlus,
-	Network,
+    ChevronDown,
+    ChevronUp,
+    Download,
+    MoreHorizontal,
+    Network,
+    Search,
+    UserPlus,
 } from "lucide-react";
 import { useLayoutEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -49,448 +50,464 @@ import { AddEmployeeModal } from "./_component/add-employee-modal";
 import { DeactivateDialog } from "./_component/deactivate-dialog";
 import { EditEmployeeDialog } from "./_component/edit-employee-dialog";
 import { ViewEmployeeDialog } from "./_component/view-employee-dialog";
-import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
-import { getFileUrl } from "@/lib/utils";
-import { PermissionGuard } from "@/components/permission-guard";
 
 export function EmployeesPage() {
-	const navigate = useNavigate();
-	const location = useLocation();
+    const navigate = useNavigate();
+    const location = useLocation();
 
-	const [employees, setEmployees] = useState<IEmployee[]>([]);
+    const [employees, setEmployees] = useState<IEmployee[]>([]);
 
-	const [sorting, setSorting] = useState<SortingState>([]);
-	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-	const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-	const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
-	const [isActivateDialogOpen, setIsActivateDialogOpen] = useState(false);
-	const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(null);
-	const [activateEmployee, setActivateEmployee] = useState<IEmployee | null>(null);
+    const [sorting, setSorting] = useState<SortingState>([]);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+    const [isActivateDialogOpen, setIsActivateDialogOpen] = useState(false);
+    const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(
+        null,
+    );
+    const [activateEmployee, setActivateEmployee] = useState<IEmployee | null>(
+        null,
+    );
 
-	const getEmployees = async () => {
-		try {
-			const res = await axiosInstance.get<IEmployee[]>("/employee");
-			setEmployees(res.data);
-		} catch (error) {
-			if (error instanceof Error) {
-				toast.error(error.message);
-			} else {
-				toast.error("Failed to load updates");
-			}
-		}
-	};
-	useLayoutEffect(() => {
-		getEmployees();
-	}, []);
+    const getEmployees = async () => {
+        try {
+            const res = await axiosInstance.get<IEmployee[]>("/employee");
+            setEmployees(res.data);
+        } catch (error) {
+            if (error instanceof Error) {
+                toast.error(error.message);
+            } else {
+                toast.error("Failed to load updates");
+            }
+        }
+    };
+    useLayoutEffect(() => {
+        getEmployees();
+    }, []);
 
-	// Handle URL parameters for selected employee
-	useLayoutEffect(() => {
-		const searchParams = new URLSearchParams(location.search);
-		const employeeId = searchParams.get("selected");
-		if (employeeId) {
-			const foundEmployee = employees.find((e) => e.id === employeeId);
-			if (foundEmployee) {
-				setSelectedEmployee(foundEmployee);
-				setIsViewDialogOpen(true);
-			}
-		} else {
-			setSelectedEmployee(null);
-		}
-	}, [location.search, employees]);
+    // Handle URL parameters for selected employee
+    useLayoutEffect(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const employeeId = searchParams.get("selected");
+        if (employeeId) {
+            const foundEmployee = employees.find((e) => e.id === employeeId);
+            if (foundEmployee) {
+                setSelectedEmployee(foundEmployee);
+                setIsViewDialogOpen(true);
+            }
+        } else {
+            setSelectedEmployee(null);
+        }
+    }, [location.search, employees]);
 
-	// Define the columns for the table
-	const columns: ColumnDef<IEmployee>[] = [
-		{
-			accessorKey: "name",
-			header: "Team",
-			cell: ({ row }) => {
-				const employee = row.original;
-				return (
-					<div className="flex items-center gap-3">
-						<Avatar>
-							<AvatarImage
-								src={(() => {
-									if (row.original.profilePhoto) {
-										return getFileUrl(
-											getServeFileUrl(row.original.profilePhoto)
-										);
-									}
-									return "/placeholder.svg";
-								})()}
-								alt={employee.name}
-								className="object-cover w-full h-full"
-							/>
-							<AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
-						</Avatar>
-						<div>
-							<div className="font-medium">{employee.name}</div>
-							<div className="text-sm text-muted-foreground">
-								{employee.email}
-							</div>
-						</div>
-					</div>
-				);
-			},
-		},
-		{
-			accessorKey: "permissionSets",
-			header: "Permission Sets",
-			cell: ({ row }) => {
-				const employee = row.original;
-				// Permission sets may not be loaded in the initial employee list
-				// They can be viewed in the employee detail dialog
-				const permissionSetCount = employee.permissionSets?.length ?? 0;
-				return (
-					<span className="text-sm text-muted-foreground">
-						{permissionSetCount > 0
-							? `${permissionSetCount} set(s)`
-							: "—"}
-					</span>
-				);
-			},
-		},
-		{
-			accessorKey: "status",
-			header: "Status",
-			cell: ({ row }) => <StatusBadge status={row.original.status} />,
-		},
-		{
-			accessorKey: "hire_date",
-			header: ({ column }) => {
-				return (
-					<div
-						className="flex items-center cursor-pointer"
-						onClick={() =>
-							column.toggleSorting(column.getIsSorted() === "asc")
-						}
-					>
-						Join Date
-						{column.getIsSorted() === "asc" ? (
-							<ChevronUp className="ml-2 h-4 w-4" />
-						) : column.getIsSorted() === "desc" ? (
-							<ChevronDown className="ml-2 h-4 w-4" />
-						) : null}
-					</div>
-				);
-			},
-			cell: ({ row }) => {
-				const date = row.original.joinDate
-					? new Date(row.original.joinDate)
-					: null;
+    // Define the columns for the table
+    const columns: ColumnDef<IEmployee>[] = [
+        {
+            accessorKey: "name",
+            header: "Team",
+            cell: ({ row }) => {
+                const employee = row.original;
+                return (
+                    <div className="flex items-center gap-3">
+                        <Avatar>
+                            <AvatarImage
+                                src={(() => {
+                                    if (row.original.profilePhoto)
+                                        return row.original.profilePhoto;
+                                    return "/placeholder.svg";
+                                })()}
+                                alt={employee.name}
+                                className="object-cover w-full h-full"
+                            />
+                            <AvatarFallback>
+                                {employee.name.charAt(0)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <div className="font-medium">{employee.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                                {employee.email}
+                            </div>
+                        </div>
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: "permissionSets",
+            header: "Permission Sets",
+            cell: ({ row }) => {
+                const employee = row.original;
+                // Permission sets may not be loaded in the initial employee list
+                // They can be viewed in the employee detail dialog
+                const permissionSetCount = employee.permissionSets?.length ?? 0;
+                return (
+                    <span className="text-sm text-muted-foreground">
+                        {permissionSetCount > 0
+                            ? `${permissionSetCount} set(s)`
+                            : "—"}
+                    </span>
+                );
+            },
+        },
+        {
+            accessorKey: "status",
+            header: "Status",
+            cell: ({ row }) => <StatusBadge status={row.original.status} />,
+        },
+        {
+            accessorKey: "hire_date",
+            header: ({ column }) => {
+                return (
+                    <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === "asc")
+                        }
+                    >
+                        Join Date
+                        {column.getIsSorted() === "asc" ? (
+                            <ChevronUp className="ml-2 h-4 w-4" />
+                        ) : column.getIsSorted() === "desc" ? (
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        ) : null}
+                    </div>
+                );
+            },
+            cell: ({ row }) => {
+                const date = row.original.joinDate
+                    ? new Date(row.original.joinDate)
+                    : null;
 
-				if (!date) {
-					return <div></div>;
-				}
-				return <div>{date.toLocaleDateString()}</div>;
-			},
-		},
-		{
-			id: "actions",
-			cell: ({ row }) => {
-				const employee = row.original;
+                if (!date) {
+                    return <div></div>;
+                }
+                return <div>{date.toLocaleDateString()}</div>;
+            },
+        },
+        {
+            id: "actions",
+            cell: ({ row }) => {
+                const employee = row.original;
 
-				return (
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-							<Button variant="ghost" className="h-8 w-8 p-0">
-								<span className="sr-only">Open menu</span>
-								<MoreHorizontal className="h-4 w-4" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuLabel>Actions</DropdownMenuLabel>
-							<DropdownMenuItem
-								onClick={(e) => {
-									e.stopPropagation();
-									handleViewEmployee(employee);
-								}}
-							>
-								View details
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={(e) => {
-									e.stopPropagation();
-									handleEditEmployee(employee);
-								}}
-							>
-								Edit details
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								className="text-green-600"
-								onClick={(e) => {
-									e.stopPropagation();
-									setActivateEmployee(employee);
-									setIsActivateDialogOpen(true);
-								}}
-							>
-								Activate
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								className="text-red-600"
-								onClick={(e) => {
-									e.stopPropagation();
-									handleDeactivateEmployee(employee);
-								}}
-								disabled={employee.status === "terminated"}
-							>
-								Terminate
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				);
-			},
-		},
-	];
+                return (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger
+                            asChild
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewEmployee(employee);
+                                }}
+                            >
+                                View details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditEmployee(employee);
+                                }}
+                            >
+                                Edit details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                className="text-green-600"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActivateEmployee(employee);
+                                    setIsActivateDialogOpen(true);
+                                }}
+                            >
+                                Activate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeactivateEmployee(employee);
+                                }}
+                                disabled={employee.status === "terminated"}
+                            >
+                                Terminate
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                );
+            },
+        },
+    ];
 
-	const table = useReactTable({
-		data: employees,
-		columns,
-		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		onSortingChange: setSorting,
-		getSortedRowModel: getSortedRowModel(),
-		onColumnFiltersChange: setColumnFilters,
-		getFilteredRowModel: getFilteredRowModel(),
-		state: {
-			sorting,
-			columnFilters,
-		},
-	});
+    const table = useReactTable({
+        data: employees,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        onSortingChange: setSorting,
+        getSortedRowModel: getSortedRowModel(),
+        onColumnFiltersChange: setColumnFilters,
+        getFilteredRowModel: getFilteredRowModel(),
+        state: {
+            sorting,
+            columnFilters,
+        },
+    });
 
+    // Handle deactivating an employee
+    const handleDeactivate = (terminatedEmployee: IEmployee) => {
+        setEmployees((prev) =>
+            prev.map((employee) =>
+                employee.id === terminatedEmployee.id
+                    ? { ...employee, ...terminatedEmployee }
+                    : employee,
+            ),
+        );
+    };
 
-	// Handle deactivating an employee
-	const handleDeactivate = (terminatedEmployee: IEmployee) => {
-		setEmployees((prev) =>
-			prev.map((employee) =>
-				employee.id === terminatedEmployee.id
-					? { ...employee, ...terminatedEmployee }
-					: employee
-			)
-		);
-	};
+    // Handle employee row click
+    const handleEmployeeClick = (employee: IEmployee) => {
+        navigate(`?selected=${employee.id}`);
+    };
 
-	// Handle employee row click
-	const handleEmployeeClick = (employee: IEmployee) => {
-		navigate(`?selected=${employee.id}`);
-	};
+    // Handle viewing an employee
+    const handleViewEmployee = (employee: IEmployee) => {
+        setSelectedEmployee(employee);
+        setIsViewDialogOpen(true);
+    };
 
-	// Handle viewing an employee
-	const handleViewEmployee = (employee: IEmployee) => {
-		setSelectedEmployee(employee);
-		setIsViewDialogOpen(true);
-	};
+    // Handle editing an employee
+    const handleEditEmployee = (employee: IEmployee) => {
+        setSelectedEmployee(employee);
+        setIsEditDialogOpen(true);
+    };
 
-	// Handle editing an employee
-	const handleEditEmployee = (employee: IEmployee) => {
-		setSelectedEmployee(employee);
-		setIsEditDialogOpen(true);
-	};
+    // Handle deactivating an employee
+    const handleDeactivateEmployee = (employee: IEmployee) => {
+        setSelectedEmployee(employee);
+        setIsDeactivateDialogOpen(true);
+    };
 
-	// Handle deactivating an employee
-	const handleDeactivateEmployee = (employee: IEmployee) => {
-		setSelectedEmployee(employee);
-		setIsDeactivateDialogOpen(true);
-	};
+    // Handle activating an employee
+    const handleActivateEmployee = async (activatedEmployee: IEmployee) => {
+        try {
+            const employee = await axiosInstance.post<object, IEmployee>(
+                `/employee/${activatedEmployee.id}/activateUser`,
+                {},
+            );
+            setEmployees((prev) =>
+                prev.map((emp) =>
+                    emp.id === employee.id ? { ...emp, ...employee } : emp,
+                ),
+            );
+        } catch (error) {
+            if (error instanceof Error) {
+                toast.error(error.message);
+            } else {
+                toast.error("Failed to load updates");
+            }
+        }
+    };
 
-	// Handle activating an employee
-	const handleActivateEmployee = async (activatedEmployee: IEmployee) => {
-		try {
-			const employee = await axiosInstance.post<object, IEmployee>(
-				`/employee/${activatedEmployee.id}/activateUser`,
-				{}
-			);
-			setEmployees((prev) =>
-				prev.map((emp) =>
-					emp.id === employee.id ? { ...emp, ...employee } : emp
-				)
-			);
-		} catch (error) {
-			if (error instanceof Error) {
-				toast.error(error.message);
-			} else {
-				toast.error("Failed to load updates");
-			}
-		}
-	};
+    // Handle updating an employee
+    const handleUpdateEmployee = (
+        id: string,
+        updatedEmployee: Partial<IEmployee>,
+    ) => {
+        setEmployees((prev) =>
+            prev.map((employee) =>
+                employee.id === id
+                    ? { ...employee, ...updatedEmployee }
+                    : employee,
+            ),
+        );
+    };
 
-	// Handle updating an employee
-	const handleUpdateEmployee = (id: string, updatedEmployee: Partial<IEmployee>) => {
-		setEmployees((prev) =>
-			prev.map((employee) =>
-				employee.id === id ? { ...employee, ...updatedEmployee } : employee
-			)
-		);
-	};
+    return (
+        <div className="space-y-4 px-6 py-5">
+            <div className="flex flex-col sm:flex-row justify-between gap-4">
+                <div className="flex w-full sm:w-auto items-center gap-2">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search employees..."
+                        value={
+                            (table
+                                .getColumn("name")
+                                ?.getFilterValue() as string) ?? ""
+                        }
+                        onChange={(event) =>
+                            table
+                                .getColumn("name")
+                                ?.setFilterValue(event.target.value)
+                        }
+                        className="max-w-sm"
+                    />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate("/employees/hierarchy")}
+                        >
+                            <Network className="mr-2 h-4 w-4" />
+                            Team Hierarchy
+                        </Button>
+                        <Button variant="outline" size="sm">
+                            <Download className="mr-2 h-4 w-4" />
+                            Export
+                        </Button>
+                        <PermissionGuard resource="employee" action="create">
+                            <Button
+                                size="sm"
+                                onClick={() => setIsAddModalOpen(true)}
+                                className="cursor-pointer"
+                            >
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Add Employee
+                            </Button>
+                        </PermissionGuard>
+                    </div>
+                </div>
+            </div>
 
-	return (
-		<div className="space-y-4 px-6 py-5">
-			<div className="flex flex-col sm:flex-row justify-between gap-4">
-				<div className="flex w-full sm:w-auto items-center gap-2">
-					<Search className="h-4 w-4 text-muted-foreground" />
-					<Input
-						placeholder="Search employees..."
-						value={
-							(table.getColumn("name")?.getFilterValue() as string) ?? ""
-						}
-						onChange={(event) =>
-							table.getColumn("name")?.setFilterValue(event.target.value)
-						}
-						className="max-w-sm"
-					/>
-				</div>
-				<div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-					<div className="flex gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => navigate("/employees/hierarchy")}
-						>
-							<Network className="mr-2 h-4 w-4" />
-							Team Hierarchy
-						</Button>
-						<Button variant="outline" size="sm">
-							<Download className="mr-2 h-4 w-4" />
-							Export
-						</Button>
-						<PermissionGuard resource="employee" action="create">
-							<Button
-								size="sm"
-								onClick={() => setIsAddModalOpen(true)}
-								className="cursor-pointer"
-							>
-								<UserPlus className="mr-2 h-4 w-4" />
-								Add Employee
-							</Button>
-						</PermissionGuard>
-					</div>
-				</div>
-			</div>
+            <div className="overflow-hidden rounded-lg border">
+                <Table>
+                    <TableHeader className="bg-muted">
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => {
+                                    return (
+                                        <TableHead key={header.id}>
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                      header.column.columnDef
+                                                          .header,
+                                                      header.getContext(),
+                                                  )}
+                                        </TableHead>
+                                    );
+                                })}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody>
+                        {table.getRowModel().rows?.length ? (
+                            table.getRowModel().rows.map((row) => (
+                                <TableRow
+                                    key={row.id}
+                                    className="cursor-pointer"
+                                    data-state={
+                                        row.getIsSelected() && "selected"
+                                    }
+                                    onClick={() =>
+                                        handleEmployeeClick(row.original)
+                                    }
+                                >
+                                    {row.getVisibleCells().map((cell) => (
+                                        <TableCell key={cell.id}>
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext(),
+                                            )}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={columns.length}
+                                    className="h-24 text-center"
+                                >
+                                    No results.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
 
-			<div className="overflow-hidden rounded-lg border">
-				<Table>
-					<TableHeader className="bg-muted">
-						{table.getHeaderGroups().map((headerGroup) => (
-							<TableRow key={headerGroup.id}>
-								{headerGroup.headers.map((header) => {
-									return (
-										<TableHead key={header.id}>
-											{header.isPlaceholder
-												? null
-												: flexRender(
-													header.column.columnDef.header,
-													header.getContext()
-												)}
-										</TableHead>
-									);
-								})}
-							</TableRow>
-						))}
-					</TableHeader>
-					<TableBody>
-						{table.getRowModel().rows?.length ? (
-							table.getRowModel().rows.map((row) => (
-								<TableRow
-									key={row.id}
-									className="cursor-pointer"
-									data-state={row.getIsSelected() && "selected"}
-									onClick={() => handleEmployeeClick(row.original)}
-								>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext()
-											)}
-										</TableCell>
-									))}
-								</TableRow>
-							))
-						) : (
-							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className="h-24 text-center"
-								>
-									No results.
-								</TableCell>
-							</TableRow>
-						)}
-					</TableBody>
-				</Table>
-			</div>
+            <DataTableFooter table={table} />
 
-			<DataTableFooter table={table} />
+            <AddEmployeeModal
+                table={table}
+                open={isAddModalOpen}
+                onOpenChange={setIsAddModalOpen}
+                employees={employees}
+                setEmployees={setEmployees}
+            />
 
-			<AddEmployeeModal
-				table={table}
-				open={isAddModalOpen}
-				onOpenChange={setIsAddModalOpen}
-				employees={employees}
-				setEmployees={setEmployees}
-			/>
+            {selectedEmployee && (
+                <ViewEmployeeDialog
+                    open={isViewDialogOpen}
+                    onOpenChange={(open) => {
+                        setIsViewDialogOpen(open);
+                        if (!open) {
+                            setSelectedEmployee(null);
+                            navigate("?");
+                        }
+                    }}
+                    employee={selectedEmployee}
+                    onEdit={(employee) => handleEditEmployee(employee)}
+                />
+            )}
 
-			{selectedEmployee && (
-				<ViewEmployeeDialog
-					open={isViewDialogOpen}
-					onOpenChange={(open) => {
-						setIsViewDialogOpen(open);
-						if (!open) {
-							setSelectedEmployee(null);
-							navigate("?");
-						}
-					}}
-					employee={selectedEmployee}
-					onEdit={(employee) => handleEditEmployee(employee)}
-				/>
-			)}
+            {selectedEmployee && (
+                <EditEmployeeDialog
+                    open={isEditDialogOpen}
+                    onOpenChange={(open) => {
+                        setIsEditDialogOpen(open);
+                        if (!open) {
+                            setSelectedEmployee(null);
+                            navigate("?");
+                        }
+                    }}
+                    employee={selectedEmployee}
+                    onUpdateEmployee={handleUpdateEmployee}
+                    employees={employees}
+                />
+            )}
 
-			{selectedEmployee && (
-				<EditEmployeeDialog
-					open={isEditDialogOpen}
-					onOpenChange={(open) => {
-						setIsEditDialogOpen(open);
-						if (!open) {
-							setSelectedEmployee(null);
-							navigate("?");
-						}
-					}}
-					employee={selectedEmployee}
-					onUpdateEmployee={handleUpdateEmployee}
-					employees={employees}
-				/>
-			)}
+            {selectedEmployee && (
+                <DeactivateDialog
+                    open={isDeactivateDialogOpen}
+                    onOpenChange={(open) => {
+                        setIsDeactivateDialogOpen(open);
+                        if (!open) {
+                            setSelectedEmployee(null);
+                            navigate("?");
+                        }
+                    }}
+                    employee={selectedEmployee}
+                    onDeactivate={handleDeactivate}
+                />
+            )}
 
-			{selectedEmployee && (
-				<DeactivateDialog
-					open={isDeactivateDialogOpen}
-					onOpenChange={(open) => {
-						setIsDeactivateDialogOpen(open);
-						if (!open) {
-							setSelectedEmployee(null);
-							navigate("?");
-						}
-					}}
-					employee={selectedEmployee}
-					onDeactivate={handleDeactivate}
-				/>
-			)}
-
-			<ActivateDialog
-				open={isActivateDialogOpen}
-				onOpenChange={(open) => {
-					setIsActivateDialogOpen(open);
-					if (!open) setActivateEmployee(null);
-				}}
-				employee={activateEmployee}
-				onActivate={async (employee) => {
-					await handleActivateEmployee(employee);
-					setIsActivateDialogOpen(false);
-					setActivateEmployee(null);
-				}}
-			/>
-		</div>
-	);
+            <ActivateDialog
+                open={isActivateDialogOpen}
+                onOpenChange={(open) => {
+                    setIsActivateDialogOpen(open);
+                    if (!open) setActivateEmployee(null);
+                }}
+                employee={activateEmployee}
+                onActivate={async (employee) => {
+                    await handleActivateEmployee(employee);
+                    setIsActivateDialogOpen(false);
+                    setActivateEmployee(null);
+                }}
+            />
+        </div>
+    );
 }

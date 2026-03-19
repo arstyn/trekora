@@ -17,6 +17,9 @@ export class User {
   @Column({ type: 'varchar', nullable: true, name: 'name' })
   name: string;
 
+  @Column({ nullable: true, name: 'profile_photo' })
+  profilePhoto?: string;
+
   // @Column('uuid', { nullable: true, name: 'branch_id' })
   // branchId?: string;
 

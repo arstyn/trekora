@@ -19,11 +19,7 @@ import { CancellationPolicy } from '../../database/entity/package-related/cancel
 import { Package } from '../../database/entity/package-related/package.entity';
 import { ItineraryDay } from 'src/database/entity/package-related/itinerary-days.entity';
 import { ITransportation, PackageFormData } from 'src/dto/package.schema';
-import {
-  FileManager,
-  RelatedType,
-} from 'src/database/entity/file-manager.entity';
-import { FileManagerService } from '../file-manager/file-manager.service';
+import { UploadService } from '../upload/upload.service';
 import { PackageActivity } from 'src/database/entity/package-related/package-activities.entity';
 import { randomUUID } from 'crypto';
 
@@ -57,7 +53,7 @@ export class PackageService {
     private readonly packageActivityRepository: Repository<PackageActivity>,
     @InjectRepository(ChecklistItem)
     private readonly checklistItemRepository: Repository<ChecklistItem>,
-    private readonly fileManagerService: FileManagerService,
+    private readonly uploadService: UploadService,
   ) {}
 
   async create(
@@ -102,12 +98,10 @@ export class PackageService {
       const pkgFile = files.find((val) => val.fieldname === 'thumbnail');
 
       if (pkgFile) {
-        const fileData = await this.fileManagerService.uploadOneFile(
-          { relatedId: pkg.id, relatedType: RelatedType.PACKAGE },
+        pkg.thumbnail = await this.uploadService.uploadSingle(
           pkgFile,
+          'package',
         );
-
-        pkg.thumbnail = fileData.id;
       }
 
       const savedPackage = await queryRunner.manager.save(pkg);
@@ -206,13 +200,10 @@ export class PackageService {
           );
 
           if (dayImageFiles.length > 0) {
-            const filesData = await this.fileManagerService.upload(
-              { relatedId: pkg.id, relatedType: RelatedType.PACKAGE },
+            day.images = await this.uploadService.uploadMultiple(
               dayImageFiles,
+              'package',
             );
-
-            const images = filesData.map((val) => val.id);
-            day.images = images;
           }
 
           const entity = this.itineraryDayRepository.create({
@@ -474,11 +465,10 @@ export class PackageService {
       // Handle file uploads for draftContent
       const pkgFile = files.find((val) => val.fieldname === 'thumbnail');
       if (pkgFile) {
-        const fileData = await this.fileManagerService.uploadOneFile(
-          { relatedId: id, relatedType: RelatedType.PACKAGE },
+        draftData.thumbnail = await this.uploadService.uploadSingle(
           pkgFile,
+          'package',
         );
-        draftData.thumbnail = fileData.id;
       }
 
       await this.packageRepository.update(id, {
@@ -524,16 +514,10 @@ export class PackageService {
       const pkgFile = files.find((val) => val.fieldname === 'thumbnail');
 
       if (pkgFile) {
-        if (pkg?.thumbnail) {
-          await this.fileManagerService.remove(pkg?.thumbnail);
-        }
-
-        const fileData = await this.fileManagerService.uploadOneFile(
-          { relatedId: id, relatedType: RelatedType.PACKAGE },
+        rest.thumbnail = await this.uploadService.uploadSingle(
           pkgFile,
+          'package',
         );
-
-        rest.thumbnail = fileData.id;
       }
 
       const cleanedData = {
@@ -692,13 +676,12 @@ export class PackageService {
 
           // Upload new images if any
           if (dayImageFiles.length > 0) {
-            const filesData = await this.fileManagerService.upload(
-              { relatedId: id, relatedType: RelatedType.PACKAGE },
+            const newImageUrls = await this.uploadService.uploadMultiple(
               dayImageFiles,
+              'package',
             );
 
-            const newImageIds = filesData.map((val) => val.id);
-            images = [...images, ...newImageIds];
+            images = [...images, ...newImageUrls];
           }
 
           const entity = this.itineraryDayRepository.create({

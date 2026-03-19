@@ -9,7 +9,8 @@ export const packages = [
     maxGuests: 12,
     category: 'adventure',
     status: 'published',
-    thumbnail: 'himalaya.webp',
+    thumbnail:
+      'https://20jpaobz2o.ucarecd.net/81c06322-1717-4ee0-84a3-dff8c2bc47c8/himalaya.webp',
     organizationDomain: 'acme.com',
     inclusions: [
       'Professional trekking guide and porters',
@@ -193,8 +194,8 @@ export const packages = [
         meals: ['Dinner'],
         accommodation: 'Hotel in Kathmandu',
         images: [
-          'Kathmandu-and-Heritage-Site-Tour-6.jpg',
-          'KDS_oy_lt_(1)-1631095017.jpg',
+          'https://20jpaobz2o.ucarecd.net/38d24731-2c84-4d02-a5ab-b1506f14b793/KathmanduandHeritageSiteTour6.jpg',
+          'https://20jpaobz2o.ucarecd.net/45241f98-d546-4cc6-af3b-4e826dbbdebb/KDS_oy_lt_11631095017.jpg',
         ],
       },
       {
@@ -208,7 +209,10 @@ export const packages = [
         ],
         meals: ['Breakfast', 'Lunch'],
         accommodation: 'Hotel in Kathmandu',
-        images: ['durbar-square-28-81273.jpg', '427197-1.webp'],
+        images: [
+          'https://20jpaobz2o.ucarecd.net/b4a920a6-4fc2-41cf-888c-f80c6fabd548/durbarsquare2881273.jpg',
+          'https://20jpaobz2o.ucarecd.net/1270b073-e8bf-4f6f-811a-92c3ee6e2a1f/4271971.webp',
+        ],
       },
       {
         day: 3,
@@ -223,8 +227,8 @@ export const packages = [
         meals: ['Breakfast', 'Lunch', 'Dinner'],
         accommodation: 'Tea house in Phakding',
         images: [
-          'shutterstock_637126060_20190822125603_20190822125719.jpg',
-          'Phakding Village.jpg',
+          'https://20jpaobz2o.ucarecd.net/28d87f7e-0379-4006-8fec-5bfe50d86bfa/shutterstock_637126060_20190822125603_20190822125719.jpg',
+          'https://20jpaobz2o.ucarecd.net/fe9860de-ae4b-41f1-b19d-ca79ef8aa22f/PhakdingVillage.jpg',
         ],
       },
     ],
@@ -239,7 +243,8 @@ export const packages = [
     maxGuests: 15,
     category: 'cultural',
     status: 'published',
-    thumbnail: 'rajasthan.jpg',
+    thumbnail:
+      'https://20jpaobz2o.ucarecd.net/18f51369-093c-4ebe-a218-663cbae34562/rajasthan.jpg',
     organizationDomain: 'globex.co',
     inclusions: [
       'Professional tour guide',
@@ -423,9 +428,9 @@ export const packages = [
         meals: ['Dinner'],
         accommodation: 'Heritage hotel in Delhi',
         images: [
-          'New-Delhi-India-War-Memorial-arch-Sir.webp',
-          'lotus-temple-delhi.jpg',
-          'india-delhi-red-fort.jpg',
+          'https://20jpaobz2o.ucarecd.net/4d94b55e-a8f4-4e84-912e-a123e74349b3/NewDelhiIndiaWarMemorialarchSir.webp',
+          'https://20jpaobz2o.ucarecd.net/25c9d002-0a26-44f5-af68-3b1cbd03c40f/lotustempledelhi.jpg',
+          'https://20jpaobz2o.ucarecd.net/2159c393-330a-45f5-895b-38c4ac11576a/indiadelhiredfort.jpg',
         ],
       },
       {
@@ -440,8 +445,8 @@ export const packages = [
         meals: ['Breakfast', 'Lunch', 'Dinner'],
         accommodation: 'Heritage hotel in Jaipur',
         images: [
-          'hawa-mahal-jaipur-rajasthan-city-1-hero.jpg',
-          'anantara_jewel-bagh_jaipur_hotel_teaser_01_880x620.webp',
+          'https://20jpaobz2o.ucarecd.net/f7fa67a7-08e1-4e70-a2d6-81a790e7cc31/hawamahaljaipurrajasthancity1hero.jpg',
+          'https://20jpaobz2o.ucarecd.net/e66dd2cd-a91c-4d52-8154-a1be73ec42a4/anantara_jewelbagh_jaipur_hotel_teaser_01_880x620.webp',
         ],
       },
       {
@@ -456,8 +461,8 @@ export const packages = [
         meals: ['Breakfast', 'Lunch', 'Dinner'],
         accommodation: 'Heritage hotel in Jaipur',
         images: [
-          'm_activities_amber_fort_2_l_436_573.avif',
-          'Jantar_Mantar,_New_Delhi_(Misra_Yantra)jpg',
+          'https://20jpaobz2o.ucarecd.net/30dc71d7-5e41-4d2f-8a97-d33da95546d0/m_activities_amber_fort_2_l_436_573.avif',
+          'https://20jpaobz2o.ucarecd.net/ce425e4f-e3fa-45b6-afc6-1d40ecc8702d/Jantar_Mantar_New_Delhi_Misra_Yantra.jpg',
         ],
       },
     ],
@@ -472,7 +477,8 @@ export const packages = [
     maxGuests: 8,
     category: 'luxury',
     status: 'published',
-    thumbnail: 'maldives.jpg',
+    thumbnail:
+      'https://20jpaobz2o.ucarecd.net/4e7ba194-820a-4a8e-b9bb-1f7d3399203f/maldives.jpg',
     organizationDomain: 'initech.org',
     inclusions: [
       'Luxury overwater villa accommodation',
@@ -595,7 +601,9 @@ export const packages = [
         activities: ['Airport pickup', 'Seaplane transfer', 'Resort check-in'],
         meals: ['Dinner'],
         accommodation: 'Overwater villa',
-        images: ['maldives_best_resort_kuramathi-674x449.jpg'],
+        images: [
+          'https://20jpaobz2o.ucarecd.net/3ea5d884-5701-4452-9c83-2441e71e970b/maldives_best_resort_kuramathi674x449.jpg',
+        ],
       },
       {
         day: 2,
@@ -605,8 +613,8 @@ export const packages = [
         meals: ['Breakfast', 'Lunch', 'Dinner'],
         accommodation: 'Overwater villa',
         images: [
-          'snorkling.jpg',
-          'activemaldives_GettyImages-86477634_HR.avif',
+          'https://20jpaobz2o.ucarecd.net/1ca99773-f90c-434a-9fdf-1e24487e2baf/snorkling.jpg',
+          'https://20jpaobz2o.ucarecd.net/8316511f-2c12-4f7d-bf4a-90003bef9376/activemaldives_GettyImages86477634_HR.avif',
         ],
       },
     ],
@@ -621,7 +629,8 @@ export const packages = [
     maxGuests: 10,
     category: 'wildlife',
     status: 'published',
-    thumbnail: 'african_safari.webp',
+    thumbnail:
+      'https://20jpaobz2o.ucarecd.net/3873e07d-a311-4c16-9f58-9e3f9a3449a7/african_safari.webp',
     organizationDomain: 'umbrella.com',
     inclusions: [
       'Professional safari guide and driver',
@@ -787,8 +796,8 @@ export const packages = [
         meals: ['Dinner'],
         accommodation: 'Hotel in Nairobi',
         images: [
-          'Nairobi_Skyline-1110x700.jpg',
-          'image-1732602254089-630681340.jpg',
+          'https://20jpaobz2o.ucarecd.net/3162ddc4-bd1a-4254-b753-29498374c249/Nairobi_Skyline1110x700.jpg',
+          'https://20jpaobz2o.ucarecd.net/630dc1b3-2cb1-42f7-a2b6-f96e962dc8d2/image1732602254089630681340.png',
         ],
       },
       {
@@ -799,8 +808,8 @@ export const packages = [
         meals: ['Breakfast', 'Lunch', 'Dinner'],
         accommodation: 'Tented camp',
         images: [
-          'migration-rekero-go2africa.jpg',
-          'Masai-Mara-Safaris-Tours.jpg',
+          'https://20jpaobz2o.ucarecd.net/9c670c01-944a-47c6-a56c-865134a4e972/migrationrekerogo2africa.jpg',
+          'https://20jpaobz2o.ucarecd.net/27e4ed35-2678-4fe2-af3a-9b3dba77e2f8/MasaiMaraSafarisTours.jpg',
         ],
       },
     ],
@@ -815,7 +824,8 @@ export const packages = [
     maxGuests: 20,
     category: 'cultural',
     status: 'published',
-    thumbnail: 'europe.jpeg',
+    thumbnail:
+      'https://20jpaobz2o.ucarecd.net/b3862774-2d1d-455a-b60b-9f28fab85eed/europe.jpeg',
     organizationDomain: 'acme.com',
     inclusions: [
       'Professional multilingual tour guide',
@@ -970,7 +980,9 @@ export const packages = [
         activities: ['Airport pickup', 'Hotel check-in', 'City tour'],
         meals: ['Dinner'],
         accommodation: '4-star hotel in Paris',
-        images: ['paris.avif'],
+        images: [
+          'https://20jpaobz2o.ucarecd.net/e3f8787f-9f5e-43fc-b0ee-78e092ca8e5d/paris.avif',
+        ],
       },
       {
         day: 2,
@@ -980,9 +992,9 @@ export const packages = [
         meals: ['Breakfast', 'Lunch'],
         accommodation: '4-star hotel in Paris',
         images: [
-          'paris-1400x788-3.jpg',
-          'Louvre Museum.webp',
-          'notre-dame-de-paris-announces-reopening-date-and-proposes-constroversial-entrance-fee_2.jpg',
+          'https://20jpaobz2o.ucarecd.net/4500466c-2d2b-4542-a7f0-6530a298a635/paris1400x7883.jpg',
+          'https://20jpaobz2o.ucarecd.net/f420a603-8e1b-4edf-ad02-fd918ef6a1c0/LouvreMuseum.webp',
+          'https://20jpaobz2o.ucarecd.net/86c26015-3c2d-4c10-9c97-285bf2eb99dd/notredamedeparisannouncesreopeningdateandproposesconstroversialentrancefee_2.jpg',
         ],
       },
     ],
@@ -997,7 +1009,8 @@ export const packages = [
     maxGuests: 16,
     category: 'budget',
     status: 'published',
-    thumbnail: 'souteast-asia.jpg',
+    thumbnail:
+      'https://20jpaobz2o.ucarecd.net/9c835cbd-099e-4d62-b284-60774bfa95c6/souteastasia.jpg',
     organizationDomain: 'globex.co',
     inclusions: [
       'Experienced local guides',
@@ -1160,7 +1173,10 @@ export const packages = [
         activities: ['Airport pickup', 'Hostel check-in', 'City exploration'],
         meals: ['Dinner'],
         accommodation: 'Hostel in Bangkok',
-        images: ['bb.jpg', 'Bangkok.jpg'],
+        images: [
+          'https://20jpaobz2o.ucarecd.net/da14e805-d2c9-423d-b76c-be4591fee0f8/bb.jpg',
+          'https://20jpaobz2o.ucarecd.net/dad16538-f443-4660-a8ab-f659d4aa7e28/Bangkok.jpg',
+        ],
       },
       {
         day: 2,
@@ -1170,8 +1186,8 @@ export const packages = [
         meals: ['Breakfast', 'Lunch'],
         accommodation: 'Hostel in Bangkok',
         images: [
-          'wat-pho-3743.webp',
-          'Wat-Pho-Temple-of-the-Reclining-Buddha-Bangkok-Thailand.jpg',
+          'https://20jpaobz2o.ucarecd.net/a065a75e-cb72-4db6-bf16-08c5c49f5722/watpho3743.webp',
+          'https://20jpaobz2o.ucarecd.net/14351ac3-02c2-481e-aec3-f1bca0eddf51/WatPhoTempleoftheRecliningBuddhaBangkokThailand.jpg',
         ],
       },
     ],
