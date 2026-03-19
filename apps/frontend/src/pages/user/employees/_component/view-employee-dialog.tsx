@@ -9,14 +9,12 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getFileUrl } from "@/lib/utils";
-import type { IEmployee } from "@/types/employee.types";
 import { PermissionService } from "@/services/permission.service";
+import type { IEmployee } from "@/types/employee.types";
+import type { PermissionSet } from "@/types/permission.types";
 import { format } from "date-fns";
-import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { PermissionSet } from "@/types/permission.types";
 
 type ViewEmployeeDialogProps = {
     open: boolean;
@@ -91,13 +89,9 @@ export function ViewEmployeeDialog({
                             <Avatar className="h-16 w-16">
                                 <AvatarImage
                                     src={(() => {
-                                        if (employee.profilePhoto) {
-                                            return getFileUrl(
-                                                getServeFileUrl(
-                                                    employee.profilePhoto,
-                                                ),
-                                            );
-                                        }
+                                        if (employee.profilePhoto)
+                                            return employee.profilePhoto;
+
                                         return "/placeholder.svg";
                                     })()}
                                     alt={employee.name}

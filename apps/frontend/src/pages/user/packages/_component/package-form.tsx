@@ -1,8 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import axiosInstance from "@/lib/axios";
-import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
-import { getFileUrl } from "@/lib/utils";
 import {
     packageFormSchema,
     type IPackages,
@@ -190,9 +188,7 @@ export function PackageForm({
                                 ...prev,
                                 [index]: images,
                             }));
-                            const urls = images.map((img) =>
-                                getFileUrl(getServeFileUrl(img)),
-                            );
+                            const urls = images;
                             setItineraryPreviewUrls((prev) => ({
                                 ...prev,
                                 [index]: urls,
@@ -269,9 +265,7 @@ export function PackageForm({
                     // Special state updates
                     if (section === "basic") {
                         if (res.data.thumbnail) {
-                            setThumbnailFile(
-                                getFileUrl(getServeFileUrl(res.data.thumbnail)),
-                            );
+                            setThumbnailFile(res.data.thumbnail);
                         }
                         if (res.data.id) setPackageId(res.data.id);
                     }

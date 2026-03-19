@@ -2,19 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Customer } from 'src/database/entity/customer.entity';
-import { RelatedType } from 'src/database/entity/file-manager.entity';
-import { DataSource, ILike, In, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CreateCustomerDto } from '../../dto/create-customer.dto';
-import { FileManagerService } from '../file-manager/file-manager.service';
+import { UploadService } from '../upload/upload.service';
 
 @Injectable()
 export class CustomerService {
   constructor(
     @InjectRepository(Customer)
     private customerRepository: Repository<Customer>,
-    private readonly fileManagerService: FileManagerService,
+    private readonly uploadService: UploadService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   async createCustomer(
     data: CreateCustomerDto,
@@ -71,11 +70,10 @@ export class CustomerService {
     // Handle profile photo
     const profilePhotoFile = files.find((f) => f.fieldname === 'profilePhoto');
     if (profilePhotoFile) {
-      const fileData = await this.fileManagerService.uploadOneFile(
-        { relatedId: customerId, relatedType: RelatedType.CUSTOMER },
+      fileUploads.profilePhoto = await this.uploadService.uploadSingle(
         profilePhotoFile,
+        'customer',
       );
-      fileUploads.profilePhoto = fileData.id;
     }
 
     // Handle passport photos
@@ -83,11 +81,10 @@ export class CustomerService {
       f.fieldname.startsWith('passportPhotos'),
     );
     if (passportPhotoFiles.length > 0) {
-      const filesData = await this.fileManagerService.upload(
-        { relatedId: customerId, relatedType: RelatedType.CUSTOMER },
+      fileUploads.passportPhotos = await this.uploadService.uploadMultiple(
         passportPhotoFiles,
+        'customer',
       );
-      fileUploads.passportPhotos = filesData.map((f) => f.id);
     }
 
     // Handle voter ID photos
@@ -95,11 +92,10 @@ export class CustomerService {
       f.fieldname.startsWith('voterIdPhotos'),
     );
     if (voterIdPhotoFiles.length > 0) {
-      const filesData = await this.fileManagerService.upload(
-        { relatedId: customerId, relatedType: RelatedType.CUSTOMER },
+      fileUploads.voterIdPhotos = await this.uploadService.uploadMultiple(
         voterIdPhotoFiles,
+        'customer',
       );
-      fileUploads.voterIdPhotos = filesData.map((f) => f.id);
     }
 
     // Handle Aadhaar ID photos
@@ -107,11 +103,10 @@ export class CustomerService {
       f.fieldname.startsWith('aadhaarIdPhotos'),
     );
     if (aadhaarIdPhotoFiles.length > 0) {
-      const filesData = await this.fileManagerService.upload(
-        { relatedId: customerId, relatedType: RelatedType.CUSTOMER },
+      fileUploads.aadhaarIdPhotos = await this.uploadService.uploadMultiple(
         aadhaarIdPhotoFiles,
+        'customer',
       );
-      fileUploads.aadhaarIdPhotos = filesData.map((f) => f.id);
     }
 
     return fileUploads;
@@ -257,31 +252,7 @@ export class CustomerService {
     const customer = await this.customerRepository.findOne({ where: { id } });
     if (!customer) return null;
 
-    // Get file URLs for all photo fields
-    const files = await this.fileManagerService.findByRelatedEntity(
-      id,
-      RelatedType.CUSTOMER,
-    );
-
-    // Map file IDs to URLs
-    const fileMap = new Map(files.map((f) => [f.id, f.url]));
-
-    return {
-      ...customer,
-      profilePhoto: customer.profilePhoto
-        ? fileMap.get(customer.profilePhoto)
-        : undefined,
-      passportPhotos:
-        customer.passportPhotos?.map((id) => fileMap.get(id)).filter(Boolean) ||
-        [],
-      voterIdPhotos:
-        customer.voterIdPhotos?.map((id) => fileMap.get(id)).filter(Boolean) ||
-        [],
-      aadhaarIdPhotos:
-        customer.aadhaarIdPhotos
-          ?.map((id) => fileMap.get(id))
-          .filter(Boolean) || [],
-    } as Customer;
+    return customer;
   }
 
   async delete(id: string): Promise<void> {

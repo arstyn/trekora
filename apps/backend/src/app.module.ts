@@ -10,7 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BranchModule } from './modules/branch/branch.module';
 import { CustomerModule } from './modules/customer/customer.module';
 import { EmployeeModule } from './modules/employee/employee.module';
-import { FileManagerModule } from './modules/file-manager/file-manager.module';
+import { UploadModule } from './modules/upload/upload.module';
 import { GroupModule } from './modules/group/group.module';
 import { LeadUpdatesModule } from './modules/lead-updates/lead-updates.module';
 import { LeadModule } from './modules/lead/lead.module';
@@ -57,7 +57,7 @@ import { WorkflowModule } from './modules/workflow/workflow.module';
     MailerModule,
     GroupModule,
     PackageModule,
-    FileManagerModule,
+    UploadModule,
     UserNotificationModule,
     BatchesModule,
     BookingModule,

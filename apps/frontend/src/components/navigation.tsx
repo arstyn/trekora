@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Menu, Plane, Sparkles, X } from "lucide-react";
+import { LogoIcon } from "@/components/logo";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ThemeToggle } from "./theme-toggle";
@@ -15,8 +16,7 @@ export function Navigation() {
 					<div className="flex items-center">
 						<NavLink to="/" className="flex items-center space-x-2 group">
 							<div className="relative">
-								<Plane className="h-8 w-8 transition-colors" />
-								<Sparkles className="h-3 w-3 absolute -top-2 -right-2 animate-pulse" />
+								<LogoIcon className="h-8 w-8 transition-colors" />
 							</div>
 							<span className="text-2xl font-bold">Trekora</span>
 						</NavLink>

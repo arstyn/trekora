@@ -1,3 +1,4 @@
+import { OptimizedImage } from "@/components/optimized-image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,20 +8,17 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { OptimizedImage } from "@/components/optimized-image";
 import axiosInstance from "@/lib/axios";
-import { getFileUrl as getServeFileUrl } from "@/lib/file-upload";
-import { getFileUrl } from "@/lib/utils";
 import type { IPackages } from "@/types/package.schema";
 import {
     Calendar,
     CheckCircle,
     Edit,
+    History,
     IndianRupee,
     MapPin,
     Users,
     XCircle,
-    History,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
@@ -175,9 +173,7 @@ export default function ViewPackagePage() {
                         <OptimizedImage
                             src={(() => {
                                 if (basicData?.thumbnail) {
-                                    return getFileUrl(
-                                        getServeFileUrl(basicData.thumbnail),
-                                    );
+                                    return basicData.thumbnail;
                                 }
                                 return undefined;
                             })()}
@@ -336,11 +332,7 @@ export default function ViewPackagePage() {
                                                                             if (
                                                                                 image
                                                                             ) {
-                                                                                return getFileUrl(
-                                                                                    getServeFileUrl(
-                                                                                        image,
-                                                                                    ),
-                                                                                );
+                                                                                return image;
                                                                             }
                                                                             return undefined;
                                                                         })()}

@@ -84,14 +84,14 @@ export class PermissionSetController {
 
   // Get all permission sets for the organization
   @Get()
-  @RequirePermission('permission-set', 'manage')
+  @RequirePermission('permission-set', 'read')
   async findAll(@Request() req: ApiRequestJWT): Promise<PermissionSet[]> {
     return await this.permissionSetService.findAll(req.user.organizationId);
   }
 
   // Get a permission set by ID
   @Get(':id')
-  @RequirePermission('permission-set', 'manage')
+  @RequirePermission('permission-set', 'read')
   async findOne(@Param('id') id: string): Promise<PermissionSet | null> {
     return await this.permissionSetService.findOne(id);
   }
@@ -143,7 +143,7 @@ export class PermissionSetController {
 
   // Get permission sets for a user or employee (admin only for other users)
   @Get('user/:userId')
-  @RequirePermission('permission-set', 'manage')
+  @RequirePermission('permission-set', 'read')
   async getPermissionSetsForUser(
     @Request() req: ApiRequestJWT,
     @Param('userId') userId: string,
@@ -154,7 +154,7 @@ export class PermissionSetController {
   }
 
   @Get('employee/:employeeId')
-  @RequirePermission('permission-set', 'manage')
+  @RequirePermission('permission-set', 'read')
   async getPermissionSetsForEmployee(@Param('employeeId') employeeId: string) {
     return await this.permissionSetService.getPermissionSetsForUser(
       undefined,

@@ -8,6 +8,8 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/a6309c5a-8f07-44d6-b21a-96f3a684ab3b/carol_williams_profile.jpg',
   },
   {
     name: 'Bob Smith',
@@ -18,6 +20,9 @@ export const users = [
     notificationsEnabled: false,
     newsletterSubscribed: true,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/046bd4c8-894d-4e29-84ac-852dd34c133b/bob_smith_profile.jpg',
+
   },
   {
     name: 'Carol Williams',
@@ -28,6 +33,9 @@ export const users = [
     notificationsEnabled: false,
     newsletterSubscribed: false,
     organizationDomain: 'initech.org',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/c70c0c05-46fc-44fb-8475-6d4681d5d2a9/alice_johnson_profile.jpg',
+
   },
   {
     name: 'David Brown',
@@ -38,6 +46,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: true,
     organizationDomain: 'umbrella.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/7746ee5d-bdad-4c0e-a294-72c2006ff846/rachel_martinez_profile.jpg',
+
   },
   // Additional Users from Employee Seed
   {
@@ -49,6 +60,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/1079bb7c-f547-459e-bec4-49ea3a27fdd6/nick_harris_profile.jpg',
+
   },
   {
     name: 'Michael Chen',
@@ -59,6 +73,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/7c01d9fb-4f01-4fc0-991a-c8185f1b4eb3/steve_robinson_profile.jpg',
+
   },
   {
     name: 'Emily Rodriguez',
@@ -69,6 +86,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/672af04e-d51f-4fc2-8406-88c502dc6037/quinn_garcia_profile.jpg',
+
   },
   {
     name: 'James Thompson',
@@ -79,6 +99,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/5ce6c737-2396-48c2-86bc-2ccd6f7fa8aa/tina_clark_profile.jpg',
+
   },
   {
     name: 'Lisa Park',
@@ -89,6 +112,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/15fcb6f9-f0ab-44b9-8e9f-3c287a8726a5/olivia_martin_profile.jpg',
+
   },
   {
     name: 'David Kumar',
@@ -99,6 +125,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/640657d1-0352-4d56-95e8-42f3cfbd58e9/larry_jackson_profile.webp',
+
   },
   {
     name: 'Jennifer Lee',
@@ -109,6 +138,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'initech.org',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/b0f03164-690d-4666-b9df-7e8485054086/eva_davis_profile.jpeg',
+
   },
   {
     name: 'Robert Martinez',
@@ -119,6 +151,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'initech.org',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/a9e71203-1885-4835-ae76-70ec008ef191/grace_wilson_profile.webp',
+
   },
   {
     name: 'Dr. Amanda Foster',
@@ -129,6 +164,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'umbrella.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/3957a204-072f-457e-ae85-0ff474c187d4/mary_white_profile.jpg',
+
   },
   {
     name: 'Dr. Kevin Zhang',
@@ -139,6 +177,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'umbrella.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/3957a204-072f-457e-ae85-0ff474c187d4/mary_white_profile.jpg',
+
   },
   {
     name: 'Dr. Maria Santos',
@@ -149,6 +190,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'umbrella.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/3f80ea44-3907-4058-b80e-ae7f5bbc8b00/frank_miller_profile.webp',
+
   },
   {
     name: 'Dr. Thomas Anderson',
@@ -159,6 +203,7 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'umbrella.com',
+
   },
 
   // Finance Team Users
@@ -171,6 +216,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/586541e4-6720-4085-b8a6-769937ccd379/karen_thomas_profile.jpg',
+
   },
   {
     name: 'Kate Ledger',
@@ -181,6 +229,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'initech.org',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/54280275-62c8-4d32-ad55-eaf8857a8969/iris_taylor_profile.jpg',
+
   },
 
   // Booking Team Users
@@ -193,6 +244,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/4de58862-96e6-47e0-9e13-e3953559c64d/henry_moore_profile.jpg',
+
   },
   {
     name: 'John Booking',
@@ -203,6 +257,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/47da31ea-aa11-4624-90d5-64e3d9f8feac/david_brown_profile.jpg',
+
   },
 
   // Leads Team Users
@@ -215,6 +272,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/47da31ea-aa11-4624-90d5-64e3d9f8feac/david_brown_profile.jpg',
+
   },
   {
     name: 'Becky Lead',
@@ -225,6 +285,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'umbrella.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/a6309c5a-8f07-44d6-b21a-96f3a684ab3b/carol_williams_profile.jpg',
+
   },
 
   // Operations Team Users
@@ -237,6 +300,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'umbrella.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/046bd4c8-894d-4e29-84ac-852dd34c133b/bob_smith_profile.jpg',
+
   },
   {
     name: 'John Logistics',
@@ -247,6 +313,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/c70c0c05-46fc-44fb-8475-6d4681d5d2a9/alice_johnson_profile.jpg',
+
   },
 
   // Acme Expansion Users
@@ -259,6 +328,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/7746ee5d-bdad-4c0e-a294-72c2006ff846/rachel_martinez_profile.jpg',
+
   },
   {
     name: 'Bob Finance',
@@ -269,6 +341,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/1079bb7c-f547-459e-bec4-49ea3a27fdd6/nick_harris_profile.jpg',
+
   },
   {
     name: 'Carol Booking',
@@ -279,6 +354,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/7c01d9fb-4f01-4fc0-991a-c8185f1b4eb3/steve_robinson_profile.jpg',
+
   },
   {
     name: 'David Reserve',
@@ -289,6 +367,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'acme.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/672af04e-d51f-4fc2-8406-88c502dc6037/quinn_garcia_profile.jpg',
+
   },
 
   // Globex Expansion Users
@@ -301,6 +382,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/2d02d2ff-4d42-46cc-9c13-2a0417a590b5/paul_thompson_profile.jpg',
+
   },
   {
     name: 'Frank Sales',
@@ -311,6 +395,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/5ce6c737-2396-48c2-86bc-2ccd6f7fa8aa/tina_clark_profile.jpg',
+
   },
   {
     name: 'Grace Ops',
@@ -321,6 +408,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'globex.co',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/15fcb6f9-f0ab-44b9-8e9f-3c287a8726a5/olivia_martin_profile.jpg',
+
   },
 
   // Initech Expansion Users
@@ -333,6 +423,9 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'initech.org',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/15fcb6f9-f0ab-44b9-8e9f-3c287a8726a5/olivia_martin_profile.jpg',
+
   },
   {
     name: 'Ivy Ledger',
@@ -343,6 +436,8 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'initech.org',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/88219f66-2500-4ff9-abe1-f0fb785e856c/jack_anderson_profile.jpg',
   },
 
   // Umbrella Expansion Users
@@ -355,6 +450,8 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'umbrella.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/a6309c5a-8f07-44d6-b21a-96f3a684ab3b/carol_williams_profile.jpg',
   },
   {
     name: 'Karen Ops',
@@ -365,6 +462,8 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'umbrella.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/046bd4c8-894d-4e29-84ac-852dd34c133b/bob_smith_profile.jpg',
   },
   {
     name: 'Leo Logistics',
@@ -375,5 +474,7 @@ export const users = [
     notificationsEnabled: true,
     newsletterSubscribed: false,
     organizationDomain: 'umbrella.com',
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/c70c0c05-46fc-44fb-8475-6d4681d5d2a9/alice_johnson_profile.jpg',
   },
 ];

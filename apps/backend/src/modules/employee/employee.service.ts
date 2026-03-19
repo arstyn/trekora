@@ -2,13 +2,13 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
-import { RelatedType } from 'src/database/entity/file-manager.entity';
+
 import { UserDepartments } from 'src/database/entity/user-departments.entity';
 import { User } from 'src/database/entity/user.entity';
 import { IUserProfileDTO } from 'src/dto/user-profile.dto';
 import { DataSource, Repository } from 'typeorm';
 import { IEmployeeCreateDTO } from '../../dto/create-employee.dto';
-import { FileManagerService } from '../file-manager/file-manager.service';
+import { UploadService } from '../upload/upload.service';
 import { MailerService } from '../mailer/mailer.service';
 import { PermissionSetService } from '../permission/permission-set.service';
 import { UserDepartmentsService } from '../user-departments/user-departments.service';
@@ -25,7 +25,7 @@ export class EmployeeService {
     private readonly userService: UserService,
     private readonly userInviteService: UserInviteService,
     private readonly mailerService: MailerService,
-    private readonly fileManagerService: FileManagerService,
+    private readonly uploadService: UploadService,
     private readonly permissionSetService: PermissionSetService,
   ) {}
 
@@ -60,11 +60,10 @@ export class EmployeeService {
     // Handle profile photo
     const profilePhotoFile = files.find((f) => f.fieldname === 'profilePhoto');
     if (profilePhotoFile) {
-      const fileData = await this.fileManagerService.uploadOneFile(
-        { relatedId: employeeId, relatedType: RelatedType.EMPLOYEE },
+      fileUploads.profilePhoto = await this.uploadService.uploadSingle(
         profilePhotoFile,
+        'employee',
       );
-      fileUploads.profilePhoto = fileData.id;
     }
 
     // Handle verification document
@@ -72,11 +71,10 @@ export class EmployeeService {
       (f) => f.fieldname === 'verificationDocument',
     );
     if (verificationDocumentFile) {
-      const fileData = await this.fileManagerService.uploadOneFile(
-        { relatedId: employeeId, relatedType: RelatedType.EMPLOYEE },
+      fileUploads.verificationDocument = await this.uploadService.uploadSingle(
         verificationDocumentFile,
+        'employee',
       );
-      fileUploads.verificationDocument = fileData.id;
     }
 
     return fileUploads;
@@ -234,24 +232,7 @@ export class EmployeeService {
     // Attach permission sets to employee object
     (employee as any).permissionSets = uniquePermissionSets;
 
-    // Get file URLs for photo fields
-    const files = await this.fileManagerService.findByRelatedEntity(
-      id,
-      RelatedType.EMPLOYEE,
-    );
-
-    // Map file IDs to URLs
-    const fileMap = new Map(files.map((f) => [f.id, f.url]));
-
-    return {
-      ...employee,
-      profilePhoto: employee.profilePhoto
-        ? fileMap.get(employee.profilePhoto)
-        : undefined,
-      verificationDocument: employee.verificationDocument
-        ? fileMap.get(employee.verificationDocument)
-        : undefined,
-    } as Employee;
+    return employee;
   }
 
   // Update an employee by ID

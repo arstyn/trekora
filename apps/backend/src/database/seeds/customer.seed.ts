@@ -39,10 +39,19 @@ export const customers = [
     specialRequests: 'Ground floor room preferred',
     notes: 'Regular customer, prefers luxury accommodations',
     organizationDomain: 'acme.com',
-    profilePhoto: 'alice_johnson_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/c70c0c05-46fc-44fb-8475-6d4681d5d2a9/alice_johnson_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Bob',
@@ -76,10 +85,19 @@ export const customers = [
     specialRequests: 'Adventure activities preferred',
     notes: 'Adventure enthusiast, interested in extreme sports',
     organizationDomain: 'globex.co',
-    profilePhoto: 'bob_smith_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/046bd4c8-894d-4e29-84ac-852dd34c133b/bob_smith_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Carol',
@@ -113,10 +131,19 @@ export const customers = [
     specialRequests: 'Need guidance on package selection',
     notes: 'First-time customer, needs guidance on package selection',
     organizationDomain: 'initech.org',
-    profilePhoto: 'carol_williams_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/a6309c5a-8f07-44d6-b21a-96f3a684ab3b/carol_williams_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'David',
@@ -162,10 +189,19 @@ export const customers = [
     specialRequests: 'Child-friendly accommodations',
     notes: 'Family traveler with young children',
     organizationDomain: 'umbrella.com',
-    profilePhoto: 'david_brown_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/47da31ea-aa11-4624-90d5-64e3d9f8feac/david_brown_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Eva',
@@ -199,10 +235,19 @@ export const customers = [
     specialRequests: 'Quiet accommodations preferred',
     notes: 'Inactive customer, last booking was 6 months ago',
     organizationDomain: 'acme.com',
-    profilePhoto: 'eva_davis_profile.jpeg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/b0f03164-690d-4666-b9df-7e8485054086/eva_davis_profile.jpeg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Frank',
@@ -236,10 +281,19 @@ export const customers = [
     specialRequests: 'Last-minute booking flexibility needed',
     notes: 'Business traveler, frequently books last-minute trips',
     organizationDomain: 'globex.co',
-    profilePhoto: 'frank_miller_profile.webp',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/3f80ea44-3907-4058-b80e-ae7f5bbc8b00/frank_miller_profile.webp',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Grace',
@@ -273,10 +327,19 @@ export const customers = [
     specialRequests: 'Accessible accommodations required',
     notes: 'Senior traveler, requires accessible accommodations',
     organizationDomain: 'initech.org',
-    profilePhoto: 'grace_wilson_profile.webp',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/a9e71203-1885-4835-ae76-70ec008ef191/grace_wilson_profile.webp',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Henry',
@@ -316,10 +379,19 @@ export const customers = [
     specialRequests: 'Group booking coordination needed',
     notes: 'Group organizer, books for large parties',
     organizationDomain: 'umbrella.com',
-    profilePhoto: 'henry_moore_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/4de58862-96e6-47e0-9e13-e3953559c64d/henry_moore_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Iris',
@@ -353,10 +425,19 @@ export const customers = [
     specialRequests: 'Romantic settings, couples activities',
     notes: 'Honeymoon specialist, books romantic getaways',
     organizationDomain: 'acme.com',
-    profilePhoto: 'iris_taylor_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/54280275-62c8-4d32-ad55-eaf8857a8969/iris_taylor_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Jack',
@@ -390,10 +471,19 @@ export const customers = [
     specialRequests: 'Budget-friendly options preferred',
     notes: 'Budget traveler, price-sensitive customer',
     organizationDomain: 'globex.co',
-    profilePhoto: 'jack_anderson_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/88219f66-2500-4ff9-abe1-f0fb785e856c/jack_anderson_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Karen',
@@ -427,10 +517,19 @@ export const customers = [
     specialRequests: 'Cultural sites and museums preferred',
     notes: 'Cultural tourism enthusiast',
     organizationDomain: 'initech.org',
-    profilePhoto: 'karen_thomas_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/586541e4-6720-4085-b8a6-769937ccd379/karen_thomas_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Larry',
@@ -464,10 +563,19 @@ export const customers = [
     specialRequests: 'Beach destinations preferred',
     notes: 'New customer, interested in beach destinations',
     organizationDomain: 'umbrella.com',
-    profilePhoto: 'larry_jackson_profile.webp',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/640657d1-0352-4d56-95e8-42f3cfbd58e9/larry_jackson_profile.webp',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Mary',
@@ -501,10 +609,19 @@ export const customers = [
     specialRequests: 'Guided tours and group activities preferred',
     notes: 'Solo traveler, prefers guided tours',
     organizationDomain: 'acme.com',
-    profilePhoto: 'mary_white_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/3957a204-072f-457e-ae85-0ff474c187d4/mary_white_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Nick',
@@ -538,10 +655,19 @@ export const customers = [
     specialRequests: 'Scenic locations for photography',
     notes: 'Photography enthusiast, books scenic destinations',
     organizationDomain: 'globex.co',
-    profilePhoto: 'nick_harris_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/1079bb7c-f547-459e-bec4-49ea3a27fdd6/nick_harris_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Olivia',
@@ -575,10 +701,19 @@ export const customers = [
     specialRequests: 'Holiday season bookings preferred',
     notes: 'Seasonal traveler, books during holidays',
     organizationDomain: 'initech.org',
-    profilePhoto: 'olivia_martin_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/15fcb6f9-f0ab-44b9-8e9f-3c287a8726a5/olivia_martin_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Paul',
@@ -612,10 +747,19 @@ export const customers = [
     specialRequests: 'Outdoor adventure activities',
     notes: 'Outdoor adventure seeker',
     organizationDomain: 'umbrella.com',
-    profilePhoto: 'paul_thompson_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/2d02d2ff-4d42-46cc-9c13-2a0417a590b5/paul_thompson_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Quinn',
@@ -649,10 +793,19 @@ export const customers = [
     specialRequests: 'Wellness and spa packages preferred',
     notes: 'Wellness traveler, interested in spa packages',
     organizationDomain: 'acme.com',
-    profilePhoto: 'quinn_garcia_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/672af04e-d51f-4fc2-8406-88c502dc6037/quinn_garcia_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Rachel',
@@ -692,10 +845,19 @@ export const customers = [
     specialRequests: 'Educational activities for children',
     notes: 'Educational travel for children',
     organizationDomain: 'globex.co',
-    profilePhoto: 'rachel_martinez_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/7746ee5d-bdad-4c0e-a294-72c2006ff846/rachel_martinez_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Steve',
@@ -729,10 +891,19 @@ export const customers = [
     specialRequests: 'Wine tasting and culinary experiences',
     notes: 'Wine and food tourism enthusiast',
     organizationDomain: 'initech.org',
-    profilePhoto: 'steve_robinson_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/7c01d9fb-4f01-4fc0-991a-c8185f1b4eb3/steve_robinson_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
   {
     firstName: 'Tina',
@@ -766,9 +937,18 @@ export const customers = [
     specialRequests: 'Music festival destinations',
     notes: 'Music festival traveler',
     organizationDomain: 'umbrella.com',
-    profilePhoto: 'tina_clark_profile.jpg',
-    passportPhotos: ['passport_page1.jpg', 'passport_page2.jpg'],
-    voterIdPhotos: ['voter_id.jpeg'],
-    aadhaarIdPhotos: ['aadhaar_front.png', 'aadhaar_back.png'],
+    profilePhoto:
+      'https://20jpaobz2o.ucarecd.net/5ce6c737-2396-48c2-86bc-2ccd6f7fa8aa/tina_clark_profile.jpg',
+    passportPhotos: [
+      'https://20jpaobz2o.ucarecd.net/4d73fbe3-df0f-44e9-9947-77acffc0a0c6/passport_page1.jpg',
+      'https://20jpaobz2o.ucarecd.net/0b8bf2ca-d71c-4957-a95e-8f0240b0f852/passport_page2.jpg',
+    ],
+    voterIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e17fa21b-af03-4bac-b704-78fd59d2df2f/voter_id.jpeg',
+    ],
+    aadhaarIdPhotos: [
+      'https://20jpaobz2o.ucarecd.net/e684e0f4-8996-4efd-a5fe-bdf2e8647374/aadhaar_front.png',
+      'https://20jpaobz2o.ucarecd.net/5091d99f-6b9e-4a17-8683-ac1cf386f959/aadhaar_back.png',
+    ],
   },
 ];
