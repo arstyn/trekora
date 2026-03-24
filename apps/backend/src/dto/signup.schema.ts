@@ -6,6 +6,9 @@ const teamMemberSchema = z.object({
 
 // Combined schema for the entire form
 export const onboardingSchema = z.object({
+  // Auth validation
+  otpToken: z.string().optional(),
+
   // Personal info
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),

@@ -13,7 +13,7 @@ export class CustomerService {
     private customerRepository: Repository<Customer>,
     private readonly uploadService: UploadService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async createCustomer(
     data: CreateCustomerDto,

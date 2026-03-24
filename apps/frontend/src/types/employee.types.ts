@@ -59,7 +59,6 @@ export interface IEmployee {
     additional_info?: string;
     maritalStatus?: "single" | "married";
     joinDate?: Date;
-    avatar: string;
     profilePhoto?: string;
     verificationDocument?: string;
     verificationDocumentType?: string;

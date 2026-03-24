@@ -18,6 +18,16 @@ import { AuthService } from './auth.service';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Post('send-otp')
+  async sendOtp(@Body('email') email: string) {
+    return await this.authService.sendOtp(email);
+  }
+
+  @Post('verify-otp')
+  async verifyOtp(@Body() body: { email: string; otp: string }) {
+    return await this.authService.verifyOtp(body.email, body.otp);
+  }
+
   // Signup API
   @Post('signup')
   async signup(@Body() userData: SignupFormDTO) {

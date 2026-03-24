@@ -49,7 +49,7 @@ export default function LoginPage() {
                         onClick={() =>
                             (window.location.href = `${
                                 import.meta.env.VITE_API_BASE_URL ||
-                                "http://localhost:3000/api"
+                                "http://localhost:3000"
                             }/auth/google`)
                         }
                     >

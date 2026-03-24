@@ -5,8 +5,7 @@ import {
 	CreditCardIcon,
 	Loader2,
 	LogOutIcon,
-	MoreVerticalIcon,
-	UserCircleIcon,
+	MoreVerticalIcon
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,11 +24,11 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/context/authContext";
 import axiosInstance from "@/lib/axios";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { useAuth } from "@/context/authContext";
 
 export function NavUser({
 	user,
@@ -87,7 +86,8 @@ export function NavUser({
 							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 						>
 							<Avatar className="h-8 w-8 rounded-lg grayscale">
-								<AvatarImage src={user.avatar} alt={user.name} />
+								{/* add small size using the uploadcare format so only fetches a required size */}
+								<AvatarImage src={`${user.avatar}?u=200x200`} alt={user.name} />
 								<AvatarFallback className="rounded-lg">CN</AvatarFallback>
 							</Avatar>
 							<div className="grid flex-1 text-left text-sm leading-tight">
@@ -125,10 +125,6 @@ export function NavUser({
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DropdownMenuItem>
-								<UserCircleIcon />
-								Account
-							</DropdownMenuItem>
 							<DropdownMenuItem>
 								<CreditCardIcon />
 								Billing

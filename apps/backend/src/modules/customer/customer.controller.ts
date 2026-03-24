@@ -28,7 +28,7 @@ export class CustomerController {
   constructor(
     private readonly customerService: CustomerService,
     private readonly employeeService: EmployeeService,
-  ) {}
+  ) { }
 
   //Creating Customers
   @Post()
