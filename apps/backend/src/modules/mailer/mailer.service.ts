@@ -1,24 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 @Injectable()
 export class MailerService {
-  private transporter: nodemailer.Transporter;
+  private resend: Resend;
   private readonly logger = new Logger(MailerService.name);
 
   constructor() {
-    const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
-    const port = Number(process.env.SMTP_PORT) || 465;
-    
-    this.transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465, // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_USER || process.env.GMAIL_USER,
-        pass: process.env.SMTP_PASS || process.env.GMAIL_PASS,
-      },
-    });
+    // Using RESEND_API_KEY from environment variables
+    this.resend = new Resend(process.env.RESEND_API_KEY || '');
   }
 
   async sendMail({
@@ -33,14 +23,29 @@ export class MailerService {
     html?: string;
   }) {
     try {
-      await this.transporter.sendMail({
-        from: process.env.SMTP_USER || process.env.GMAIL_USER,
-        to,
+      // Use your verified custom domain or the testing domain provided by Resend
+      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+
+      // Resend sending payload
+      const payload: any = {
+        from: `Trekora <${fromEmail}>`,
+        to: [to],
         subject,
-        text,
-        html,
-      });
-      this.logger.log(`Email sent to ${to}`);
+      };
+
+      if (html) {
+        payload.html = html;
+      } else if (text) {
+        payload.text = text;
+      }
+
+      const { data, error } = await this.resend.emails.send(payload);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      this.logger.log(`Email sent to ${to} via Resend. ID: ${data?.id}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to send email to ${to}: ${errorMsg}`);
