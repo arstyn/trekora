@@ -65,7 +65,7 @@ const formSchema = z.object({
     additional_info: z.string().optional(),
     maritalStatus: z.enum(["single", "married"]).optional(),
     joinDate: z.date({ error: "Join date is required" }),
-    avatar: z.string().optional(),
+    profilePhoto: z.string().optional(),
     branchId: z.string().optional(),
     status: z.enum(["active", "inactive", "suspended", "terminated"], {
         error: "Please select a status",
@@ -186,7 +186,7 @@ export function EditEmployeeDialog({
                   joinDate: employee.joinDate
                       ? new Date(employee.joinDate)
                       : new Date(),
-                  avatar: employee.avatar ?? "",
+                  profilePhoto: employee.profilePhoto ?? "",
                   branchId: employee.branchId ?? "",
                   status: employee.status,
                   departments: getDepartmentIds(employee),
@@ -207,7 +207,7 @@ export function EditEmployeeDialog({
                   additional_info: "",
                   maritalStatus: undefined,
                   joinDate: new Date(),
-                  avatar: "",
+                  profilePhoto: "",
                   branchId: "",
                   status: "active",
                   departments: [],
@@ -1068,7 +1068,7 @@ export function EditEmployeeDialog({
 
                             <FormField
                                 control={form.control}
-                                name="avatar"
+                                name="profilePhoto"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Avatar URL</FormLabel>
