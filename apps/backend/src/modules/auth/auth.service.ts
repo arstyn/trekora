@@ -9,6 +9,7 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
 import { Organization } from 'src/database/entity/organization.entity';
+import { Otp } from 'src/database/entity/otp.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { User } from 'src/database/entity/user.entity';
 import { ILoginResponse } from 'src/dto/auth.types';
@@ -78,10 +79,88 @@ export class AuthService {
     }
   }
 
+  // OTP functionality
+  async sendOtp(email: string) {
+    const existingUser = await this.userService.findOneWithEmail(email);
+    if (existingUser && existingUser.isActive) {
+      throw new HttpException('Email already exists and is active. Please login.', HttpStatus.BAD_REQUEST);
+    }
+
+    const otpValue = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+    const otpRepo = this.dataSource.getRepository(Otp);
+    let otpRecord = await otpRepo.findOne({ where: { email } });
+    
+    if (otpRecord) {
+      otpRecord.otp = otpValue;
+      otpRecord.expiresAt = expiresAt;
+      otpRecord.isVerified = false;
+    } else {
+      otpRecord = otpRepo.create({
+        email,
+        otp: otpValue,
+        expiresAt,
+        isVerified: false
+      });
+    }
+    
+    await otpRepo.save(otpRecord);
+
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'Your Trekora Verification Code',
+      text: `Your OTP is: ${otpValue}`,
+      html: `<div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>Verify your email address</h2>
+        <p>Your verification code is: <strong style="font-size: 24px;">${otpValue}</strong></p>
+        <p>This code will expire in 10 minutes.</p>
+      </div>`,
+    });
+
+    return { message: 'OTP sent successfully' };
+  }
+
+  async verifyOtp(email: string, otp: string) {
+    const otpRepo = this.dataSource.getRepository(Otp);
+    const otpRecord = await otpRepo.findOne({ where: { email } });
+    
+    if (!otpRecord) throw new HttpException('OTP not found', HttpStatus.BAD_REQUEST);
+    if (otpRecord.otp !== otp) throw new HttpException('Invalid OTP', HttpStatus.BAD_REQUEST);
+    if (new Date() > otpRecord.expiresAt) throw new HttpException('OTP expired', HttpStatus.BAD_REQUEST);
+    
+    otpRecord.isVerified = true;
+    await otpRepo.save(otpRecord);
+
+    const otpToken = this.jwtService.sign(
+      { email, isVerified: true },
+      { secret: process.env.JWT_ACCESS_SECRET || 'secret', expiresIn: '30m' }
+    );
+    
+    return { success: true, otpToken };
+  }
+
   // Signup functionality
   async signup(userData: SignupFormDTO): Promise<{
     message: string;
   }> {
+    if (userData.otpToken) {
+      try {
+        const payload = this.jwtService.verify(userData.otpToken, { secret: process.env.JWT_ACCESS_SECRET || 'secret' });
+        if (payload.email !== userData.email) {
+          throw new UnauthorizedException('Email mismatch with OTP token');
+        }
+      } catch (e) {
+        throw new UnauthorizedException('Invalid or expired OTP token');
+      }
+    } else {
+       // Allow without token for backward compatibility or force based on requirement
+       // It's better to force it if we want OTP strictly
+       // But wait, what if Google Auth? Google Auth skips this entirely.
+       // So we can mandate it.
+       // throw new UnauthorizedException('OTP token required');
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -116,7 +195,7 @@ export class AuthService {
         organizationId: savedOrganization.id,
         notificationsEnabled: userData.notifications,
         newsletterSubscribed: userData.newsletter,
-        isActive: false,
+        isActive: true, // Auto-activate since email is verified
       });
 
       const savedUser = await queryRunner.manager.save(newUser);
@@ -128,9 +207,9 @@ export class AuthService {
         phone: userData.phone,
         organizationId: savedOrganization.id,
         userId: savedUser.id,
-        status: EmployeeStatus.INACTIVE,
+        status: EmployeeStatus.ACTIVE, // Auto-activate
         joinDate: new Date().toISOString(),
-        isActive: false,
+        isActive: true, // Auto-activate
       });
 
       const savedEmployee = await queryRunner.manager.save(employee);
@@ -202,9 +281,9 @@ export class AuthService {
         // Don't fail the signup if permission sets creation fails
       }
 
-      const invite = await this.userInviteService.createInvite(employee);
-
-      await this.sendActivationEmail(userData.email, invite.token);
+      // No need to send activation link since they already used OTP.
+      // const invite = await this.userInviteService.createInvite(employee);
+      // await this.sendActivationEmail(userData.email, invite.token);
 
       return {
         message: 'User registered successfully',

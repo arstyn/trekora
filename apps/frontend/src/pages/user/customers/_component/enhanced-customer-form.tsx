@@ -33,6 +33,7 @@ import {
     CalendarIcon,
     Eye,
     Image as ImageIcon,
+    Loader2,
     Plus,
     Upload,
     X,
@@ -99,6 +100,8 @@ export default function EnhancedCustomerForm({
     });
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [imageModalOpen, setImageModalOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const fileInputRefs = {
         profilePhoto: useRef<HTMLInputElement>(null),
         passportPhotos: useRef<HTMLInputElement>(null),
@@ -265,21 +268,36 @@ export default function EnhancedCustomerForm({
         });
 
         try {
+            setIsLoading(true);
+            setError(null);
+
             const response = customer
                 ? await axiosInstance.put(
-                      `/customers/${customer.id}`,
-                      formDataToSubmit,
-                      {
-                          headers: { "Content-Type": "multipart/form-data" },
-                      },
-                  )
+                    `/customers/${customer.id}`,
+                    formDataToSubmit,
+                    {
+                        headers: { "Content-Type": "multipart/form-data" },
+                    },
+                )
                 : await axiosInstance.post("/customers", formDataToSubmit, {
-                      headers: { "Content-Type": "multipart/form-data" },
-                  });
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
 
             onSave(response.data);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error saving customer:", error);
+
+            // Handle validation errors
+            if (error.response?.status === 400 && error.response?.data?.errors) {
+                const validationErrors = error.response.data.errors as Record<string, string>;
+                const firstError = Object.values(validationErrors)[0];
+                setError(firstError || "Validation failed. Please check your inputs.");
+            } else {
+                const errorMessage = error.response?.data?.message || error.message || "Failed to save customer. Please try again.";
+                setError(errorMessage);
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -338,29 +356,29 @@ export default function EnhancedCustomerForm({
                             >
                                 <Upload className="h-4 w-4" />
                                 {previews.length > 0 ||
-                                existingImagesForField.length > 0
+                                    existingImagesForField.length > 0
                                     ? "Change Photo"
                                     : "Upload Photo"}
                             </Button>
                             {(previews.length > 0 ||
                                 existingImagesForField.length > 0) && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() =>
-                                        removeFile(
-                                            0,
-                                            field,
-                                            existingImagesForField.length > 0 &&
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                            removeFile(
+                                                0,
+                                                field,
+                                                existingImagesForField.length > 0 &&
                                                 previews.length === 0,
-                                        )
-                                    }
-                                    className="h-10 px-4 text-destructive hover:text-destructive"
-                                >
-                                    Remove
-                                </Button>
-                            )}
+                                            )
+                                        }
+                                        className="h-10 px-4 text-destructive hover:text-destructive"
+                                    >
+                                        Remove
+                                    </Button>
+                                )}
                             <input
                                 ref={fileInputRef}
                                 type="file"
@@ -604,11 +622,11 @@ export default function EnhancedCustomerForm({
                                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                                     {formData.dateOfBirth
                                                         ? format(
-                                                              new Date(
-                                                                  formData.dateOfBirth,
-                                                              ),
-                                                              "PPP",
-                                                          )
+                                                            new Date(
+                                                                formData.dateOfBirth,
+                                                            ),
+                                                            "PPP",
+                                                        )
                                                         : "Select date"}
                                                 </Button>
                                             </PopoverTrigger>
@@ -621,8 +639,8 @@ export default function EnhancedCustomerForm({
                                                     selected={
                                                         formData.dateOfBirth
                                                             ? new Date(
-                                                                  formData.dateOfBirth,
-                                                              )
+                                                                formData.dateOfBirth,
+                                                            )
                                                             : undefined
                                                     }
                                                     onSelect={(date) => {
@@ -641,9 +659,9 @@ export default function EnhancedCustomerForm({
                                                     disabled={(date) =>
                                                         date > new Date() ||
                                                         date <
-                                                            new Date(
-                                                                "1900-01-01",
-                                                            )
+                                                        new Date(
+                                                            "1900-01-01",
+                                                        )
                                                     }
                                                     initialFocus
                                                 />
@@ -849,11 +867,11 @@ export default function EnhancedCustomerForm({
                                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                                             {formData.passportIssueDate
                                                                 ? format(
-                                                                      new Date(
-                                                                          formData.passportIssueDate,
-                                                                      ),
-                                                                      "PPP",
-                                                                  )
+                                                                    new Date(
+                                                                        formData.passportIssueDate,
+                                                                    ),
+                                                                    "PPP",
+                                                                )
                                                                 : "Select date"}
                                                         </Button>
                                                     </PopoverTrigger>
@@ -866,8 +884,8 @@ export default function EnhancedCustomerForm({
                                                             selected={
                                                                 formData.passportIssueDate
                                                                     ? new Date(
-                                                                          formData.passportIssueDate,
-                                                                      )
+                                                                        formData.passportIssueDate,
+                                                                    )
                                                                     : undefined
                                                             }
                                                             onSelect={(
@@ -889,11 +907,11 @@ export default function EnhancedCustomerForm({
                                                             }}
                                                             disabled={(date) =>
                                                                 date >
-                                                                    new Date() ||
+                                                                new Date() ||
                                                                 date <
-                                                                    new Date(
-                                                                        "1900-01-01",
-                                                                    )
+                                                                new Date(
+                                                                    "1900-01-01",
+                                                                )
                                                             }
                                                             initialFocus
                                                         />
@@ -913,11 +931,11 @@ export default function EnhancedCustomerForm({
                                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                                             {formData.passportExpiryDate
                                                                 ? format(
-                                                                      new Date(
-                                                                          formData.passportExpiryDate,
-                                                                      ),
-                                                                      "PPP",
-                                                                  )
+                                                                    new Date(
+                                                                        formData.passportExpiryDate,
+                                                                    ),
+                                                                    "PPP",
+                                                                )
                                                                 : "Select date"}
                                                         </Button>
                                                     </PopoverTrigger>
@@ -930,8 +948,8 @@ export default function EnhancedCustomerForm({
                                                             selected={
                                                                 formData.passportExpiryDate
                                                                     ? new Date(
-                                                                          formData.passportExpiryDate,
-                                                                      )
+                                                                        formData.passportExpiryDate,
+                                                                    )
                                                                     : undefined
                                                             }
                                                             onSelect={(
@@ -1249,18 +1267,39 @@ export default function EnhancedCustomerForm({
                     </ScrollArea>
 
                     <DialogFooter className="flex-shrink-0 pt-4 border-t">
-                        <div className="flex gap-3 w-full justify-end">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onCancel}
-                                className="h-9 px-4"
-                            >
-                                Cancel
-                            </Button>
-                            <Button type="submit" className="h-9 px-4">
-                                {customer ? "Update Customer" : "Add Customer"}
-                            </Button>
+                        <div className="flex gap-3 w-full justify-between items-center">
+                            {error && (
+                                <div className="text-sm text-destructive font-medium">
+                                    {error}
+                                </div>
+                            )}
+                            <div className="flex gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onCancel}
+                                    className="h-9 px-4"
+                                    disabled={isLoading}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    className="h-9 px-4"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            {customer ? "Updating..." : "Adding..."}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {customer ? "Update Customer" : "Add Customer"}
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                     </DialogFooter>
                 </form>

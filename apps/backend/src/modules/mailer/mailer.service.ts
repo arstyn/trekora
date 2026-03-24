@@ -7,11 +7,16 @@ export class MailerService {
   private readonly logger = new Logger(MailerService.name);
 
   constructor() {
+    const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
+    const port = Number(process.env.SMTP_PORT) || 465;
+    
     this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host,
+      port,
+      secure: port === 465, // true for 465, false for other ports
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS,
+        user: process.env.SMTP_USER || process.env.GMAIL_USER,
+        pass: process.env.SMTP_PASS || process.env.GMAIL_PASS,
       },
     });
   }
@@ -29,7 +34,7 @@ export class MailerService {
   }) {
     try {
       await this.transporter.sendMail({
-        from: process.env.GMAIL_USER,
+        from: process.env.SMTP_USER || process.env.GMAIL_USER,
         to,
         subject,
         text,

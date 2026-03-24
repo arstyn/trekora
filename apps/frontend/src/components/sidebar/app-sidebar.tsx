@@ -1,3 +1,4 @@
+import { LogoIcon } from "@/components/logo";
 import {
     Sidebar,
     SidebarContent,
@@ -10,7 +11,6 @@ import {
 import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
-import { LogoIcon } from "@/components/logo";
 import {
     Banknote,
     BarChart3,
@@ -70,7 +70,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         user: {
             name: userData?.name ?? "shadcn",
             email: userData?.email ?? "m@example.com",
-            avatar: userData?.avatar ?? "/avatars/shadcn.jpg",
+            avatar: userData?.profilePhoto ?? "/avatars/shadcn.jpg",
         },
         navMain: [
             {
@@ -134,35 +134,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         navSecondary: [
             ...(canManagePermissions
                 ? [
-                      {
-                          title: "Admin Overview",
-                          url: "/admin/overview",
-                          icon: ShieldCheck,
-                      },
-                      {
-                          title: "Permissions",
-                          url: "/permissions",
-                          icon: ShieldCheck,
-                      },
-                  ]
+                    {
+                        title: "Admin Overview",
+                        url: "/admin/overview",
+                        icon: ShieldCheck,
+                    },
+                    {
+                        title: "Permissions",
+                        url: "/permissions",
+                        icon: ShieldCheck,
+                    },
+                ]
                 : []),
             ...(canReadEmployees && !canManagePermissions
                 ? [
-                      {
-                          title: "Team Overview",
-                          url: "/manager/overview",
-                          icon: BarChart3,
-                      },
-                  ]
+                    {
+                        title: "Team Overview",
+                        url: "/manager/overview",
+                        icon: BarChart3,
+                    },
+                ]
                 : []),
             ...(canManagePermissionSets
                 ? [
-                      {
-                          title: "Permission Sets",
-                          url: "/permission-sets",
-                          icon: Shield,
-                      },
-                  ]
+                    {
+                        title: "Permission Sets",
+                        url: "/permission-sets",
+                        icon: Shield,
+                    },
+                ]
                 : []),
             {
                 title: "Settings",

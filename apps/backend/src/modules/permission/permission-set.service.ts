@@ -44,7 +44,10 @@ export class PermissionSetService {
     const { permissionIds, organizationId, ...permissionSetData } = createDto;
 
     const permissionSet =
-      this.permissionSetRepository.create(permissionSetData);
+      this.permissionSetRepository.create({
+        ...permissionSetData,
+        organizationId,
+      });
     const savedPermissionSet =
       await this.permissionSetRepository.save(permissionSet);
 
