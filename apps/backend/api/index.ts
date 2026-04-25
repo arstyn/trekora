@@ -1,7 +1,9 @@
+import 'tsconfig-paths/register';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
+
 import { join } from 'path';
 
 let cachedServer: any;
