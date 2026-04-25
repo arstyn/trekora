@@ -3,12 +3,12 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/index.ts"
+      "destination": "/api/index.js"
     }
   ],
   "functions": {
-    "api/index.ts": {
-      "includeFiles": "tsconfig.json"
+    "api/**/*": {
+      "includeFiles": "dist/**/*"
     }
   }
 }
