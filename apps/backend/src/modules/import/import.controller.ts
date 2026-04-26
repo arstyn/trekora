@@ -53,7 +53,7 @@ export class ImportController {
       columnMapping: importRequest.columnMapping,
     };
 
-    return await this.importService.processExcelFile(file.path, options);
+    return await this.importService.processExcelFile(file, options);
   }
 
   @Get('template/:entityType')

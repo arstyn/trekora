@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { uploadFile } from '@uploadcare/upload-client';
-import * as fs from 'fs';
-import { extname } from 'path';
 
 @Injectable()
 export class UploadService {
@@ -39,36 +37,12 @@ export class UploadService {
       } else if (this.uploadMechanism === 's3') {
         return await this.uploadToS3(file, folderType);
       } else {
-        return await this.uploadToLocal(file, folderType);
+        throw new Error('Local uploads are disabled. Please use Uploadcare.');
       }
     } catch (error: any) {
       this.logger.error(`Upload failed: ${error.message}`);
       throw new Error(`Upload failed: ${error.message}`);
     }
-  }
-
-  private async uploadToLocal(
-    file: Express.Multer.File,
-    folderType: string,
-  ): Promise<string> {
-    const uploadDir = `./uploads/${folderType}`;
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    const timestamp = Date.now();
-    const ext = extname(file.originalname);
-    const filename = `${folderType}-${timestamp}${ext}`;
-    const filePath = `${uploadDir}/${filename}`;
-
-    await fs.promises.writeFile(filePath, file.buffer);
-
-    // Assuming backend is running on process.env.BACKEND_URL or we just return a relative path that frontend constructs.
-    // The user requested: "create a url to access the file from uploads folder. use that in the frontend."
-    // Let's use BACKEND_URL from env, fallback to localhost:3000
-    const backendUrl =
-      this.configService.get<string>('BACKEND_URL') || 'http://localhost:3000';
-    return `${backendUrl}/uploads/${folderType}/${filename}`;
   }
 
   private async uploadToUploadcare(file: Express.Multer.File): Promise<string> {
@@ -93,8 +67,7 @@ export class UploadService {
     file: Express.Multer.File,
     folderType: string,
   ): Promise<string> {
-    this.logger.warn('S3 upload mechanism requested but not fully implemented');
-    return this.uploadToLocal(file, folderType);
+    throw new Error('S3 upload mechanism requested but not fully implemented.');
   }
 }
 

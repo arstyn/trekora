@@ -1,29 +1,21 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { MulterModule } from '@nestjs/platform-express';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { memoryStorage } from 'multer';
+import { Branch } from 'src/database/entity/branch.entity';
+import { Customer } from 'src/database/entity/customer.entity';
+import { Employee } from 'src/database/entity/employee.entity';
+import { ImportHistory } from 'src/database/entity/import-history.entity';
+import { ImportTemplate } from 'src/database/entity/import-template.entity';
+import { Lead } from 'src/database/entity/lead.entity';
 import { ImportController } from './import.controller';
 import { ImportService } from './import.service';
-import { MulterModule } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { v4 as uuidv4 } from 'uuid';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Customer } from 'src/database/entity/customer.entity';
-import { Lead } from 'src/database/entity/lead.entity';
-import { Employee } from 'src/database/entity/employee.entity';
-import { Branch } from 'src/database/entity/branch.entity';
-import { ImportTemplate } from 'src/database/entity/import-template.entity';
-import { ImportHistory } from 'src/database/entity/import-history.entity';
-import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
     MulterModule.register({
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, cb) => {
-          const randomName = uuidv4();
-          return cb(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
+      storage: memoryStorage(),
       fileFilter: (req, file, cb) => {
         if (
           file.mimetype ===

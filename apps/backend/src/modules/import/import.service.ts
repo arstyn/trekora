@@ -1,14 +1,13 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import * as XLSX from 'xlsx';
-import { unlinkSync } from 'fs';
-import { Customer } from '../../database/entity/customer.entity';
-import { Lead } from '../../database/entity/lead.entity';
-import { Employee } from '../../database/entity/employee.entity';
-import { Branch } from '../../database/entity/branch.entity';
-import { ImportTemplate } from '../../database/entity/import-template.entity';
-import { ImportHistory } from '../../database/entity/import-history.entity';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as XLSX from 'xlsx';
+import { Branch } from '../../database/entity/branch.entity';
+import { Customer } from '../../database/entity/customer.entity';
+import { Employee } from '../../database/entity/employee.entity';
+import { ImportHistory } from '../../database/entity/import-history.entity';
+import { ImportTemplate } from '../../database/entity/import-template.entity';
+import { Lead } from '../../database/entity/lead.entity';
 
 export interface ImportResult {
   success: boolean;
@@ -62,11 +61,11 @@ export class ImportService {
   ) {}
 
   async processExcelFile(
-    filePath: string,
+    file: Express.Multer.File,
     options: ImportOptions,
   ): Promise<ImportResult> {
     try {
-      const workbook = XLSX.readFile(filePath);
+      const workbook = XLSX.read(file.buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
@@ -126,12 +125,7 @@ export class ImportService {
         }
       }
 
-      // Clean up the uploaded file
-      try {
-        unlinkSync(filePath);
-      } catch (error) {
-        this.logger.warn(`Failed to delete uploaded file: ${filePath}`);
-      }
+      // Using memory storage, no disk cleanup needed
 
       const result = {
         success: failedRows === 0,
@@ -152,7 +146,7 @@ export class ImportService {
           errors: result.errors,
           message: result.message,
           entityType: options.entityType,
-          fileName: filePath.split('/').pop() || 'unknown',
+          fileName: file.originalname || 'unknown',
           organizationId: options.organizationId,
           createdBy: options.userId,
         };
