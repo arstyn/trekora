@@ -4,6 +4,7 @@ import * as path from 'path';
 import { DataSource } from 'typeorm';
 import configuration from '../../config/configuration';
 import { defaultPermissionSets } from '../../modules/permission/default-permission-sets';
+import { permissions as defaultPermissions } from './permission.seed';
 import { Batch } from '../entity/batch.entity';
 import { Branch } from '../entity/branch.entity';
 import { Customer } from '../entity/customer.entity';
@@ -671,12 +672,7 @@ async function seed() {
       );
     } else {
       const organizations = await queryRunner.manager.find(Organization);
-      const { defaultPermissionSets } = await import(
-        '../../modules/permission/default-permission-sets'
-      );
-      const { permissions: defaultPermissions } = await import(
-        './permission.seed'
-      );
+      // Using statically imported defaultPermissionSets and defaultPermissions
 
       for (const org of organizations) {
         // First, create default permissions for this organization

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Permission } from 'src/database/entity/permission.entity';
+import { permissions } from '../../database/seeds/permission.seed';
 
 @Injectable()
 export class PermissionService {
@@ -106,10 +107,7 @@ export class PermissionService {
   async createDefaultPermissionsForOrganization(
     organizationId: string,
   ): Promise<Permission[]> {
-    // Import permissions from seed file
-    const { permissions } = await import(
-      '../../database/seeds/permission.seed'
-    );
+    // Using statically imported permissions
 
     // Check which permissions already exist for this organization
     const existingPermissions = await this.findAll(organizationId);
