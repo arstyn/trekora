@@ -1,14 +1,15 @@
 {
   "version": 2,
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/api/serverless.js"
+      "src": "src/main.ts",
+      "use": "@vercel/node"
     }
   ],
-  "functions": {
-    "api/**/*": {
-      "includeFiles": "dist/**/*"
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "src/main.ts"
     }
-  }
+  ]
 }
