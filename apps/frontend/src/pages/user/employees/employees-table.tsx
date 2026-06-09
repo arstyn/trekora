@@ -382,7 +382,7 @@ export function EmployeesPage() {
     // Handle activating an employee
     const handleActivateEmployee = async (activatedEmployee: IEmployee) => {
         try {
-            const employee = await axiosInstance.post<object, IEmployee>(
+            await axiosInstance.post<object, IEmployee>(
                 `/employee/${activatedEmployee.id}/activateUser`,
                 {},
             );
@@ -478,10 +478,10 @@ export function EmployeesPage() {
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
-                                                      header.column.columnDef
-                                                          .header,
-                                                      header.getContext(),
-                                                  )}
+                                                    header.column.columnDef
+                                                        .header,
+                                                    header.getContext(),
+                                                )}
                                         </TableHead>
                                     );
                                 })}
