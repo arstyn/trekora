@@ -30,6 +30,7 @@ import { ImportModule } from './modules/import/import.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PermissionModule } from './modules/permission/permission.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
+import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { WorkflowModule } from './modules/workflow/workflow.module';
     ImportModule,
     DashboardModule,
     WorkflowModule,
+    ActivityLogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

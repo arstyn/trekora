@@ -20,6 +20,7 @@ import { MailerService } from '../mailer/mailer.service';
 import { PermissionSetService } from '../permission/permission-set.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { UserService } from '../user/user.service';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class AuthService {
@@ -31,6 +32,7 @@ export class AuthService {
     private readonly dataSource: DataSource,
     private readonly mailerService: MailerService,
     private readonly permissionSetService: PermissionSetService,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   private async generateAccessToken(
@@ -634,6 +636,45 @@ export class AuthService {
       name: user.name,
       accessToken,
       refreshToken,
+    };
+  }
+
+  async getUserOrganizations(userId: string): Promise<Employee[]> {
+    return this.employeeService.findUserOrganizations(userId);
+  }
+
+  async switchOrganization(userId: string, organizationId: string): Promise<any> {
+    // 1. Verify that the user belongs to the target organization as an active employee
+    const employee = await this.employeeService.findOneByUserIdAndOrgId(userId, organizationId);
+    if (!employee) {
+      throw new UnauthorizedException('You do not have access to this organization');
+    }
+
+    // 2. Update user's active organizationId in the DB
+    await this.userService.update(userId, { organizationId });
+
+    // 3. Generate new Access and Refresh tokens
+    const accessToken = await this.generateAccessToken(userId, organizationId);
+    const refreshToken = this.generateRefreshToken(userId, organizationId);
+
+    // Fetch updated user to return
+    const user = await this.userService.findOne(userId);
+
+    // Log switcher action
+    await this.activityLogService.log(
+      organizationId,
+      userId,
+      'organization_switched',
+      `User ${user?.name} (${user?.email}) switched active organization to ${employee.organization?.name}`,
+      { organizationId },
+    );
+
+    return {
+      message: 'Switched organization successfully',
+      accessToken,
+      refreshToken,
+      userId,
+      name: user?.name,
     };
   }
 }

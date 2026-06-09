@@ -24,7 +24,6 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
     Select,
     SelectContent,
@@ -67,9 +66,6 @@ const formSchema = z.object({
     joinDate: z.date({ error: "Join date is required" }),
     profilePhoto: z.string().optional(),
     branchId: z.string().optional(),
-    status: z.enum(["active", "inactive", "suspended", "terminated"], {
-        error: "Please select a status",
-    }),
     departments: z.array(z.string()).optional(),
     verificationDocumentType: z.string().optional(),
     managerId: z.string().optional(),
@@ -170,49 +166,47 @@ export function EditEmployeeDialog({
         resolver: zodResolver(formSchema),
         defaultValues: employee
             ? {
-                  name: employee.name,
-                  address: employee.address ?? "",
-                  phone: employee.phone ?? "",
-                  email: employee.email ?? "",
-                  dateOfBirth: employee.dateOfBirth
-                      ? new Date(employee.dateOfBirth)
-                      : undefined,
-                  gender: employee.gender ?? undefined,
-                  nationality: employee.nationality ?? "",
-                  experience: employee.experience ?? "",
-                  specialization: employee.specialization ?? "",
-                  additional_info: employee.additional_info ?? "",
-                  maritalStatus: employee.maritalStatus ?? undefined,
-                  joinDate: employee.joinDate
-                      ? new Date(employee.joinDate)
-                      : new Date(),
-                  profilePhoto: employee.profilePhoto ?? "",
-                  branchId: employee.branchId ?? "",
-                  status: employee.status,
-                  departments: getDepartmentIds(employee),
-                  verificationDocumentType:
-                      employee.verificationDocumentType ?? "",
-                  managerId: employee.managerId ?? "",
-              }
+                name: employee.name,
+                address: employee.address ?? "",
+                phone: employee.phone ?? "",
+                email: employee.email ?? "",
+                dateOfBirth: employee.dateOfBirth
+                    ? new Date(employee.dateOfBirth)
+                    : undefined,
+                gender: employee.gender ?? undefined,
+                nationality: employee.nationality ?? "",
+                experience: employee.experience ?? "",
+                specialization: employee.specialization ?? "",
+                additional_info: employee.additional_info ?? "",
+                maritalStatus: employee.maritalStatus ?? undefined,
+                joinDate: employee.joinDate
+                    ? new Date(employee.joinDate)
+                    : new Date(),
+                profilePhoto: employee.profilePhoto ?? "",
+                branchId: employee.branchId ?? "",
+                departments: getDepartmentIds(employee),
+                verificationDocumentType:
+                    employee.verificationDocumentType ?? "",
+                managerId: employee.managerId ?? "",
+            }
             : {
-                  name: "",
-                  address: "",
-                  phone: "",
-                  email: "",
-                  dateOfBirth: undefined,
-                  gender: undefined,
-                  nationality: "",
-                  experience: "",
-                  specialization: "",
-                  additional_info: "",
-                  maritalStatus: undefined,
-                  joinDate: new Date(),
-                  profilePhoto: "",
-                  branchId: "",
-                  status: "active",
-                  departments: [],
-                  verificationDocumentType: "",
-              },
+                name: "",
+                address: "",
+                phone: "",
+                email: "",
+                dateOfBirth: undefined,
+                gender: undefined,
+                nationality: "",
+                experience: "",
+                specialization: "",
+                additional_info: "",
+                maritalStatus: undefined,
+                joinDate: new Date(),
+                profilePhoto: "",
+                branchId: "",
+                departments: [],
+                verificationDocumentType: "",
+            },
     });
 
     // Update form values when employee changes
@@ -234,7 +228,6 @@ export function EditEmployeeDialog({
                     formDataToSubmit.append(`departments[${index}]`, dept);
                 });
             }
-            formDataToSubmit.append("status", data.status);
             formDataToSubmit.append(
                 "joinDate",
                 format(data.joinDate, "yyyy-MM-dd"),
@@ -673,15 +666,14 @@ export function EditEmployeeDialog({
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
-                                                className={`w-full justify-between text-left truncate ${
-                                                    selectedPermissionSetIds.length ===
-                                                    0
+                                                className={`w-full justify-between text-left truncate ${selectedPermissionSetIds.length ===
+                                                        0
                                                         ? "text-muted-foreground"
                                                         : ""
-                                                }`}
+                                                    }`}
                                             >
                                                 {selectedPermissionSetIds.length >
-                                                0
+                                                    0
                                                     ? `${selectedPermissionSetIds.length} selected`
                                                     : "Select permission sets"}
                                                 <ChevronDown className="ml-2 h-4 w-4" />
@@ -780,57 +772,6 @@ export function EditEmployeeDialog({
 
                             <FormField
                                 control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                    <FormItem className="space-y-3">
-                                        <FormLabel>Status</FormLabel>
-                                        <FormControl>
-                                            <RadioGroup
-                                                onValueChange={field.onChange}
-                                                value={field.value}
-                                                className="flex space-x-4"
-                                            >
-                                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                                    <FormControl>
-                                                        <RadioGroupItem value="active" />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal">
-                                                        Active
-                                                    </FormLabel>
-                                                </FormItem>
-                                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                                    <FormControl>
-                                                        <RadioGroupItem value="in-active" />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal">
-                                                        In Active
-                                                    </FormLabel>
-                                                </FormItem>
-                                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                                    <FormControl>
-                                                        <RadioGroupItem value="on leave" />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal">
-                                                        On Leave
-                                                    </FormLabel>
-                                                </FormItem>
-                                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                                    <FormControl>
-                                                        <RadioGroupItem value="terminated" />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal">
-                                                        Terminated
-                                                    </FormLabel>
-                                                </FormItem>
-                                            </RadioGroup>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
                                 name="joinDate"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
@@ -840,11 +781,10 @@ export function EditEmployeeDialog({
                                                 <FormControl>
                                                     <Button
                                                         variant={"outline"}
-                                                        className={`w-full pl-3 text-left font-normal ${
-                                                            !field.value
+                                                        className={`w-full pl-3 text-left font-normal ${!field.value
                                                                 ? "text-muted-foreground"
                                                                 : ""
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {field.value ? (
                                                             format(
@@ -871,9 +811,9 @@ export function EditEmployeeDialog({
                                                     disabled={(date) =>
                                                         date > new Date() ||
                                                         date <
-                                                            new Date(
-                                                                "1900-01-01",
-                                                            )
+                                                        new Date(
+                                                            "1900-01-01",
+                                                        )
                                                     }
                                                     initialFocus
                                                 />
@@ -895,11 +835,10 @@ export function EditEmployeeDialog({
                                                 <FormControl>
                                                     <Button
                                                         variant={"outline"}
-                                                        className={`w-full pl-3 text-left font-normal ${
-                                                            !field.value
+                                                        className={`w-full pl-3 text-left font-normal ${!field.value
                                                                 ? "text-muted-foreground"
                                                                 : ""
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {field.value ? (
                                                             format(
@@ -926,9 +865,9 @@ export function EditEmployeeDialog({
                                                     disabled={(date) =>
                                                         date > new Date() ||
                                                         date <
-                                                            new Date(
-                                                                "1900-01-01",
-                                                            )
+                                                        new Date(
+                                                            "1900-01-01",
+                                                        )
                                                     }
                                                     initialFocus
                                                 />

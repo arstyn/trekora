@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as crypto from 'crypto';
-import { Employee } from 'src/database/entity/employee.entity';
+import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
@@ -18,6 +18,8 @@ export class UserInviteService {
   constructor(
     @InjectRepository(UserInvite)
     private readonly inviteRepository: Repository<UserInvite>,
+    @InjectRepository(Employee)
+    private readonly employeeRepository: Repository<Employee>,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
   ) {}
@@ -60,18 +62,30 @@ export class UserInviteService {
       );
     }
 
-    const hashedPassword = password
-      ? await bcrypt.hash(password, 10)
-      : undefined;
+    // Check if user already exists
+    let user = await this.userService.findOneWithEmail(invite.email);
+    if (!user) {
+      const hashedPassword = password
+        ? await bcrypt.hash(password, 10)
+        : undefined;
 
-    // Create user account
-    await this.userService.create({
-      email: invite.email,
-      name: invite.employee.name,
-      phone: invite.employee.phone,
-      organizationId: invite.employee.organizationId,
-      password: hashedPassword,
-    });
+      // Create user account
+      user = await this.userService.create({
+        email: invite.email,
+        name: invite.employee.name,
+        phone: invite.employee.phone,
+        organizationId: invite.employee.organizationId,
+        password: hashedPassword,
+        isActive: true,
+      });
+    }
+
+    // Associate the employee record with the user ID!
+    invite.employee.userId = user.id;
+    invite.employee.status = EmployeeStatus.ACTIVE;
+    invite.employee.isActive = true;
+    await this.employeeRepository.save(invite.employee);
+
     invite.used = true;
     await this.inviteRepository.save(invite);
     return { message: 'Account activated', success: true };

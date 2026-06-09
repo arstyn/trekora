@@ -40,6 +40,7 @@ import PaymentDetailsPage from "./pages/user/payments/view-payment.page";
 import PermissionSetsPage from "./pages/user/permissions/permission-sets.page";
 import PermissionsPage from "./pages/user/permissions/permissions.page";
 import AdminOverviewPage from "./pages/user/admin/overview.page";
+import ActivityLogsPage from "./pages/user/admin/logs.page";
 import ManagerOverviewPage from "./pages/user/manager/overview.page";
 import SettingsPage from "./pages/user/settings/page";
 import TodosPage from "./pages/user/todos/todos.page";
@@ -80,6 +81,10 @@ function AuthenticatedApp() {
                     <Route
                         path="/admin/overview"
                         element={<AdminOverviewPage />}
+                    />
+                    <Route
+                        path="/admin/logs"
+                        element={<ActivityLogsPage />}
                     />
                     <Route
                         path="/manager/overview"

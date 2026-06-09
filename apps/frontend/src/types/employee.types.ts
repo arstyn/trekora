@@ -37,7 +37,8 @@ export type IEmployeeStatus =
     | "active"
     | "inactive"
     | "suspended"
-    | "terminated";
+    | "terminated"
+    | "pending_activation";
 
 export interface IEmployee {
     id: string;
@@ -65,6 +66,7 @@ export interface IEmployee {
     createdAt: Date;
     updatedAt: Date;
     isActive: boolean;
+    isArchived: boolean;
     status: IEmployeeStatus;
     employeeDepartments?: IUserDepartments[];
     managerId?: string;

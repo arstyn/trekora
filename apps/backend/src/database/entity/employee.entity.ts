@@ -18,6 +18,7 @@ export enum EmployeeStatus {
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended',
   TERMINATED = 'terminated',
+  PENDING_ACTIVATION = 'pending_activation',
 }
 
 @Entity('employee')
@@ -130,6 +131,9 @@ export class Employee {
 
   @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive: boolean;
+
+  @Column({ type: 'boolean', default: false, name: 'is_archived' })
+  isArchived: boolean;
 
   @Column({
     type: 'enum',

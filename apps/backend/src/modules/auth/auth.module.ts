@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from './guard/auth.guard';
 import { PermissionGuard } from './guard/permission.guard';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
     EmployeeModule,
     MailerModule,
     forwardRef(() => PermissionModule),
+    ActivityLogModule,
   ],
   providers: [AuthService, GoogleStrategy, AuthGuard, PermissionGuard],
   controllers: [AuthController],

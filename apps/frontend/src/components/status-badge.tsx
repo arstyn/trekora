@@ -2,7 +2,7 @@ import { CheckCircle2Icon, LoaderIcon } from "lucide-react";
 import { Badge } from "./ui/badge";
 
 interface Props {
-	status: "active" | "inactive" | "suspended" | "terminated";
+	status: "active" | "inactive" | "suspended" | "terminated" | "pending_activation";
 }
 
 export default function StatusBadge({ status }: Props) {
