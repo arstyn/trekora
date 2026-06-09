@@ -1,4 +1,10 @@
-import { LogoIcon } from "@/components/logo";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import {
     Sidebar,
     SidebarContent,
@@ -11,15 +17,6 @@ import {
 import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 import {
     Banknote,
     BarChart3,
@@ -41,7 +38,7 @@ import {
     UsersIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { toast } from "sonner";
 import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
