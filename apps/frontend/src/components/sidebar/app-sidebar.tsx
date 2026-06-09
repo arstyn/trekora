@@ -59,6 +59,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         "employee",
         "read",
     );
+    const { hasPermission: canReadPackages } = useHasPermission(
+        "package",
+        "read",
+    );
+    const { hasPermission: canReadBatches } = useHasPermission(
+        "batch",
+        "read",
+    );
+    const { hasPermission: canReadLeads } = useHasPermission(
+        "lead",
+        "read",
+    );
+    const { hasPermission: canReadCustomers } = useHasPermission(
+        "customer",
+        "read",
+    );
+    const { hasPermission: canReadBookings } = useHasPermission(
+        "booking",
+        "read",
+    );
+    const { hasPermission: canReadPayments } = useHasPermission(
+        "payment",
+        "read",
+    );
 
     useEffect(() => {
         const getProfile = async () => {
@@ -126,48 +150,80 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             // 	url: "/branches",
             // 	icon: Split,
             // },
-            {
-                title: "Employees",
-                url: "/employees",
-                icon: UsersIcon,
-            },
-            {
-                title: "Packages",
-                url: "/packages",
-                icon: FolderIcon,
-            },
-            {
-                title: "Batches",
-                url: "/batches",
-                icon: ListIcon,
-            },
-            {
-                title: "Excel Import",
-                url: "/import",
-                icon: FileSpreadsheet,
-            },
+            ...(canReadEmployees
+                ? [
+                    {
+                        title: "Employees",
+                        url: "/employees",
+                        icon: UsersIcon,
+                    },
+                ]
+                : []),
+            ...(canReadPackages
+                ? [
+                    {
+                        title: "Packages",
+                        url: "/packages",
+                        icon: FolderIcon,
+                    },
+                ]
+                : []),
+            ...(canReadBatches
+                ? [
+                    {
+                        title: "Batches",
+                        url: "/batches",
+                        icon: ListIcon,
+                    },
+                ]
+                : []),
+            ...(canReadEmployees || canReadLeads || canReadCustomers
+                ? [
+                    {
+                        title: "Excel Import",
+                        url: "/import",
+                        icon: FileSpreadsheet,
+                    },
+                ]
+                : []),
         ],
         documents: [
-            {
-                name: "Leads",
-                url: "/leads",
-                icon: FileChartColumnIncreasing,
-            },
-            {
-                name: "Customers",
-                url: "/customers",
-                icon: BookUser,
-            },
-            {
-                name: "Booking",
-                url: "/bookings",
-                icon: Tickets,
-            },
-            {
-                name: "Payments",
-                url: "/payments",
-                icon: Banknote,
-            },
+            ...(canReadLeads
+                ? [
+                    {
+                        name: "Leads",
+                        url: "/leads",
+                        icon: FileChartColumnIncreasing,
+                    },
+                ]
+                : []),
+            ...(canReadCustomers
+                ? [
+                    {
+                        name: "Customers",
+                        url: "/customers",
+                        icon: BookUser,
+                    },
+                ]
+                : []),
+            ...(canReadBookings
+                ? [
+                    {
+                        name: "Booking",
+                        url: "/bookings",
+                        icon: Tickets,
+                    },
+                ]
+                : []),
+            ...(canReadPayments
+                ? [
+                    {
+                        name: "Payments",
+                        url: "/payments",
+                        icon: Banknote,
+                    },
+                ]
+                : []),
         ],
         navSecondary: [
             ...(canManagePermissions

@@ -53,10 +53,12 @@ export default function EditBatchPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        e.preventDefault();
         try {
             const payload = {
-                ...formData,
+                packageId: formData.packageId,
+                startDate: formData.startDate,
+                endDate: formData.endDate,
+                totalSeats: parseInt(String(formData.totalSeats), 10),
                 coordinators: formData.coordinators.map((c) => c.id),
             };
             await axiosInstance.patch(`/batches/${id}`, payload);

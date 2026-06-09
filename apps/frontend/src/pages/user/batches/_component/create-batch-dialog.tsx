@@ -167,6 +167,7 @@ export function CreateBatchDialog({
         try {
             const payload = {
                 ...formData,
+                totalSeats: parseInt(formData.totalSeats, 10),
                 coordinators: formData.coordinators.map((c) => c.id),
             };
             await axiosInstance.post(`/batches`, payload);

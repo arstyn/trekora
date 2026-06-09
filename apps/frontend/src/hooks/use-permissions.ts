@@ -3,24 +3,38 @@ import { PermissionService } from "@/services/permission.service";
 import type { PermissionSet } from "@/types/permission.types";
 import { useEffect, useState } from "react";
 
+let myPermissionSetsPromise: Promise<PermissionSet[]> | null = null;
+let cachedPermissionSets: PermissionSet[] | null = null;
+
 /**
  * Hook to get permission sets for the current user
  */
 export function useMyPermissionSets() {
-    const [permissionSets, setPermissionSets] = useState<PermissionSet[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [permissionSets, setPermissionSets] = useState<PermissionSet[]>(
+        cachedPermissionSets || []
+    );
+    const [loading, setLoading] = useState(!cachedPermissionSets);
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
         const fetchPermissionSets = async () => {
             try {
-                setLoading(true);
+                if (cachedPermissionSets) {
+                    setPermissionSets(cachedPermissionSets);
+                    setLoading(false);
+                    return;
+                }
                 setError(null);
-                const sets = await PermissionService.getMyPermissionSets();
+                if (!myPermissionSetsPromise) {
+                    myPermissionSetsPromise = PermissionService.getMyPermissionSets();
+                }
+                const sets = await myPermissionSetsPromise;
+                cachedPermissionSets = sets;
                 setPermissionSets(sets);
             } catch (err) {
                 console.error('❌ Error fetching permission sets:', err);
                 setError(err as Error);
+                myPermissionSetsPromise = null; // Reset on error to allow retrying
             } finally {
                 setLoading(false);
             }
