@@ -9,6 +9,7 @@ import { UserInviteModule } from '../user-invite/user-invite.module';
 import { UserModule } from '../user/user.module';
 import { EmployeeController } from './employee.controller';
 import { EmployeeService } from './employee.service';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   controllers: [EmployeeController],
@@ -20,8 +21,8 @@ import { EmployeeService } from './employee.service';
     UserModule,
     UserInviteModule,
     MailerModule,
-
     PermissionModule,
+    ActivityLogModule,
   ],
   exports: [EmployeeService],
 })

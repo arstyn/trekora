@@ -14,6 +14,8 @@ import { PermissionSetService } from '../permission/permission-set.service';
 import { UserDepartmentsService } from '../user-departments/user-departments.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { UserService } from '../user/user.service';
+import { ActivityLogService } from '../activity-log/activity-log.service';
+import { UserInvite } from 'src/database/entity/user-invite.entity';
 
 @Injectable()
 export class EmployeeService {
@@ -27,6 +29,7 @@ export class EmployeeService {
     private readonly mailerService: MailerService,
     private readonly uploadService: UploadService,
     private readonly permissionSetService: PermissionSetService,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   /**
@@ -94,6 +97,10 @@ export class EmployeeService {
       ...rest
     } = employeeData;
 
+    if (rest.managerId === '') (rest as any).managerId = null;
+    if (rest.userId === '') (rest as any).userId = null;
+    if (rest.branchId === '') (rest as any).branchId = null;
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -152,10 +159,11 @@ export class EmployeeService {
   }
 
   // Get all employees
-  async findAll(organizationId: string): Promise<Employee[]> {
+  async findAll(organizationId: string, showArchived = false): Promise<Employee[]> {
     const employees = await this.employeeRepository.find({
       where: {
         organizationId,
+        isArchived: showArchived,
       },
       relations: ['manager'],
       order: { createdAt: 'DESC' },
@@ -240,6 +248,7 @@ export class EmployeeService {
     id: string,
     updateData: Partial<IEmployeeCreateDTO>,
     files: Express.Multer.File[] = [],
+    performedById?: string,
   ): Promise<Employee> {
     const {
       emergencyContactName,
@@ -250,6 +259,10 @@ export class EmployeeService {
       avatar,
       ...rest
     } = updateData;
+
+    if (rest.managerId === '') (rest as any).managerId = null;
+    if (rest.userId === '') (rest as any).userId = null;
+    if (rest.branchId === '') (rest as any).branchId = null;
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -269,6 +282,8 @@ export class EmployeeService {
       // Handle file uploads
       const fileUploads = await this.handleFileUploads(id, files);
 
+      const emailChanged = rest.email && rest.email !== existingEmployee.email;
+
       const updateObj: any = {
         ...rest,
         status: status
@@ -284,6 +299,12 @@ export class EmployeeService {
         }),
       };
 
+      if (emailChanged) {
+        updateObj.status = EmployeeStatus.PENDING_ACTIVATION;
+        updateObj.isActive = false;
+        updateObj.userId = null;
+      }
+
       Object.keys(updateObj).forEach(
         (key) => updateObj[key] === undefined && delete updateObj[key],
       );
@@ -291,8 +312,8 @@ export class EmployeeService {
       // 🔄 Update the Employee
       await queryRunner.manager.update(Employee, id, updateObj);
 
-      // 🔄 Update the User with common fields
-      if (existingEmployee.user?.id) {
+      // 🔄 Update the User with common fields (only if email hasn't changed)
+      if (existingEmployee.user?.id && !emailChanged) {
         const userUpdate: Partial<User> = {
           name: rest.name,
           phone: rest.phone,
@@ -330,6 +351,16 @@ export class EmployeeService {
       });
 
       await queryRunner.commitTransaction();
+
+      if (emailChanged && performedById) {
+        await this.activityLogService.log(
+          existingEmployee.organizationId,
+          performedById,
+          'employee_email_changed',
+          `Changed email of employee ${existingEmployee.name} from ${existingEmployee.email} to ${rest.email} (Pending Activation)`,
+          { employeeId: id, oldEmail: existingEmployee.email, newEmail: rest.email },
+        );
+      }
 
       // Load permission sets for the updated employee
       if (updatedEmployee) {
@@ -415,20 +446,23 @@ export class EmployeeService {
     return employee;
   }
 
-  async activateUser(id: string) {
+  async activateUser(id: string, performedById: string) {
     try {
       const employee = await this.findOne(id);
 
       if (!employee) {
-        throw new Error('Employee not found');
+        throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
       }
 
-      const user = await this.userService.findOneWithEmail(
-        employee.email ?? '',
-      );
-      if (user) {
-        throw Error('User Already Exists');
+      if (employee.status === EmployeeStatus.ACTIVE) {
+        throw new HttpException('Employee is already active.', HttpStatus.BAD_REQUEST);
       }
+
+      // Check if an invite already exists
+      const existingInvite = await this.dataSource.getRepository(UserInvite).findOne({
+        where: { employeeId: employee.id },
+      });
+      const isResend = !!existingInvite;
 
       // Create invite
       const invite = await this.userInviteService.createInvite(employee);
@@ -436,7 +470,20 @@ export class EmployeeService {
       // Send invite email (implement sendInviteEmail)
       await this.sendInviteEmail(employee.email ?? '', invite.token);
 
-      return { message: 'Invite sent' };
+      // Log action
+      const action = isResend ? 'invite_resent' : 'invite_sent';
+      const details = isResend
+        ? `Resent invitation to ${employee.name} (${employee.email})`
+        : `Sent invitation to ${employee.name} (${employee.email})`;
+      await this.activityLogService.log(
+        employee.organizationId,
+        performedById,
+        action,
+        details,
+        { employeeId: employee.id, email: employee.email },
+      );
+
+      return { message: isResend ? 'Invite resent successfully' : 'Invite sent successfully' };
     } catch (error: any) {
       throw new HttpException(
         error.message ?? 'Internal server error',
@@ -533,5 +580,125 @@ export class EmployeeService {
       relations: ['directReports'],
       order: { name: 'ASC' },
     });
+  }
+
+  async findUserOrganizations(userId: string): Promise<Employee[]> {
+    return this.employeeRepository.find({
+      where: {
+        userId,
+        status: EmployeeStatus.ACTIVE,
+        isActive: true,
+      },
+      relations: ['organization'],
+    });
+  }
+
+  async findOneByUserIdAndOrgId(userId: string, organizationId: string): Promise<Employee | null> {
+    return this.employeeRepository.findOne({
+      where: {
+        userId,
+        organizationId,
+        status: EmployeeStatus.ACTIVE,
+        isActive: true,
+      },
+      relations: ['organization'],
+    });
+  }
+
+  async reactivate(id: string, performedById: string): Promise<Employee | null> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const employee = await this.employeeRepository.findOne({
+        where: { id },
+        relations: ['user'],
+      });
+
+      if (!employee) {
+        throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (employee.status !== EmployeeStatus.TERMINATED) {
+        throw new HttpException('Employee is not terminated', HttpStatus.BAD_REQUEST);
+      }
+
+      // Update employee status to active
+      employee.status = EmployeeStatus.ACTIVE;
+      employee.isActive = true;
+      await queryRunner.manager.save(employee);
+
+      // If there's an associated user, activate them too
+      if (employee.userId) {
+        await queryRunner.manager.update(User, employee.userId, {
+          isActive: true,
+        });
+      }
+
+      await queryRunner.commitTransaction();
+
+      const reactivatedEmployee = await this.findOneWithFiles(id);
+
+      // Log action
+      await this.activityLogService.log(
+        employee.organizationId,
+        performedById,
+        'employee_reactivated',
+        `Reactivated employee ${employee.name} (${employee.email})`,
+        { employeeId: employee.id },
+      );
+
+      return reactivatedEmployee;
+    } catch (error: any) {
+      await queryRunner.rollbackTransaction();
+      throw new HttpException(
+        error.message ?? 'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async archive(id: string, performedById: string): Promise<Employee | null> {
+    const employee = await this.findOne(id);
+    if (!employee) {
+      throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
+    }
+
+    employee.isArchived = true;
+    const archivedEmployee = await this.employeeRepository.save(employee);
+
+    // Log action
+    await this.activityLogService.log(
+      employee.organizationId,
+      performedById,
+      'employee_archived',
+      `Archived employee ${employee.name} (${employee.email})`,
+      { employeeId: employee.id },
+    );
+
+    return archivedEmployee;
+  }
+
+  async unarchive(id: string, performedById: string): Promise<Employee | null> {
+    const employee = await this.findOne(id);
+    if (!employee) {
+      throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
+    }
+
+    employee.isArchived = false;
+    const unarchivedEmployee = await this.employeeRepository.save(employee);
+
+    // Log action
+    await this.activityLogService.log(
+      employee.organizationId,
+      performedById,
+      'employee_unarchived',
+      `Unarchived employee ${employee.name} (${employee.email})`,
+      { employeeId: employee.id },
+    );
+
+    return unarchivedEmployee;
   }
 }

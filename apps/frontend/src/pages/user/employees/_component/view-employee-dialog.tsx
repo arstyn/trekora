@@ -15,6 +15,19 @@ import type { PermissionSet } from "@/types/permission.types";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import axiosInstance from "@/lib/axios";
+import { History } from "lucide-react";
+
+interface IActivityLog {
+    id: string;
+    action: string;
+    details: string;
+    createdAt: string;
+    performedBy?: {
+        name: string;
+        email: string;
+    };
+}
 
 type ViewEmployeeDialogProps = {
     open: boolean;
@@ -31,10 +44,15 @@ export function ViewEmployeeDialog({
 }: ViewEmployeeDialogProps) {
     const [permissionSets, setPermissionSets] = useState<PermissionSet[]>([]);
     const [loadingPermissionSets, setLoadingPermissionSets] = useState(false);
+    const [logs, setLogs] = useState<IActivityLog[]>([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
+    const [showAllLogs, setShowAllLogs] = useState(false);
 
     useEffect(() => {
         if (open && employee?.id) {
             loadPermissionSets();
+            loadLogs();
+            setShowAllLogs(false);
         }
     }, [open, employee?.id]);
 
@@ -51,6 +69,21 @@ export function ViewEmployeeDialog({
             toast.error("Failed to load permission sets");
         } finally {
             setLoadingPermissionSets(false);
+        }
+    };
+
+    const loadLogs = async () => {
+        if (!employee?.id) return;
+        try {
+            setLoadingLogs(true);
+            const res = await axiosInstance.get<IActivityLog[]>(
+                `/activity-log/employee/${employee.id}`,
+            );
+            setLogs(res.data);
+        } catch (error) {
+            console.error("Failed to load activity logs:", error);
+        } finally {
+            setLoadingLogs(false);
         }
     };
 
@@ -259,6 +292,50 @@ export function ViewEmployeeDialog({
                                     </p>
                                 )}
                             </div>
+
+                            <div className="border-t pt-4 pr-2">
+                                <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                                    <History className="h-4 w-4" />
+                                    Activity History
+                                </p>
+                                {loadingLogs ? (
+                                    <p className="text-sm text-muted-foreground">Loading history...</p>
+                                ) : logs.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {(showAllLogs ? logs : logs.slice(0, 3)).map((log) => (
+                                            <div key={log.id} className="text-xs bg-muted/40 p-2.5 rounded-lg border flex justify-between items-start gap-4">
+                                                <div className="space-y-1">
+                                                    <p className="text-foreground font-medium">{log.details}</p>
+                                                    <p className="text-muted-foreground">
+                                                        By: {log.performedBy ? `${log.performedBy.name} (${log.performedBy.email})` : "System"}
+                                                    </p>
+                                                </div>
+                                                <span className="text-muted-foreground shrink-0 font-medium">
+                                                    {new Date(log.createdAt).toLocaleString(undefined, {
+                                                        dateStyle: "short",
+                                                        timeStyle: "short"
+                                                    })}
+                                                </span>
+                                            </div>
+                                        ))}
+                                        {logs.length > 3 && (
+                                            <div className="flex justify-center pt-1">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setShowAllLogs(!showAllLogs)}
+                                                    className="text-xs font-semibold text-primary hover:text-primary/90"
+                                                >
+                                                    {showAllLogs ? "View Less" : `View More (${logs.length - 3} more)`}
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground italic">No activities recorded yet.</p>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </ScrollArea>
@@ -307,9 +384,8 @@ function calculateDuration(joinDate: Date): string {
     }
 
     if (years > 0) {
-        return `${years} ${years === 1 ? "year" : "years"}, ${months} ${
-            months === 1 ? "month" : "months"
-        }`;
+        return `${years} ${years === 1 ? "year" : "years"}, ${months} ${months === 1 ? "month" : "months"
+            }`;
     } else {
         return `${months} ${months === 1 ? "month" : "months"}`;
     }

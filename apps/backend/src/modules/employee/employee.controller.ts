@@ -11,6 +11,7 @@ import {
   UploadedFiles,
   UseGuards,
   UseInterceptors,
+  Query,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Employee } from 'src/database/entity/employee.entity';
@@ -63,8 +64,12 @@ export class EmployeeController {
   // Get all employees
   @Get()
   @RequirePermission('employee', 'read')
-  async findAll(@Request() req: ApiRequestJWT): Promise<Employee[]> {
-    return this.employeeService.findAll(req.user.organizationId);
+  async findAll(
+    @Request() req: ApiRequestJWT,
+    @Query('archived') archived?: string,
+  ): Promise<Employee[]> {
+    const showArchived = archived === 'true';
+    return this.employeeService.findAll(req.user.organizationId, showArchived);
   }
 
   @Get('profile')
@@ -110,6 +115,7 @@ export class EmployeeController {
   )
   async update(
     @Param('id') id: string,
+    @Request() req: ApiRequestJWT,
     @Body() employeeData: Partial<IEmployeeCreateDTO>,
     @UploadedFiles()
     files: {
@@ -122,14 +128,17 @@ export class EmployeeController {
     if (files?.verificationDocument)
       allFiles.push(...files.verificationDocument);
 
-    return this.employeeService.update(id, employeeData, allFiles);
+    return this.employeeService.update(id, employeeData, allFiles, req.user.userId);
   }
 
   // Activate/Invite an employee user
   @Post(':id/activateUser')
   @RequirePermission('employee', 'update')
-  async activateUser(@Param('id') id: string): Promise<{ message: string }> {
-    return this.employeeService.activateUser(id);
+  async activateUser(
+    @Param('id') id: string,
+    @Request() req: ApiRequestJWT,
+  ): Promise<{ message: string }> {
+    return this.employeeService.activateUser(id, req.user.userId);
   }
 
   // Deactivate/Terminate an employee
@@ -137,6 +146,36 @@ export class EmployeeController {
   @RequirePermission('employee', 'delete')
   async terminate(@Param('id') id: string): Promise<Employee | null> {
     return this.employeeService.terminate(id);
+  }
+
+  // Reactivate a terminated employee
+  @Patch(':id/reactivate')
+  @RequirePermission('employee', 'update')
+  async reactivate(
+    @Param('id') id: string,
+    @Request() req: ApiRequestJWT,
+  ): Promise<Employee | null> {
+    return this.employeeService.reactivate(id, req.user.userId);
+  }
+
+  // Archive an employee
+  @Patch(':id/archive')
+  @RequirePermission('employee', 'delete')
+  async archive(
+    @Param('id') id: string,
+    @Request() req: ApiRequestJWT,
+  ): Promise<Employee | null> {
+    return this.employeeService.archive(id, req.user.userId);
+  }
+
+  // Unarchive an employee
+  @Patch(':id/unarchive')
+  @RequirePermission('employee', 'delete')
+  async unarchive(
+    @Param('id') id: string,
+    @Request() req: ApiRequestJWT,
+  ): Promise<Employee | null> {
+    return this.employeeService.unarchive(id, req.user.userId);
   }
 
   // Delete an employee

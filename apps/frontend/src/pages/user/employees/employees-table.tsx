@@ -50,6 +50,7 @@ import { AddEmployeeModal } from "./_component/add-employee-modal";
 import { DeactivateDialog } from "./_component/deactivate-dialog";
 import { EditEmployeeDialog } from "./_component/edit-employee-dialog";
 import { ViewEmployeeDialog } from "./_component/view-employee-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function EmployeesPage() {
     const navigate = useNavigate();
@@ -71,9 +72,11 @@ export function EmployeesPage() {
         null,
     );
 
-    const getEmployees = async () => {
+    const [currentTab, setCurrentTab] = useState<"active" | "archived">("active");
+
+    const getEmployees = async (showArchived = false) => {
         try {
-            const res = await axiosInstance.get<IEmployee[]>("/employee");
+            const res = await axiosInstance.get<IEmployee[]>(`/employee?archived=${showArchived}`);
             setEmployees(res.data);
         } catch (error) {
             if (error instanceof Error) {
@@ -83,9 +86,10 @@ export function EmployeesPage() {
             }
         }
     };
+
     useLayoutEffect(() => {
-        getEmployees();
-    }, []);
+        getEmployees(currentTab === "archived");
+    }, [currentTab]);
 
     // Handle URL parameters for selected employee
     useLayoutEffect(() => {
@@ -222,26 +226,62 @@ export function EmployeesPage() {
                                 Edit details
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                className="text-green-600"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActivateEmployee(employee);
-                                    setIsActivateDialogOpen(true);
-                                }}
-                            >
-                                Activate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeactivateEmployee(employee);
-                                }}
-                                disabled={employee.status === "terminated"}
-                            >
-                                Terminate
-                            </DropdownMenuItem>
+                            {employee.isArchived ? (
+                                <DropdownMenuItem
+                                    className="text-blue-600"
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await handleUnarchiveEmployee(employee);
+                                    }}
+                                >
+                                    Unarchive
+                                </DropdownMenuItem>
+                            ) : (
+                                <>
+                                    {(employee.status === "inactive" || employee.status === "pending_activation") && (
+                                        <DropdownMenuItem
+                                            className="text-blue-600"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                await handleResendInvite(employee);
+                                            }}
+                                        >
+                                            Send Invite
+                                        </DropdownMenuItem>
+                                    )}
+                                    {employee.status === "terminated" && (
+                                        <DropdownMenuItem
+                                            className="text-green-600"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                await handleReactivateEmployee(employee);
+                                            }}
+                                        >
+                                            Reactivate
+                                        </DropdownMenuItem>
+                                    )}
+                                    {employee.status !== "terminated" && (
+                                        <DropdownMenuItem
+                                            className="text-red-600"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeactivateEmployee(employee);
+                                            }}
+                                        >
+                                            Terminate
+                                        </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem
+                                        className="text-amber-600"
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            await handleArchiveEmployee(employee);
+                                        }}
+                                    >
+                                        Archive
+                                    </DropdownMenuItem>
+                                </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 );
@@ -264,6 +304,46 @@ export function EmployeesPage() {
         },
     });
 
+    const handleResendInvite = async (employee: IEmployee) => {
+        try {
+            await axiosInstance.post(`/employee/${employee.id}/activateUser`, {});
+            toast.success("Invite resent successfully");
+            getEmployees(currentTab === "archived");
+        } catch (error) {
+            toast.error("Failed to resend invite");
+        }
+    };
+
+    const handleReactivateEmployee = async (employee: IEmployee) => {
+        try {
+            await axiosInstance.patch(`/employee/${employee.id}/reactivate`, {});
+            toast.success("Employee reactivated successfully");
+            getEmployees(currentTab === "archived");
+        } catch (error) {
+            toast.error("Failed to reactivate employee");
+        }
+    };
+
+    const handleArchiveEmployee = async (employee: IEmployee) => {
+        try {
+            await axiosInstance.patch(`/employee/${employee.id}/archive`, {});
+            toast.success("Employee archived successfully");
+            getEmployees(currentTab === "archived");
+        } catch (error) {
+            toast.error("Failed to archive employee");
+        }
+    };
+
+    const handleUnarchiveEmployee = async (employee: IEmployee) => {
+        try {
+            await axiosInstance.patch(`/employee/${employee.id}/unarchive`, {});
+            toast.success("Employee unarchived successfully");
+            getEmployees(currentTab === "archived");
+        } catch (error) {
+            toast.error("Failed to unarchive employee");
+        }
+    };
+
     // Handle deactivating an employee
     const handleDeactivate = (terminatedEmployee: IEmployee) => {
         setEmployees((prev) =>
@@ -273,6 +353,7 @@ export function EmployeesPage() {
                     : employee,
             ),
         );
+        getEmployees(currentTab === "archived");
     };
 
     // Handle employee row click
@@ -305,11 +386,8 @@ export function EmployeesPage() {
                 `/employee/${activatedEmployee.id}/activateUser`,
                 {},
             );
-            setEmployees((prev) =>
-                prev.map((emp) =>
-                    emp.id === employee.id ? { ...emp, ...employee } : emp,
-                ),
-            );
+            toast.success("Activation invite sent successfully");
+            getEmployees(currentTab === "archived");
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -335,6 +413,14 @@ export function EmployeesPage() {
 
     return (
         <div className="space-y-4 px-6 py-5">
+            <div className="flex justify-between items-center border-b pb-2">
+                <Tabs value={currentTab} onValueChange={(val) => setCurrentTab(val as any)}>
+                    <TabsList>
+                        <TabsTrigger value="active">Active Employees</TabsTrigger>
+                        <TabsTrigger value="archived">Archived Employees</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
             <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="flex w-full sm:w-auto items-center gap-2">
                     <Search className="h-4 w-4 text-muted-foreground" />

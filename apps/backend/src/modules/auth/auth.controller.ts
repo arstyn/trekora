@@ -13,6 +13,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ILoginDto } from 'src/dto/auth.types';
 import { SignupFormDTO } from 'src/dto/signup.schema';
 import { AuthService } from './auth.service';
+import { AuthGuard as JwtAuthGuard } from './guard/auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -82,6 +83,21 @@ export class AuthController {
       body.currentPassword,
       body.newPassword,
     );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user-organizations')
+  async getUserOrganizations(@Req() req: any) {
+    return this.authService.getUserOrganizations(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('switch-organization')
+  async switchOrganization(
+    @Req() req: any,
+    @Body('organizationId') organizationId: string,
+  ) {
+    return this.authService.switchOrganization(req.user.userId, organizationId);
   }
 
   @Get('google')

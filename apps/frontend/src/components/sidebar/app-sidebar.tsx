@@ -12,14 +12,26 @@ import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
 import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
+import {
     Banknote,
     BarChart3,
     BookUser,
+    Building,
     CheckCircle2,
+    ChevronsUpDown,
     FileChartColumnIncreasing,
     FileSpreadsheet,
     FolderIcon,
     HelpCircleIcon,
+    History,
     LayoutDashboardIcon,
     ListIcon,
     SettingsIcon,
@@ -37,6 +49,7 @@ import { NavUser } from "./nav-user";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const [userData, setUserData] = useState<IEmployee>();
+    const [organizations, setOrganizations] = useState<any[]>([]);
     const { hasPermission: canManagePermissions } = useHasPermission(
         "permission",
         "manage",
@@ -63,8 +76,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             }
         };
 
+        const getOrganizations = async () => {
+            try {
+                const res = await axiosInstance.get<any[]>("/auth/user-organizations");
+                if (res) {
+                    setOrganizations(res.data);
+                }
+            } catch (error) {
+                console.error("Error fetching user organizations:", error);
+            }
+        };
+
         getProfile();
+        getOrganizations();
     }, []);
+
+    const handleSwitch = async (organizationId: string) => {
+        try {
+            const res = await axiosInstance.post<{
+                accessToken: string;
+                refreshToken: string;
+            }>("/auth/switch-organization", { organizationId });
+            localStorage.setItem("accessToken", res.data.accessToken);
+            localStorage.setItem("refreshToken", res.data.refreshToken);
+            toast.success("Switched organization successfully");
+            window.location.href = "/dashboard";
+        } catch (error) {
+            console.error("Failed to switch organization:", error);
+            toast.error("Failed to switch organization");
+        }
+    };
 
     const data = {
         user: {
@@ -144,6 +185,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         url: "/permissions",
                         icon: ShieldCheck,
                     },
+                    {
+                        title: "Activity Logs",
+                        url: "/admin/logs",
+                        icon: History,
+                    },
                 ]
                 : []),
             ...(canReadEmployees && !canManagePermissions
@@ -182,17 +228,54 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                            asChild
-                            className="data-[slot=sidebar-menu-button]:!p-1.5"
-                        >
-                            <NavLink to="/dashboard">
-                                <LogoIcon className="h-5 w-5" />
-                                <span className="text-base font-semibold">
-                                    Trekora
-                                </span>
-                            </NavLink>
-                        </SidebarMenuButton>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <SidebarMenuButton
+                                    size="lg"
+                                    className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
+                                >
+                                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                                        <Building className="size-4" />
+                                    </div>
+                                    <div className="grid flex-1 text-left text-sm leading-tight">
+                                        <span className="truncate font-semibold">
+                                            {userData?.organization?.name ?? "Trekora"}
+                                        </span>
+                                        <span className="truncate text-xs text-muted-foreground">
+                                            Switch Organization
+                                        </span>
+                                    </div>
+                                    <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
+                                </SidebarMenuButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                                align="start"
+                                side="bottom"
+                                sideOffset={4}
+                            >
+                                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                    Organizations
+                                </DropdownMenuLabel>
+                                {organizations.map((orgEmp) => (
+                                    <DropdownMenuItem
+                                        key={orgEmp.organization.id}
+                                        onClick={() => handleSwitch(orgEmp.organization.id)}
+                                        className="gap-2 p-2 cursor-pointer"
+                                    >
+                                        <div className="flex size-6 items-center justify-center rounded-sm border bg-background">
+                                            <Building className="size-3 shrink-0" />
+                                        </div>
+                                        <div className="flex-1 text-sm">
+                                            {orgEmp.organization.name}
+                                        </div>
+                                        {orgEmp.organization.id === userData?.organization?.id && (
+                                            <span className="ml-auto text-xs text-green-600 font-semibold">✓</span>
+                                        )}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>

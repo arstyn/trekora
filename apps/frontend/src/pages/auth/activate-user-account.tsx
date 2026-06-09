@@ -26,10 +26,11 @@ export default function ActivateUserPage() {
     useEffect(() => {
         const activateUser = async () => {
             try {
-                await axiosInstance.post<IActivationResult>(
+                const res = await axiosInstance.post<IActivationResult>(
                     `/auth/activate-user/${token}`,
                     {},
                 );
+                setResult(res.data);
             } catch (error: unknown) {
                 if (error instanceof AxiosError) {
                     setResult({
