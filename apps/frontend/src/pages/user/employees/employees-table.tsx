@@ -46,10 +46,8 @@ import { useLayoutEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ActivateDialog } from "./_component/activate-modal";
-import { AddEmployeeModal } from "./_component/add-employee-modal";
 import { DeactivateDialog } from "./_component/deactivate-dialog";
-import { EditEmployeeDialog } from "./_component/edit-employee-dialog";
-import { ViewEmployeeDialog } from "./_component/view-employee-dialog";
+import { EmployeeModal } from "./_component/employee-modal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function EmployeesPage() {
@@ -60,9 +58,10 @@ export function EmployeesPage() {
 
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [modalState, setModalState] = useState<{ open: boolean; mode: "add" | "edit" | "view" }>({
+        open: false,
+        mode: "add",
+    });
     const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
     const [isActivateDialogOpen, setIsActivateDialogOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(
@@ -99,7 +98,7 @@ export function EmployeesPage() {
             const foundEmployee = employees.find((e) => e.id === employeeId);
             if (foundEmployee) {
                 setSelectedEmployee(foundEmployee);
-                setIsViewDialogOpen(true);
+                setModalState({ open: true, mode: "view" });
             }
         } else {
             setSelectedEmployee(null);
@@ -246,7 +245,7 @@ export function EmployeesPage() {
                                                 await handleResendInvite(employee);
                                             }}
                                         >
-                                            Send Invite
+                                            {employee.status === "pending_activation" ? "Resend Invite" : "Send Invite"}
                                         </DropdownMenuItem>
                                     )}
                                     {employee.status === "terminated" && (
@@ -307,10 +306,14 @@ export function EmployeesPage() {
     const handleResendInvite = async (employee: IEmployee) => {
         try {
             await axiosInstance.post(`/employee/${employee.id}/activateUser`, {});
-            toast.success("Invite resent successfully");
+            if (employee.status === "pending_activation") {
+                toast.success("Invite resent successfully");
+            } else {
+                toast.success("Activation invite sent successfully");
+            }
             getEmployees(currentTab === "archived");
         } catch (error) {
-            toast.error("Failed to resend invite");
+            toast.error("Failed to send invite");
         }
     };
 
@@ -364,13 +367,13 @@ export function EmployeesPage() {
     // Handle viewing an employee
     const handleViewEmployee = (employee: IEmployee) => {
         setSelectedEmployee(employee);
-        setIsViewDialogOpen(true);
+        setModalState({ open: true, mode: "view" });
     };
 
     // Handle editing an employee
     const handleEditEmployee = (employee: IEmployee) => {
         setSelectedEmployee(employee);
-        setIsEditDialogOpen(true);
+        setModalState({ open: true, mode: "edit" });
     };
 
     // Handle deactivating an employee
@@ -456,7 +459,7 @@ export function EmployeesPage() {
                         <PermissionGuard resource="employee" action="create">
                             <Button
                                 size="sm"
-                                onClick={() => setIsAddModalOpen(true)}
+                                onClick={() => setModalState({ open: true, mode: "add" })}
                                 className="cursor-pointer"
                             >
                                 <UserPlus className="mr-2 h-4 w-4" />
@@ -527,44 +530,34 @@ export function EmployeesPage() {
 
             <DataTableFooter table={table} />
 
-            <AddEmployeeModal
-                table={table}
-                open={isAddModalOpen}
-                onOpenChange={setIsAddModalOpen}
+            <EmployeeModal
+                mode={modalState.mode}
+                open={modalState.open}
+                onOpenChange={(open) => {
+                    setModalState((prev) => ({ ...prev, open }));
+                    if (!open) {
+                        setSelectedEmployee(null);
+                        navigate("?");
+                    }
+                }}
+                employee={selectedEmployee}
                 employees={employees}
-                setEmployees={setEmployees}
+                onSuccess={(employee, action) => {
+                    if (action === "add") {
+                        setEmployees((prev) => [employee, ...prev]);
+                        table.setPageIndex(0);
+                        table.resetColumnFilters();
+                    } else {
+                        handleUpdateEmployee(employee.id, employee);
+                    }
+                }}
+                onEdit={(employee) => handleEditEmployee(employee)}
+                onResendInvite={handleResendInvite}
+                onReactivate={handleReactivateEmployee}
+                onArchive={handleArchiveEmployee}
+                onUnarchive={handleUnarchiveEmployee}
+                onTerminate={handleDeactivateEmployee}
             />
-
-            {selectedEmployee && (
-                <ViewEmployeeDialog
-                    open={isViewDialogOpen}
-                    onOpenChange={(open) => {
-                        setIsViewDialogOpen(open);
-                        if (!open) {
-                            setSelectedEmployee(null);
-                            navigate("?");
-                        }
-                    }}
-                    employee={selectedEmployee}
-                    onEdit={(employee) => handleEditEmployee(employee)}
-                />
-            )}
-
-            {selectedEmployee && (
-                <EditEmployeeDialog
-                    open={isEditDialogOpen}
-                    onOpenChange={(open) => {
-                        setIsEditDialogOpen(open);
-                        if (!open) {
-                            setSelectedEmployee(null);
-                            navigate("?");
-                        }
-                    }}
-                    employee={selectedEmployee}
-                    onUpdateEmployee={handleUpdateEmployee}
-                    employees={employees}
-                />
-            )}
 
             {selectedEmployee && (
                 <DeactivateDialog
