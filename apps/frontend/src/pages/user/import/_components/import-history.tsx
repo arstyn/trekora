@@ -1,5 +1,5 @@
-"use client";
-
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,18 +7,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-  FileSpreadsheet,
-  CheckCircle,
-  XCircle,
   AlertCircle,
-  Users,
-  UserCheck,
   Building2,
+  CheckCircle,
   Clock,
   Download,
+  FileSpreadsheet,
+  UserCheck,
+  Users,
+  XCircle,
 } from "lucide-react";
 
 interface ImportResult {
@@ -134,7 +132,7 @@ export function ImportHistory({ history }: ImportHistoryProps) {
                       <CardTitle className="text-lg">
                         {result.entityType
                           ? result.entityType.charAt(0).toUpperCase() +
-                            result.entityType.slice(1)
+                          result.entityType.slice(1)
                           : "Unknown"}{" "}
                         Import
                       </CardTitle>

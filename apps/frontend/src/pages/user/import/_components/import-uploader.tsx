@@ -1,5 +1,3 @@
-"use client";
-
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -141,8 +139,7 @@ export function ImportUploader({ onImportComplete }: ImportUploaderProps) {
                 toast.success(response?.data?.message);
             } else {
                 toast.error(
-                    `Import completed with ${
-                        response?.data?.failedRows || 0
+                    `Import completed with ${response?.data?.failedRows || 0
                     } errors`
                 );
             }
@@ -157,7 +154,7 @@ export function ImportUploader({ onImportComplete }: ImportUploaderProps) {
             toast.error(
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (error as any)?.response?.data?.message ||
-                    "Failed to upload file"
+                "Failed to upload file"
             );
         } finally {
             setIsUploading(false);

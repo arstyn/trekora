@@ -1,5 +1,3 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -201,174 +199,174 @@ export function CustomerModal({
                             {/* Emergency Contact */}
                             {(customer.emergencyContactName ||
                                 customer.emergencyContactPhone) && (
-                                <Card className="lg:col-span-2">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <AlertCircle className="w-4 h-4 text-destructive" />
-                                            Emergency Contact
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                                            {customer.emergencyContactName && (
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
-                                                        Contact Name
-                                                    </label>
-                                                    <p className="text-sm font-semibold">
-                                                        {
-                                                            customer.emergencyContactName
-                                                        }
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {customer.emergencyContactPhone && (
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
-                                                        Contact Phone
-                                                    </label>
-                                                    <p className="text-sm font-semibold">
-                                                        {
-                                                            customer.emergencyContactPhone
-                                                        }
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {customer.emergencyContactRelation && (
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
-                                                        Relation
-                                                    </label>
-                                                    <div>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="text-xs"
-                                                        >
+                                    <Card className="lg:col-span-2">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-lg flex items-center gap-2">
+                                                <AlertCircle className="w-4 h-4 text-destructive" />
+                                                Emergency Contact
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                                                {customer.emergencyContactName && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                            Contact Name
+                                                        </label>
+                                                        <p className="text-sm font-semibold">
                                                             {
-                                                                customer.emergencyContactRelation
+                                                                customer.emergencyContactName
                                                             }
-                                                        </Badge>
+                                                        </p>
                                                     </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
+                                                )}
+                                                {customer.emergencyContactPhone && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                            Contact Phone
+                                                        </label>
+                                                        <p className="text-sm font-semibold">
+                                                            {
+                                                                customer.emergencyContactPhone
+                                                            }
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {customer.emergencyContactRelation && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                            Relation
+                                                        </label>
+                                                        <div>
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-xs"
+                                                            >
+                                                                {
+                                                                    customer.emergencyContactRelation
+                                                                }
+                                                            </Badge>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
 
                             {/* Travel & Health Information */}
                             {(customer.specialRequests ||
                                 customer.medicalConditions ||
                                 customer.dietaryRestrictions) && (
-                                <Card className="lg:col-span-2">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <Heart className="w-4 h-4 text-pink-500" />
-                                            Travel & Health Info
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                                            {customer.specialRequests && (
-                                                <div className="space-y-2 border-l-2 border-primary/20 pl-3">
-                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
-                                                        Special Requests
-                                                    </label>
-                                                    <p className="text-sm italic">
-                                                        "
-                                                        {
-                                                            customer.specialRequests
-                                                        }
-                                                        "
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {customer.medicalConditions && (
-                                                <div className="space-y-2 border-l-2 border-destructive/20 pl-3">
-                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
-                                                        Medical Conditions
-                                                    </label>
-                                                    <p className="text-sm">
-                                                        {
-                                                            customer.medicalConditions
-                                                        }
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {customer.dietaryRestrictions && (
-                                                <div className="space-y-2 border-l-2 border-green-200 pl-3">
-                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
-                                                        Dietary Restrictions
-                                                    </label>
-                                                    <p className="text-sm">
-                                                        {
-                                                            customer.dietaryRestrictions
-                                                        }
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
+                                    <Card className="lg:col-span-2">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-lg flex items-center gap-2">
+                                                <Heart className="w-4 h-4 text-pink-500" />
+                                                Travel & Health Info
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                                                {customer.specialRequests && (
+                                                    <div className="space-y-2 border-l-2 border-primary/20 pl-3">
+                                                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                            Special Requests
+                                                        </label>
+                                                        <p className="text-sm italic">
+                                                            "
+                                                            {
+                                                                customer.specialRequests
+                                                            }
+                                                            "
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {customer.medicalConditions && (
+                                                    <div className="space-y-2 border-l-2 border-destructive/20 pl-3">
+                                                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                            Medical Conditions
+                                                        </label>
+                                                        <p className="text-sm">
+                                                            {
+                                                                customer.medicalConditions
+                                                            }
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {customer.dietaryRestrictions && (
+                                                    <div className="space-y-2 border-l-2 border-green-200 pl-3">
+                                                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                            Dietary Restrictions
+                                                        </label>
+                                                        <p className="text-sm">
+                                                            {
+                                                                customer.dietaryRestrictions
+                                                            }
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
 
                             {/* Identification */}
                             {(customer.passportNumber ||
                                 customer.voterId ||
                                 customer.aadhaarId) && (
-                                <Card className="lg:col-span-2">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <Shield className="w-4 h-4 text-blue-500" />
-                                            Identification Documents
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                                            {customer.passportNumber && (
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
-                                                        Passport Number
-                                                    </label>
-                                                    <p className="text-sm font-mono font-bold">
-                                                        {
-                                                            customer.passportNumber
-                                                        }
-                                                    </p>
-                                                    {customer.passportExpiryDate && (
-                                                        <p className="text-[10px] text-muted-foreground">
-                                                            Expires:{" "}
-                                                            {formatDate(
-                                                                customer.passportExpiryDate,
-                                                            )}
+                                    <Card className="lg:col-span-2">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-lg flex items-center gap-2">
+                                                <Shield className="w-4 h-4 text-blue-500" />
+                                                Identification Documents
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                                                {customer.passportNumber && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                            Passport Number
+                                                        </label>
+                                                        <p className="text-sm font-mono font-bold">
+                                                            {
+                                                                customer.passportNumber
+                                                            }
                                                         </p>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {customer.voterId && (
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
-                                                        Voter ID
-                                                    </label>
-                                                    <p className="text-sm font-mono font-bold">
-                                                        {customer.voterId}
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {customer.aadhaarId && (
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
-                                                        Aadhaar ID
-                                                    </label>
-                                                    <p className="text-sm font-mono font-bold">
-                                                        {customer.aadhaarId}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
+                                                        {customer.passportExpiryDate && (
+                                                            <p className="text-[10px] text-muted-foreground">
+                                                                Expires:{" "}
+                                                                {formatDate(
+                                                                    customer.passportExpiryDate,
+                                                                )}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {customer.voterId && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                            Voter ID
+                                                        </label>
+                                                        <p className="text-sm font-mono font-bold">
+                                                            {customer.voterId}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {customer.aadhaarId && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">
+                                                            Aadhaar ID
+                                                        </label>
+                                                        <p className="text-sm font-mono font-bold">
+                                                            {customer.aadhaarId}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
                         </div>
                     </div>
                 </ScrollArea>

@@ -1,0 +1,1 @@
+Unless specifically asked Do not test the app in agent mode, Testing will be done by me. 

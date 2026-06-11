@@ -1,21 +1,19 @@
-'use client';
-
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Download, 
-  FileSpreadsheet, 
-  Users, 
-  UserCheck, 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AxiosRequest from '@/lib/axios';
+import {
   Building2,
   CheckCircle,
+  Download,
+  FileSpreadsheet,
   Info,
-  Loader2
+  Loader2,
+  UserCheck,
+  Users
 } from 'lucide-react';
-import AxiosRequest from '@/lib/axios';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface ImportTemplate {
@@ -47,7 +45,7 @@ export function ImportTemplates({ templates }: ImportTemplatesProps) {
 
   const handleDownloadTemplate = async (entityType: string) => {
     setDownloading(entityType);
-    
+
     try {
       const response = await AxiosRequest.get(`/import/template/${entityType}`, {
         responseType: 'blob',
@@ -86,7 +84,7 @@ export function ImportTemplates({ templates }: ImportTemplatesProps) {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          <strong>Important:</strong> Use these templates to ensure your Excel files have the correct column headers and data format. 
+          <strong>Important:</strong> Use these templates to ensure your Excel files have the correct column headers and data format.
           The first row should contain the headers exactly as shown in the template.
         </AlertDescription>
       </Alert>
@@ -94,7 +92,7 @@ export function ImportTemplates({ templates }: ImportTemplatesProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {templates.map((template) => {
           const Icon = getIcon(template.entityType);
-          
+
           return (
             <Card key={template.entityType} className="relative">
               <CardHeader>
@@ -168,21 +166,21 @@ export function ImportTemplates({ templates }: ImportTemplatesProps) {
               Click the download button above to get the Excel template for your data type.
             </p>
           </div>
-          
+
           <div className="space-y-2">
             <h4 className="font-medium">Step 2: Fill Your Data</h4>
             <p className="text-muted-foreground">
               Replace the sample data with your actual data. Make sure to keep the header row intact.
             </p>
           </div>
-          
+
           <div className="space-y-2">
             <h4 className="font-medium">Step 3: Upload & Import</h4>
             <p className="text-muted-foreground">
               Go to the "Upload & Import" tab and select your filled template file.
             </p>
           </div>
-          
+
           <div className="space-y-2">
             <h4 className="font-medium">Step 4: Review Results</h4>
             <p className="text-muted-foreground">

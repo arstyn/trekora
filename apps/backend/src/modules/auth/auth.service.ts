@@ -21,6 +21,8 @@ import { PermissionSetService } from '../permission/permission-set.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { UserService } from '../user/user.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { CompleteOnboardingDto } from 'src/dto/complete-onboarding.dto';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -143,9 +145,7 @@ export class AuthService {
   }
 
   // Signup functionality
-  async signup(userData: SignupFormDTO): Promise<{
-    message: string;
-  }> {
+  async signup(userData: SignupFormDTO): Promise<ILoginResponse> {
     if (userData.otpToken) {
       try {
         const payload = this.jwtService.verify(userData.otpToken, { secret: process.env.JWT_ACCESS_SECRET || 'secret' });
@@ -178,26 +178,25 @@ export class AuthService {
 
       // Create organization
       const organization = queryRunner.manager.create(Organization, {
-        name: userData.orgName,
-        size: userData.orgSize,
-        industry: userData.industry,
-        domain: userData.website,
-        description: userData.description,
+        name: userData.orgName || `${userData.firstName}'s Organization`,
+        size: userData.orgSize || '1-10',
+        industry: userData.industry || 'Other',
+        domain: userData.website || '',
+        description: userData.description || 'Created via Email Signup',
       });
 
       const savedOrganization = await queryRunner.manager.save(organization);
 
       // Create user
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
       const newUser = queryRunner.manager.create(User, {
-        name: `${userData.firstName} ${userData.lastName}`,
+        name: userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : undefined,
         email: userData.email,
-        password: hashedPassword,
         phone: userData.phone,
         organizationId: savedOrganization.id,
-        notificationsEnabled: userData.notifications,
-        newsletterSubscribed: userData.newsletter,
+        notificationsEnabled: userData.notifications ?? true,
+        newsletterSubscribed: userData.newsletter ?? false,
         isActive: true, // Auto-activate since email is verified
+        isOnboarded: false,
       });
 
       const savedUser = await queryRunner.manager.save(newUser);
@@ -287,8 +286,21 @@ export class AuthService {
       // const invite = await this.userInviteService.createInvite(employee);
       // await this.sendActivationEmail(userData.email, invite.token);
 
+      const accessToken = await this.generateAccessToken(
+        savedUser.id,
+        savedUser.organizationId!,
+      );
+      const refreshToken = this.generateRefreshToken(
+        savedUser.id,
+        savedUser.organizationId!,
+      );
+
       return {
         message: 'User registered successfully',
+        userId: savedUser.id,
+        name: savedUser.name || '',
+        accessToken,
+        refreshToken,
       };
     } catch (error) {
       console.error('Signup error:', error);
@@ -300,7 +312,8 @@ export class AuthService {
   }
 
   // Login functionality
-  async login(email: string, password: string): Promise<ILoginResponse> {
+  // Login functionality
+  async login(email: string, otp: string): Promise<ILoginResponse> {
     const user = await this.userService.findOneWithEmail(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
@@ -316,12 +329,17 @@ export class AuthService {
       );
     }
 
-    if (!user.password) {
-      throw new UnauthorizedException('User does not have password set');
-    }
-
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) throw new UnauthorizedException('Invalid credentials');
+    // Verify OTP
+    const otpRepo = this.dataSource.getRepository(Otp);
+    const otpRecord = await otpRepo.findOne({ where: { email } });
+    
+    if (!otpRecord) throw new UnauthorizedException('Invalid or expired OTP');
+    if (otpRecord.otp !== otp) throw new UnauthorizedException('Invalid or expired OTP');
+    if (new Date() > otpRecord.expiresAt) throw new UnauthorizedException('Invalid or expired OTP');
+    
+    // Mark OTP as verified/used
+    otpRecord.isVerified = true;
+    await otpRepo.save(otpRecord);
 
     const accessToken = await this.generateAccessToken(
       user.id,
@@ -341,25 +359,55 @@ export class AuthService {
     };
   }
 
+  // Login Send OTP functionality
+  async loginSendOtp(email: string) {
+    const user = await this.userService.findOneWithEmail(email);
+    if (!user) {
+      throw new HttpException('User not found. Please register.', HttpStatus.NOT_FOUND);
+    }
+    if (!user.isActive) {
+      throw new HttpException('User account is deactivated.', HttpStatus.BAD_REQUEST);
+    }
+
+    const otpValue = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+    const otpRepo = this.dataSource.getRepository(Otp);
+    let otpRecord = await otpRepo.findOne({ where: { email } });
+    
+    if (otpRecord) {
+      otpRecord.otp = otpValue;
+      otpRecord.expiresAt = expiresAt;
+      otpRecord.isVerified = false;
+    } else {
+      otpRecord = otpRepo.create({
+        email,
+        otp: otpValue,
+        expiresAt,
+        isVerified: false
+      });
+    }
+    
+    await otpRepo.save(otpRecord);
+
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'Your Trekora Login Code',
+      text: `Your login OTP is: ${otpValue}`,
+      html: `<div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>Verify your email to login</h2>
+        <p>Your login verification code is: <strong style="font-size: 24px;">${otpValue}</strong></p>
+        <p>This code will expire in 10 minutes.</p>
+      </div>`,
+    });
+
+    return { message: 'Login OTP sent successfully' };
+  }
+
   // Logout functionality
   logout(): { success: boolean; message: string } {
     // Clear session or token (not implemented here)
     return { success: true, message: 'Logout successful' };
-  }
-
-  // Validate user functionality
-  async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.userService.findOneWithEmail(email);
-    if (!user) return null;
-
-    if (!user.password) {
-      throw new UnauthorizedException('User does not have password set');
-    }
-
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) return null;
-
-    return user; // Return user details if valid
   }
 
   async activateUser(id: string) {
@@ -456,37 +504,7 @@ export class AuthService {
     };
   }
 
-  async updatePassword(
-    email: string,
-    currentPassword: string,
-    newPassword: string,
-  ): Promise<{ message: string }> {
-    const user = await this.userService.findOneWithEmail(email);
 
-    if (!user) {
-      throw new HttpException('User not found', HttpStatus.OK);
-    }
-
-    if (!user.password) {
-      throw new UnauthorizedException('User does not have password set');
-    }
-
-    const isPasswordValid = await bcrypt.compare(
-      currentPassword,
-      user.password,
-    );
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Current password is incorrect');
-    }
-
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    user.password = hashedNewPassword;
-
-    await this.userService.update(user.id, user);
-
-    return { message: 'Password updated successfully' };
-  }
 
   async sendActivationEmail(email: string, token: string) {
     const activateUrl = `${process.env.FRONTEND_URL}/activate-account/${token}`;
@@ -560,6 +578,7 @@ export class AuthService {
           isActive: true, // Auto-activate Google users
           notificationsEnabled: true,
           newsletterSubscribed: false,
+          isOnboarded: false,
         });
 
         user = await queryRunner.manager.save(newUser);
@@ -636,6 +655,7 @@ export class AuthService {
       name: user.name,
       accessToken,
       refreshToken,
+      isOnboarded: user.isOnboarded,
     };
   }
 
@@ -676,5 +696,95 @@ export class AuthService {
       userId,
       name: user?.name,
     };
+  }
+
+  async completeOnboarding(
+    userId: string,
+    onboardingData: CompleteOnboardingDto,
+  ): Promise<{ message: string }> {
+    const user = await this.userService.findOne(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const orgId = user.organizationId;
+    if (!orgId) {
+      throw new UnauthorizedException('User does not belong to any organization');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Update user details
+      await queryRunner.manager.update(User, userId, {
+        name: `${onboardingData.firstName} ${onboardingData.lastName}`,
+        phone: onboardingData.phone,
+        isOnboarded: true,
+      });
+
+      // 2. Update employee details
+      await queryRunner.manager.update(Employee, { userId }, {
+        name: `${onboardingData.firstName} ${onboardingData.lastName}`,
+        phone: onboardingData.phone,
+      });
+
+      // 3. Update organization details
+      await queryRunner.manager.update(Organization, orgId, {
+        name: onboardingData.orgName,
+        size: onboardingData.orgSize,
+        industry: onboardingData.industry,
+        domain: onboardingData.website || '',
+        description: onboardingData.description || '',
+      });
+
+      // 2. Process team members if any
+      if (onboardingData.teamMembers && onboardingData.teamMembers.length > 0) {
+        for (const member of onboardingData.teamMembers) {
+          try {
+            const teamEmployee = queryRunner.manager.create(Employee, {
+              name: member.email.split('@')[0],
+              email: member.email,
+              organizationId: orgId,
+              status: EmployeeStatus.INACTIVE,
+              joinDate: new Date().toISOString(),
+            });
+
+            const savedTeamEmployee = await queryRunner.manager.save(teamEmployee);
+
+            const invite = queryRunner.manager.create(UserInvite, {
+              employeeId: savedTeamEmployee.id,
+              email: member.email,
+              token: randomUUID(),
+              expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+              used: false,
+            });
+
+            const savedInvite = await queryRunner.manager.save(invite);
+
+            // Send invite email
+            if (teamEmployee.email) {
+              await this.employeeService.sendInviteEmail(
+                teamEmployee.email,
+                savedInvite.token,
+              );
+            }
+          } catch (memberError) {
+            console.error('Error processing team member in onboarding:', member.email, memberError);
+          }
+        }
+      }
+
+      // 3. Mark user as onboarded (already updated in step 1 user details update)
+
+      await queryRunner.commitTransaction();
+      return { message: 'Onboarding completed successfully' };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

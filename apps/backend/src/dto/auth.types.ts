@@ -6,7 +6,7 @@ export class ILoginDto {
 
   @IsString()
   @IsNotEmpty()
-  password: string;
+  otp: string;
 }
 
 export class ILoginResponse {

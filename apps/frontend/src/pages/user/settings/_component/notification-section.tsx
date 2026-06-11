@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -164,7 +162,7 @@ export function NotificationSection() {
                             <Switch
                                 checked={
                                     notifications[
-                                        key as keyof NotificationSettings
+                                    key as keyof NotificationSettings
                                     ]
                                 }
                                 onCheckedChange={(checked) =>

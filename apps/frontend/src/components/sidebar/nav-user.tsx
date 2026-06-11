@@ -1,13 +1,3 @@
-"use client";
-
-import {
-	BellIcon,
-	CreditCardIcon,
-	Loader2,
-	LogOutIcon,
-	MoreVerticalIcon
-} from "lucide-react";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -26,6 +16,13 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/authContext";
 import axiosInstance from "@/lib/axios";
+import {
+	BellIcon,
+	CreditCardIcon,
+	Loader2,
+	LogOutIcon,
+	MoreVerticalIcon
+} from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";

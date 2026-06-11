@@ -14,12 +14,17 @@ export default function GoogleCallbackPage() {
     useEffect(() => {
         const accessToken = searchParams.get("accessToken");
         const refreshToken = searchParams.get("refreshToken");
+        const isOnboarded = searchParams.get("isOnboarded");
 
         if (accessToken && refreshToken) {
             localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
             localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
             refresh();
-            navigate("/");
+            if (isOnboarded === "false") {
+                navigate("/onboarding");
+            } else {
+                navigate("/");
+            }
         } else {
             navigate("/login");
         }

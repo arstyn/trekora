@@ -27,7 +27,7 @@ export default function LoginPage() {
                         Sign in
                     </CardTitle>
                     <CardDescription>
-                        Enter your credentials to access your account
+                        Enter your email to receive an OTP and access your account
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -72,14 +72,6 @@ export default function LoginPage() {
                     </Button>
                 </CardContent>
                 <CardFooter className="flex flex-col space-y-4">
-                    <div className="text-center text-sm">
-                        <NavLink
-                            to="/forgot-password"
-                            className="text-primary hover:underline underline-offset-4"
-                        >
-                            Forgot your password?
-                        </NavLink>
-                    </div>
                     <div className="text-center text-sm">
                         Don&apos;t have an account?{" "}
                         <NavLink

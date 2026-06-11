@@ -656,13 +656,10 @@ export default function EnhancedCustomerForm({
                                                             });
                                                         }
                                                     }}
-                                                    disabled={(date) =>
-                                                        date > new Date() ||
-                                                        date <
-                                                        new Date(
-                                                            "1900-01-01",
-                                                        )
-                                                    }
+                                                    disabled={[
+                                                        { after: new Date() },
+                                                        { before: new Date("1900-01-01") }
+                                                    ]}
                                                     initialFocus
                                                 />
                                             </PopoverContent>
@@ -905,14 +902,10 @@ export default function EnhancedCustomerForm({
                                                                     );
                                                                 }
                                                             }}
-                                                            disabled={(date) =>
-                                                                date >
-                                                                new Date() ||
-                                                                date <
-                                                                new Date(
-                                                                    "1900-01-01",
-                                                                )
-                                                            }
+                                                            disabled={[
+                                                                { after: new Date() },
+                                                                { before: new Date("1900-01-01") }
+                                                            ]}
                                                             initialFocus
                                                         />
                                                     </PopoverContent>
@@ -969,10 +962,7 @@ export default function EnhancedCustomerForm({
                                                                     );
                                                                 }
                                                             }}
-                                                            disabled={(date) =>
-                                                                date <
-                                                                new Date()
-                                                            }
+                                                            disabled={{ before: new Date() }}
                                                             initialFocus
                                                         />
                                                     </PopoverContent>

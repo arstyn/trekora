@@ -1,19 +1,19 @@
-import * as React from "react"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react"
+import * as React from "react"
 import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
 
-import { cn } from "@/lib/utils"
-import { Button, buttonVariants } from "@/components/ui/button"
 
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  captionLayout = "label",
+  captionLayout = "dropdown",
   buttonVariant = "ghost",
   formatters,
   components,
@@ -22,6 +22,30 @@ function Calendar({
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
+
+  const defaultStartMonth = React.useMemo(() => new Date(new Date().getFullYear() - 100, 0), [])
+  const defaultEndMonth = React.useMemo(() => new Date(new Date().getFullYear() + 100, 11), [])
+
+  let startMonth = props.startMonth || defaultStartMonth
+  let endMonth = props.endMonth || defaultEndMonth
+
+  if (props.disabled) {
+    const matchers = Array.isArray(props.disabled) ? props.disabled : [props.disabled]
+    for (const matcher of matchers) {
+      if (typeof matcher === "object" && matcher !== null) {
+        if ("after" in matcher && matcher.after instanceof Date) {
+          if (matcher.after < endMonth) {
+            endMonth = matcher.after
+          }
+        }
+        if ("before" in matcher && matcher.before instanceof Date) {
+          if (matcher.before > startMonth) {
+            startMonth = matcher.before
+          }
+        }
+      }
+    }
+  }
 
   return (
     <DayPicker
@@ -33,6 +57,8 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
+      startMonth={startMonth}
+      endMonth={endMonth}
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString("default", { month: "short" }),
@@ -68,7 +94,7 @@ function Calendar({
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "relative has-focus:border-ring border border-input shadow-xs has-focus:ring-ring/50 has-focus:ring-[3px] rounded-md",
+          "relative flex items-center",
           defaultClassNames.dropdown_root
         ),
         dropdown: cn(
@@ -79,7 +105,7 @@ function Calendar({
           "select-none font-medium",
           captionLayout === "label"
             ? "text-sm"
-            : "rounded-md pl-2 pr-1 flex items-center gap-1 text-sm h-8 [&>svg]:text-muted-foreground [&>svg]:size-3.5",
+            : "hidden",
           defaultClassNames.caption_label
         ),
         table: "w-full border-collapse",
@@ -153,6 +179,82 @@ function Calendar({
             <ChevronDownIcon className={cn("size-4", className)} {...props} />
           )
         },
+        Dropdown: ({ value, onChange, options }) => {
+          const [open, setOpen] = React.useState(false)
+          const ref = React.useRef<HTMLDivElement>(null)
+          const listRef = React.useRef<HTMLDivElement>(null)
+          const selected = options?.find((o) => o.value === value)
+
+          // Close on outside click
+          React.useEffect(() => {
+            const handleOutside = (e: MouseEvent) => {
+              if (ref.current && !ref.current.contains(e.target as Node)) {
+                setOpen(false)
+              }
+            }
+            if (open) document.addEventListener("mousedown", handleOutside)
+            return () => document.removeEventListener("mousedown", handleOutside)
+          }, [open])
+
+          // Scroll selected item into view when dropdown opens
+          React.useEffect(() => {
+            if (open && listRef.current) {
+              const selectedEl = listRef.current.querySelector("[data-selected='true']") as HTMLElement
+              selectedEl?.scrollIntoView({ block: "center" })
+            }
+          }, [open])
+
+          const handleSelect = (optValue: number) => {
+            const event = {
+              target: { value: String(optValue) },
+            } as React.ChangeEvent<HTMLSelectElement>
+            onChange?.(event)
+            setOpen(false)
+          }
+
+          return (
+            <div ref={ref} className="relative">
+              <button
+                type="button"
+                onClick={() => setOpen((prev) => !prev)}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground select-none cursor-pointer"
+              >
+                {selected?.label}
+                <ChevronDownIcon
+                  className={cn(
+                    "size-3 opacity-60 transition-transform duration-200",
+                    open && "rotate-180"
+                  )}
+                />
+              </button>
+              {open && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 mt-1 min-w-[5rem] rounded-md border bg-popover text-popover-foreground shadow-md overflow-hidden">
+                  <div
+                    ref={listRef}
+                    onWheel={(e) => e.stopPropagation()}
+                    className="calendar-dropdown-list max-h-52 overflow-y-auto overscroll-contain"
+                  >
+                    {options?.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        data-selected={option.value === value}
+                        disabled={option.disabled}
+                        onClick={() => handleSelect(option.value)}
+                        className={cn(
+                          "flex w-full items-center justify-center px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40",
+                          option.value === value && "bg-accent text-accent-foreground font-medium"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        },
         DayButton: CalendarDayButton,
         WeekNumber: ({ children, ...props }) => {
           return (
@@ -209,3 +311,4 @@ function CalendarDayButton({
 }
 
 export { Calendar, CalendarDayButton }
+
