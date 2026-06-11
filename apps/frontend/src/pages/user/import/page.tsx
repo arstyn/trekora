@@ -1,52 +1,22 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import AxiosRequest from "@/lib/axios";
 import {
-  Upload,
+  AlertCircle,
+  Building2,
   Download,
   FileSpreadsheet,
-  Users,
-  UserCheck,
-  Building2,
-  AlertCircle,
   Info,
+  Upload,
+  UserCheck,
+  Users,
 } from "lucide-react";
-import { ImportUploader } from "./_components/import-uploader";
+import { useEffect, useState } from "react";
 import { ImportHistory } from "./_components/import-history";
+import { ImportUploader } from "./_components/import-uploader";
 import { TemplateFormBuilder } from "./_components/template-form-builder";
-import AxiosRequest from "@/lib/axios";
-
-// interface ImportTemplate {
-//   entityType: string;
-//   name: string;
-//   description: string;
-//   requiredFields: string[];
-// }
-
-// const importTemplates: ImportTemplate[] = [
-//   {
-//     entityType: 'customer',
-//     name: 'Customer Import',
-//     description: 'Import customer data with fields: Name, Email, Phone, Address, Status, Notes',
-//     requiredFields: ['Name', 'Email', 'Phone'],
-//   },
-//   {
-//     entityType: 'lead',
-//     name: 'Lead Import',
-//     description: 'Import lead data with fields: Name, Email, Phone, Company, Status, Notes',
-//     requiredFields: ['Name'],
-//   },
-//   {
-//     entityType: 'employee',
-//     name: 'Employee Import',
-//     description: 'Import employee data with fields: Name, Email, Phone, Role, Address, Gender, Nationality, Join Date',
-//     requiredFields: ['Name', 'Email'],
-//   },
-// ];
 
 interface ImportResult {
   success: boolean;

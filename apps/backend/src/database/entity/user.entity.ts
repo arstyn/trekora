@@ -40,9 +40,6 @@ export class User {
   @Column({ nullable: true, name: 'phone' })
   phone?: string;
 
-  @Column({ nullable: true, name: 'password' })
-  password?: string;
-
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;
 
@@ -51,6 +48,9 @@ export class User {
 
   @Column({ default: true, name: 'is_active' })
   isActive: boolean;
+
+  @Column({ default: true, name: 'is_onboarded' })
+  isOnboarded: boolean;
 
   @Column({ default: false, name: 'notifications_enabled' })
   notificationsEnabled: boolean;

@@ -1,5 +1,3 @@
-import { PlusCircleIcon, type LucideIcon } from "lucide-react";
-
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -7,8 +5,9 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { PlusCircleIcon, type LucideIcon } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
 import { NotificationButton } from "../notification-button";
-import { NavLink } from "react-router-dom";
 
 export function NavMain({
 	items,
@@ -19,6 +18,8 @@ export function NavMain({
 		icon?: LucideIcon;
 	}[];
 }) {
+	const location = useLocation();
+
 	return (
 		<SidebarGroup>
 			<SidebarGroupContent className="flex flex-col gap-2">
@@ -35,16 +36,19 @@ export function NavMain({
 					</SidebarMenuItem>
 				</SidebarMenu>
 				<SidebarMenu>
-					{items.map((item) => (
-						<SidebarMenuItem key={item.title}>
-							<SidebarMenuButton tooltip={item.title} asChild>
-								<NavLink to={item.url}>
-									{item.icon && <item.icon />}
-									<span>{item.title}</span>
-								</NavLink>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					))}
+					{items.map((item) => {
+						const isActive = location.pathname === item.url || (item.url !== "/" && location.pathname.startsWith(item.url));
+						return (
+							<SidebarMenuItem key={item.title}>
+								<SidebarMenuButton tooltip={item.title} isActive={isActive} asChild>
+									<NavLink to={item.url}>
+										{item.icon && <item.icon />}
+										<span>{item.title}</span>
+									</NavLink>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+						);
+					})}
 				</SidebarMenu>
 			</SidebarGroupContent>
 		</SidebarGroup>

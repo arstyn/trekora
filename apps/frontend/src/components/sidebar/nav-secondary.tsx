@@ -1,8 +1,3 @@
-"use client";
-
-import * as React from "react";
-import type { LucideIcon } from "lucide-react";
-
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -10,7 +5,9 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { NavLink } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
+import * as React from "react";
+import { NavLink, useLocation } from "react-router-dom";
 
 export function NavSecondary({
 	items,
@@ -22,20 +19,25 @@ export function NavSecondary({
 		icon: LucideIcon;
 	}[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+	const location = useLocation();
+
 	return (
 		<SidebarGroup {...props}>
 			<SidebarGroupContent>
 				<SidebarMenu>
-					{items.map((item) => (
-						<SidebarMenuItem key={item.title}>
-							<SidebarMenuButton asChild>
-								<NavLink to={item.url}>
-									<item.icon />
-									<span>{item.title}</span>
-								</NavLink>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					))}
+					{items.map((item) => {
+						const isActive = location.pathname === item.url || (item.url !== "/" && location.pathname.startsWith(item.url));
+						return (
+							<SidebarMenuItem key={item.title}>
+								<SidebarMenuButton isActive={isActive} asChild>
+									<NavLink to={item.url}>
+										<item.icon />
+										<span>{item.title}</span>
+									</NavLink>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+						);
+					})}
 				</SidebarMenu>
 			</SidebarGroupContent>
 		</SidebarGroup>

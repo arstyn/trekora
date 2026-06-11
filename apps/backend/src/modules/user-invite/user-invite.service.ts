@@ -11,7 +11,6 @@ import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserInviteService {
@@ -50,7 +49,7 @@ export class UserInviteService {
     return invite;
   }
 
-  async acceptInvite(token: string, password?: string): Promise<any> {
+  async acceptInvite(token: string): Promise<any> {
     const invite = await this.inviteRepository.findOne({
       where: { token },
       relations: ['employee'],
@@ -65,17 +64,12 @@ export class UserInviteService {
     // Check if user already exists
     let user = await this.userService.findOneWithEmail(invite.email);
     if (!user) {
-      const hashedPassword = password
-        ? await bcrypt.hash(password, 10)
-        : undefined;
-
       // Create user account
       user = await this.userService.create({
         email: invite.email,
         name: invite.employee.name,
         phone: invite.employee.phone,
         organizationId: invite.employee.organizationId,
-        password: hashedPassword,
         isActive: true,
       });
     }

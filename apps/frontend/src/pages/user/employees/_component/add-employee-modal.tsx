@@ -28,17 +28,17 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import axiosInstance from "@/lib/axios";
+import { PermissionService } from "@/services/permission.service";
 import type { IEmployee } from "@/types/employee.types";
+import type { PermissionSet } from "@/types/permission.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Table } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronDown, X, Upload, Image as ImageIcon } from "lucide-react";
-import { type Dispatch, type SetStateAction, useEffect, useState, useRef } from "react";
+import { CalendarIcon, ChevronDown, Image as ImageIcon, Upload, X } from "lucide-react";
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { PermissionService } from "@/services/permission.service";
-import type { PermissionSet } from "@/types/permission.types";
 
 // Define the form schema with Zod
 const formSchema = z.object({
@@ -604,7 +604,7 @@ export function AddEmployeeModal({
 								render={({ field }) => (
 									<FormItem className="flex flex-col">
 										<FormLabel>Join Date</FormLabel>
-										<Popover>
+										<Popover modal={false}>
 											<PopoverTrigger asChild>
 												<FormControl>
 													<Button
@@ -639,10 +639,10 @@ export function AddEmployeeModal({
 													mode="single"
 													selected={field.value}
 													onSelect={field.onChange}
-													disabled={(date) =>
-														date > new Date() ||
-														date < new Date("1900-01-01")
-													}
+													disabled={[
+														{ after: new Date() },
+														{ before: new Date("1900-01-01") }
+													]}
 												/>
 											</PopoverContent>
 										</Popover>
@@ -685,7 +685,7 @@ export function AddEmployeeModal({
 								render={({ field }) => (
 									<FormItem className="flex flex-col">
 										<FormLabel>Date of Birth</FormLabel>
-										<Popover>
+										<Popover modal={false}>
 											<PopoverTrigger asChild>
 												<FormControl>
 													<Button
@@ -720,10 +720,10 @@ export function AddEmployeeModal({
 													mode="single"
 													selected={field.value}
 													onSelect={field.onChange}
-													disabled={(date) =>
-														date > new Date() ||
-														date < new Date("1900-01-01")
-													}
+													disabled={[
+														{ after: new Date() },
+														{ before: new Date("1900-01-01") }
+													]}
 												/>
 											</PopoverContent>
 										</Popover>

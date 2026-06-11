@@ -6,7 +6,6 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
     Form,
     FormControl,
@@ -16,105 +15,57 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import {
     InputOTP,
     InputOTPGroup,
     InputOTPSeparator,
     InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { Progress } from "@/components/ui/progress";
 import axiosInstance from "@/lib/axios";
+import { useAuth } from "@/context/authContext";
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/lib/constants/auth.constants";
 import type { ILoginResponse } from "@/types/auth.types";
-import { onboardingSchema, type SignupFormDTO } from "@/types/signup.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AxiosError } from "axios";
 import {
     ArrowLeft,
     ArrowRight,
-    Building2,
-    CheckCircle,
-    Eye,
-    EyeClosed,
-    Globe,
     Mail,
-    Phone,
-    User,
-    UserPlus,
-    Users,
 } from "lucide-react";
 import { useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-type Step =
-    | "email"
-    | "verify-otp"
-    | "signup"
-    | "organization"
-    | "team"
-    | "complete";
+const signupSchema = z.object({
+    email: z.string().email("Please enter a valid email address"),
+});
+
+type SignupFormValues = z.infer<typeof signupSchema>;
+
+type Step = "email" | "verify-otp";
 
 export default function Signup() {
+    const { refresh } = useAuth();
     const [currentStep, setCurrentStep] = useState<Step>("email");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [signupComplete, setSignupComplete] = useState(false);
     const [otpValue, setOtpValue] = useState("");
 
-    const form = useForm<SignupFormDTO>({
-        resolver: zodResolver(onboardingSchema),
+    const form = useForm<SignupFormValues>({
+        resolver: zodResolver(signupSchema),
         defaultValues: {
-            otpToken: "",
-            firstName: "",
-            lastName: "",
             email: "",
-            password: "",
-            phone: "",
-            orgName: "",
-            orgSize: "",
-            industry: "",
-            website: "",
-            description: "",
-            teamMembers: [],
-            notifications: true,
-            newsletter: false,
         },
         mode: "onChange",
     });
 
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
-        name: "teamMembers",
-    });
-
     const steps = [
         { id: "email", title: "Email Verify", icon: Mail },
-        { id: "signup", title: "Personal Info", icon: User },
-        { id: "organization", title: "Organization", icon: Building2 },
-        { id: "team", title: "Team Setup", icon: Users },
-        { id: "complete", title: "Complete", icon: CheckCircle },
+        { id: "verify-otp", title: "Verify OTP", icon: Mail },
     ];
 
-    // Helper to calculate progress index treating email and verify-otp as the first visual step
-    const getVisualStepIndex = (step: Step) => {
-        if (step === "email" || step === "verify-otp") return 0;
-        return steps.findIndex((s) => s.id === step);
-    };
-
-    const currentStepIndex = getVisualStepIndex(currentStep);
+    const currentStepIndex = currentStep === "email" ? 0 : 1;
     const progress = ((currentStepIndex + 1) / steps.length) * 100;
-
-    const addTeamMember = () => {
-        append({ email: "", role: "employee" });
-    };
 
     const handleGoogleAuth = () => {
         window.location.href = `${import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"}/auth/google`;
@@ -134,7 +85,7 @@ export default function Signup() {
         } catch (error: any) {
             setError(
                 error.response?.data?.message ||
-                    "Failed to send OTP. Please try again.",
+                "Failed to send OTP. Please try again.",
             );
         } finally {
             setIsLoading(false);
@@ -150,16 +101,28 @@ export default function Signup() {
         setIsLoading(true);
         setError(null);
         try {
+            const email = form.getValues("email");
             const response = await axiosInstance.post("/auth/verify-otp", {
-                email: form.getValues("email"),
+                email,
                 otp: otpValue,
             });
-            form.setValue("otpToken", response.data.otpToken);
-            setCurrentStep("signup");
+
+            // Immediately register/signup the user
+            const signupResponse = await axiosInstance.post<any, { data: ILoginResponse }>("/auth/signup", {
+                email,
+                otpToken: response.data.otpToken,
+                notifications: true,
+                newsletter: false,
+            });
+
+            // Save tokens and login user
+            localStorage.setItem(ACCESS_TOKEN_KEY, signupResponse.data.accessToken);
+            localStorage.setItem(REFRESH_TOKEN_KEY, signupResponse.data.refreshToken);
+            refresh();
         } catch (error: any) {
             setError(
                 error.response?.data?.message ||
-                    "Invalid OTP. Please try again.",
+                "Invalid OTP or signup failed. Please try again.",
             );
         } finally {
             setIsLoading(false);
@@ -167,103 +130,26 @@ export default function Signup() {
     };
 
     const nextStep = async () => {
-        const stepOrder: Step[] = [
-            "email",
-            "verify-otp",
-            "signup",
-            "organization",
-            "team",
-            "complete",
-        ];
-        const currentIndex = stepOrder.indexOf(currentStep);
-
-        if (currentIndex < stepOrder.length - 1) {
-            let isValid = false;
-
-            switch (currentStep) {
-                case "email":
-                    await handleSendOtp();
-                    return; // handeled by handleSendOtp
-                case "verify-otp":
-                    await handleVerifyOtp();
-                    return; // handled by handleVerifyOtp
-                case "signup":
-                    isValid = await form.trigger([
-                        "firstName",
-                        "lastName",
-                        "password",
-                    ]);
-                    break;
-                case "organization":
-                    isValid = await form.trigger([
-                        "orgName",
-                        "orgSize",
-                        "industry",
-                    ]);
-                    break;
-                case "team":
-                    isValid = true;
-                    break;
-                default:
-                    isValid = true;
-            }
-
-            if (isValid) {
-                setCurrentStep(stepOrder[currentIndex + 1] as Step);
-            }
+        if (currentStep === "email") {
+            await handleSendOtp();
+        } else if (currentStep === "verify-otp") {
+            await handleVerifyOtp();
         }
     };
 
     const prevStep = () => {
-        const stepOrder: Step[] = [
-            "email",
-            "verify-otp",
-            "signup",
-            "organization",
-            "team",
-            "complete",
-        ];
-        const currentIndex = stepOrder.indexOf(currentStep);
-        if (currentIndex > 0) {
-            setCurrentStep(stepOrder[currentIndex - 1] as Step);
-        }
-    };
-
-    const onSubmit = async (data: SignupFormDTO) => {
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const response = await axiosInstance.post<
-                SignupFormDTO,
-                ILoginResponse
-            >("/auth/signup", data);
-
-            if (response) {
-                setSignupComplete(true);
-            }
-        } catch (error: unknown) {
-            if (error instanceof AxiosError) {
-                setError(
-                    error.response?.data.message ??
-                        "An unexpected error occurred",
-                );
-            } else if (error instanceof Error) {
-                setError(error.message);
-            } else {
-                setError("An unexpected error occurred");
-            }
-        } finally {
-            setIsLoading(false);
+        if (currentStep === "verify-otp") {
+            setCurrentStep("email");
+            setError(null);
         }
     };
 
     const renderStepIndicator = () => (
-        <div className="w-full max-w-2xl mx-auto mb-8">
+        <div className="w-full max-w-xl mx-auto mb-8">
             <div className="flex items-center justify-between mb-4">
                 {steps.map((step, index) => {
                     const StepIcon = step.icon;
-                    const isActive = step.id === steps[currentStepIndex].id;
+                    const isActive = step.id === currentStep;
                     const isCompleted = index < currentStepIndex;
 
                     return (
@@ -273,24 +159,22 @@ export default function Signup() {
                         >
                             <div
                                 className={`
-                w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all
-                ${
-                    isActive
-                        ? "bg-primary border-primary text-primary-foreground"
-                        : isCompleted
-                          ? "bg-primary border-primary text-primary-foreground"
-                          : "bg-background border-muted-foreground/30 text-muted-foreground"
-                }
+                w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                ${isActive
+                                        ? "bg-primary border-primary text-primary-foreground shadow-md scale-105"
+                                        : isCompleted
+                                            ? "bg-primary border-primary text-primary-foreground"
+                                            : "bg-background border-muted-foreground/30 text-muted-foreground"
+                                    }
               `}
                             >
                                 <StepIcon className="w-5 h-5" />
                             </div>
                             <span
-                                className={`text-sm mt-2 font-medium ${
-                                    isActive
-                                        ? "text-primary"
-                                        : "text-muted-foreground"
-                                }`}
+                                className={`text-xs mt-2 font-medium transition-colors duration-300 ${isActive
+                                    ? "text-primary font-semibold"
+                                    : "text-muted-foreground"
+                                    }`}
                             >
                                 {step.title}
                             </span>
@@ -298,23 +182,22 @@ export default function Signup() {
                     );
                 })}
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress value={progress} className="h-1.5 transition-all duration-500" />
         </div>
     );
 
     const renderEmailStep = () => (
-        <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
-            <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Get Started</CardTitle>
+        <Card className="mx-auto max-w-xl w-full border-muted bg-background/95 shadow-2xl backdrop-blur-md transition-all duration-300 hover:shadow-primary/5">
+            <CardHeader className="text-center pb-4">
+                <CardTitle className="text-2xl font-bold tracking-tight">Get Started</CardTitle>
                 <CardDescription>
-                    Enter your email to verify your account or sign up with
-                    Google
+                    Enter your email to verify your account or sign up with Google
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <Button
                     variant="outline"
-                    className="w-full h-12 flex items-center justify-center gap-2 font-medium"
+                    className="w-full h-10 flex items-center justify-center gap-2 font-medium cursor-pointer"
                     onClick={handleGoogleAuth}
                     type="button"
                 >
@@ -340,13 +223,13 @@ export default function Signup() {
                     Continue with Google
                 </Button>
 
-                <div className="relative">
+                <div className="relative my-4">
                     <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
                         <span className="bg-background px-2 text-muted-foreground">
-                            Or continue with logically
+                            Or continue with otp
                         </span>
                     </div>
                 </div>
@@ -356,13 +239,13 @@ export default function Signup() {
                     name="email"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Email Address</FormLabel>
+                            <FormLabel className="font-medium">Email Address</FormLabel>
                             <FormControl>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="email"
-                                        className="pl-10"
+                                        className="pl-10 h-10 transition-all focus:border-primary"
                                         placeholder="john@example.com"
                                         {...field}
                                     />
@@ -381,7 +264,7 @@ export default function Signup() {
 
                 <Button
                     onClick={nextStep}
-                    className="w-full"
+                    className="w-full h-10 font-medium cursor-pointer transition-all hover:bg-primary/90"
                     disabled={isLoading}
                 >
                     {isLoading ? "Sending OTP..." : "Continue with Email"}
@@ -392,12 +275,11 @@ export default function Signup() {
     );
 
     const renderVerifyOtpStep = () => (
-        <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
-            <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Verify Your Email</CardTitle>
+        <Card className="mx-auto max-w-xl w-full border-muted bg-background/95 shadow-2xl backdrop-blur-md transition-all duration-300">
+            <CardHeader className="text-center pb-4">
+                <CardTitle className="text-2xl font-bold tracking-tight">Verify Your Email</CardTitle>
                 <CardDescription>
-                    We sent a verification code to {form.getValues("email")}.
-                    Please enter it below.
+                    We sent a verification code to {form.getValues("email")}. Please enter it below.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 flex flex-col items-center">
@@ -422,7 +304,7 @@ export default function Signup() {
                 </div>
 
                 {error && (
-                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md w-full">
+                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md w-full text-center">
                         {error}
                     </div>
                 )}
@@ -431,16 +313,17 @@ export default function Signup() {
                     <Button
                         variant="outline"
                         onClick={prevStep}
-                        className="flex-1 bg-transparent"
+                        className="flex-1 h-10 font-medium cursor-pointer"
+                        disabled={isLoading}
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" /> Back
                     </Button>
                     <Button
                         onClick={nextStep}
-                        className="flex-1"
+                        className="flex-1 h-10 font-medium cursor-pointer"
                         disabled={otpValue.length < 6 || isLoading}
                     >
-                        {isLoading ? "Verifying..." : "Verify OTP"}{" "}
+                        {isLoading ? "Verifying..." : "Verify & Sign Up"}{" "}
                         <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 </div>
@@ -448,557 +331,21 @@ export default function Signup() {
         </Card>
     );
 
-    const renderSignupStep = () => (
-        <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
-            <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Personal Information</CardTitle>
-                <CardDescription>
-                    Let's set up your profile details
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>First Name</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="John" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Last Name</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Doe" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-
-                <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                                <div className="relative">
-                                    <Input
-                                        type={
-                                            showPassword ? "text" : "password"
-                                        }
-                                        placeholder="Enter your password"
-                                        {...field}
-                                    />
-                                    <button
-                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 cursor-pointer"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            setShowPassword(!showPassword);
-                                        }}
-                                    >
-                                        {showPassword ? (
-                                            <Eye className="w-4 h-4" />
-                                        ) : (
-                                            <EyeClosed className="w-4 h-4" />
-                                        )}
-                                    </button>
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Phone Number (Optional)</FormLabel>
-                            <FormControl>
-                                <div className="relative">
-                                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        type="tel"
-                                        className="pl-10"
-                                        placeholder="+1 (555) 123-4567"
-                                        {...field}
-                                    />
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <div className="flex gap-2 w-full">
-                    <Button
-                        variant="outline"
-                        onClick={prevStep}
-                        className="flex-1 bg-transparent"
-                    >
-                        {/* We skip verify-otp to go back to email smoothly optionally, but normally back takes to previous */}
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                    </Button>
-                    <Button onClick={nextStep} className="flex-1">
-                        Continue <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-    );
-
-    const renderOrganizationStep = () => (
-        <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
-            <CardHeader className="text-center">
-                <CardTitle className="text-2xl">
-                    Setup Your Organization
-                </CardTitle>
-                <CardDescription>
-                    Tell us about your company or organization
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <FormField
-                    control={form.control}
-                    name="orgName"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Organization Name</FormLabel>
-                            <FormControl>
-                                <div className="relative">
-                                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        className="pl-10"
-                                        placeholder="Acme Corporation"
-                                        {...field}
-                                    />
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <FormField
-                    control={form.control}
-                    name="orgSize"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Organization Size</FormLabel>
-                            <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                            >
-                                <FormControl>
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select size" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="1-10">
-                                        1-10 employees
-                                    </SelectItem>
-                                    <SelectItem value="11-50">
-                                        11-50 employees
-                                    </SelectItem>
-                                    <SelectItem value="51-200">
-                                        51-200 employees
-                                    </SelectItem>
-                                    <SelectItem value="201-1000">
-                                        201-1000 employees
-                                    </SelectItem>
-                                    <SelectItem value="1000+">
-                                        1000+ employees
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <FormField
-                    control={form.control}
-                    name="industry"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Industry</FormLabel>
-                            <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                            >
-                                <FormControl>
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select industry" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="travel-agency">
-                                        Travel Agencies
-                                    </SelectItem>
-                                    <SelectItem value="hotel-resort">
-                                        Hotels & Resorts
-                                    </SelectItem>
-                                    <SelectItem value="hajj-umra">
-                                        Hajj & Umra
-                                    </SelectItem>
-                                    <SelectItem value="other">Other</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <FormField
-                    control={form.control}
-                    name="website"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Website (Optional)</FormLabel>
-                            <FormControl>
-                                <div className="relative">
-                                    <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        className="pl-10"
-                                        placeholder="https://example.com"
-                                        {...field}
-                                    />
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Description (Optional)</FormLabel>
-                            <FormControl>
-                                <Textarea
-                                    placeholder="Brief description of your organization..."
-                                    rows={3}
-                                    {...field}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={prevStep}
-                        className="flex-1 bg-transparent"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                    </Button>
-                    <Button onClick={nextStep} className="flex-1">
-                        Continue <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-    );
-
-    const renderTeamStep = () => (
-        <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
-            <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Invite Your Team</CardTitle>
-                <CardDescription>
-                    Add team members to collaborate (you can skip this step)
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {fields.length > 0 && (
-                    <div className="space-y-3">
-                        {fields.map((field, index) => (
-                            <div
-                                key={field.id}
-                                className="flex gap-2 items-end"
-                            >
-                                <div className="flex-1 space-y-2">
-                                    <FormField
-                                        control={form.control}
-                                        name={`teamMembers.${index}.email`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Email</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="colleague@example.com"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div className="w-32 space-y-2">
-                                    <FormField
-                                        control={form.control}
-                                        name={`teamMembers.${index}.role`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Role</FormLabel>
-                                                <Select
-                                                    onValueChange={
-                                                        field.onChange
-                                                    }
-                                                    value={field.value}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="admin">
-                                                            Admin
-                                                        </SelectItem>
-                                                        <SelectItem value="manager">
-                                                            Manager
-                                                        </SelectItem>
-                                                        <SelectItem value="employee">
-                                                            Employee
-                                                        </SelectItem>
-                                                        <SelectItem value="user">
-                                                            User
-                                                        </SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => remove(index)}
-                                >
-                                    Remove
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                <Button
-                    variant="outline"
-                    onClick={addTeamMember}
-                    className="w-full bg-transparent"
-                >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Add Team Member
-                </Button>
-
-                <div className="space-y-3 pt-4 border-t">
-                    <FormField
-                        control={form.control}
-                        name="notifications"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                <FormControl>
-                                    <Checkbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
-                                <div className="space-y-1 leading-none">
-                                    <FormLabel className="text-sm">
-                                        Send me notifications about team
-                                        activity
-                                    </FormLabel>
-                                </div>
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="newsletter"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                <FormControl>
-                                    <Checkbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
-                                <div className="space-y-1 leading-none">
-                                    <FormLabel className="text-sm">
-                                        Subscribe to product updates and tips
-                                    </FormLabel>
-                                </div>
-                            </FormItem>
-                        )}
-                    />
-                </div>
-
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={prevStep}
-                        className="flex-1 bg-transparent"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                    </Button>
-                    <Button onClick={nextStep} className="flex-1">
-                        Complete Setup <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-    );
-
-    const renderReviewStep = () => {
-        const formData = form.getValues();
-
-        return (
-            <Card className="mx-auto max-w-2xl w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl">
-                <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">
-                        Review Your Information
-                    </CardTitle>
-                    <CardDescription>
-                        Make sure everything looks good before completing
-                        registration
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <h4 className="font-semibold">Personal Info</h4>
-                        <p>
-                            {formData.firstName} {formData.lastName}
-                        </p>
-                        <p>{formData.email}</p>
-                        {formData.phone && <p>{formData.phone}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <h4 className="font-semibold">Organization</h4>
-                        <p>
-                            {formData.orgName} ({formData.orgSize})
-                        </p>
-                        <p>{formData.industry}</p>
-                        {formData.website && <p>{formData.website}</p>}
-                        {formData.description && <p>{formData.description}</p>}
-                    </div>
-
-                    {formData.teamMembers.length > 0 && (
-                        <div className="space-y-2">
-                            <h4 className="font-semibold">Team Members</h4>
-                            <ul className="list-disc pl-4">
-                                {formData.teamMembers.map((m, i) => (
-                                    <li key={i}>
-                                        {m.email} — {m.role}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
-                    <div className="space-y-2">
-                        <h4 className="font-semibold">Preferences</h4>
-                        <p>
-                            Notifications:{" "}
-                            {formData.notifications ? "Yes" : "No"}
-                        </p>
-                        <p>Newsletter: {formData.newsletter ? "Yes" : "No"}</p>
-                    </div>
-
-                    {error && (
-                        <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                            {error}
-                        </div>
-                    )}
-
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={prevStep}
-                            className="flex-1 bg-transparent"
-                        >
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                        </Button>
-                        <Button
-                            onClick={() => form.handleSubmit(onSubmit)()}
-                            className="flex-1"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? "Signing Up..." : "Sign Up"}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    };
-
-    const renderSignupConfirmation = () => (
-        <Card className="mx-auto max-w-md w-full backdrop-blur-sm bg-background/80 border-muted shadow-xl text-center">
-            <CardHeader>
-                <CardTitle className="text-2xl">You're All Set!</CardTitle>
-                <CardDescription>
-                    Your account has been created successfully. You can now
-                    login.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button
-                    className="w-full mt-4"
-                    onClick={() => (window.location.href = "/login")}
-                >
-                    Go to Login
-                </Button>
-            </CardContent>
-        </Card>
-    );
-
     return (
-        <div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 flex items-center justify-center py-10">
+        <div className="min-h-screen w-full flex flex-col justify-center items-center p-4 bg-gradient-to-tr from-background via-background/98 to-primary/5">
             {/* Decorative elements */}
-            <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-3xl" />
-            <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 blur-3xl" />
+            <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-3xl pointer-events-none" />
+            <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 blur-3xl pointer-events-none" />
 
-            {/* Geometric shapes */}
-            <div className="absolute top-20 right-20 w-20 h-20 border border-purple-500/20 dark:border-purple-500/30 rounded-lg rotate-12" />
-            <div className="absolute bottom-32 left-20 w-16 h-16 border border-cyan-500/20 dark:border-cyan-500/30 rounded-full" />
             <div className="container mx-auto z-10">
-                {!signupComplete && renderStepIndicator()}
+                {renderStepIndicator()}
 
                 <Form {...form}>
-                    {signupComplete
-                        ? renderSignupConfirmation()
-                        : currentStep === "email"
-                          ? renderEmailStep()
-                          : currentStep === "verify-otp"
-                            ? renderVerifyOtpStep()
-                            : currentStep === "signup"
-                              ? renderSignupStep()
-                              : currentStep === "organization"
-                                ? renderOrganizationStep()
-                                : currentStep === "team"
-                                  ? renderTeamStep()
-                                  : renderReviewStep()}
+                    <form onSubmit={(e) => e.preventDefault()} className="w-full">
+                        {currentStep === "email"
+                            ? renderEmailStep()
+                            : renderVerifyOtpStep()}
+                    </form>
                 </Form>
             </div>
         </div>

@@ -145,11 +145,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 url: "/todos",
                 icon: CheckCircle2,
             },
-            // {
-            // 	title: "Branches",
-            // 	url: "/branches",
-            // 	icon: Split,
-            // },
             ...(canReadEmployees
                 ? [
                     {

@@ -623,17 +623,7 @@ export function CreateBatchDialog({
                                                                     }
                                                                 }
                                                             }}
-                                                            disabled={(date) =>
-                                                                date <
-                                                                new Date(
-                                                                    new Date().setHours(
-                                                                        0,
-                                                                        0,
-                                                                        0,
-                                                                        0,
-                                                                    ),
-                                                                )
-                                                            }
+                                                            disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
                                                         />
                                                     </PopoverContent>
                                                 </Popover>
@@ -750,29 +740,7 @@ export function CreateBatchDialog({
                                                                     }
                                                                 }
                                                             }}
-                                                            disabled={(
-                                                                date,
-                                                            ) => {
-                                                                const today =
-                                                                    new Date(
-                                                                        new Date().setHours(
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                        ),
-                                                                    );
-                                                                const startDate =
-                                                                    formData.startDate
-                                                                        ? new Date(
-                                                                              formData.startDate,
-                                                                          )
-                                                                        : today;
-                                                                return (
-                                                                    date <
-                                                                    startDate
-                                                                );
-                                                            }}
+                                                            disabled={{ before: formData.startDate ? new Date(formData.startDate) : new Date(new Date().setHours(0, 0, 0, 0)) }}
                                                         />
                                                     </PopoverContent>
                                                 </Popover>

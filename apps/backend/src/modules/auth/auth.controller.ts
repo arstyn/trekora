@@ -14,6 +14,7 @@ import { ILoginDto } from 'src/dto/auth.types';
 import { SignupFormDTO } from 'src/dto/signup.schema';
 import { AuthService } from './auth.service';
 import { AuthGuard as JwtAuthGuard } from './guard/auth.guard';
+import { CompleteOnboardingDto } from 'src/dto/complete-onboarding.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -38,8 +39,13 @@ export class AuthController {
   // Login API
   @Post('login')
   async login(@Body() credentials: ILoginDto) {
-    const { email, password } = credentials;
-    return await this.authService.login(email, password);
+    const { email, otp } = credentials;
+    return await this.authService.login(email, otp);
+  }
+
+  @Post('login/send-otp')
+  async loginSendOtp(@Body('email') email: string) {
+    return await this.authService.loginSendOtp(email);
   }
 
   // Logout API
@@ -69,21 +75,7 @@ export class AuthController {
     return this.authService.resendActivation(email);
   }
 
-  @Patch('update-password')
-  async updatePassword(
-    @Body()
-    body: {
-      email: string;
-      currentPassword: string;
-      newPassword: string;
-    },
-  ) {
-    return await this.authService.updatePassword(
-      body.email,
-      body.currentPassword,
-      body.newPassword,
-    );
-  }
+
 
   @UseGuards(JwtAuthGuard)
   @Get('user-organizations')
@@ -112,7 +104,16 @@ export class AuthController {
     // Assuming FRONTEND_URL is set in env, e.g., http://localhost:5173
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     res.redirect(
-      `${frontendUrl}/google-callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}&userId=${result.userId}&name=${encodeURIComponent(result.name)}`,
+      `${frontendUrl}/google-callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}&userId=${result.userId}&name=${encodeURIComponent(result.name)}&isOnboarded=${result.isOnboarded}`,
     );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('complete-onboarding')
+  async completeOnboarding(
+    @Req() req: any,
+    @Body() onboardingData: CompleteOnboardingDto,
+  ) {
+    return await this.authService.completeOnboarding(req.user.userId, onboardingData);
   }
 }

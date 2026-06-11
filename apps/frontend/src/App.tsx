@@ -44,6 +44,7 @@ import ActivityLogsPage from "./pages/user/admin/logs.page";
 import ManagerOverviewPage from "./pages/user/manager/overview.page";
 import SettingsPage from "./pages/user/settings/page";
 import TodosPage from "./pages/user/todos/todos.page";
+import OnboardingPage from "./pages/auth/onboarding";
 
 function AuthenticatedApp() {
     // Add your dashboard and other protected routes here
@@ -124,9 +125,24 @@ function AuthenticatedApp() {
 }
 
 export default function App() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user, loading } = useAuth();
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     if (isAuthenticated) {
+        if (user && user.isOnboarded === false) {
+            return (
+                <Routes>
+                    <Route path="*" element={<OnboardingPage />} />
+                </Routes>
+            );
+        }
         return <AuthenticatedApp />;
     }
 

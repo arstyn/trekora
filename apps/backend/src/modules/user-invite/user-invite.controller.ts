@@ -11,7 +11,7 @@ import { UserInviteService } from './user-invite.service';
 
 @Controller('user-invite')
 export class UserInviteController {
-  constructor(private readonly userInviteService: UserInviteService) {}
+  constructor(private readonly userInviteService: UserInviteService) { }
 
   @Get('verify/:token')
   async verify(@Param('token') token: string) {
@@ -26,7 +26,7 @@ export class UserInviteController {
   }
 
   @Post('accept')
-  async accept(@Body() body: { token: string; password: string }) {
-    return this.userInviteService.acceptInvite(body.token, body.password);
+  async accept(@Body() body: { token: string }) {
+    return this.userInviteService.acceptInvite(body.token);
   }
 }
