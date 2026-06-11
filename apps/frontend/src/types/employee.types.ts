@@ -57,6 +57,7 @@ export interface IEmployee {
     nationality?: string;
     experience?: string;
     specialization?: string;
+    designation?: string;
     additional_info?: string;
     maritalStatus?: "single" | "married";
     joinDate?: Date;

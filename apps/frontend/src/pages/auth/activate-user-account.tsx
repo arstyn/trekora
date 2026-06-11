@@ -21,6 +21,7 @@ interface IActivationResult {
 
 export default function ActivateUserPage() {
     const [result, setResult] = useState<IActivationResult>();
+    const [isLoading, setIsLoading] = useState(true);
     const { id: token } = useParams<{ id: string }>();
 
     useEffect(() => {
@@ -54,10 +55,37 @@ export default function ActivateUserPage() {
                         success: false,
                     });
                 }
+            } finally {
+                setIsLoading(false);
             }
         };
         activateUser();
     }, [token]);
+
+    // Handle loading state
+    if (isLoading) {
+        return (
+            <div className="relative min-h-screen w-full bg-gradient-to-br from-background to-background/80 flex items-center justify-center p-4">
+                <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-3xl" />
+                <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 blur-3xl" />
+                <div className="absolute top-20 right-20 w-20 h-20 border border-purple-500/20 dark:border-purple-500/30 rounded-lg rotate-12" />
+                <div className="absolute bottom-32 left-20 w-16 h-16 border border-cyan-500/20 dark:border-cyan-500/30 rounded-full" />
+                <Card className="w-full max-w-md">
+                    <CardHeader className="text-center">
+                        <div className="flex justify-center mb-4">
+                            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+                        </div>
+                        <CardTitle className="text-2xl font-bold">
+                            Activating Account...
+                        </CardTitle>
+                        <CardDescription>
+                            Please wait while we verify your activation link.
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
+            </div>
+        );
+    }
 
     // Handle missing parameters
     if (!token) {
@@ -144,8 +172,8 @@ export default function ActivateUserPage() {
                         </Alert>
                         <div className="space-y-3">
                             <Button asChild className="w-full" size="lg">
-                                <NavLink to="/dashboard">
-                                    Go to Dashboard
+                                <NavLink to="/login">
+                                    Go to Login
                                 </NavLink>
                             </Button>
                             <p className="text-sm text-gray-600 text-center">

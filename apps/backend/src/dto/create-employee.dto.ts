@@ -59,6 +59,10 @@ export class IEmployeeCreateDTO {
 
   @IsString()
   @IsOptional()
+  designation?: string;
+
+  @IsString()
+  @IsOptional()
   specialization?: string;
 
   @IsString()

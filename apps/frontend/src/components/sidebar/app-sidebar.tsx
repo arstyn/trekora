@@ -121,7 +121,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             localStorage.setItem("accessToken", res.data.accessToken);
             localStorage.setItem("refreshToken", res.data.refreshToken);
             toast.success("Switched organization successfully");
-            window.location.href = "/dashboard";
+            window.location.href = "/";
         } catch (error) {
             console.error("Failed to switch organization:", error);
             toast.error("Failed to switch organization");

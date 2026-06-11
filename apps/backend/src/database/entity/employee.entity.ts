@@ -80,6 +80,9 @@ export class Employee {
   @Column({ type: 'varchar', nullable: true, name: 'experience' })
   experience?: string;
 
+  @Column({ type: 'varchar', nullable: true, name: 'designation' })
+  designation?: string;
+
   @Column({ type: 'varchar', nullable: true, name: 'specialization' })
   specialization?: string;
 
