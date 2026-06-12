@@ -7,11 +7,11 @@ import type { IWorkflowStep } from "@/types/workflow.types";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { TaskHistoryDialog } from "./components/TaskHistoryDialog";
-import { TaskList } from "./components/TaskList";
-import { TodoAnalytics } from "./components/TodoAnalytics";
-import { TodoFilters } from "./components/TodoFilters";
-import { TodoSummary } from "./components/TodoSummary";
+import { TaskHistoryDialog } from "./_components/TaskHistoryDialog";
+import { TaskList } from "./_components/TaskList";
+import { TodoAnalytics } from "./_components/TodoAnalytics";
+import { TodoFilters } from "./_components/TodoFilters";
+import { TodoSummary } from "./_components/TodoSummary";
 
 export default function TodosPage() {
     const [userData, setUserData] = useState<IEmployee | null>(null);

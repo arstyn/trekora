@@ -16,6 +16,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Calendar,
 	DollarSign,
@@ -130,19 +131,6 @@ export function BookingList({ status }: BookingListProps) {
 		}
 	};
 
-	if (loading) {
-		return (
-			<Card>
-				<CardContent className="flex items-center justify-center py-8">
-					<div className="flex items-center gap-2">
-						<Loader2 className="h-4 w-4 animate-spin" />
-						<span>Loading bookings...</span>
-					</div>
-				</CardContent>
-			</Card>
-		);
-	}
-
 	if (error) {
 		return (
 			<Card>
@@ -214,125 +202,150 @@ export function BookingList({ status }: BookingListProps) {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{filteredBookings.map((booking) => (
-							<TableRow key={booking.id}>
-								<TableCell className="font-medium">
-									{BookingService.formatBookingNumber(
-										booking.bookingNumber
-									)}
-								</TableCell>
-								<TableCell>
-									<div>
-										<p className="font-medium">
-											{booking.customerName}
-										</p>
-										<p className="text-sm text-muted-foreground">
-											{booking.customerEmail}
-										</p>
-									</div>
-								</TableCell>
-								<TableCell>{booking.packageName}</TableCell>
-								<TableCell>
-									<div className="flex items-center gap-1 text-sm">
-										<Calendar className="w-4 h-4" />
-										{new Date(
-											booking.batchStartDate
-										).toLocaleDateString()}
-									</div>
-								</TableCell>
-								<TableCell>
-									<div className="flex items-center gap-1">
-										<Users className="w-4 h-4" />
-										{booking.numberOfCustomers}
-									</div>
-								</TableCell>
-								<TableCell>
-									<div className="space-y-1">
+						{loading ? (
+							Array.from({ length: 5 }).map((_, index) => (
+								<TableRow key={`skeleton-${index}`}>
+									{Array.from({ length: 9 }).map((_, i) => (
+										<TableCell key={`skeleton-cell-${index}-${i}`}>
+											<Skeleton className="h-6 w-full" />
+										</TableCell>
+									))}
+								</TableRow>
+							))
+						) : filteredBookings.length > 0 ? (
+							filteredBookings.map((booking) => (
+								<TableRow key={booking.id}>
+									<TableCell className="font-medium">
+										{BookingService.formatBookingNumber(
+											booking.bookingNumber
+										)}
+									</TableCell>
+									<TableCell>
+										<div>
+											<p className="font-medium">
+												{booking.customerName}
+											</p>
+											<p className="text-sm text-muted-foreground">
+												{booking.customerEmail}
+											</p>
+										</div>
+									</TableCell>
+									<TableCell>{booking.packageName}</TableCell>
+									<TableCell>
 										<div className="flex items-center gap-1 text-sm">
-											<DollarSign className="w-3 h-3" />
-											{BookingService.formatCurrency(
-												booking.advancePaid
-											)}
-											/
-											{BookingService.formatCurrency(
+											<Calendar className="w-4 h-4" />
+											{new Date(
+												booking.batchStartDate
+											).toLocaleDateString()}
+										</div>
+									</TableCell>
+									<TableCell>
+										<div className="flex items-center gap-1">
+											<Users className="w-4 h-4" />
+											{booking.numberOfCustomers}
+										</div>
+									</TableCell>
+									<TableCell>
+										<div className="space-y-1">
+											<div className="flex items-center gap-1 text-sm">
+												<DollarSign className="w-3 h-3" />
+												{BookingService.formatCurrency(
+													booking.advancePaid
+												)}
+												/
+												{BookingService.formatCurrency(
+													booking.totalAmount
+												)}
+											</div>
+											{getPaymentStatus(
+												booking.advancePaid,
 												booking.totalAmount
 											)}
 										</div>
-										{getPaymentStatus(
-											booking.advancePaid,
-											booking.totalAmount
+									</TableCell>
+									<TableCell>{getStatusBadge(booking.status)}</TableCell>
+									<TableCell>
+										{booking.createdBy ? (
+											<span className="text-sm text-muted-foreground">
+												{booking.createdBy.name || booking.createdBy.email || "Unknown"}
+											</span>
+										) : (
+											<span className="text-sm text-muted-foreground">—</span>
 										)}
+									</TableCell>
+									<TableCell className="text-right">
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													variant="ghost"
+													className="h-8 w-8 p-0"
+												>
+													<MoreHorizontal className="h-4 w-4" />
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												<DropdownMenuItem asChild>
+													<NavLink
+														to={`/bookings/${booking.id}`}
+														className="flex items-center"
+													>
+														<Eye className="mr-2 h-4 w-4" />
+														View Details
+													</NavLink>
+												</DropdownMenuItem>
+												<DropdownMenuItem asChild>
+													<NavLink
+														to={`/bookings/${booking.id}/edit`}
+														className="flex items-center"
+													>
+														<Edit className="mr-2 h-4 w-4" />
+														Edit Booking
+													</NavLink>
+												</DropdownMenuItem>
+												{booking.status !== 'cancelled' && (
+													<DropdownMenuItem 
+														className="text-amber-600 focus:text-amber-600"
+														onClick={() => handleCancelBooking(booking.id)}
+													>
+														<XCircle className="mr-2 h-4 w-4" />
+														Cancel Booking
+													</DropdownMenuItem>
+												)}
+												<DropdownMenuItem 
+													className="text-destructive focus:text-destructive"
+													onClick={() => handleDeleteBooking(booking.id)}
+												>
+													<Trash2 className="mr-2 h-4 w-4" />
+													Delete Booking
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</TableCell>
+								</TableRow>
+							))
+						) : (
+							<TableRow>
+								<TableCell colSpan={9} className="h-64 text-center">
+									<div className="flex flex-col items-center justify-center py-12">
+										<div className="text-center">
+											<div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4">
+												<Calendar className="h-10 w-10 text-primary" />
+											</div>
+											<h3 className="text-xl font-semibold text-primary mb-2">
+												No bookings found
+											</h3>
+											<p className="text-muted-foreground max-w-sm mx-auto">
+												{searchTerm
+													? `No bookings matching "${searchTerm}".`
+													: `No ${status === "all" ? "" : status} bookings found.`}
+											</p>
+										</div>
 									</div>
 								</TableCell>
-								<TableCell>{getStatusBadge(booking.status)}</TableCell>
-								<TableCell>
-									{booking.createdBy ? (
-										<span className="text-sm text-muted-foreground">
-											{booking.createdBy.name || booking.createdBy.email || "Unknown"}
-										</span>
-									) : (
-										<span className="text-sm text-muted-foreground">—</span>
-									)}
-								</TableCell>
-								<TableCell className="text-right">
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button
-												variant="ghost"
-												className="h-8 w-8 p-0"
-											>
-												<MoreHorizontal className="h-4 w-4" />
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											<DropdownMenuItem asChild>
-												<NavLink
-													to={`/bookings/${booking.id}`}
-													className="flex items-center"
-												>
-													<Eye className="mr-2 h-4 w-4" />
-													View Details
-												</NavLink>
-											</DropdownMenuItem>
-											<DropdownMenuItem asChild>
-												<NavLink
-													to={`/bookings/${booking.id}/edit`}
-													className="flex items-center"
-												>
-													<Edit className="mr-2 h-4 w-4" />
-													Edit Booking
-												</NavLink>
-											</DropdownMenuItem>
-											{booking.status !== 'cancelled' && (
-												<DropdownMenuItem 
-													className="text-amber-600 focus:text-amber-600"
-													onClick={() => handleCancelBooking(booking.id)}
-												>
-													<XCircle className="mr-2 h-4 w-4" />
-													Cancel Booking
-												</DropdownMenuItem>
-											)}
-											<DropdownMenuItem 
-												className="text-destructive focus:text-destructive"
-												onClick={() => handleDeleteBooking(booking.id)}
-											>
-												<Trash2 className="mr-2 h-4 w-4" />
-												Delete Booking
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
-								</TableCell>
 							</TableRow>
-						))}
+						)}
 					</TableBody>
 				</Table>
-				{filteredBookings.length === 0 && !loading && (
-					<div className="text-center py-8 text-muted-foreground">
-						{searchTerm
-							? `No bookings found matching "${searchTerm}".`
-							: `No ${status === "all" ? "" : status} bookings found.`}
-					</div>
-				)}
 			</CardContent>
 		</Card>
 	);

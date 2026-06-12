@@ -1,14 +1,16 @@
 import type { ILead, ILeadStatus } from "@/types/lead/lead.entity";
 import type { DragEvent } from "react";
 import { LeadCard } from "./lead-card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface KanbanBoardProps {
 	leads: ILead[];
+	isLoading?: boolean;
 	onLeadMove: (leadId: string, status: ILeadStatus) => void;
 	onLeadClick: (lead: ILead) => void;
 }
 
-export function KanbanBoard({ leads, onLeadMove, onLeadClick }: KanbanBoardProps) {
+export function KanbanBoard({ leads, isLoading, onLeadMove, onLeadClick }: KanbanBoardProps) {
 	const statuses: ILeadStatus[] = [
 		"new",
 		"contacted",
@@ -59,18 +61,30 @@ export function KanbanBoard({ leads, onLeadMove, onLeadClick }: KanbanBoardProps
 						</span>
 					</div>
 					<div className="flex flex-1 flex-col gap-3 overflow-y-auto p-3">
-						{leads
-							.filter((lead) => lead.status === status)
-							.map((lead) => (
-								<div
-									key={lead.id}
-									draggable
-									onDragStart={(e) => handleDragStart(e, lead.id)}
-									onClick={() => onLeadClick(lead)}
-								>
-									<LeadCard lead={lead} />
+						{isLoading ? (
+							Array.from({ length: 3 }).map((_, i) => (
+								<div key={`skeleton-${status}-${i}`}>
+									<Skeleton className="h-28 w-full rounded-md" />
 								</div>
-							))}
+							))
+						) : leads.filter((lead) => lead.status === status).length === 0 ? (
+							<div className="text-center py-8 text-sm text-muted-foreground">
+								No leads
+							</div>
+						) : (
+							leads
+								.filter((lead) => lead.status === status)
+								.map((lead) => (
+									<div
+										key={lead.id}
+										draggable
+										onDragStart={(e) => handleDragStart(e, lead.id)}
+										onClick={() => onLeadClick(lead)}
+									>
+										<LeadCard lead={lead} />
+									</div>
+								))
+						)}
 					</div>
 				</div>
 			))}

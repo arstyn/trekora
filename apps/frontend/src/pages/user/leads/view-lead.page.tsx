@@ -22,9 +22,9 @@ import { ArrowLeft, Building, Mail, Phone, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { LeadForm } from "../_components/lead-form";
-import { LeadUpdates } from "../_components/lead-updates";
-import { ReminderTab } from "../_components/reminder-tab";
+import { LeadForm } from "./_components/lead-form";
+import { LeadUpdates } from "./_components/lead-updates";
+import { ReminderTab } from "./_components/reminder-tab";
 
 export default function LeadDetailsPage() {
     const { id } = useParams<{ id: string }>();

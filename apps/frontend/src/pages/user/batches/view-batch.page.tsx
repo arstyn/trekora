@@ -1,4 +1,14 @@
 import NAText from "@/components/na-text";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,16 +20,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
     Table,
     TableBody,
@@ -50,8 +50,8 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { BookingModal } from "./_component/booking-modal";
-import { CoordinatorModal } from "./_component/coordinator-modal";
+import { BookingModal } from "./_components/booking-modal";
+import { CoordinatorModal } from "./_components/coordinator-modal";
 
 export default function BatchDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -176,7 +176,7 @@ export default function BatchDetailsPage() {
         } catch (error: any) {
             toast.error(
                 error.response?.data?.message ||
-                    "Failed to delete booking. You might not have permission.",
+                "Failed to delete booking. You might not have permission.",
             );
         }
     };
@@ -440,8 +440,8 @@ export default function BatchDetailsPage() {
                             const progress =
                                 totalSteps > 0
                                     ? Math.round(
-                                          (completedSteps / totalSteps) * 100,
-                                      )
+                                        (completedSteps / totalSteps) * 100,
+                                    )
                                     : 0;
 
                             return (
@@ -587,14 +587,14 @@ export default function BatchDetailsPage() {
                                                                 key={step.id}
                                                                 variant={
                                                                     step.status ===
-                                                                    "completed"
+                                                                        "completed"
                                                                         ? "default"
                                                                         : "secondary"
                                                                 }
                                                                 className="text-[10px] flex items-center gap-1"
                                                             >
                                                                 {step.status ===
-                                                                "completed" ? (
+                                                                    "completed" ? (
                                                                     <div className="w-1.5 h-1.5 rounded-full bg-white" />
                                                                 ) : (
                                                                     <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
@@ -673,15 +673,15 @@ export default function BatchDetailsPage() {
                                                     }
                                                     {booking.primaryCustomer
                                                         ?.phone && (
-                                                        <>
-                                                            <Phone className="w-3 h-3 ml-2" />
-                                                            {
-                                                                booking
-                                                                    .primaryCustomer
-                                                                    ?.phone
-                                                            }
-                                                        </>
-                                                    )}
+                                                            <>
+                                                                <Phone className="w-3 h-3 ml-2" />
+                                                                {
+                                                                    booking
+                                                                        .primaryCustomer
+                                                                        ?.phone
+                                                                }
+                                                            </>
+                                                        )}
                                                 </div>
                                             </div>
                                         </div>
@@ -779,11 +779,11 @@ export default function BatchDetailsPage() {
                                                         ?.steps ||
                                                         booking.currentWorkflow
                                                             .steps.length ===
-                                                            0) && (
-                                                        <span className="text-xs text-muted-foreground italic">
-                                                            No workflow data
-                                                        </span>
-                                                    )}
+                                                        0) && (
+                                                            <span className="text-xs text-muted-foreground italic">
+                                                                No workflow data
+                                                            </span>
+                                                        )}
                                                 </div>
                                             </div>
                                         </div>
@@ -875,16 +875,15 @@ export default function BatchDetailsPage() {
                                 >
                                     <div className="absolute left-0 mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 bg-background shadow-md z-10 transition-transform group-hover:scale-110">
                                         <div
-                                            className={`h-4 w-4 rounded-md flex items-center justify-center ${
-                                                log.action === "create"
+                                            className={`h-4 w-4 rounded-md flex items-center justify-center ${log.action === "create"
                                                     ? "bg-emerald-500 text-white"
                                                     : log.action ===
                                                         "status_change"
-                                                      ? "bg-blue-500 text-white"
-                                                      : log.action === "delete"
-                                                        ? "bg-rose-500 text-white"
-                                                        : "bg-primary text-white"
-                                            }`}
+                                                        ? "bg-blue-500 text-white"
+                                                        : log.action === "delete"
+                                                            ? "bg-rose-500 text-white"
+                                                            : "bg-primary text-white"
+                                                }`}
                                         >
                                             <div className="w-1.5 h-1.5 rounded-full bg-white" />
                                         </div>
@@ -938,9 +937,9 @@ export default function BatchDetailsPage() {
                                                         }
                                                         if (
                                                             log.action ===
-                                                                "coordinator_add" ||
+                                                            "coordinator_add" ||
                                                             log.action ===
-                                                                "coordinator_remove"
+                                                            "coordinator_remove"
                                                         ) {
                                                             const data =
                                                                 (log.newData ||
@@ -950,7 +949,7 @@ export default function BatchDetailsPage() {
                                                                     <Users className="w-3 h-3 text-primary" />
                                                                     <span>
                                                                         {log.action ===
-                                                                        "coordinator_add"
+                                                                            "coordinator_add"
                                                                             ? "Added"
                                                                             : "Removed"}{" "}
                                                                         Coordinator:
@@ -996,13 +995,13 @@ export default function BatchDetailsPage() {
                                                                         ]) => {
                                                                             if (
                                                                                 key ===
-                                                                                    "updatedAt" ||
+                                                                                "updatedAt" ||
                                                                                 key ===
-                                                                                    "id" ||
+                                                                                "id" ||
                                                                                 key ===
-                                                                                    "package" ||
+                                                                                "package" ||
                                                                                 key ===
-                                                                                    "coordinators"
+                                                                                "coordinators"
                                                                             )
                                                                                 return null;
                                                                             return (
@@ -1033,7 +1032,7 @@ export default function BatchDetailsPage() {
                                                         }
                                                         if (
                                                             typeof log.newData ===
-                                                                "object" &&
+                                                            "object" &&
                                                             log.newData !== null
                                                         ) {
                                                             return (
@@ -1047,11 +1046,11 @@ export default function BatchDetailsPage() {
                                                                         ]) => {
                                                                             if (
                                                                                 key ===
-                                                                                    "updatedAt" ||
+                                                                                "updatedAt" ||
                                                                                 key ===
-                                                                                    "id" ||
+                                                                                "id" ||
                                                                                 key ===
-                                                                                    "package"
+                                                                                "package"
                                                                             )
                                                                                 return null;
                                                                             return (
@@ -1070,11 +1069,11 @@ export default function BatchDetailsPage() {
                                                                                     </span>
                                                                                     <span className="truncate">
                                                                                         {typeof value ===
-                                                                                        "object"
+                                                                                            "object"
                                                                                             ? "..."
                                                                                             : String(
-                                                                                                  value,
-                                                                                              )}
+                                                                                                value,
+                                                                                            )}
                                                                                     </span>
                                                                                 </div>
                                                                             );

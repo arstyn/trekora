@@ -2,7 +2,9 @@ import DataTableFooter from "@/components/data-table-footer";
 import { PermissionGuard } from "@/components/permission-guard";
 import StatusBadge from "@/components/status-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,6 +22,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
 import {
@@ -45,10 +48,9 @@ import {
 import { useLayoutEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ActivateDialog } from "./_component/activate-modal";
-import { DeactivateDialog } from "./_component/deactivate-dialog";
-import { EmployeeModal } from "./_component/employee-modal";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ActivateDialog } from "./_components/activate-modal";
+import { DeactivateDialog } from "./_components/deactivate-dialog";
+import { EmployeeModal } from "./_components/employee-modal";
 
 export function EmployeesPage() {
     const navigate = useNavigate();
@@ -72,9 +74,11 @@ export function EmployeesPage() {
     );
 
     const [currentTab, setCurrentTab] = useState<"active" | "archived">("active");
+    const [isLoading, setIsLoading] = useState(true);
 
     const getEmployees = async (showArchived = false) => {
         try {
+            setIsLoading(true);
             const res = await axiosInstance.get<IEmployee[]>(`/employee?archived=${showArchived}`);
             setEmployees(res.data);
         } catch (error) {
@@ -83,12 +87,16 @@ export function EmployeesPage() {
             } else {
                 toast.error("Failed to load updates");
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
     useLayoutEffect(() => {
         getEmployees(currentTab === "archived");
     }, [currentTab]);
+
+    const [selectedEmployeeIdFromUrl, setSelectedEmployeeIdFromUrl] = useState<string | null>(null);
 
     // Handle URL parameters for selected employee
     useLayoutEffect(() => {
@@ -98,12 +106,19 @@ export function EmployeesPage() {
             const foundEmployee = employees.find((e) => e.id === employeeId);
             if (foundEmployee) {
                 setSelectedEmployee(foundEmployee);
-                setModalState({ open: true, mode: "view" });
+                if (selectedEmployeeIdFromUrl !== employeeId) {
+                    setModalState({ open: true, mode: "view" });
+                    setSelectedEmployeeIdFromUrl(employeeId);
+                }
             }
         } else {
-            setSelectedEmployee(null);
+            if (selectedEmployeeIdFromUrl) {
+                setModalState((prev) => prev.open ? { ...prev, open: false } : prev);
+                setSelectedEmployee(null);
+                setSelectedEmployeeIdFromUrl(null);
+            }
         }
-    }, [location.search, employees]);
+    }, [location.search, employees, selectedEmployeeIdFromUrl]);
 
     // Define the columns for the table
     const columns: ColumnDef<IEmployee>[] = [
@@ -143,15 +158,29 @@ export function EmployeesPage() {
             header: "Permission Sets",
             cell: ({ row }) => {
                 const employee = row.original;
+
                 // Permission sets may not be loaded in the initial employee list
                 // They can be viewed in the employee detail dialog
-                const permissionSetCount = employee.permissionSets?.length ?? 0;
+                const permissionSets = employee.permissionSets ?? [];
+                const permissionSetCount = permissionSets.length;
+
+                if (permissionSetCount === 0) {
+                    return <span className="text-sm text-muted-foreground">—</span>;
+                }
+
                 return (
-                    <span className="text-sm text-muted-foreground">
-                        {permissionSetCount > 0
-                            ? `${permissionSetCount} set(s)`
-                            : "—"}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                        {permissionSets.slice(0, 2).map((set) => (
+                            <Badge key={set.id} variant="secondary" className="text-xs">
+                                {set.name}
+                            </Badge>
+                        ))}
+                        {permissionSetCount > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                                +{permissionSetCount - 2}
+                            </Badge>
+                        )}
+                    </div>
                 );
             },
         },
@@ -366,8 +395,7 @@ export function EmployeesPage() {
 
     // Handle viewing an employee
     const handleViewEmployee = (employee: IEmployee) => {
-        setSelectedEmployee(employee);
-        setModalState({ open: true, mode: "view" });
+        navigate(`?selected=${employee.id}`);
     };
 
     // Handle editing an employee
@@ -398,20 +426,6 @@ export function EmployeesPage() {
                 toast.error("Failed to load updates");
             }
         }
-    };
-
-    // Handle updating an employee
-    const handleUpdateEmployee = (
-        id: string,
-        updatedEmployee: Partial<IEmployee>,
-    ) => {
-        setEmployees((prev) =>
-            prev.map((employee) =>
-                employee.id === id
-                    ? { ...employee, ...updatedEmployee }
-                    : employee,
-            ),
-        );
     };
 
     return (
@@ -492,7 +506,17 @@ export function EmployeesPage() {
                         ))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows?.length ? (
+                        {isLoading ? (
+                            Array.from({ length: 5 }).map((_, index) => (
+                                <TableRow key={`skeleton-${index}`}>
+                                    {columns.map((_, colIndex) => (
+                                        <TableCell key={`skeleton-cell-${index}-${colIndex}`}>
+                                            <Skeleton className="h-8 w-full" />
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
                                     key={row.id}
@@ -542,13 +566,11 @@ export function EmployeesPage() {
                 }}
                 employee={selectedEmployee}
                 employees={employees}
-                onSuccess={(employee, action) => {
+                onSuccess={(_, action) => {
+                    getEmployees(currentTab === "archived");
                     if (action === "add") {
-                        setEmployees((prev) => [employee, ...prev]);
                         table.setPageIndex(0);
                         table.resetColumnFilters();
-                    } else {
-                        handleUpdateEmployee(employee.id, employee);
                     }
                 }}
                 onEdit={(employee) => handleEditEmployee(employee)}
