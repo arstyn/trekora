@@ -68,7 +68,7 @@ export class BookingController {
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
   ) {
-    const employee = await this.employeeService.findProfile(req.user.userId);
+    const employee = await this.employeeService.findProfile(req.user.userId, req.user.organizationId);
     if (!employee || !employee.id) {
       return [];
     }

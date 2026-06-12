@@ -29,6 +29,7 @@ import { Permission } from '../entity/permission.entity';
 import { UserNotificationType } from '../entity/user-notification-type.entity';
 import { UserPermissionSet } from '../entity/user-permission-set.entity';
 import { User } from '../entity/user.entity';
+import { UserOrganization } from '../entity/user-organization.entity';
 import { batches } from './batch.seed';
 import { branches } from './branch.seed';
 import { customers } from './customer.seed';
@@ -201,7 +202,7 @@ async function seed() {
           email: user.email,
           password: hashedPassword,
           phone: user.phone,
-          organizationId: org.id,
+          lastAccessedOrganizationId: org.id,
           notificationsEnabled: user.notificationsEnabled,
           newsletterSubscribed: user.newsletterSubscribed,
           profilePhoto: user.profilePhoto,
@@ -209,6 +210,13 @@ async function seed() {
 
         const savedUser = await queryRunner.manager.save(newUser);
         console.log('User created:', savedUser.id);
+
+        const userOrg = queryRunner.manager.create(UserOrganization, {
+          userId: savedUser.id,
+          organizationId: org.id,
+          relation: 'owner'
+        });
+        await queryRunner.manager.save(userOrg);
 
         // Check if there are additional details for this employee
         const detailedEmployee = additionalEmployees.find(
@@ -541,17 +549,18 @@ async function seed() {
         continue;
       }
 
-      // Find a random user from the organization to be the creator
-      const users = await queryRunner.manager.find(User, {
+      // Find a random user from the organization to be the creator via Employee
+      const employees = await queryRunner.manager.find(Employee, {
         where: { organizationId: org.id },
       });
+      const validEmployees = employees.filter(e => e.userId);
 
-      if (users.length === 0) {
+      if (validEmployees.length === 0) {
         console.log(`No users found for organization: ${org.name}`);
         continue;
       }
 
-      const randomUser = users[Math.floor(Math.random() * users.length)];
+      const randomEmployee = validEmployees[Math.floor(Math.random() * validEmployees.length)];
 
       const lead = queryRunner.manager.create(Lead, {
         name: leadData.name,
@@ -561,7 +570,7 @@ async function seed() {
         notes: leadData.notes,
         status: leadData.status,
         organizationId: org.id,
-        createdById: randomUser.id,
+        createdById: randomEmployee.userId,
       });
 
       const savedLead = await queryRunner.manager.save(lead);
@@ -582,17 +591,18 @@ async function seed() {
         continue;
       }
 
-      // Find a random user from the organization to be the creator
-      const users = await queryRunner.manager.find(User, {
+      // Find a random user from the organization to be the creator via Employee
+      const employees = await queryRunner.manager.find(Employee, {
         where: { organizationId: org.id },
       });
+      const validEmployees = employees.filter(e => e.userId);
 
-      if (users.length === 0) {
+      if (validEmployees.length === 0) {
         console.log(`No users found for organization: ${org.name}`);
         continue;
       }
 
-      const randomUser = users[Math.floor(Math.random() * users.length)];
+      const randomEmployee = validEmployees[Math.floor(Math.random() * validEmployees.length)];
 
       const customer = queryRunner.manager.create(Customer, {
         // Personal Details
@@ -640,7 +650,7 @@ async function seed() {
 
         // System Fields
         organizationId: org.id,
-        createdById: randomUser.id,
+        createdById: randomEmployee.userId,
 
         // File Uploads
         profilePhoto: customerData.profilePhoto,
@@ -904,8 +914,7 @@ async function seed() {
         // 2. Find key managers in this organization
         const adminUser = allUsers.find(
           (u) =>
-            u.email.toLowerCase() === hierarchy.adminEmail.toLowerCase() &&
-            u.organizationId === org.id,
+            u.email.toLowerCase() === hierarchy.adminEmail.toLowerCase()
         );
         const adminEmp = adminUser
           ? allEmployees.find((e) => e.userId === adminUser.id)

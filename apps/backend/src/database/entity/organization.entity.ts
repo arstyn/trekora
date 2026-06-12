@@ -2,9 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { UserOrganization } from './user-organization.entity';
 
 @Entity('organization')
 export class Organization {
@@ -34,4 +36,7 @@ export class Organization {
 
   @Column({ type: 'varchar', nullable: true, name: 'description' })
   description?: string;
+
+  @OneToMany(() => UserOrganization, (userOrg) => userOrg.organization)
+  userOrganizations: UserOrganization[];
 }

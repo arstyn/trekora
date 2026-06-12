@@ -11,6 +11,7 @@ import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
+import { UserOrganization } from 'src/database/entity/user-organization.entity';
 
 @Injectable()
 export class UserInviteService {
@@ -69,9 +70,28 @@ export class UserInviteService {
         email: invite.email,
         name: invite.employee.name,
         phone: invite.employee.phone,
-        organizationId: invite.employee.organizationId,
+        lastAccessedOrganizationId: invite.employee.organizationId,
         isActive: true,
       });
+
+      const userOrgRepo = this.employeeRepository.manager.getRepository(UserOrganization);
+      await userOrgRepo.save(userOrgRepo.create({
+        userId: user.id,
+        organizationId: invite.employee.organizationId,
+        relation: 'member'
+      }));
+    } else {
+      const userOrgRepo = this.employeeRepository.manager.getRepository(UserOrganization);
+      const existingUserOrg = await userOrgRepo.findOne({
+        where: { userId: user.id, organizationId: invite.employee.organizationId }
+      });
+      if (!existingUserOrg) {
+        await userOrgRepo.save(userOrgRepo.create({
+          userId: user.id,
+          organizationId: invite.employee.organizationId,
+          relation: 'member'
+        }));
+      }
     }
 
     // Associate the employee record with the user ID!

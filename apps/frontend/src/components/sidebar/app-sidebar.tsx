@@ -101,6 +101,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             try {
                 const res = await axiosInstance.get<any[]>("/auth/user-organizations");
                 if (res) {
+                    console.log(res.data);
                     setOrganizations(res.data);
                 }
             } catch (error) {
@@ -307,17 +308,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 </DropdownMenuLabel>
                                 {organizations.map((orgEmp) => (
                                     <DropdownMenuItem
-                                        key={orgEmp.organization.id}
-                                        onClick={() => handleSwitch(orgEmp.organization.id)}
+                                        key={orgEmp.id}
+                                        onClick={() => handleSwitch(orgEmp.id)}
                                         className="gap-2 p-2 cursor-pointer"
                                     >
                                         <div className="flex size-6 items-center justify-center rounded-sm border bg-background">
                                             <Building className="size-3 shrink-0" />
                                         </div>
                                         <div className="flex-1 text-sm">
-                                            {orgEmp.organization.name}
+                                            {orgEmp.name}
                                         </div>
-                                        {orgEmp.organization.id === userData?.organization?.id && (
+                                        {orgEmp.id === userData?.organization?.id && (
                                             <span className="ml-auto text-xs text-green-600 font-semibold">✓</span>
                                         )}
                                     </DropdownMenuItem>

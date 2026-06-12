@@ -100,7 +100,7 @@ export class CustomerController {
     hasMore: boolean;
     total: number;
   }> {
-    const employee = await this.employeeService.findProfile(req.user.userId);
+    const employee = await this.employeeService.findProfile(req.user.userId, req.user.organizationId);
     if (!employee || !employee.id) {
       return { customers: [], total: 0, hasMore: false };
     }
