@@ -35,10 +35,6 @@ export class PermissionCheckService {
       return false;
     }
 
-    // Get all permission sets assigned to the user
-    const userPermissionSets =
-      await this.permissionSetService.getPermissionSetsForUser(userId);
-
     // Also check if user has a linked employee and get their permission sets
     const employee = await this.employeeRepository.findOne({
       where: { userId, organizationId },
@@ -48,18 +44,13 @@ export class PermissionCheckService {
     if (employee) {
       employeePermissionSets =
         await this.permissionSetService.getPermissionSetsForUser(
-          undefined,
           employee.id,
         );
     }
 
     // Combine both sets and remove duplicates
-    const allPermissionSets = [
-      ...userPermissionSets,
-      ...employeePermissionSets,
-    ];
     const uniquePermissionSets = Array.from(
-      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values(),
+      new Map(employeePermissionSets.map((ps) => [ps.id, ps])).values(),
     );
 
     // Get permissions from all assigned permission sets
@@ -120,7 +111,6 @@ export class PermissionCheckService {
     // Get all permission sets assigned to the employee
     const permissionSets =
       await this.permissionSetService.getPermissionSetsForUser(
-        undefined,
         employeeId,
       );
 

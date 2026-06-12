@@ -43,7 +43,6 @@ export class EmployeeService {
     // User and employee are always kept in sync, so we only need to check employee
     const permissionSets =
       await this.permissionSetService.getPermissionSetsForUser(
-        undefined,
         employee.id,
       );
 
@@ -212,30 +211,10 @@ export class EmployeeService {
     if (!employee) return null;
 
     // Get permission sets assigned directly to the employee
-    const employeePermissionSets =
+    const uniquePermissionSets =
       await this.permissionSetService.getPermissionSetsForUser(
-        undefined,
         employee.id,
       );
-
-    // If employee has a linked user, also get permission sets assigned to the user
-    let userPermissionSets: any[] = [];
-    if (employee.userId) {
-      userPermissionSets =
-        await this.permissionSetService.getPermissionSetsForUser(
-          employee.userId,
-          undefined,
-        );
-    }
-
-    // Combine both sets and remove duplicates
-    const allPermissionSets = [
-      ...employeePermissionSets,
-      ...userPermissionSets,
-    ];
-    const uniquePermissionSets = Array.from(
-      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values(),
-    );
 
     // Attach permission sets to employee object
     (employee as any).permissionSets = uniquePermissionSets;

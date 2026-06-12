@@ -11,7 +11,7 @@ import {
 } from 'typeorm';
 import { Organization } from './organization.entity';
 import { PermissionSetPermission } from './permission-set-permission.entity';
-import { UserPermissionSet } from './user-permission-set.entity';
+import { ProfilePermissionSet } from './profile-permission-set.entity';
 
 @Entity('permission_set')
 @Unique(['name', 'organizationId'])
@@ -42,10 +42,10 @@ export class PermissionSet {
   permissionSetPermissions: PermissionSetPermission[];
 
   @OneToMany(
-    () => UserPermissionSet,
-    (userPermissionSet) => userPermissionSet.permissionSet,
+    () => ProfilePermissionSet,
+    (profilePermissionSet) => profilePermissionSet.permissionSet,
   )
-  userPermissionSets: UserPermissionSet[];
+  profilePermissionSets: ProfilePermissionSet[];
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;

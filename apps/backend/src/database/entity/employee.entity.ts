@@ -12,6 +12,7 @@ import { Branch } from './branch.entity';
 import { Organization } from './organization.entity';
 import { UserDepartments } from './user-departments.entity';
 import { User } from './user.entity';
+import { ProfilePermissionSet } from './profile-permission-set.entity';
 
 export enum EmployeeStatus {
   ACTIVE = 'active',
@@ -145,4 +146,7 @@ export class Employee {
     name: 'status',
   })
   status: EmployeeStatus;
+
+  @OneToMany(() => ProfilePermissionSet, (pps) => pps.employee)
+  profilePermissionSets: ProfilePermissionSet[];
 }
