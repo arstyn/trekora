@@ -5,9 +5,9 @@ import type { ICustomer } from "@/types/customer.type";
 import { PlusCircle, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import CustomerList from "./_component/customer-list";
-import EnhancedCustomerForm from "./_component/enhanced-customer-form";
-import { ViewCustomerDialog } from "./_component/view-customer-dialog";
+import CustomerList from "./_components/customer-list";
+import EnhancedCustomerForm from "./_components/enhanced-customer-form";
+import { ViewCustomerDialog } from "./_components/view-customer-dialog";
 
 export default function CustomerManagement() {
 	const navigate = useNavigate();
@@ -19,16 +19,22 @@ export default function CustomerManagement() {
 	const [isAddingCustomer, setIsAddingCustomer] = useState(false);
 	const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
 		const fetchCustomers = async () => {
-			const res = await axiosInstance.get<{
-				customers: ICustomer[];
-				hasMore: boolean;
-				total: number;
-			}>("/customers");
-			if (res && res.data) {
-				setCustomers(res.data.customers);
+			try {
+				setIsLoading(true);
+				const res = await axiosInstance.get<{
+					customers: ICustomer[];
+					hasMore: boolean;
+					total: number;
+				}>("/customers");
+				if (res && res.data) {
+					setCustomers(res.data.customers);
+				}
+			} finally {
+				setIsLoading(false);
 			}
 		};
 		fetchCustomers();
@@ -115,6 +121,7 @@ export default function CustomerManagement() {
 
 			<CustomerList
 				customers={filteredCustomers}
+				isLoading={isLoading}
 				onDelete={handleDeleteCustomer}
 				onCustomerClick={handleCustomerClick}
 			/>

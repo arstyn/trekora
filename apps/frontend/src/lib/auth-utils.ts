@@ -9,11 +9,11 @@ export const refreshToken = async () => {
 	if (!refreshToken) return null;
 
 	try {
-		const { accessToken } = await axiosInstance.post<
-			{ refreshToken: string },
+		const response = await axiosInstance.post<
 			{ accessToken: string }
 		>("/auth/refresh-token", { refreshToken });
 
+		const accessToken = response.data.accessToken;
 		localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
 		return accessToken;
 	} catch (error) {
@@ -61,11 +61,11 @@ export const getNewAccessToken = async () => {
 		const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 		if (!refreshToken) return null;
 
-		const { accessToken } = await axiosInstance.post<
-			{ refreshToken: string },
+		const response = await axiosInstance.post<
 			IRefreshResponseDto
 		>("/auth/refresh-token", { refreshToken });
 
+		const accessToken = response.data.accessToken;
 		localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
 
 		const session = jwtDecode(accessToken);

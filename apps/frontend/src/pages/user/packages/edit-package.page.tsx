@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { PackageForm } from "./_component/package-form";
+import { PackageForm } from "./_components/package-form";
 
 export default function EditPackagePage() {
 	const { id } = useParams<{ id: string }>();

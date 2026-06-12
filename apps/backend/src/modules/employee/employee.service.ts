@@ -427,9 +427,9 @@ export class EmployeeService {
     }
   }
 
-  async findProfile(id: string): Promise<Employee | null> {
+  async findProfile(id: string, organizationId: string): Promise<Employee | null> {
     const employee = await this.employeeRepository.findOne({
-      where: { userId: id },
+      where: { userId: id, organizationId },
       relations: {
         branch: true,
         organization: true,
@@ -530,9 +530,9 @@ export class EmployeeService {
     await this.employeeRepository.delete(id);
   }
 
-  async getProfile(userId: string): Promise<IUserProfileDTO | null> {
+  async getProfile(userId: string, organizationId: string): Promise<IUserProfileDTO | null> {
     const employee = await this.employeeRepository.findOne({
-      where: { user: { id: userId } },
+      where: { user: { id: userId }, organizationId },
       relations: ['branch'],
     });
 

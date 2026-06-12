@@ -10,7 +10,7 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-    DialogFooter
+	DialogFooter
 } from "@/components/ui/dialog";
 import {
 	Form,
@@ -115,13 +115,13 @@ export function EmployeeModal({
 	onTerminate,
 }: EmployeeModalProps) {
 	const isViewMode = mode === "view";
-	
+
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
 	const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
 	const [verificationDocFile, setVerificationDocFile] = useState<File | null>(null);
 	const [verificationDocPreview, setVerificationDocPreview] = useState<string | null>(null);
-	
+
 	const profilePhotoRef = useRef<HTMLInputElement>(null);
 	const verificationDocRef = useRef<HTMLInputElement>(null);
 
@@ -135,7 +135,7 @@ export function EmployeeModal({
 	const [loadingLogs, setLoadingLogs] = useState(false);
 	const [showAllLogs, setShowAllLogs] = useState(false);
 
-	const filteredPermissionSets = allPermissionSets.filter(set => 
+	const filteredPermissionSets = allPermissionSets.filter(set =>
 		set.name.toLowerCase().includes(searchPermissionQuery.toLowerCase())
 	);
 
@@ -196,7 +196,7 @@ export function EmployeeModal({
 				loadPermissionSets();
 			}
 		} else {
-		    setProfilePhotoFile(null);
+			setProfilePhotoFile(null);
 			setProfilePhotoPreview(null);
 			setVerificationDocFile(null);
 			setVerificationDocPreview(null);
@@ -208,7 +208,7 @@ export function EmployeeModal({
 			setLoadingPermissionSets(true);
 			const allSets = await PermissionService.getAllPermissionSets();
 			setAllPermissionSets(allSets);
-			
+
 			if ((mode === "edit" || mode === "view") && employee?.id) {
 				const employeeSets = await PermissionService.getPermissionSetsForEmployee(employee.id);
 				setSelectedPermissionSetIds(employeeSets.map(set => set.id));
@@ -260,7 +260,7 @@ export function EmployeeModal({
 		if (data.address) formDataToSubmit.append("address", data.address);
 		if (data.phone) formDataToSubmit.append("phone", data.phone);
 		if (data.dateOfBirth) formDataToSubmit.append("dateOfBirth", format(data.dateOfBirth, "yyyy-MM-dd"));
-		
+
 		const finalNationality = data.nationality === "Other" ? data.customNationality : data.nationality;
 		const finalExperience = data.experience === "Other" ? data.customExperience : data.experience;
 		if (data.gender) formDataToSubmit.append("gender", data.gender);
@@ -347,133 +347,133 @@ export function EmployeeModal({
 
 				{isViewMode && employee ? (
 					<>
-					<ScrollArea className="flex-1 min-h-0">
-						<div className="space-y-8 pr-4">
-							<div className="flex items-center border-b pb-4">
-								<Avatar className="h-16 w-16">
-									<AvatarImage src={employee.profilePhoto || "/placeholder.svg"} alt={employee.name} className="object-cover w-full h-full" />
-									<AvatarFallback className="text-lg">{employee.name.charAt(0)}</AvatarFallback>
-								</Avatar>
-								<div className="flex items-center justify-between w-full px-4">
-									<div>
-										<h3 className="text-xl font-semibold">{employee.name}</h3>
-										<p className="text-sm text-muted-foreground">{employee.email}</p>
-									</div>
-									<StatusBadge status={employee.status} />
-								</div>
-							</div>
-
-							<div className="max-h-[50vh] overflow-auto space-y-5">
-								<div className="grid grid-cols-2 gap-6">
-									<div className="space-y-3">
-										<Detail label="Employee ID" value={employee.id} />
-										<Detail label="Branch" value={display(employee.branch?.name)} />
-										<Detail label="Manager" value={display(employee.manager?.name)} />
-										<Detail label="Organization" value={display(employee.organization?.name)} />
-										<Detail label="Email" value={display(employee.email)} />
-										<Detail label="Phone" value={display(employee.phone)} />
-										<Detail label="Marital Status" value={display(employee.maritalStatus)} />
-										<Detail label="Address" value={display(employee.address)} />
-										<Detail label="Date of Birth" value={display(formattedDOB)} />
-										<Detail label="Gender" value={display(employee.gender)} />
-									</div>
-									<div className="space-y-3">
-										<Detail label="Nationality" value={display(employee.nationality)} />
-										<Detail label="Experience" value={display(employee.experience)} />
-										<Detail label="Designation" value={display(employee.designation)} />
-										<Detail label="Specialization" value={display(employee.specialization)} />
-										<Detail label="Additional Info" value={display(employee.additional_info)} />
-										<Detail label="Join Date" value={display(formattedDate)} />
-										<Detail label="Employment Duration" value={employee.joinDate && calculateDuration(employee.joinDate)} />
-										<Detail label="Created At" value={format(new Date(employee.createdAt), "PPP")} />
-										<Detail label="Updated At" value={format(new Date(employee.updatedAt), "PPP")} />
-									</div>
-								</div>
-
-								{employee.employeeDepartments && employee.employeeDepartments.length > 0 && (
-									<div>
-										<p className="text-sm font-medium text-muted-foreground mb-1">Departments</p>
-										<ul className="list-disc list-inside text-sm">
-											{employee.employeeDepartments.map((dep, idx) => (
-												<li key={idx}>{dep.department.name || "N/A"}</li>
-											))}
-										</ul>
-									</div>
-								)}
-
-								<div>
-									<p className="text-sm font-medium text-muted-foreground mb-2">Permission Sets</p>
-									{loadingPermissionSets ? (
-										<p className="text-sm text-muted-foreground">Loading...</p>
-									) : selectedPermissionSetIds.length > 0 ? (
-										<div className="flex flex-wrap gap-2">
-											{allPermissionSets.filter(set => selectedPermissionSetIds.includes(set.id)).map((set) => (
-												<Badge key={set.id} variant="secondary">{set.name}</Badge>
-											))}
+						<ScrollArea className="flex-1 min-h-0">
+							<div className="space-y-8 pr-4">
+								<div className="flex items-center border-b pb-4">
+									<Avatar className="h-16 w-16">
+										<AvatarImage src={employee.profilePhoto || "/placeholder.svg"} alt={employee.name} className="object-cover w-full h-full" />
+										<AvatarFallback className="text-lg">{employee.name.charAt(0)}</AvatarFallback>
+									</Avatar>
+									<div className="flex items-center justify-between w-full px-4">
+										<div>
+											<h3 className="text-xl font-semibold">{employee.name}</h3>
+											<p className="text-sm text-muted-foreground">{employee.email}</p>
 										</div>
-									) : (
-										<p className="text-sm text-muted-foreground italic">No permission sets assigned</p>
-									)}
+										<StatusBadge status={employee.status} />
+									</div>
 								</div>
 
-								<div className="border-t pt-4 pr-2">
-									<p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-1.5"><History className="h-4 w-4" />Activity History</p>
-									{loadingLogs ? (
-										<p className="text-sm text-muted-foreground">Loading history...</p>
-									) : logs.length > 0 ? (
+								<div className="max-h-[50vh] overflow-auto space-y-5">
+									<div className="grid grid-cols-2 gap-6">
 										<div className="space-y-3">
-											{(showAllLogs ? logs : logs.slice(0, 3)).map((log) => (
-												<div key={log.id} className="text-xs bg-muted/40 p-2.5 rounded-lg border flex justify-between items-start gap-4">
-													<div className="space-y-1">
-														<p className="text-foreground font-medium">{log.details}</p>
-														<p className="text-muted-foreground">By: {log.performedBy ? `${log.performedBy.name} (${log.performedBy.email})` : "System"}</p>
-													</div>
-													<span className="text-muted-foreground shrink-0 font-medium">
-														{new Date(log.createdAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
-													</span>
-												</div>
-											))}
-											{logs.length > 3 && (
-												<div className="flex justify-center pt-1">
-													<Button type="button" variant="ghost" size="sm" onClick={() => setShowAllLogs(!showAllLogs)} className="text-xs font-semibold text-primary hover:text-primary/90">
-														{showAllLogs ? "View Less" : `View More (${logs.length - 3} more)`}
-													</Button>
-												</div>
-											)}
+											<Detail label="Employee ID" value={employee.id} />
+											<Detail label="Branch" value={display(employee.branch?.name)} />
+											<Detail label="Manager" value={display(employee.manager?.name)} />
+											<Detail label="Organization" value={display(employee.organization?.name)} />
+											<Detail label="Email" value={display(employee.email)} />
+											<Detail label="Phone" value={display(employee.phone)} />
+											<Detail label="Marital Status" value={display(employee.maritalStatus)} />
+											<Detail label="Address" value={display(employee.address)} />
+											<Detail label="Date of Birth" value={display(formattedDOB)} />
+											<Detail label="Gender" value={display(employee.gender)} />
 										</div>
-									) : (
-										<p className="text-sm text-muted-foreground italic">No activities recorded yet.</p>
+										<div className="space-y-3">
+											<Detail label="Nationality" value={display(employee.nationality)} />
+											<Detail label="Experience" value={display(employee.experience)} />
+											<Detail label="Designation" value={display(employee.designation)} />
+											<Detail label="Specialization" value={display(employee.specialization)} />
+											<Detail label="Additional Info" value={display(employee.additional_info)} />
+											<Detail label="Join Date" value={display(formattedDate)} />
+											<Detail label="Employment Duration" value={employee.joinDate && calculateDuration(employee.joinDate)} />
+											<Detail label="Created At" value={format(new Date(employee.createdAt), "PPP")} />
+											<Detail label="Updated At" value={format(new Date(employee.updatedAt), "PPP")} />
+										</div>
+									</div>
+
+									{employee.employeeDepartments && employee.employeeDepartments.length > 0 && (
+										<div>
+											<p className="text-sm font-medium text-muted-foreground mb-1">Departments</p>
+											<ul className="list-disc list-inside text-sm">
+												{employee.employeeDepartments.map((dep, idx) => (
+													<li key={idx}>{dep.department.name || "N/A"}</li>
+												))}
+											</ul>
+										</div>
 									)}
+
+									<div>
+										<p className="text-sm font-medium text-muted-foreground mb-2">Permission Sets</p>
+										{loadingPermissionSets ? (
+											<p className="text-sm text-muted-foreground">Loading...</p>
+										) : selectedPermissionSetIds.length > 0 ? (
+											<div className="flex flex-wrap gap-2">
+												{allPermissionSets.filter(set => selectedPermissionSetIds.includes(set.id)).map((set) => (
+													<Badge key={set.id} variant="secondary">{set.name}</Badge>
+												))}
+											</div>
+										) : (
+											<p className="text-sm text-muted-foreground italic">No permission sets assigned</p>
+										)}
+									</div>
+
+									<div className="border-t pt-4 pr-2">
+										<p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-1.5"><History className="h-4 w-4" />Activity History</p>
+										{loadingLogs ? (
+											<p className="text-sm text-muted-foreground">Loading history...</p>
+										) : logs.length > 0 ? (
+											<div className="space-y-3">
+												{(showAllLogs ? logs : logs.slice(0, 3)).map((log) => (
+													<div key={log.id} className="text-xs bg-muted/40 p-2.5 rounded-lg border flex justify-between items-start gap-4">
+														<div className="space-y-1">
+															<p className="text-foreground font-medium">{log.details}</p>
+															<p className="text-muted-foreground">By: {log.performedBy ? `${log.performedBy.name} (${log.performedBy.email})` : "System"}</p>
+														</div>
+														<span className="text-muted-foreground shrink-0 font-medium">
+															{new Date(log.createdAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+														</span>
+													</div>
+												))}
+												{logs.length > 3 && (
+													<div className="flex justify-center pt-1">
+														<Button type="button" variant="ghost" size="sm" onClick={() => setShowAllLogs(!showAllLogs)} className="text-xs font-semibold text-primary hover:text-primary/90">
+															{showAllLogs ? "View Less" : `View More (${logs.length - 3} more)`}
+														</Button>
+													</div>
+												)}
+											</div>
+										) : (
+											<p className="text-sm text-muted-foreground italic">No activities recorded yet.</p>
+										)}
+									</div>
 								</div>
 							</div>
+						</ScrollArea>
+						<div className="pt-4 flex flex-wrap justify-end gap-2 border-t flex-shrink-0">
+							{employee.isArchived ? (
+								onUnarchive && <Button variant="outline" className="text-blue-600" onClick={() => onUnarchive(employee)}>Unarchive</Button>
+							) : (
+								<>
+									{(employee.status === "inactive" || employee.status === "pending_activation") && onResendInvite && (
+										<Button variant="outline" className="text-blue-600" onClick={() => onResendInvite(employee)}>
+											{employee.status === "pending_activation" ? "Resend Invite" : "Send Invite"}
+										</Button>
+									)}
+									{employee.status === "terminated" && onReactivate && (
+										<Button variant="outline" className="text-green-600" onClick={() => onReactivate(employee)}>Reactivate</Button>
+									)}
+									{employee.status !== "terminated" && onTerminate && (
+										<Button variant="outline" className="text-red-600" onClick={() => onTerminate(employee)}>Terminate</Button>
+									)}
+									{onArchive && (
+										<Button variant="outline" className="text-amber-600" onClick={() => onArchive(employee)}>Archive</Button>
+									)}
+								</>
+							)}
+							<Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+							{onEdit && employee && (
+								<Button onClick={() => { onEdit(employee); }}>Edit Employee</Button>
+							)}
 						</div>
-					</ScrollArea>
-					<div className="pt-4 flex flex-wrap justify-end gap-2 border-t flex-shrink-0">
-						{employee.isArchived ? (
-							onUnarchive && <Button variant="outline" className="text-blue-600" onClick={() => onUnarchive(employee)}>Unarchive</Button>
-						) : (
-							<>
-								{(employee.status === "inactive" || employee.status === "pending_activation") && onResendInvite && (
-									<Button variant="outline" className="text-blue-600" onClick={() => onResendInvite(employee)}>
-										{employee.status === "pending_activation" ? "Resend Invite" : "Send Invite"}
-									</Button>
-								)}
-								{employee.status === "terminated" && onReactivate && (
-									<Button variant="outline" className="text-green-600" onClick={() => onReactivate(employee)}>Reactivate</Button>
-								)}
-								{employee.status !== "terminated" && onTerminate && (
-									<Button variant="outline" className="text-red-600" onClick={() => onTerminate(employee)}>Terminate</Button>
-								)}
-								{onArchive && (
-									<Button variant="outline" className="text-amber-600" onClick={() => onArchive(employee)}>Archive</Button>
-								)}
-							</>
-						)}
-						<Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-						{onEdit && employee && (
-							<Button onClick={() => { onEdit(employee); }}>Edit Employee</Button>
-						)}
-					</div>
 					</>
 				) : (
 					<Form {...form}>
@@ -583,30 +583,30 @@ export function EmployeeModal({
 								)} />
 
 								<FormField control={form.control} name="managerId" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Manager</FormLabel>
-                                        <FormControl>
-                                            <Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} defaultValue={field.value || "none"}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Select manager (optional)" /></SelectTrigger></FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="none">No Manager</SelectItem>
-                                                    {employees.filter(emp => emp.id !== employee?.id).map(emp => (
-                                                        <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
+									<FormItem>
+										<FormLabel>Manager</FormLabel>
+										<FormControl>
+											<Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} defaultValue={field.value || "none"}>
+												<FormControl><SelectTrigger><SelectValue placeholder="Select manager (optional)" /></SelectTrigger></FormControl>
+												<SelectContent>
+													<SelectItem value="none">No Manager</SelectItem>
+													{employees.filter(emp => emp.id !== employee?.id).map(emp => (
+														<SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)} />
 
 								<FormField control={form.control} name="joinDate" render={({ field }) => (
 									<FormItem className="flex flex-col"><FormLabel>Join Date</FormLabel><Popover modal={false}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}>
 										{field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
 										<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
 									</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-										<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
-									</PopoverContent></Popover><FormMessage /></FormItem>
+											<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
+										</PopoverContent></Popover><FormMessage /></FormItem>
 								)} />
 
 								<FormField control={form.control} name="address" render={({ field }) => (
@@ -620,8 +620,8 @@ export function EmployeeModal({
 										{field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
 										<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
 									</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-										<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
-									</PopoverContent></Popover><FormMessage /></FormItem>
+											<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
+										</PopoverContent></Popover><FormMessage /></FormItem>
 								)} />
 								<FormField control={form.control} name="gender" render={({ field }) => (
 									<FormItem><FormLabel>Gender</FormLabel><FormControl>
@@ -631,7 +631,7 @@ export function EmployeeModal({
 										</Select>
 									</FormControl><FormMessage /></FormItem>
 								)} />
-								
+
 								<FormField control={form.control} name="nationality" render={({ field }) => (
 									<FormItem><FormLabel>Nationality</FormLabel><FormControl>
 										<Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -661,7 +661,7 @@ export function EmployeeModal({
 								)}
 
 								<FormField control={form.control} name="designation" render={({ field }) => (
-									<FormItem><FormLabel>Designation</FormLabel><FormControl><Input placeholder="E.g. Software Engineer" {...field} /></FormControl><FormMessage /></FormItem>
+									<FormItem><FormLabel>Designation</FormLabel><FormControl><Input placeholder="E.g. Group Coodinator" {...field} /></FormControl><FormMessage /></FormItem>
 								)} />
 								<FormField control={form.control} name="specialization" render={({ field }) => (
 									<FormItem><FormLabel>Specialization</FormLabel><FormControl><Input placeholder="Specialization" {...field} /></FormControl><FormMessage /></FormItem>

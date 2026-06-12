@@ -45,7 +45,7 @@ export class LeadController {
   @RequirePermission('employee', 'read')
   async findTeamLeads(@Request() req: ApiRequestJWT): Promise<Lead[]> {
     // Get current user's employee record
-    const employee = await this.employeeService.findProfile(req.user.userId);
+    const employee = await this.employeeService.findProfile(req.user.userId, req.user.organizationId);
     if (!employee || !employee.id) {
       return [];
     }

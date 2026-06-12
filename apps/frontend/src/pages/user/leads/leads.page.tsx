@@ -1,19 +1,19 @@
+import { PermissionGuard } from "@/components/permission-guard";
 import { Button } from "@/components/ui/button";
 import axiosInstance from "@/lib/axios";
+import type { ICustomer } from "@/types/customer.type";
 import type { ILead, ILeadStatus } from "@/types/lead/lead.entity";
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import EnhancedCustomerForm from "../customers/_components/enhanced-customer-form";
 import { KanbanBoard } from "./_components/kanban-board";
 import { CreateLeadModal } from "./_components/lead-create-modal";
 import { LeadFilter } from "./_components/lead-filter";
 import { LeadTable } from "./_components/lead-table";
 import { ViewLeadDialog } from "./_components/lead-view-modal";
 import { ViewToggle } from "./_components/view-toggle";
-import type { ICustomer } from "@/types/customer.type";
-import EnhancedCustomerForm from "../customers/_component/enhanced-customer-form";
-import { PermissionGuard } from "@/components/permission-guard";
 
 export function Leads() {
     const navigate = useNavigate();
@@ -32,10 +32,12 @@ export function Leads() {
     const [isCreatingLead, setIsCreatingLead] = useState(false);
     const [openCustomerCreateModal, setOpenCustomerCreateModal] =
         useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const getLeads = async () => {
             try {
+                setIsLoading(true);
                 const res = await axiosInstance.get<ILead[]>("/lead");
                 setLeads(res.data);
                 setFilteredLeads(res.data);
@@ -45,6 +47,8 @@ export function Leads() {
                 } else {
                     toast.error("Failed to load updates");
                 }
+            } finally {
+                setIsLoading(false);
             }
         };
 
@@ -219,12 +223,14 @@ export function Leads() {
                             {view === "table" ? (
                                 <LeadTable
                                     leads={filteredLeads}
+                                    isLoading={isLoading}
                                     onStatusChange={updateLeadStatus}
                                     onLeadClick={handleLeadClick}
                                 />
                             ) : (
                                 <KanbanBoard
                                     leads={filteredLeads}
+                                    isLoading={isLoading}
                                     onLeadMove={updateLeadStatus}
                                     onLeadClick={handleLeadClick}
                                 />

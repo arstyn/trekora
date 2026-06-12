@@ -4,10 +4,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Organization } from './organization.entity';
+import { UserOrganization } from './user-organization.entity';
 
 @Entity('user')
 export class User {
@@ -23,16 +25,15 @@ export class User {
   // @Column('uuid', { nullable: true, name: 'branch_id' })
   // branchId?: string;
 
-  @Column('uuid', { nullable: true, name: 'organization_id' })
-  organizationId?: string;
+  @Column('uuid', { nullable: true, name: 'last_accessed_organization_id' })
+  lastAccessedOrganizationId?: string;
 
   // @ManyToOne(() => Branch, { nullable: true, onDelete: 'SET NULL' })
   // @JoinColumn({ name: 'branch_id' })
   // branch?: Branch;
 
-  @ManyToOne(() => Organization, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'organization_id' })
-  organization?: Organization;
+  @OneToMany(() => UserOrganization, (userOrg) => userOrg.user)
+  userOrganizations: UserOrganization[];
 
   @Column({ unique: true, name: 'email' })
   email: string;

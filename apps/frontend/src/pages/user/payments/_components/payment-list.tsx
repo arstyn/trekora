@@ -27,6 +27,7 @@ import {
     RefreshCw,
     Search,
     AlertTriangle,
+    CreditCard,
     Loader2,
     ChevronLeft,
     ChevronRight,
@@ -542,12 +543,20 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell
-                                    colSpan={10}
-                                    className="text-center py-8 text-muted-foreground"
-                                >
-                                    No {status === "all" ? "" : status} payments
-                                    found.
+                                <TableCell colSpan={10} className="h-64 text-center">
+                                    <div className="flex flex-col items-center justify-center py-12">
+                                        <div className="text-center">
+                                            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4">
+                                                <CreditCard className="h-10 w-10 text-primary" />
+                                            </div>
+                                            <h3 className="text-xl font-semibold text-primary mb-2">
+                                                No payments found
+                                            </h3>
+                                            <p className="text-muted-foreground max-w-sm mx-auto">
+                                                No {status === "all" ? "" : status} payments found.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         )}

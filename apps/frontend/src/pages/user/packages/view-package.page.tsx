@@ -23,7 +23,7 @@ import {
 import React, { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { PackageLogsModal } from "./_component/package-logs-modal";
+import { PackageLogsModal } from "./_components/package-logs-modal";
 import {
     HeroSkeleton,
     ItinerarySkeleton,
@@ -31,7 +31,7 @@ import {
     PaymentCancellationSkeleton,
     RequirementsSkeleton,
     SidebarSkeleton,
-} from "./_component/package-skeleton";
+} from "./_components/package-skeleton";
 
 export default function ViewPackagePage() {
     const { id } = useParams<{ id: string }>();

@@ -12,6 +12,7 @@ import { Organization } from 'src/database/entity/organization.entity';
 import { Otp } from 'src/database/entity/otp.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { User } from 'src/database/entity/user.entity';
+import { UserOrganization } from 'src/database/entity/user-organization.entity';
 import { ILoginResponse } from 'src/dto/auth.types';
 import { SignupFormDTO } from 'src/dto/signup.schema';
 import { DataSource } from 'typeorm';
@@ -65,16 +66,22 @@ export class AuthService {
     try {
       const payload = this.jwtService.verify(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET || 'your_refresh_token_secret',
-      }) as { userId: string };
+      }) as { userId: string; organizationId?: string };
 
       const user = await this.userService.findOne(payload.userId);
-      if (!user || !user.organizationId) {
+      if (!user) {
         throw new UnauthorizedException('Invalid refresh token');
+      }
+      
+      const orgId = user.lastAccessedOrganizationId || payload.organizationId;
+
+      if (!orgId) {
+        throw new UnauthorizedException('User does not belong to any organization');
       }
 
       const newAccessToken = await this.generateAccessToken(
         user.id,
-        user.organizationId,
+        orgId,
       );
       return { accessToken: newAccessToken };
     } catch (error) {
@@ -192,7 +199,7 @@ export class AuthService {
         name: userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : undefined,
         email: userData.email,
         phone: userData.phone,
-        organizationId: savedOrganization.id,
+        lastAccessedOrganizationId: savedOrganization.id,
         notificationsEnabled: userData.notifications ?? true,
         newsletterSubscribed: userData.newsletter ?? false,
         isActive: true, // Auto-activate since email is verified
@@ -200,6 +207,14 @@ export class AuthService {
       });
 
       const savedUser = await queryRunner.manager.save(newUser);
+
+      // Create user organization relation
+      const userOrg = queryRunner.manager.create(UserOrganization, {
+        userId: savedUser.id,
+        organizationId: savedOrganization.id,
+        relation: 'owner'
+      });
+      await queryRunner.manager.save(userOrg);
 
       // Create employee
       const employee = queryRunner.manager.create(Employee, {
@@ -288,11 +303,11 @@ export class AuthService {
 
       const accessToken = await this.generateAccessToken(
         savedUser.id,
-        savedUser.organizationId!,
+        savedOrganization.id,
       );
       const refreshToken = this.generateRefreshToken(
         savedUser.id,
-        savedUser.organizationId!,
+        savedOrganization.id,
       );
 
       return {
@@ -323,10 +338,15 @@ export class AuthService {
       );
     }
 
-    if (!user.organizationId) {
-      throw new UnauthorizedException(
-        'User does not belong to any organization',
-      );
+    let organizationId = user.lastAccessedOrganizationId;
+
+    if (!organizationId) {
+      const userOrg = await this.dataSource.getRepository(UserOrganization).findOne({ where: { userId: user.id } });
+      if (!userOrg) {
+        throw new UnauthorizedException('User does not belong to any organization');
+      }
+      organizationId = userOrg.organizationId;
+      await this.userService.update(user.id, { lastAccessedOrganizationId: organizationId });
     }
 
     // Verify OTP
@@ -343,11 +363,11 @@ export class AuthService {
 
     const accessToken = await this.generateAccessToken(
       user.id,
-      user.organizationId,
+      organizationId,
     );
     const refreshToken = this.generateRefreshToken(
       user.id,
-      user.organizationId,
+      organizationId,
     );
 
     return {
@@ -574,7 +594,7 @@ export class AuthService {
         const newUser = queryRunner.manager.create(User, {
           name: `${firstName} ${lastName}`,
           email: email,
-          organizationId: savedOrganization.id,
+          lastAccessedOrganizationId: savedOrganization.id,
           isActive: true, // Auto-activate Google users
           notificationsEnabled: true,
           newsletterSubscribed: false,
@@ -582,6 +602,14 @@ export class AuthService {
         });
 
         user = await queryRunner.manager.save(newUser);
+
+        // Create user organization relation
+        const userOrg = queryRunner.manager.create(UserOrganization, {
+          userId: user.id,
+          organizationId: savedOrganization.id,
+          relation: 'owner'
+        });
+        await queryRunner.manager.save(userOrg);
 
         // Create employee
         const employee = queryRunner.manager.create(Employee, {
@@ -640,13 +668,24 @@ export class AuthService {
       throw new UnauthorizedException('User account is deactivated.');
     }
 
+    let organizationId = user.lastAccessedOrganizationId;
+
+    if (!organizationId) {
+      const userOrg = await this.dataSource.getRepository(UserOrganization).findOne({ where: { userId: user.id } });
+      if (!userOrg) {
+        throw new UnauthorizedException('User does not belong to any organization');
+      }
+      organizationId = userOrg.organizationId;
+      await this.userService.update(user.id, { lastAccessedOrganizationId: organizationId });
+    }
+
     const accessToken = await this.generateAccessToken(
       user.id,
-      user.organizationId || '',
+      organizationId,
     );
     const refreshToken = this.generateRefreshToken(
       user.id,
-      user.organizationId || '',
+      organizationId,
     );
 
     return {
@@ -659,19 +698,26 @@ export class AuthService {
     };
   }
 
-  async getUserOrganizations(userId: string): Promise<Employee[]> {
-    return this.employeeService.findUserOrganizations(userId);
+  async getUserOrganizations(userId: string): Promise<any[]> {
+    const userOrgs = await this.dataSource.getRepository(UserOrganization).find({
+      where: { userId, isActive: true },
+      relations: ['organization'],
+    });
+    return userOrgs.map(uo => uo.organization);
   }
 
   async switchOrganization(userId: string, organizationId: string): Promise<any> {
-    // 1. Verify that the user belongs to the target organization as an active employee
-    const employee = await this.employeeService.findOneByUserIdAndOrgId(userId, organizationId);
-    if (!employee) {
+    // 1. Verify that the user belongs to the target organization
+    const userOrg = await this.dataSource.getRepository(UserOrganization).findOne({
+      where: { userId, organizationId, isActive: true },
+      relations: ['organization'],
+    });
+    if (!userOrg) {
       throw new UnauthorizedException('You do not have access to this organization');
     }
 
-    // 2. Update user's active organizationId in the DB
-    await this.userService.update(userId, { organizationId });
+    // 2. Update user's lastAccessedOrganizationId in the DB
+    await this.userService.update(userId, { lastAccessedOrganizationId: organizationId });
 
     // 3. Generate new Access and Refresh tokens
     const accessToken = await this.generateAccessToken(userId, organizationId);
@@ -685,7 +731,7 @@ export class AuthService {
       organizationId,
       userId,
       'organization_switched',
-      `User ${user?.name} (${user?.email}) switched active organization to ${employee.organization?.name}`,
+      `User ${user?.name} (${user?.email}) switched active organization to ${userOrg.organization?.name}`,
       { organizationId },
     );
 
@@ -707,7 +753,7 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    const orgId = user.organizationId;
+    const orgId = user.lastAccessedOrganizationId;
     if (!orgId) {
       throw new UnauthorizedException('User does not belong to any organization');
     }

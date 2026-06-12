@@ -1,4 +1,5 @@
 import DataTableFooter from "@/components/data-table-footer";
+import NAText from "@/components/na-text";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -6,6 +7,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
 	TableBody,
@@ -25,18 +27,18 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Users } from "lucide-react";
 import { useState } from "react";
 import { LeadStatusBadge } from "./lead-status-badge";
-import NAText from "@/components/na-text";
 
 interface LeadTableProps {
 	leads: ILead[];
+	isLoading?: boolean;
 	onStatusChange: (leadId: string, status: ILeadStatus) => void;
 	onLeadClick: (lead: ILead) => void;
 }
 
-export function LeadTable({ leads, onStatusChange, onLeadClick }: LeadTableProps) {
+export function LeadTable({ leads, isLoading, onStatusChange, onLeadClick }: LeadTableProps) {
 	const [sorting, setSorting] = useState<SortingState>([]);
 
 	const columns: ColumnDef<ILead>[] = [
@@ -178,7 +180,17 @@ export function LeadTable({ leads, onStatusChange, onLeadClick }: LeadTableProps
 						))}
 					</TableHeader>
 					<TableBody>
-						{table.getRowModel().rows.length ? (
+						{isLoading ? (
+							Array.from({ length: 5 }).map((_, index) => (
+								<TableRow key={`skeleton-${index}`}>
+									{columns.map((_, i) => (
+										<TableCell key={`skeleton-cell-${index}-${i}`}>
+											<Skeleton className="h-6 w-full" />
+										</TableCell>
+									))}
+								</TableRow>
+							))
+						) : table.getRowModel().rows.length ? (
 							table.getRowModel().rows.map((row) => (
 								<TableRow
 									key={row.id}
@@ -199,9 +211,21 @@ export function LeadTable({ leads, onStatusChange, onLeadClick }: LeadTableProps
 							<TableRow>
 								<TableCell
 									colSpan={columns.length}
-									className="h-24 text-center"
+									className="h-64 text-center"
 								>
-									No leads found.
+									<div className="flex flex-col items-center justify-center py-12">
+										<div className="text-center">
+											<div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4">
+												<Users className="h-10 w-10 text-primary" />
+											</div>
+											<h3 className="text-xl font-semibold text-primary mb-2">
+												No leads found
+											</h3>
+											<p className="text-muted-foreground max-w-sm mx-auto">
+												Get started by adding a new lead.
+											</p>
+										</div>
+									</div>
 								</TableCell>
 							</TableRow>
 						)}

@@ -1,24 +1,25 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import BookingService from "@/services/booking.service";
+import type { IBookingListItem, IBookingStatistics } from "@/types/booking.types";
 import {
+	AlertCircle,
 	AlertTriangle,
 	Calendar,
 	DollarSign,
+	Loader2,
 	Plus,
 	TrendingUp,
 	Users,
-	Loader2,
-	AlertCircle,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { BookingList } from "./_component/booking-list";
-import { CreateBookingDialog } from "./_component/create-booking-dialog";
-import BookingService from "@/services/booking.service";
-import type { IBookingStatistics, IBookingListItem } from "@/types/booking.types";
+import { BookingList } from "./_components/booking-list";
+import { CreateBookingDialog } from "./_components/create-booking-dialog";
 
 export default function BookingsPage() {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -72,27 +73,6 @@ export default function BookingsPage() {
 		fetchDashboardData();
 	};
 
-	if (loading) {
-		return (
-			<div className="container mx-auto p-6 space-y-6">
-				<div className="flex justify-between items-center">
-					<div>
-						<h1 className="text-3xl font-bold">Booking Management</h1>
-						<p className="text-muted-foreground">
-							Manage tour package bookings and track payments
-						</p>
-					</div>
-				</div>
-				<div className="flex items-center justify-center py-8">
-					<div className="flex items-center gap-2">
-						<Loader2 className="h-6 w-6 animate-spin" />
-						<span>Loading dashboard...</span>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
 	if (error) {
 		return (
 			<div className="container mx-auto p-6 space-y-6">
@@ -138,96 +118,111 @@ export default function BookingsPage() {
 			</div>
 
 			{/* Dashboard Stats */}
-			{dashboardStats && (
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="text-sm font-medium">
-								Total Bookings
-							</CardTitle>
-							<Users className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{dashboardStats.totalBookings}
-							</div>
-							<p className="text-xs text-muted-foreground">
-								All time bookings
-							</p>
-						</CardContent>
-					</Card>
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+				{loading ? (
+					Array.from({ length: 5 }).map((_, i) => (
+						<Card key={i}>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<Skeleton className="h-4 w-1/2" />
+								<Skeleton className="h-4 w-4" />
+							</CardHeader>
+							<CardContent>
+								<Skeleton className="h-8 w-1/2 mb-1" />
+								<Skeleton className="h-3 w-1/3" />
+							</CardContent>
+						</Card>
+					))
+				) : dashboardStats ? (
+					<>
+						<Card>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-sm font-medium">
+									Total Bookings
+								</CardTitle>
+								<Users className="h-4 w-4 text-muted-foreground" />
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{dashboardStats.totalBookings}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									All time bookings
+								</p>
+							</CardContent>
+						</Card>
 
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="text-sm font-medium">Pending</CardTitle>
-							<AlertTriangle className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{dashboardStats.pendingBookings}
-							</div>
-							<p className="text-xs text-muted-foreground">
-								Awaiting confirmation
-							</p>
-						</CardContent>
-					</Card>
+						<Card>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-sm font-medium">Pending</CardTitle>
+								<AlertTriangle className="h-4 w-4 text-muted-foreground" />
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{dashboardStats.pendingBookings}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									Awaiting confirmation
+								</p>
+							</CardContent>
+						</Card>
 
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="text-sm font-medium">
-								Confirmed
-							</CardTitle>
-							<Calendar className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{dashboardStats.confirmedBookings}
-							</div>
-							<p className="text-xs text-muted-foreground">
-								Ready to travel
-							</p>
-						</CardContent>
-					</Card>
+						<Card>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-sm font-medium">
+									Confirmed
+								</CardTitle>
+								<Calendar className="h-4 w-4 text-muted-foreground" />
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{dashboardStats.confirmedBookings}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									Ready to travel
+								</p>
+							</CardContent>
+						</Card>
 
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="text-sm font-medium">
-								Total Revenue
-							</CardTitle>
-							<DollarSign className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{BookingService.formatCurrency(
-									dashboardStats.totalRevenue
-								)}
-							</div>
-							<p className="text-xs text-muted-foreground">
-								All confirmed bookings
-							</p>
-						</CardContent>
-					</Card>
+						<Card>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-sm font-medium">
+									Total Revenue
+								</CardTitle>
+								<DollarSign className="h-4 w-4 text-muted-foreground" />
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{BookingService.formatCurrency(
+										dashboardStats.totalRevenue
+									)}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									All confirmed bookings
+								</p>
+							</CardContent>
+						</Card>
 
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="text-sm font-medium">
-								Pending Payments
-							</CardTitle>
-							<TrendingUp className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{BookingService.formatCurrency(
-									dashboardStats.pendingPayments
-								)}
-							</div>
-							<p className="text-xs text-muted-foreground">
-								Outstanding balance
-							</p>
-						</CardContent>
-					</Card>
-				</div>
-			)}
+						<Card>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-sm font-medium">
+									Pending Payments
+								</CardTitle>
+								<TrendingUp className="h-4 w-4 text-muted-foreground" />
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{BookingService.formatCurrency(
+										dashboardStats.pendingPayments
+									)}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									Outstanding balance
+								</p>
+							</CardContent>
+						</Card>
+					</>
+				) : null}
+			</div>
 
 			{/* Recent Bookings */}
 			<Card>
@@ -249,7 +244,20 @@ export default function BookingsPage() {
 					</div>
 				</CardHeader>
 				<CardContent>
-					{recentBookings.length > 0 ? (
+					{loading ? (
+						<div className="space-y-4">
+							{Array.from({ length: 3 }).map((_, i) => (
+								<div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+									<div className="flex-1 space-y-2">
+										<Skeleton className="h-6 w-1/3" />
+										<Skeleton className="h-4 w-1/4" />
+										<Skeleton className="h-4 w-1/2" />
+									</div>
+									<Skeleton className="h-9 w-24" />
+								</div>
+							))}
+						</div>
+					) : recentBookings.length > 0 ? (
 						<div className="space-y-4">
 							{recentBookings.map((booking) => (
 								<div
@@ -300,8 +308,16 @@ export default function BookingsPage() {
 							))}
 						</div>
 					) : (
-						<div className="text-center py-8 text-muted-foreground">
-							No recent bookings found.
+						<div className="flex flex-col items-center justify-center py-8">
+							<div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
+								<Calendar className="h-8 w-8 text-primary" />
+							</div>
+							<h3 className="text-lg font-semibold text-primary mb-1">
+								No recent bookings
+							</h3>
+							<p className="text-muted-foreground text-sm">
+								Bookings will appear here once created.
+							</p>
 						</div>
 					)}
 				</CardContent>

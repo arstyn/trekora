@@ -28,7 +28,7 @@ export class PermissionCheckService {
     action: string,
   ): Promise<boolean> {
     const user = await this.userRepository.findOne({
-      where: { id: userId, organizationId },
+      where: { id: userId },
     });
 
     if (!user) {

@@ -74,14 +74,15 @@ export class EmployeeController {
 
   @Get('profile')
   async findProfile(@Request() req: ApiRequestJWT): Promise<Employee | null> {
-    return this.employeeService.findProfile(req.user.userId);
+    return this.employeeService.findProfile(req.user.userId, req.user.organizationId);
   }
 
   // Get team user IDs for current manager
   @Get('my-team-user-ids')
   @RequirePermission('employee', 'read')
   async getMyTeamUserIds(@Request() req: ApiRequestJWT): Promise<string[]> {
-    const employee = await this.employeeService.findProfile(req.user.userId);
+    // 1. Get current user's profile to find their organization
+    const employee = await this.employeeService.findProfile(req.user.userId, req.user.organizationId);
     if (!employee || !employee.id) {
       return [];
     }

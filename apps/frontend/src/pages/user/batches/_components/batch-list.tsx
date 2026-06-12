@@ -22,6 +22,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import axiosInstance from "@/lib/axios";
 import type { IBatches } from "@/types/batches.types";
 import { format } from "date-fns";
@@ -44,11 +45,13 @@ interface BatchListProps {
 export function BatchList({ status }: BatchListProps) {
     const [batches, setBatches] = useState<IBatches[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
         const getBranch = async () => {
             try {
+                setIsLoading(true);
                 const res = await axiosInstance.get(
                     `/batches?status=${status}`,
                 );
@@ -59,6 +62,8 @@ export function BatchList({ status }: BatchListProps) {
                 } else {
                     toast.error("Failed to load batches");
                 }
+            } finally {
+                setIsLoading(false);
             }
         };
 
@@ -151,7 +156,18 @@ export function BatchList({ status }: BatchListProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredBatches.map((batch) => (
+                        {isLoading ? (
+                            Array.from({ length: 5 }).map((_, index) => (
+                                <TableRow key={`skeleton-${index}`}>
+                                    <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+                                </TableRow>
+                            ))
+                        ) : filteredBatches.map((batch) => (
                             <TableRow
                                 key={batch.id}
                                 className="cursor-pointer hover:bg-muted/50"
@@ -275,9 +291,23 @@ export function BatchList({ status }: BatchListProps) {
                         ))}
                     </TableBody>
                 </Table>
-                {filteredBatches.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                        No {status} batches found.
+                {!isLoading && filteredBatches.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-12">
+                        <div className="text-center">
+                            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4">
+                                <Calendar className="h-10 w-10 text-primary" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-primary mb-2">
+                                No {status} batches
+                            </h3>
+                            <p className="text-muted-foreground max-w-sm mx-auto">
+                                {status === "active" 
+                                    ? "There are currently no active batches running." 
+                                    : status === "upcoming" 
+                                    ? "You don't have any upcoming batches scheduled." 
+                                    : "No batches have been completed yet."}
+                            </p>
+                        </div>
                     </div>
                 )}
             </CardContent>

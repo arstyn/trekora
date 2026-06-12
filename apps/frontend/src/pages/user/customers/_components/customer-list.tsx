@@ -18,6 +18,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Table,
     TableBody,
@@ -36,17 +37,19 @@ import {
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 
 interface CustomerListProps {
     customers: ICustomer[];
+    isLoading?: boolean;
     onDelete: (customerId: string) => void;
     onCustomerClick: (customer: ICustomer) => void;
 }
 
 export default function CustomerList({
     customers,
+    isLoading,
     onDelete,
     onCustomerClick,
 }: CustomerListProps) {
@@ -179,17 +182,27 @@ export default function CustomerList({
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(
-                                                  header.column.columnDef
-                                                      .header,
-                                                  header.getContext(),
-                                              )}
+                                                header.column.columnDef
+                                                    .header,
+                                                header.getContext(),
+                                            )}
                                     </TableHead>
                                 ))}
                             </TableRow>
                         ))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows.length ? (
+                        {isLoading ? (
+                            Array.from({ length: 5 }).map((_, index) => (
+                                <TableRow key={`skeleton-${index}`}>
+                                    {columns.map((_, i) => (
+                                        <TableCell key={`skeleton-cell-${index}-${i}`}>
+                                            <Skeleton className="h-6 w-full" />
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : table.getRowModel().rows.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
                                     key={row.id}
@@ -212,10 +225,21 @@ export default function CustomerList({
                             <TableRow>
                                 <TableCell
                                     colSpan={columns.length}
-                                    className="h-24 text-center"
+                                    className="h-64 text-center"
                                 >
-                                    No customers found. Add a new customer to
-                                    get started.
+                                    <div className="flex flex-col items-center justify-center py-12">
+                                        <div className="text-center">
+                                            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4">
+                                                <Users className="h-10 w-10 text-primary" />
+                                            </div>
+                                            <h3 className="text-xl font-semibold text-primary mb-2">
+                                                No customers found
+                                            </h3>
+                                            <p className="text-muted-foreground max-w-sm mx-auto">
+                                                Add a new customer to get started.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         )}

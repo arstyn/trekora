@@ -1,25 +1,25 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import PaymentService from "@/services/payment.service";
+import type { OverduePayment, Payment, PaymentStats } from "@/types/payment.types";
 import {
 	AlertTriangle,
 	Clock,
 	CreditCard,
 	DollarSign,
+	Loader2,
 	Plus,
 	TrendingUp,
-	Loader2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { AddPaymentDialog } from "./_component/add-payment-dialog";
-import { PaymentList } from "./_component/payment-list";
-import PaymentService from "@/services/payment.service";
-import type { PaymentStats, OverduePayment, Payment } from "@/types/payment.types";
-import { useToast } from "@/hooks/use-toast";
+import { AddPaymentDialog } from "./_components/add-payment-dialog";
+import { PaymentList } from "./_components/payment-list";
 
 export default function PaymentsPage() {
 	const [addPaymentDialogOpen, setAddPaymentDialogOpen] = useState(false);
@@ -404,8 +404,16 @@ export default function PaymentsPage() {
 							))}
 						</div>
 					) : (
-						<div className="text-center py-8 text-muted-foreground">
-							No recent payments found.
+						<div className="flex flex-col items-center justify-center py-8">
+							<div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
+								<CreditCard className="h-8 w-8 text-primary" />
+							</div>
+							<h3 className="text-lg font-semibold text-primary mb-1">
+								No recent payments
+							</h3>
+							<p className="text-muted-foreground text-sm">
+								Payments will appear here once processed.
+							</p>
 						</div>
 					)}
 				</CardContent>

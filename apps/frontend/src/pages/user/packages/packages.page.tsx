@@ -1,6 +1,7 @@
 import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Card,
     CardContent,
@@ -24,10 +25,12 @@ import { NavLink } from "react-router-dom";
 export default function Packages() {
     const [packages, setPackages] = useState<IPackages[]>([]);
     const [error, setError] = useState<string>();
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const getPackages = async () => {
             try {
+                setIsLoading(true);
                 const res = await axiosInstance.get<IPackages[]>("/packages");
                 setPackages(res.data);
             } catch (error) {
@@ -36,6 +39,8 @@ export default function Packages() {
                 } else {
                     setError("Failed to load updates");
                 }
+            } finally {
+                setIsLoading(false);
             }
         };
 
@@ -52,97 +57,165 @@ export default function Packages() {
         );
     }
 
-    // Empty state when no packages exist
-    if (packages.length === 0) {
-        return (
-            <div className="min-h-screen">
-                <main className="px-4 sm:px-6 lg:px-6 py-6">
-                    {/* Stats - Show 0 for all stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-                        <Card>
-                            <CardContent className="px-6">
-                                <div className="flex items-center">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                        <MapPin className="w-6 h-6 text-primary" />
-                                    </div>
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium">
-                                            Total Packages
-                                        </p>
-                                        <p className="text-2xl font-bold">0</p>
-                                    </div>
+    return (
+        <div className="min-h-screen">
+            {/* Main Content */}
+            <main className="px-4 sm:px-6 lg:px-6 py-6">
+                {/* Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+                    <Card>
+                        <CardContent className="px-6">
+                            <div className="flex items-center">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <MapPin className="w-6 h-6 text-primary" />
                                 </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardContent className="px-6">
-                                <div className="flex items-center">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                        <Calendar className="w-6 h-6 text-primary" />
-                                    </div>
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium">
-                                            Published
-                                        </p>
-                                        <p className="text-2xl font-bold">0</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardContent className="px-6">
-                                <div className="flex items-center">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                        <Users className="w-6 h-6 text-primary" />
-                                    </div>
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium">
-                                            Drafts
-                                        </p>
-                                        <p className="text-2xl font-bold">0</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardContent className="px-6">
-                                <div className="flex items-center">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                        <IndianRupee className="w-6 h-6 text-primary" />
-                                    </div>
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium">
-                                            Avg. Price
-                                        </p>
-                                        <p className="text-2xl font-bold">₹0</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <PermissionGuard resource="package" action="create">
-                            <NavLink to="/packages/create">
-                                <div className="flex items-center bg-card hover:bg-secondary cursor-pointer rounded-xl border px-6 h-full">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                        <Plus className="w-6 h-6 text-primary" />
-                                    </div>
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium">
-                                            Create
-                                        </p>
+                                <div className="ml-4">
+                                    <p className="text-sm font-medium">
+                                        Total Packages
+                                    </p>
+                                    {isLoading ? (
+                                        <Skeleton className="h-8 w-16 mt-1" />
+                                    ) : (
                                         <p className="text-2xl font-bold">
-                                            Package
+                                            {packages.length}
                                         </p>
-                                    </div>
+                                    )}
                                 </div>
-                            </NavLink>
-                        </PermissionGuard>
-                    </div>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                    {/* Empty State */}
+                    <Card>
+                        <CardContent className="px-6">
+                            <div className="flex items-center">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <Calendar className="w-6 h-6 text-primary" />
+                                </div>
+                                <div className="ml-4">
+                                    <p className="text-sm font-medium">
+                                        Published
+                                    </p>
+                                    {isLoading ? (
+                                        <Skeleton className="h-8 w-16 mt-1" />
+                                    ) : (
+                                        <p className="text-2xl font-bold">
+                                            {
+                                                packages.filter(
+                                                    (pkg) =>
+                                                        pkg.status ===
+                                                            "published" ||
+                                                        pkg.status === "edited",
+                                                ).length
+                                            }
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="px-6">
+                            <div className="flex items-center">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <Users className="w-6 h-6 text-primary" />
+                                </div>
+                                <div className="ml-4">
+                                    <p className="text-sm font-medium">
+                                        Drafts
+                                    </p>
+                                    {isLoading ? (
+                                        <Skeleton className="h-8 w-16 mt-1" />
+                                    ) : (
+                                        <p className="text-2xl font-bold">
+                                            {
+                                                packages.filter(
+                                                    (pkg) => pkg.status === "draft",
+                                                ).length
+                                            }
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="px-6">
+                            <div className="flex items-center">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <IndianRupee className="w-6 h-6 text-primary" />
+                                </div>
+                                <div className="ml-4">
+                                    <p className="text-sm font-medium">
+                                        Avg. Price
+                                    </p>
+                                    {isLoading ? (
+                                        <Skeleton className="h-8 w-16 mt-1" />
+                                    ) : (
+                                        <p className="text-2xl font-bold">
+                                            ₹
+                                            {packages.length > 0 ? Math.round(
+                                                packages.reduce(
+                                                    (sum, pkg) =>
+                                                        sum +
+                                                        parseInt(pkg.price ?? "0"),
+                                                    0,
+                                                ) / packages.length,
+                                            ) : 0}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <PermissionGuard resource="package" action="create">
+                        <NavLink to="/packages/create">
+                            <div className="flex items-center bg-card hover:bg-secondary cursor-pointer rounded-xl border px-6 h-full">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <Plus className="w-6 h-6 text-primary" />
+                                </div>
+                                <div className="ml-4">
+                                    <p className="text-sm font-medium">
+                                        Create
+                                    </p>
+                                    <p className="text-2xl font-bold">
+                                        Package
+                                    </p>
+                                </div>
+                            </div>
+                        </NavLink>
+                    </PermissionGuard>
+                </div>
+
+                {/* Package Grid / Skeletons / Empty State */}
+                {isLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <Card key={`skeleton-${i}`} className="overflow-hidden pt-0">
+                                <Skeleton className="h-48 w-full rounded-none" />
+                                <CardContent className="p-5 space-y-4">
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between">
+                                            <Skeleton className="h-6 w-3/4" />
+                                            <Skeleton className="h-6 w-16" />
+                                        </div>
+                                        <Skeleton className="h-4 w-full" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-4 w-1/2" />
+                                        <Skeleton className="h-4 w-1/3" />
+                                    </div>
+                                    <div className="flex justify-between pt-2">
+                                        <Skeleton className="h-8 w-24" />
+                                        <Skeleton className="h-8 w-24" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                ) : !isLoading && packages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16">
                         <div className="text-center">
                             <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-primary/10 mb-6">
@@ -169,130 +242,9 @@ export default function Packages() {
                             </PermissionGuard>
                         </div>
                     </div>
-                </main>
-            </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen">
-            {/* Main Content */}
-            <main className="px-4 sm:px-6 lg:px-6 py-6">
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-                    <Card>
-                        <CardContent className="px-6">
-                            <div className="flex items-center">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <MapPin className="w-6 h-6 text-primary" />
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium">
-                                        Total Packages
-                                    </p>
-                                    <p className="text-2xl font-bold">
-                                        {packages.length}
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="px-6">
-                            <div className="flex items-center">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <Calendar className="w-6 h-6 text-primary" />
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium">
-                                        Published
-                                    </p>
-                                    <p className="text-2xl font-bold">
-                                        {
-                                            packages.filter(
-                                                (pkg) =>
-                                                    pkg.status ===
-                                                        "published" ||
-                                                    pkg.status === "edited",
-                                            ).length
-                                        }
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="px-6">
-                            <div className="flex items-center">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <Users className="w-6 h-6 text-primary" />
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium">
-                                        Drafts
-                                    </p>
-                                    <p className="text-2xl font-bold">
-                                        {
-                                            packages.filter(
-                                                (pkg) => pkg.status === "draft",
-                                            ).length
-                                        }
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="px-6">
-                            <div className="flex items-center">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <IndianRupee className="w-6 h-6 text-primary" />
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium">
-                                        Avg. Price
-                                    </p>
-                                    <p className="text-2xl font-bold">
-                                        ₹
-                                        {Math.round(
-                                            packages.reduce(
-                                                (sum, pkg) =>
-                                                    sum +
-                                                    parseInt(pkg.price ?? "0"),
-                                                0,
-                                            ) / packages.length,
-                                        )}
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <PermissionGuard resource="package" action="create">
-                        <NavLink to="/packages/create">
-                            <div className="flex items-center bg-card hover:bg-secondary cursor-pointer rounded-xl border px-6 h-full">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <Plus className="w-6 h-6 text-primary" />
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium">
-                                        Create
-                                    </p>
-                                    <p className="text-2xl font-bold">
-                                        Package
-                                    </p>
-                                </div>
-                            </div>
-                        </NavLink>
-                    </PermissionGuard>
-                </div>
-
-                {/* Package Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {packages.map((pkg) => (
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {packages.map((pkg) => (
                         <Card
                             key={pkg.id}
                             className="overflow-hidden hover:shadow-lg transition-shadow pt-0"
@@ -380,7 +332,9 @@ export default function Packages() {
                         </Card>
                     ))}
                 </div>
+                )}
             </main>
         </div>
     );
 }
+
