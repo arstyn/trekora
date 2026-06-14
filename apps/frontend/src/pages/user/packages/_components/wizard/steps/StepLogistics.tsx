@@ -6,7 +6,6 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
     FormControl,
     FormField,
@@ -15,18 +14,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { indianStates } from "@/lib/constants/indian-states";
 import type { PackageFormData } from "@/types/package.schema";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
-import type { UseFormReturn } from "react-hook-form";
+import { useFieldArray, type UseFormReturn } from "react-hook-form";
 
 interface StepLogisticsProps {
     form: UseFormReturn<PackageFormData>;
@@ -41,6 +32,11 @@ export function StepLogistics({
     onBack,
     isLoading,
 }: StepLogisticsProps) {
+    const { fields: transportationFields, append: appendTransportation, remove: removeTransportation } = useFieldArray({
+        control: form.control,
+        name: "transportation",
+    });
+
     const [newMealItem, setNewMealItem] = useState<{
         type: "breakfast" | "lunch" | "dinner";
         value: string;
@@ -139,194 +135,116 @@ export function StepLogistics({
                             </div>
                         </div>
                     ))}
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Transportation</CardTitle>
-                    <CardDescription>How will travelers move?</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {(
-                        [
-                            "toDestination",
-                            "fromDestination",
-                            "duringTrip",
-                        ] as const
-                    ).map((key) => (
-                        <div
-                            key={key}
-                            className="space-y-3 border-b pb-4 last:border-0 last:pb-0"
-                        >
-                            <Label className="text-base font-medium capitalize">
-                                {key.replace(/([A-Z])/g, " $1")}
-                            </Label>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <FormField
-                                    control={form.control}
-                                    name={`transportation.${key}.mode`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Mode</FormLabel>
-                                            <Select
-                                                onValueChange={field.onChange}
-                                                defaultValue={field.value}
-                                            >
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="flight">
-                                                        Flight
-                                                    </SelectItem>
-                                                    <SelectItem value="train">
-                                                        Train
-                                                    </SelectItem>
-                                                    <SelectItem value="bus">
-                                                        Bus
-                                                    </SelectItem>
-                                                    <SelectItem value="car">
-                                                        Car
-                                                    </SelectItem>
-                                                    <SelectItem value="ship">
-                                                        Ship
-                                                    </SelectItem>
-                                                    <SelectItem value="boat">
-                                                        Boat
-                                                    </SelectItem>
-                                                    <SelectItem value="walking">
-                                                        Walking
-                                                    </SelectItem>
-                                                    <SelectItem value="mixed">
-                                                        Mixed
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name={`transportation.${key}.details`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Details</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name={`transportation.${key}.included`}
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 h-full pt-6">
-                                            <FormControl>
-                                                <Checkbox
-                                                    checked={field.value}
-                                                    onCheckedChange={
-                                                        field.onChange
-                                                    }
-                                                />
-                                            </FormControl>
-                                            <FormLabel>Included</FormLabel>
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Package Location</CardTitle>
-                    <CardDescription>
-                        Where is this tour taking place?
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <FormField
-                        control={form.control}
-                        name="packageLocation.type"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Package Type</FormLabel>
-                                <Select
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="international">
-                                            International
-                                        </SelectItem>
-                                        <SelectItem value="local">
-                                            Local/Domestic
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </FormItem>
-                        )}
-                    />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="pt-4 border-t">
                         <FormField
                             control={form.control}
-                            name="packageLocation.country"
+                            name="mealsBreakdown.mealsCost"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Country</FormLabel>
+                                    <FormLabel>Total Meals Cost (INR)</FormLabel>
                                     <FormControl>
-                                        <Input {...field} />
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            placeholder="e.g., 5000"
+                                            {...field}
+                                            onChange={(e) =>
+                                                field.onChange(
+                                                    Number.parseInt(e.target.value) || 0
+                                                )
+                                            }
+                                        />
                                     </FormControl>
                                 </FormItem>
                             )}
                         />
-
-                        {form.watch("packageLocation.type") === "local" && (
-                            <FormField
-                                control={form.control}
-                                name="packageLocation.state"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>State/Region</FormLabel>
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select state" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {indianStates.map((state) => (
-                                                    <SelectItem
-                                                        key={state}
-                                                        value={state}
-                                                    >
-                                                        {state}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </FormItem>
-                                )}
-                            />
-                        )}
                     </div>
                 </CardContent>
             </Card>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Transportation Options</CardTitle>
+                            <CardDescription>Available transport tiers and costs</CardDescription>
+                        </div>
+                        <Button
+                            type="button"
+                            onClick={() => appendTransportation({ title: "", details: "", cost: 0 })}
+                            size="sm"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Option
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {transportationFields.map((field, index) => (
+                        <div key={field.id} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_1fr_auto] gap-3 items-start border-b pb-4 last:border-0 last:pb-0">
+                            <FormField
+                                control={form.control}
+                                name={`transportation.${index}.title`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Tier/Mode</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Standard Flight" {...field} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`transportation.${index}.details`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Details</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Economy class round trip" {...field} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`transportation.${index}.cost`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Cost (INR)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                placeholder="0"
+                                                {...field}
+                                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <div className="pt-8">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeTransportation(index)}
+                                >
+                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                    {transportationFields.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                            No transportation options added. Click 'Add Option' to include transport tiers.
+                        </p>
+                    )}
+                </CardContent>
+            </Card>
+
+
 
             <div className="flex justify-between">
                 <Button type="button" variant="outline" onClick={onBack}>

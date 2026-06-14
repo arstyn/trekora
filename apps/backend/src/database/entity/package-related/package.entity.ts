@@ -9,20 +9,22 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Booking } from '../booking.entity';
 import { Organization } from '../organization.entity';
 import { User } from '../user.entity';
+import { AdditionalCost } from './additional-costs.entity';
 import { CancellationPolicy } from './cancellation-policies.entity';
 import { CancellationTier } from './cancellation-tiers.entity';
+import { ChecklistItem } from './checklist-items.entity';
 import { DocumentRequirement } from './document-requirements.entity';
 import { Exclusion } from './exclusions.entity';
 import { Inclusion } from './inclusions.entity';
 import { ItineraryDay } from './itinerary-days.entity';
 import { MealsBreakdown } from './meals-breakdowns.entity';
 import { PackageLocation } from './package-locations.entity';
+import { PackageTier } from './package-tiers.entity';
 import { PaymentMilestone } from './payment-milestones.entity';
-import { Transportation } from './transportations.entity';
-import { ChecklistItem } from './checklist-items.entity';
-import { Booking } from '../booking.entity';
+import { TransportationOption } from './transportation-options.entity';
 
 @Entity('packages')
 export class Package {
@@ -35,11 +37,14 @@ export class Package {
   @Column({ nullable: true })
   destination: string;
 
-  @Column({ nullable: true })
-  duration: string;
+  @Column({ type: 'int', nullable: true })
+  days: number;
+
+  @Column({ type: 'int', nullable: true })
+  nights: number;
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
-  price: number;
+  basePrice: number;
 
   @Column('text', { nullable: true })
   description: string;
@@ -110,11 +115,23 @@ export class Package {
   })
   mealsBreakdown: MealsBreakdown;
 
-  @OneToOne(() => Transportation, (t) => t.package, {
+  @OneToMany(() => TransportationOption, (t) => t.package, {
     cascade: true,
     nullable: true,
   })
-  transportation: Transportation;
+  transportationOptions: TransportationOption[];
+
+  @OneToMany(() => PackageTier, (pt) => pt.package, {
+    cascade: true,
+    nullable: true,
+  })
+  packageTiers: PackageTier[];
+
+  @OneToMany(() => AdditionalCost, (ac) => ac.package, {
+    cascade: true,
+    nullable: true,
+  })
+  additionalCosts: AdditionalCost[];
 
   @OneToOne(() => PackageLocation, (loc) => loc.package, {
     cascade: true,

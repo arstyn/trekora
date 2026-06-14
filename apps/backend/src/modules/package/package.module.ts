@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PackageActivity } from 'src/database/entity/package-related/package-activities.entity';
+import { AdditionalCost } from '../../database/entity/package-related/additional-costs.entity';
 import { CancellationPolicy } from '../../database/entity/package-related/cancellation-policies.entity';
 import { CancellationTier } from '../../database/entity/package-related/cancellation-tiers.entity';
 import { ChecklistItem } from '../../database/entity/package-related/checklist-items.entity';
@@ -11,9 +12,10 @@ import { Inclusion } from '../../database/entity/package-related/inclusions.enti
 import { ItineraryDay } from '../../database/entity/package-related/itinerary-days.entity';
 import { MealsBreakdown } from '../../database/entity/package-related/meals-breakdowns.entity';
 import { PackageLocation } from '../../database/entity/package-related/package-locations.entity';
+import { PackageTier } from '../../database/entity/package-related/package-tiers.entity';
 import { Package } from '../../database/entity/package-related/package.entity';
 import { PaymentMilestone } from '../../database/entity/package-related/payment-milestones.entity';
-import { Transportation } from '../../database/entity/package-related/transportations.entity';
+import { TransportationOption } from '../../database/entity/package-related/transportation-options.entity';
 import { PermissionModule } from '../permission/permission.module';
 import { PackageController } from './package.controller';
 import { PackageService } from './package.service';
@@ -30,7 +32,9 @@ import { PackageService } from './package.service';
       MealsBreakdown,
       PackageLocation,
       PaymentMilestone,
-      Transportation,
+      TransportationOption,
+      PackageTier,
+      AdditionalCost,
       ItineraryDay,
 
       PackageActivity,
@@ -43,4 +47,4 @@ import { PackageService } from './package.service';
   providers: [PackageService],
   controllers: [PackageController],
 })
-export class PackageModule {}
+export class PackageModule { }

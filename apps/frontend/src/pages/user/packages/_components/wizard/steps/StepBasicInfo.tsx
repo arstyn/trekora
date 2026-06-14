@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
-import { Save } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
+import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 interface StepBasicInfoProps {
@@ -42,6 +43,26 @@ export function StepBasicInfo({
     onNext,
     isLoading,
 }: StepBasicInfoProps) {
+    const [newItem, setNewItem] = useState<{
+        type: "countries" | "states" | "cities";
+        value: string;
+    }>({ type: "countries", value: "" });
+
+    const addLocationItem = (type: "countries" | "states" | "cities") => {
+        if (!newItem.value.trim()) return;
+        const current = form.getValues(`packageLocation.${type}`) || [];
+        form.setValue(`packageLocation.${type}`, [...current, newItem.value.trim()]);
+        setNewItem({ type, value: "" });
+    };
+
+    const removeLocationItem = (type: "countries" | "states" | "cities", index: number) => {
+        const current = form.getValues(`packageLocation.${type}`) || [];
+        form.setValue(
+            `packageLocation.${type}`,
+            current.filter((_, i) => i !== index),
+        );
+    };
+
     return (
         <div className="space-y-6">
             <Card>
@@ -150,14 +171,21 @@ export function StepBasicInfo({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormField
                             control={form.control}
-                            name="duration"
+                            name="days"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Duration</FormLabel>
+                                    <FormLabel>Days</FormLabel>
                                     <FormControl>
                                         <Input
-                                            placeholder="e.g., 7 Days, 6 Nights"
+                                            type="number"
+                                            min="0"
+                                            placeholder="7"
                                             {...field}
+                                            onChange={(e) =>
+                                                field.onChange(
+                                                    Number.parseInt(e.target.value) || 0
+                                                )
+                                            }
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -166,21 +194,19 @@ export function StepBasicInfo({
                         />
                         <FormField
                             control={form.control}
-                            name="price"
+                            name="nights"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Price (INR)</FormLabel>
+                                    <FormLabel>Nights</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             min="0"
-                                            placeholder="1299"
+                                            placeholder="6"
                                             {...field}
                                             onChange={(e) =>
                                                 field.onChange(
-                                                    Number.parseFloat(
-                                                        e.target.value,
-                                                    ) || 0,
+                                                    Number.parseInt(e.target.value) || 0
                                                 )
                                             }
                                         />
@@ -256,6 +282,140 @@ export function StepBasicInfo({
                             </FormItem>
                         )}
                     />
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Package Location</CardTitle>
+                    <CardDescription>
+                        Where is this tour taking place?
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <FormField
+                        control={form.control}
+                        name="packageLocation.type"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Package Type</FormLabel>
+                                <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="international">
+                                            International
+                                        </SelectItem>
+                                        <SelectItem value="local">
+                                            Local/Domestic
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </FormItem>
+                        )}
+                    />
+
+                    {form.watch("packageLocation.type") && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {form.watch("packageLocation.type") === "international" && (
+                                <div className="space-y-2">
+                                    <Label className="font-medium">Countries</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="Add country..."
+                                            value={newItem.type === "countries" ? newItem.value : ""}
+                                            onChange={(e) => setNewItem({ type: "countries", value: e.target.value })}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                    e.preventDefault();
+                                                    addLocationItem("countries");
+                                                }
+                                            }}
+                                        />
+                                        <Button type="button" onClick={() => addLocationItem("countries")} variant="secondary">
+                                            <Plus className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(form.watch("packageLocation.countries") || []).map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md text-sm">
+                                                <span>{item}</span>
+                                                <Button type="button" variant="ghost" size="sm" className="h-auto p-0" onClick={() => removeLocationItem("countries", idx)}>
+                                                    <Trash2 className="w-3 h-3 text-red-500" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label className="font-medium">States/Regions</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="Add state..."
+                                        value={newItem.type === "states" ? newItem.value : ""}
+                                        onChange={(e) => setNewItem({ type: "states", value: e.target.value })}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                addLocationItem("states");
+                                            }
+                                        }}
+                                    />
+                                    <Button type="button" onClick={() => addLocationItem("states")} variant="secondary">
+                                        <Plus className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {(form.watch("packageLocation.states") || []).map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md text-sm">
+                                            <span>{item}</span>
+                                            <Button type="button" variant="ghost" size="sm" className="h-auto p-0" onClick={() => removeLocationItem("states", idx)}>
+                                                <Trash2 className="w-3 h-3 text-red-500" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="font-medium">Cities</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="Add city..."
+                                        value={newItem.type === "cities" ? newItem.value : ""}
+                                        onChange={(e) => setNewItem({ type: "cities", value: e.target.value })}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                addLocationItem("cities");
+                                            }
+                                        }}
+                                    />
+                                    <Button type="button" onClick={() => addLocationItem("cities")} variant="secondary">
+                                        <Plus className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {(form.watch("packageLocation.cities") || []).map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md text-sm">
+                                            <span>{item}</span>
+                                            <Button type="button" variant="ghost" size="sm" className="h-auto p-0" onClick={() => removeLocationItem("cities", idx)}>
+                                                <Trash2 className="w-3 h-3 text-red-500" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 

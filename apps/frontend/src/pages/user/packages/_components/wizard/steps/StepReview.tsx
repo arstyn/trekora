@@ -53,7 +53,7 @@ export function StepReview({
             let original = (packageData as any)[key];
 
             // Normalize
-            if (key === "price") original = Number(original) || 0;
+            if (key === "basePrice") original = Number(original) || 0;
             if (key === "maxGuests") original = Number(original) || 0;
 
             if (current !== original && original !== undefined) {
@@ -123,8 +123,9 @@ export function StepReview({
 
         compareSimple("name", "Name");
         compareSimple("destination", "Destination");
-        compareSimple("price", "Price");
-        compareSimple("duration", "Duration");
+        compareSimple("basePrice", "Price");
+        compareSimple("days", "Days");
+        compareSimple("nights", "Nights");
         compareSimple("description", "Description");
         compareSimple("maxGuests", "Max Guests");
         compareSimple("category", "Category");
@@ -174,7 +175,7 @@ export function StepReview({
             message: "Package name is missing",
             severity: "error",
         });
-    if (!values.price)
+    if (!values.basePrice)
         issues.push({
             field: "Price",
             message: "Price is not set",
@@ -203,10 +204,10 @@ export function StepReview({
         (sum, m) => sum + (m.amount || 0),
         0,
     );
-    if (totalMilestones !== values.price) {
+    if (totalMilestones !== values.basePrice) {
         issues.push({
             field: "Payments",
-            message: `Milestone total (₹${totalMilestones}) doesn't match package price (₹${values.price})`,
+            message: `Milestone total (₹${totalMilestones}) doesn't match package price (₹${values.basePrice})`,
             severity: "error",
         });
     }
@@ -337,7 +338,7 @@ export function StepReview({
                         <div className="flex justify-between items-center border-b pb-2">
                             <span className="text-muted-foreground">Price</span>
                             <Badge variant="outline" className="text-base">
-                                ₹{values.price || 0}
+                                ₹{values.basePrice || 0}
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
@@ -345,7 +346,7 @@ export function StepReview({
                                 Duration
                             </span>
                             <span className="font-medium">
-                                {values.duration || "N/A"}
+                                {values.days ? `${values.days} Days / ${values.nights} Nights` : "N/A"}
                             </span>
                         </div>
                         <div className="flex justify-between items-center">

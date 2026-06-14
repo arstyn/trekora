@@ -255,7 +255,7 @@ export default function ViewPackagePage() {
                                             Duration
                                         </div>
                                         <div className="font-semibold">
-                                            {basicData.duration || "Not set"}
+                                            {basicData.days ? `${basicData.days} Days / ${basicData.nights} Nights` : "Not set"}
                                         </div>
                                     </div>
                                     <div className="text-center p-4 bg-primary/10 rounded-lg">
@@ -264,7 +264,7 @@ export default function ViewPackagePage() {
                                             Price
                                         </div>
                                         <div className="font-semibold">
-                                            ₹{basicData.price || 0}
+                                            ₹{basicData.basePrice || 0}
                                         </div>
                                     </div>
                                     <div className="text-center p-4 bg-primary/10 rounded-lg">
@@ -374,7 +374,7 @@ export default function ViewPackagePage() {
                                                                         >
                                                                             <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
                                                                             <span>
-                                                                                {activity ||
+                                                                                {activity?.name ||
                                                                                     "Activity not specified"}
                                                                             </span>
                                                                         </li>
@@ -829,149 +829,35 @@ export default function ViewPackagePage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="p-4 border rounded-lg">
-                                                <h4 className="font-semibold mb-2">
-                                                    To Destination
-                                                </h4>
-                                                <div className="space-y-1 text-sm">
-                                                    <div className="flex justify-between">
-                                                        <span>Mode:</span>
-                                                        <span className="capitalize">
-                                                            {logistics
-                                                                ?.transportation
-                                                                ?.toDestination
-                                                                ?.mode ||
-                                                                "Not specified"}
-                                                        </span>
+                                        {logistics?.transportation && logistics.transportation.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {logistics.transportation.map((transport, index) => (
+                                                    <div key={index} className="p-4 border rounded-lg">
+                                                        <h4 className="font-semibold mb-2">
+                                                            {transport?.title || "Transportation"}
+                                                        </h4>
+                                                        <div className="space-y-1 text-sm">
+                                                            <div className="flex justify-between">
+                                                                <span>Details:</span>
+                                                                <span className="capitalize">
+                                                                    {transport?.details || "Not specified"}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span>Cost:</span>
+                                                                <span>
+                                                                    ₹{transport?.cost || 0}
+                                                                </span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Details:</span>
-                                                        <span>
-                                                            {logistics
-                                                                ?.transportation
-                                                                ?.toDestination
-                                                                ?.details ||
-                                                                "Not specified"}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Included:</span>
-                                                        <Badge
-                                                            variant={
-                                                                logistics
-                                                                    ?.transportation
-                                                                    ?.toDestination
-                                                                    ?.included
-                                                                    ? "default"
-                                                                    : "outline"
-                                                            }
-                                                        >
-                                                            {logistics
-                                                                ?.transportation
-                                                                ?.toDestination
-                                                                ?.included
-                                                                ? "Yes"
-                                                                : "No"}
-                                                        </Badge>
-                                                    </div>
-                                                </div>
+                                                ))}
                                             </div>
-                                            <div className="p-4 border rounded-lg">
-                                                <h4 className="font-semibold mb-2">
-                                                    From Destination
-                                                </h4>
-                                                <div className="space-y-1 text-sm">
-                                                    <div className="flex justify-between">
-                                                        <span>Mode:</span>
-                                                        <span className="capitalize">
-                                                            {logistics
-                                                                ?.transportation
-                                                                ?.fromDestination
-                                                                ?.mode ||
-                                                                "Not specified"}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Details:</span>
-                                                        <span>
-                                                            {logistics
-                                                                ?.transportation
-                                                                ?.fromDestination
-                                                                ?.details ||
-                                                                "Not specified"}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Included:</span>
-                                                        <Badge
-                                                            variant={
-                                                                logistics
-                                                                    ?.transportation
-                                                                    ?.fromDestination
-                                                                    ?.included
-                                                                    ? "default"
-                                                                    : "outline"
-                                                            }
-                                                        >
-                                                            {logistics
-                                                                ?.transportation
-                                                                ?.fromDestination
-                                                                ?.included
-                                                                ? "Yes"
-                                                                : "No"}
-                                                        </Badge>
-                                                    </div>
-                                                </div>
+                                        ) : (
+                                            <div className="text-center py-8 text-muted-foreground">
+                                                <p>No transportation details have been provided yet.</p>
                                             </div>
-                                        </div>
-                                        <div className="p-4 border rounded-lg">
-                                            <h4 className="font-semibold mb-2">
-                                                During Trip
-                                            </h4>
-                                            <div className="grid grid-cols-3 gap-4 text-sm">
-                                                <div className="flex justify-between">
-                                                    <span>Mode:</span>
-                                                    <span className="capitalize">
-                                                        {logistics
-                                                            ?.transportation
-                                                            ?.duringTrip
-                                                            ?.mode ||
-                                                            "Not specified"}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span>Details:</span>
-                                                    <span>
-                                                        {logistics
-                                                            ?.transportation
-                                                            ?.duringTrip
-                                                            ?.details ||
-                                                            "Not specified"}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span>Included:</span>
-                                                    <Badge
-                                                        variant={
-                                                            logistics
-                                                                ?.transportation
-                                                                ?.duringTrip
-                                                                ?.included
-                                                                ? "default"
-                                                                : "outline"
-                                                        }
-                                                    >
-                                                        {logistics
-                                                            ?.transportation
-                                                            ?.duringTrip
-                                                            ?.included
-                                                            ? "Yes"
-                                                            : "No"}
-                                                    </Badge>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -1005,7 +891,7 @@ export default function ViewPackagePage() {
                                 <div className="flex justify-between">
                                     <span className="text-sm ">Country:</span>
                                     <span className="text-sm font-medium">
-                                        {basicData.packageLocation?.country ||
+                                        {basicData.packageLocation?.countries?.join(", ") ||
                                             "Not specified"}
                                     </span>
                                 </div>

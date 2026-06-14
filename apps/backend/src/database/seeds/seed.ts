@@ -22,7 +22,7 @@ import { MealsBreakdown } from '../entity/package-related/meals-breakdowns.entit
 import { PackageLocation } from '../entity/package-related/package-locations.entity';
 import { Package } from '../entity/package-related/package.entity';
 import { PaymentMilestone } from '../entity/package-related/payment-milestones.entity';
-import { Transportation } from '../entity/package-related/transportations.entity';
+// Removed Transportation import
 import { PermissionSetPermission } from '../entity/permission-set-permission.entity';
 import { PermissionSet } from '../entity/permission-set.entity';
 import { Permission } from '../entity/permission.entity';
@@ -427,29 +427,7 @@ async function seed() {
         await queryRunner.manager.save(packageLocation);
       }
 
-      // Create transportation
-      if (packageData.transportation) {
-        const transportation = queryRunner.manager.create(Transportation, {
-          toMode: packageData.transportation.toDestination?.mode || undefined,
-          toDetails:
-            packageData.transportation.toDestination?.details || undefined,
-          toIncluded:
-            packageData.transportation.toDestination?.included || false,
-          fromMode:
-            packageData.transportation.fromDestination?.mode || undefined,
-          fromDetails:
-            packageData.transportation.fromDestination?.details || undefined,
-          fromIncluded:
-            packageData.transportation.fromDestination?.included || false,
-          duringMode: packageData.transportation.duringTrip?.mode || undefined,
-          duringDetails:
-            packageData.transportation.duringTrip?.details || undefined,
-          duringIncluded:
-            packageData.transportation.duringTrip?.included || false,
-          packageId: savedPackage.id,
-        });
-        await queryRunner.manager.save(transportation);
-      }
+      // Removed old transportation seeding
 
       // Create itinerary
       if (packageData.itinerary) {

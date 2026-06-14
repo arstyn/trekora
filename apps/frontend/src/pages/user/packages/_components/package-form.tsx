@@ -35,8 +35,9 @@ interface PackageFormProps {
 const defaultValues: PackageFormData = {
     name: "",
     destination: "",
-    duration: "",
-    price: 0,
+    days: 0,
+    nights: 0,
+    basePrice: 0,
     description: "",
     maxGuests: 0,
     category: "adventure",
@@ -49,7 +50,7 @@ const defaultValues: PackageFormData = {
             day: 1,
             title: "",
             description: "",
-            activities: [""],
+            activities: [{ name: "", cost: 0 }],
             meals: [],
             accommodation: "",
             images: [],
@@ -79,17 +80,18 @@ const defaultValues: PackageFormData = {
         lunch: [],
         dinner: [],
     },
-    transportation: {
-        toDestination: { mode: "flight", details: "", included: false },
-        fromDestination: { mode: "flight", details: "", included: false },
-        duringTrip: { mode: "bus", details: "", included: true },
-    },
+    transportation: [
+        { title: "To Destination", details: "Flight", cost: 0 },
+        { title: "From Destination", details: "Flight", cost: 0 },
+        { title: "During Trip", details: "Bus", cost: 0 },
+    ],
     documentRequirements: [],
     preTripChecklist: [],
     packageLocation: {
         type: "local",
-        country: "India",
-        state: "",
+        countries: ["India"],
+        states: [],
+        cities: [],
     },
 };
 
@@ -97,8 +99,9 @@ const SECTION_KEYS: Record<string, string[]> = {
     basic: [
         "name",
         "destination",
-        "duration",
-        "price",
+        "days",
+        "nights",
+        "basePrice",
         "description",
         "maxGuests",
         "category",
@@ -161,8 +164,12 @@ export function PackageForm({
         (backendData: Partial<IPackages>) => {
             const transformed: any = { ...backendData };
 
-            if (backendData.price !== undefined)
-                transformed.price = Number(backendData.price) || 0;
+            if (backendData.basePrice !== undefined)
+                transformed.basePrice = Number(backendData.basePrice) || 0;
+            if (backendData.days !== undefined)
+                transformed.days = Number(backendData.days) || 0;
+            if (backendData.nights !== undefined)
+                transformed.nights = Number(backendData.nights) || 0;
             if (backendData.maxGuests !== undefined)
                 transformed.maxGuests = Number(backendData.maxGuests) || 0;
 
@@ -406,14 +413,14 @@ export function PackageForm({
                     currentStep === 0 || currentStep === 1
                         ? "basic"
                         : currentStep === 2
-                          ? "itinerary"
-                          : currentStep === 3
-                            ? "logistics"
-                            : currentStep === 4
-                              ? "payments-cancellation"
-                              : currentStep === 5
-                                ? "requirements"
-                                : "all";
+                            ? "itinerary"
+                            : currentStep === 3
+                                ? "logistics"
+                                : currentStep === 4
+                                    ? "payments-cancellation"
+                                    : currentStep === 5
+                                        ? "requirements"
+                                        : "all";
 
                 if (stepKey !== "all") {
                     const sections = new Set(loadedSections);
@@ -653,13 +660,12 @@ export function PackageForm({
                             className="flex flex-col items-center gap-2 bg-background px-2"
                         >
                             <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer ${
-                                    idx < currentStep
-                                        ? "bg-primary border-primary text-primary-foreground"
-                                        : idx === currentStep
-                                          ? "border-primary text-primary ring-4 ring-primary/10"
-                                          : "bg-background border-muted text-muted-foreground hover:border-primary/50"
-                                }`}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer ${idx < currentStep
+                                    ? "bg-primary border-primary text-primary-foreground"
+                                    : idx === currentStep
+                                        ? "border-primary text-primary ring-4 ring-primary/10"
+                                        : "bg-background border-muted text-muted-foreground hover:border-primary/50"
+                                    }`}
                                 onClick={() => setCurrentStep(idx)}
                             >
                                 {idx < currentStep ? (

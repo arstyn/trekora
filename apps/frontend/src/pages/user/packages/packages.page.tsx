@@ -159,7 +159,7 @@ export default function Packages() {
                                                 packages.reduce(
                                                     (sum, pkg) =>
                                                         sum +
-                                                        parseInt(pkg.price ?? "0"),
+                                                        (pkg.basePrice ?? 0),
                                                     0,
                                                 ) / packages.length,
                                             ) : 0}
@@ -291,7 +291,7 @@ export default function Packages() {
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="">Duration:</span>
                                         <span className="font-medium">
-                                            {pkg.duration}
+                                            {pkg.days} Days / {pkg.nights} Nights
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
@@ -304,7 +304,7 @@ export default function Packages() {
 
                                 <div className="flex items-center justify-between">
                                     <div className="text-2xl font-bold text-primary">
-                                        ₹{pkg.price}
+                                        ₹{pkg.basePrice ?? 0}
                                     </div>
                                     <div className="flex gap-2">
                                         <NavLink
