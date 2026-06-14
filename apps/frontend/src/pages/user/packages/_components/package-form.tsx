@@ -106,12 +106,12 @@ const SECTION_KEYS: Record<string, string[]> = {
         "maxGuests",
         "category",
         "thumbnail",
-        "inclusions",
-        "exclusions",
         "status",
+        "packageLocation",
     ],
     itinerary: ["itinerary"],
-    logistics: ["transportation", "mealsBreakdown", "packageLocation"],
+    details: ["inclusions", "exclusions"],
+    logistics: ["transportation", "mealsBreakdown"],
     "payments-cancellation": [
         "paymentStructure",
         "cancellationStructure",
@@ -122,8 +122,8 @@ const SECTION_KEYS: Record<string, string[]> = {
 
 const STEPS = [
     { title: "Basic Info", icon: PackageIcon },
-    { title: "Details", icon: PackageIcon },
     { title: "Itinerary", icon: PackageIcon },
+    { title: "Inclusion & Exclusion", icon: PackageIcon },
     { title: "Logistics", icon: PackageIcon },
     { title: "Finance", icon: PackageIcon },
     { title: "Requirements", icon: PackageIcon },
@@ -237,6 +237,10 @@ export function PackageForm({
                     })) || [];
             }
 
+            if (backendData.packageLocation === null) {
+                delete transformed.packageLocation;
+            }
+
             return transformed as Partial<PackageFormData>;
         },
         [],
@@ -276,6 +280,8 @@ export function PackageForm({
                         }
                         if (res.data.id) setPackageId(res.data.id);
                     }
+                    
+                    setLoadedSections((prev) => new Set(prev).add(section));
 
                     setPackageData(
                         (prev) =>
@@ -284,7 +290,6 @@ export function PackageForm({
                                 ...res.data,
                             }) as IPackages,
                     );
-                    setLoadedSections((prev) => new Set(prev).add(section));
                 }
             } catch (error) {
                 console.error(`Failed to load ${section} data:`, error);
@@ -306,10 +311,12 @@ export function PackageForm({
                 await fetchSection("basic");
             }
 
-            if (currentStep === 0 || currentStep === 1) {
+            if (currentStep === 0) {
                 // Done (basic already loading/loaded above)
-            } else if (currentStep === 2) {
+            } else if (currentStep === 1) {
                 await fetchSection("itinerary");
+            } else if (currentStep === 2) {
+                await fetchSection("details");
             } else if (currentStep === 3) {
                 await fetchSection("logistics");
             } else if (currentStep === 4) {
@@ -410,17 +417,19 @@ export function PackageForm({
             let keysToInclude: Set<string> | undefined;
             if (packageId && !isExplicitPublish) {
                 const stepKey =
-                    currentStep === 0 || currentStep === 1
+                    currentStep === 0
                         ? "basic"
-                        : currentStep === 2
+                        : currentStep === 1
                             ? "itinerary"
-                            : currentStep === 3
-                                ? "logistics"
-                                : currentStep === 4
-                                    ? "payments-cancellation"
-                                    : currentStep === 5
-                                        ? "requirements"
-                                        : "all";
+                            : currentStep === 2
+                                ? "details"
+                                : currentStep === 3
+                                    ? "logistics"
+                                    : currentStep === 4
+                                        ? "payments-cancellation"
+                                        : currentStep === 5
+                                            ? "requirements"
+                                            : "all";
 
                 if (stepKey !== "all") {
                     const sections = new Set(loadedSections);
@@ -696,19 +705,19 @@ export function PackageForm({
                         />
                     )}
                     {currentStep === 1 && (
-                        <StepDetails
+                        <StepItinerary
                             form={form}
+                            itineraryPreviewUrls={itineraryPreviewUrls}
+                            handleDayImageUpload={handleDayImageUpload}
+                            removeDayImage={removeDayImage}
                             onNext={handleNext}
                             onBack={handleBack}
                             isLoading={isSaving}
                         />
                     )}
                     {currentStep === 2 && (
-                        <StepItinerary
+                        <StepDetails
                             form={form}
-                            itineraryPreviewUrls={itineraryPreviewUrls}
-                            handleDayImageUpload={handleDayImageUpload}
-                            removeDayImage={removeDayImage}
                             onNext={handleNext}
                             onBack={handleBack}
                             isLoading={isSaving}

@@ -20,7 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
 import { Plus, Save, Trash, Trash2, Upload } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useFieldArray, type UseFormReturn } from "react-hook-form";
 
 interface StepItineraryProps {
@@ -74,12 +74,16 @@ export function StepItinerary({
 
     const numDays = form.watch("days") || 0;
 
+    const syncInProgress = useRef(false);
+
     useEffect(() => {
-        if (numDays > 0) {
+        if (numDays > 0 && !syncInProgress.current) {
             const currentDays = itineraryFields.length;
             if (numDays > currentDays) {
+                syncInProgress.current = true;
+                const newDays: any[] = [];
                 for (let i = currentDays; i < numDays; i++) {
-                    appendItinerary({
+                    newDays.push({
                         day: i + 1,
                         title: "",
                         description: "",
@@ -90,12 +94,15 @@ export function StepItinerary({
                         images: [],
                     });
                 }
+                appendItinerary(newDays);
+                // Allow state to settle before next sync
+                setTimeout(() => { syncInProgress.current = false; }, 100);
             } else if (numDays < currentDays) {
-                // To avoid destructive actions, we might just warn or truncate.
-                // For now, let's truncate to match days.
+                syncInProgress.current = true;
                 for (let i = currentDays - 1; i >= numDays; i--) {
                     removeItinerary(i);
                 }
+                setTimeout(() => { syncInProgress.current = false; }, 100);
             }
         }
     }, [numDays, itineraryFields.length, appendItinerary, removeItinerary]);
@@ -172,14 +179,23 @@ export function StepItinerary({
                                             </div>
                                         ),
                                     )}
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center min-h-[100px]">
+                                    <label
+                                        htmlFor={`day-${dayIndex}-image`}
+                                        className="cursor-pointer border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center min-h-[100px] hover:bg-gray-900 transition-colors"
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                                const fakeEvent = {
+                                                    target: { files: e.dataTransfer.files }
+                                                } as unknown as React.ChangeEvent<HTMLInputElement>;
+                                                handleDayImageUpload(dayIndex, fakeEvent);
+                                            }
+                                        }}
+                                    >
                                         <Upload className="w-6 h-6 text-muted-foreground mb-2" />
-                                        <Label
-                                            htmlFor={`day-${dayIndex}-image`}
-                                            className="cursor-pointer text-sm"
-                                        >
-                                            Add Images
-                                        </Label>
+                                        <span className="text-sm font-medium">Add Images</span>
+                                        <span className="text-xs text-muted-foreground mt-1">or drag and drop</span>
                                         <Input
                                             id={`day-${dayIndex}-image`}
                                             type="file"
@@ -193,7 +209,7 @@ export function StepItinerary({
                                                 )
                                             }
                                         />
-                                    </div>
+                                    </label>
                                 </div>
                             </div>
 
@@ -359,7 +375,25 @@ export function StepItinerary({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Meals Included</Label>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <Label>Meals Included</Label>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-xs"
+                                            onClick={() => {
+                                                const currentMeals = form.getValues(`itinerary.${dayIndex}.meals`) || [];
+                                                if (currentMeals.length === 3) {
+                                                    form.setValue(`itinerary.${dayIndex}.meals`, []);
+                                                } else {
+                                                    form.setValue(`itinerary.${dayIndex}.meals`, ["Breakfast", "Lunch", "Dinner"]);
+                                                }
+                                            }}
+                                        >
+                                            {form.watch(`itinerary.${dayIndex}.meals`)?.length === 3 ? "Deselect All" : "Select All"}
+                                        </Button>
+                                    </div>
                                     <div className="space-y-2">
                                         {["Breakfast", "Lunch", "Dinner"].map(
                                             (meal) => (

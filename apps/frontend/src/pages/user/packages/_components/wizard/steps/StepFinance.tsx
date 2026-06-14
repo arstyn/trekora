@@ -155,6 +155,74 @@ export function StepFinance({
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <div>
+                            <CardTitle>Additional Costs</CardTitle>
+                            <CardDescription>
+                                Add any extra costs not covered in the package tiers.
+                            </CardDescription>
+                        </div>
+                        <Button
+                            type="button"
+                            onClick={() => appendAdditionalCost({ name: "", cost: 0 })}
+                            size="sm"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Cost
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {additionalCostFields.map((field, index) => (
+                        <div key={field.id} className="flex gap-3 items-end">
+                            <FormField
+                                control={form.control}
+                                name={`additionalCosts.${index}.name`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>Cost Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g. Visa Fee" {...field} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`additionalCosts.${index}.cost`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>Amount (INR)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                {...field}
+                                                onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="mb-1"
+                                onClick={() => removeAdditionalCost(index)}
+                            >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                        </div>
+                    ))}
+                    {additionalCostFields.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">No additional costs added.</p>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
                             <CardTitle>Package Pricing Tiers</CardTitle>
                             <CardDescription>
                                 Define cost structure for Adults, Children, and Infants.
@@ -308,74 +376,6 @@ export function StepFinance({
                     ))}
                     {tierFields.length === 0 && (
                         <p className="text-sm text-muted-foreground text-center py-4">No pricing tiers added.</p>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>Additional Costs</CardTitle>
-                            <CardDescription>
-                                Add any extra costs not covered in the package tiers.
-                            </CardDescription>
-                        </div>
-                        <Button
-                            type="button"
-                            onClick={() => appendAdditionalCost({ name: "", cost: 0 })}
-                            size="sm"
-                        >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Cost
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {additionalCostFields.map((field, index) => (
-                        <div key={field.id} className="flex gap-3 items-end">
-                            <FormField
-                                control={form.control}
-                                name={`additionalCosts.${index}.name`}
-                                render={({ field }) => (
-                                    <FormItem className="flex-1">
-                                        <FormLabel>Cost Name</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g. Visa Fee" {...field} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name={`additionalCosts.${index}.cost`}
-                                render={({ field }) => (
-                                    <FormItem className="flex-1">
-                                        <FormLabel>Amount (INR)</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                {...field}
-                                                onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
-                                            />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="mb-1"
-                                onClick={() => removeAdditionalCost(index)}
-                            >
-                                <Trash2 className="w-4 h-4 text-red-500" />
-                            </Button>
-                        </div>
-                    ))}
-                    {additionalCostFields.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-2">No additional costs added.</p>
                     )}
                 </CardContent>
             </Card>

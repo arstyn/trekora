@@ -103,7 +103,7 @@ export default function Packages() {
                                                 packages.filter(
                                                     (pkg) =>
                                                         pkg.status ===
-                                                            "published" ||
+                                                        "published" ||
                                                         pkg.status === "edited",
                                                 ).length
                                             }
@@ -245,93 +245,89 @@ export default function Packages() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {packages.map((pkg) => (
-                        <Card
-                            key={pkg.id}
-                            className="overflow-hidden hover:shadow-lg transition-shadow pt-0"
-                        >
-                            <div className="relative">
-                                <img
-                                    src={(() => {
-                                        if (pkg?.thumbnail)
-                                            return pkg.thumbnail;
-                                        return "/placeholder.svg";
-                                    })()}
-                                    alt={pkg.name || ""}
-                                    className="w-full h-48 object-cover"
-                                />
-                                <Badge
-                                    className={`absolute top-2 right-2 ${
-                                        pkg.status === "published"
-                                            ? "bg-green-500 hover:bg-green-600"
-                                            : pkg.status === "edited"
-                                              ? "bg-amber-500 hover:bg-amber-600"
-                                              : "bg-yellow-500 hover:bg-yellow-600"
-                                    }`}
-                                >
-                                    {pkg.status}
-                                </Badge>
-                            </div>
-
-                            <CardHeader>
-                                <CardTitle className="text-lg">
-                                    {pkg.name}
-                                </CardTitle>
-                                <CardDescription className="flex items-center gap-1">
-                                    <MapPin className="w-4 h-4" />
-                                    {pkg.destination}
-                                </CardDescription>
-                            </CardHeader>
-
-                            <CardContent>
-                                <p className="text-sm  mb-4">
-                                    {pkg.description}
-                                </p>
-
-                                <div className="space-y-2 mb-4">
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="">Duration:</span>
-                                        <span className="font-medium">
-                                            {pkg.days} Days / {pkg.nights} Nights
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="">Max Guests:</span>
-                                        <span className="font-medium">
-                                            {pkg.maxGuests} people
-                                        </span>
-                                    </div>
+                            <Card
+                                key={pkg.id}
+                                className="overflow-hidden hover:shadow-lg transition-shadow pt-0"
+                            >
+                                <div className="relative">
+                                    <img
+                                        src={(() => {
+                                            if (pkg?.thumbnail)
+                                                return pkg.thumbnail;
+                                            return "/placeholder.svg";
+                                        })()}
+                                        alt={pkg.name || ""}
+                                        className="w-full h-48 object-cover"
+                                    />
+                                    <Badge
+                                        className={`absolute top-2 right-2 ${pkg.status === "published"
+                                                ? "bg-green-500 hover:bg-green-600"
+                                                : pkg.status === "edited"
+                                                    ? "bg-amber-500 hover:bg-amber-600"
+                                                    : "bg-yellow-500 hover:bg-yellow-600"
+                                            }`}
+                                    >
+                                        {pkg.status}
+                                    </Badge>
                                 </div>
 
-                                <div className="flex items-center justify-between">
-                                    <div className="text-2xl font-bold text-primary">
-                                        ₹{pkg.basePrice ?? 0}
+                                <CardHeader>
+                                    <CardTitle className="text-lg">
+                                        {pkg.name}
+                                    </CardTitle>
+                                    <CardDescription className="flex items-center gap-1">
+                                        <MapPin className="w-4 h-4" />
+                                        {pkg.destination}
+                                    </CardDescription>
+                                </CardHeader>
+
+                                <CardContent>
+                                    <p className="text-sm  mb-4">
+                                        {pkg.description}
+                                    </p>
+
+                                    <div className="space-y-2 mb-4">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="">Duration:</span>
+                                            <span className="font-medium">
+                                                {pkg.days} Days / {pkg.nights} Nights
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="">Max Guests:</span>
+                                            <span className="font-medium">
+                                                {pkg.maxGuests} people
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <NavLink
-                                            to={`/packages/edit/${pkg.id}`}
-                                        >
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="cursor-pointer"
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex gap-2">
+                                            <NavLink
+                                                to={`/packages/edit/${pkg.id}`}
                                             >
-                                                Edit
-                                            </Button>
-                                        </NavLink>
-                                        <NavLink to={`/packages/${pkg.id}`}>
-                                            <Button
-                                                size="sm"
-                                                className="cursor-pointer"
-                                            >
-                                                View
-                                            </Button>
-                                        </NavLink>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="cursor-pointer"
+                                                >
+                                                    Edit
+                                                </Button>
+                                            </NavLink>
+                                            <NavLink to={`/packages/${pkg.id}`}>
+                                                <Button
+                                                    size="sm"
+                                                    className="cursor-pointer"
+                                                >
+                                                    View
+                                                </Button>
+                                            </NavLink>
+                                        </div>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
                 )}
             </main>
         </div>

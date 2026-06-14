@@ -53,7 +53,6 @@ export function StepReview({
             let original = (packageData as any)[key];
 
             // Normalize
-            if (key === "basePrice") original = Number(original) || 0;
             if (key === "maxGuests") original = Number(original) || 0;
 
             if (current !== original && original !== undefined) {
@@ -123,7 +122,6 @@ export function StepReview({
 
         compareSimple("name", "Name");
         compareSimple("destination", "Destination");
-        compareSimple("basePrice", "Price");
         compareSimple("days", "Days");
         compareSimple("nights", "Nights");
         compareSimple("description", "Description");
@@ -137,6 +135,8 @@ export function StepReview({
         compareArray("cancellationStructure", "Cancellation Structure");
         compareArray("documentRequirements", "Document Requirements");
         compareArray("preTripChecklist", "Pre-trip Checklist");
+        compareArray("packageTiers", "Package Tiers");
+        compareArray("additionalCosts", "Additional Costs");
 
         compareItinerary();
 
@@ -175,10 +175,10 @@ export function StepReview({
             message: "Package name is missing",
             severity: "error",
         });
-    if (!values.basePrice)
+    if (!values.packageTiers || values.packageTiers.length === 0)
         issues.push({
-            field: "Price",
-            message: "Price is not set",
+            field: "Package Tiers",
+            message: "At least one package tier must be defined",
             severity: "error",
         });
     if (!values.destination)
@@ -204,12 +204,15 @@ export function StepReview({
         (sum, m) => sum + (m.amount || 0),
         0,
     );
-    if (totalMilestones !== values.basePrice) {
-        issues.push({
-            field: "Payments",
-            message: `Milestone total (₹${totalMilestones}) doesn't match package price (₹${values.basePrice})`,
-            severity: "error",
-        });
+    if (values.packageTiers && values.packageTiers.length > 0) {
+        const firstTierAdultCost = values.packageTiers[0].adultCost || 0;
+        if (totalMilestones !== firstTierAdultCost) {
+            issues.push({
+                field: "Payments",
+                message: `Milestone total (₹${totalMilestones}) doesn't match the first tier adult cost (₹${firstTierAdultCost})`,
+                severity: "error",
+            });
+        }
     }
 
     const hasErrors = issues.some((i) => i.severity === "error");
@@ -336,9 +339,9 @@ export function StepReview({
                             </span>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
-                            <span className="text-muted-foreground">Price</span>
+                            <span className="text-muted-foreground">Price (Starting from)</span>
                             <Badge variant="outline" className="text-base">
-                                ₹{values.basePrice || 0}
+                                ₹{values.packageTiers?.[0]?.adultCost || 0}
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">

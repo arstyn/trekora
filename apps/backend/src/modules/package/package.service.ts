@@ -371,23 +371,40 @@ export class PackageService {
 
       return {
         ...pkg,
-        inclusions: draft.inclusions ? parseIfString(draft.inclusions) : [],
-        exclusions: draft.exclusions ? parseIfString(draft.exclusions) : [],
         packageLocation: draft.packageLocation ? parseIfString(draft.packageLocation) : null,
       };
     }
 
-    const [inclusions, exclusions, packageLocation] = await Promise.all([
-      this.inclusionRepository.find({ where: { packageId: id } }),
-      this.exclusionRepository.find({ where: { packageId: id } }),
-      this.packageLocationRepository.findOne({ where: { packageId: id } }),
-    ]);
+    const packageLocation = await this.packageLocationRepository.findOne({ where: { packageId: id } });
 
     return {
       ...pkg,
+      packageLocation,
+    };
+  }
+
+  async findDetails(id: string) {
+    const pkg = await this.packageRepository.findOne({ where: { id } });
+    if (!pkg) throw new NotFoundException('Package not found');
+
+    if (pkg.status === 'edited' && pkg.draftContent) {
+      const draft = pkg.draftContent as any;
+      const parseIfString = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
+
+      return {
+        inclusions: draft.inclusions ? parseIfString(draft.inclusions) : [],
+        exclusions: draft.exclusions ? parseIfString(draft.exclusions) : [],
+      };
+    }
+
+    const [inclusions, exclusions] = await Promise.all([
+      this.inclusionRepository.find({ where: { packageId: id } }),
+      this.exclusionRepository.find({ where: { packageId: id } }),
+    ]);
+
+    return {
       inclusions,
       exclusions,
-      packageLocation,
     };
   }
 
@@ -419,20 +436,26 @@ export class PackageService {
         paymentStructure: draft.paymentStructure ? parseIfString(draft.paymentStructure) : [],
         cancellationStructure: draft.cancellationStructure ? parseIfString(draft.cancellationStructure) : [],
         cancellationPolicy: draft.cancellationPolicy ? parseIfString(draft.cancellationPolicy) : [],
+        packageTiers: draft.packageTiers ? parseIfString(draft.packageTiers) : [],
+        additionalCosts: draft.additionalCosts ? parseIfString(draft.additionalCosts) : [],
       };
     }
 
-    const [paymentStructure, cancellationStructure, cancellationPolicy] =
+    const [paymentStructure, cancellationStructure, cancellationPolicy, packageTiers, additionalCosts] =
       await Promise.all([
         this.paymentMilestoneRepository.find({ where: { packageId: id } }),
         this.cancellationTierRepository.find({ where: { packageId: id } }),
         this.cancellationPolicyRepository.find({ where: { packageId: id } }),
+        this.packageTierRepository.find({ where: { packageId: id } }),
+        this.additionalCostRepository.find({ where: { packageId: id } }),
       ]);
 
     return {
       paymentStructure,
       cancellationStructure,
       cancellationPolicy,
+      packageTiers,
+      additionalCosts,
     };
   }
 
@@ -624,24 +647,10 @@ export class PackageService {
         });
       }
 
-      // Delete existing related entities to recreate them
-      await queryRunner.manager.delete(CancellationPolicy, { packageId: id });
-      await queryRunner.manager.delete(CancellationTier, { packageId: id });
-      await queryRunner.manager.delete(DocumentRequirement, { packageId: id });
-      await queryRunner.manager.delete(ChecklistItem, { packageId: id });
-      await queryRunner.manager.delete(Inclusion, { packageId: id });
-      await queryRunner.manager.delete(Exclusion, { packageId: id });
-      await queryRunner.manager.delete(ItineraryDay, { packageId: id });
-      await queryRunner.manager.delete(PaymentMilestone, { packageId: id });
-      await queryRunner.manager.delete(MealsBreakdown, { packageId: id });
-      await queryRunner.manager.delete(TransportationOption, { packageId: id });
-      await queryRunner.manager.delete(PackageLocation, { packageId: id });
-      await queryRunner.manager.delete(PackageTier, { packageId: id });
-      await queryRunner.manager.delete(AdditionalCost, { packageId: id });
-      await queryRunner.manager.delete(PackageLocation, { packageId: id });
-
       // Recreate all related entities (same logic as create)
-      if (cancellationPolicy) {
+
+      if (cancellationPolicy !== undefined) {
+        await queryRunner.manager.delete(CancellationPolicy, { packageId: id });
         const cancellationPolicyData = JSON.parse(
           cancellationPolicy,
         ) as string[];
@@ -655,7 +664,8 @@ export class PackageService {
         }
       }
 
-      if (cancellationStructure) {
+      if (cancellationStructure !== undefined) {
+        await queryRunner.manager.delete(CancellationTier, { packageId: id });
         const cancellationStructureData = JSON.parse(
           cancellationStructure,
         ) as CancellationTier[];
@@ -668,7 +678,8 @@ export class PackageService {
         }
       }
 
-      if (documentRequirements) {
+      if (documentRequirements !== undefined) {
+        await queryRunner.manager.delete(DocumentRequirement, { packageId: id });
         const documentRequirementsData = JSON.parse(
           documentRequirements,
         ) as DocumentRequirement[];
@@ -681,7 +692,8 @@ export class PackageService {
         }
       }
 
-      if (preTripChecklist) {
+      if (preTripChecklist !== undefined) {
+        await queryRunner.manager.delete(ChecklistItem, { packageId: id });
         const preTripChecklistData = JSON.parse(
           preTripChecklist,
         ) as ChecklistItem[];
@@ -694,7 +706,8 @@ export class PackageService {
         }
       }
 
-      if (inclusions) {
+      if (inclusions !== undefined) {
+        await queryRunner.manager.delete(Inclusion, { packageId: id });
         const inclusionsData = JSON.parse(inclusions) as string[];
         for (const item of inclusionsData) {
           const entity = this.inclusionRepository.create({
@@ -705,7 +718,8 @@ export class PackageService {
         }
       }
 
-      if (exclusions) {
+      if (exclusions !== undefined) {
+        await queryRunner.manager.delete(Exclusion, { packageId: id });
         const exclusionsData = JSON.parse(exclusions) as string[];
         for (const item of exclusionsData) {
           const entity = this.exclusionRepository.create({
@@ -716,7 +730,8 @@ export class PackageService {
         }
       }
 
-      if (itinerary) {
+      if (itinerary !== undefined) {
+        await queryRunner.manager.delete(ItineraryDay, { packageId: id });
         const itineraryData = JSON.parse(itinerary) as ItineraryDay[];
 
         for (let dayIndex = 0; dayIndex < itineraryData.length; dayIndex++) {
@@ -757,7 +772,8 @@ export class PackageService {
         }
       }
 
-      if (paymentStructure) {
+      if (paymentStructure !== undefined) {
+        await queryRunner.manager.delete(PaymentMilestone, { packageId: id });
         const paymentStructureData = JSON.parse(
           paymentStructure,
         ) as PaymentMilestone[];
@@ -771,7 +787,8 @@ export class PackageService {
         }
       }
 
-      if (mealsBreakdown) {
+      if (mealsBreakdown !== undefined) {
+        await queryRunner.manager.delete(MealsBreakdown, { packageId: id });
         const mealsBreakdownData = JSON.parse(mealsBreakdown) as MealsBreakdown;
         const entity = this.mealsBreakdownRepository.create({
           ...mealsBreakdownData,
@@ -780,7 +797,8 @@ export class PackageService {
         await queryRunner.manager.save(entity);
       }
 
-      if (packageLocation) {
+      if (packageLocation !== undefined) {
+        await queryRunner.manager.delete(PackageLocation, { packageId: id });
         const packageLocationData = JSON.parse(
           packageLocation,
         ) as PackageLocation;
@@ -791,7 +809,8 @@ export class PackageService {
         await queryRunner.manager.save(entity);
       }
 
-      if (transportation) {
+      if (transportation !== undefined) {
+        await queryRunner.manager.delete(TransportationOption, { packageId: id });
         const transportationParseData = JSON.parse(transportation) as any[];
         for (const option of transportationParseData) {
           const entity = this.transportationOptionRepository.create({
@@ -802,7 +821,8 @@ export class PackageService {
         }
       }
 
-      if (additionalCosts) {
+      if (additionalCosts !== undefined) {
+        await queryRunner.manager.delete(AdditionalCost, { packageId: id });
         const additionalCostsData = JSON.parse(additionalCosts) as any[];
         for (const cost of additionalCostsData) {
           const entity = this.additionalCostRepository.create({
@@ -813,7 +833,8 @@ export class PackageService {
         }
       }
 
-      if (packageTiers) {
+      if (packageTiers !== undefined) {
+        await queryRunner.manager.delete(PackageTier, { packageId: id });
         const packageTiersData = JSON.parse(packageTiers) as any[];
         for (const tier of packageTiersData) {
           const entity = this.packageTierRepository.create({
