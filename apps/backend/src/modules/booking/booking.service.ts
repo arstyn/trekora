@@ -383,9 +383,10 @@ export class BookingService {
       package: {
         id: booking.package.id,
         name: booking.package.name,
-        price: booking.package.price,
+        basePrice: booking.package.basePrice,
         destination: booking.package.destination,
-        duration: booking.package.duration,
+        days: booking.package.days,
+        nights: booking.package.nights,
       },
       batch: {
         id: booking.batch.id,
@@ -765,7 +766,7 @@ export class BookingService {
         where: { id: booking.packageId },
       });
       if (packageEntity) {
-        booking.totalAmount = packageEntity.price * booking.numberOfCustomers;
+        booking.totalAmount = packageEntity.basePrice * booking.numberOfCustomers;
         booking.balanceAmount = booking.totalAmount - booking.advancePaid;
       }
 

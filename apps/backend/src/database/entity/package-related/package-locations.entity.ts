@@ -15,11 +15,14 @@ export class PackageLocation {
   @Column({ nullable: true })
   type: 'international' | 'local';
 
-  @Column({ nullable: true })
-  country: string;
+  @Column('simple-array', { nullable: true })
+  countries: string[];
 
-  @Column({ nullable: true })
-  state: string;
+  @Column('simple-array', { nullable: true })
+  states: string[];
+
+  @Column('simple-array', { nullable: true })
+  cities: string[];
 
   @Column({ type: 'uuid', nullable: true })
   packageId: string;

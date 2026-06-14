@@ -36,6 +36,7 @@ import {
     ShieldCheck,
     Tickets,
     UsersIcon,
+    Loader2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ import { NavUser } from "./nav-user";
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const [userData, setUserData] = useState<IEmployee>();
     const [organizations, setOrganizations] = useState<any[]>([]);
+    const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
     const { hasPermission: canManagePermissions } = useHasPermission(
         "permission",
         "manage",
@@ -114,6 +116,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }, []);
 
     const handleSwitch = async (organizationId: string) => {
+        setSwitchingOrgId(organizationId);
         try {
             const res = await axiosInstance.post<{
                 accessToken: string;
@@ -126,6 +129,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         } catch (error) {
             console.error("Failed to switch organization:", error);
             toast.error("Failed to switch organization");
+            setSwitchingOrgId(null);
         }
     };
 
@@ -309,11 +313,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 {organizations.map((orgEmp) => (
                                     <DropdownMenuItem
                                         key={orgEmp.id}
-                                        onClick={() => handleSwitch(orgEmp.id)}
+                                        onSelect={(e) => {
+                                            e.preventDefault();
+                                            handleSwitch(orgEmp.id);
+                                        }}
                                         className="gap-2 p-2 cursor-pointer"
+                                        disabled={switchingOrgId !== null}
                                     >
                                         <div className="flex size-6 items-center justify-center rounded-sm border bg-background">
-                                            <Building className="size-3 shrink-0" />
+                                            {switchingOrgId === orgEmp.id ? (
+                                                <Loader2 className="size-3 shrink-0 animate-spin" />
+                                            ) : (
+                                                <Building className="size-3 shrink-0" />
+                                            )}
                                         </div>
                                         <div className="flex-1 text-sm">
                                             {orgEmp.name}

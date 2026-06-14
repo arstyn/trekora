@@ -107,7 +107,7 @@ export class BatchesService {
           id: true,
           name: true,
           description: true,
-          price: true,
+          basePrice: true,
           destination: true,
         },
       },

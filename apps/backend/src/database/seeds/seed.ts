@@ -22,12 +22,12 @@ import { MealsBreakdown } from '../entity/package-related/meals-breakdowns.entit
 import { PackageLocation } from '../entity/package-related/package-locations.entity';
 import { Package } from '../entity/package-related/package.entity';
 import { PaymentMilestone } from '../entity/package-related/payment-milestones.entity';
-import { Transportation } from '../entity/package-related/transportations.entity';
+// Removed Transportation import
 import { PermissionSetPermission } from '../entity/permission-set-permission.entity';
 import { PermissionSet } from '../entity/permission-set.entity';
 import { Permission } from '../entity/permission.entity';
 import { UserNotificationType } from '../entity/user-notification-type.entity';
-import { UserPermissionSet } from '../entity/user-permission-set.entity';
+import { ProfilePermissionSet } from '../entity/profile-permission-set.entity';
 import { User } from '../entity/user.entity';
 import { UserOrganization } from '../entity/user-organization.entity';
 import { batches } from './batch.seed';
@@ -427,29 +427,7 @@ async function seed() {
         await queryRunner.manager.save(packageLocation);
       }
 
-      // Create transportation
-      if (packageData.transportation) {
-        const transportation = queryRunner.manager.create(Transportation, {
-          toMode: packageData.transportation.toDestination?.mode || undefined,
-          toDetails:
-            packageData.transportation.toDestination?.details || undefined,
-          toIncluded:
-            packageData.transportation.toDestination?.included || false,
-          fromMode:
-            packageData.transportation.fromDestination?.mode || undefined,
-          fromDetails:
-            packageData.transportation.fromDestination?.details || undefined,
-          fromIncluded:
-            packageData.transportation.fromDestination?.included || false,
-          duringMode: packageData.transportation.duringTrip?.mode || undefined,
-          duringDetails:
-            packageData.transportation.duringTrip?.details || undefined,
-          duringIncluded:
-            packageData.transportation.duringTrip?.included || false,
-          packageId: savedPackage.id,
-        });
-        await queryRunner.manager.save(transportation);
-      }
+      // Removed old transportation seeding
 
       // Create itinerary
       if (packageData.itinerary) {
@@ -787,11 +765,11 @@ async function seed() {
     console.log('Assigning permission sets to users and employees...');
     const userPermissionSetTableExists = await tableExists(
       queryRunner,
-      'user_permission_set',
+      'profile_permission_set',
     );
     if (userPermissionSetTableExists) {
-      const userPermissionSetRepository =
-        queryRunner.manager.getRepository(UserPermissionSet);
+      const profilePermissionSetRepository =
+        queryRunner.manager.getRepository(ProfilePermissionSet);
 
       // Get all users, employees, and organizations
       const allUsers = await queryRunner.manager.find(User);
@@ -864,7 +842,7 @@ async function seed() {
 
         if (permissionSet) {
           // Assign to employee
-          let existing = await userPermissionSetRepository.findOne({
+          let existing = await profilePermissionSetRepository.findOne({
             where: {
               employeeId: employee.id,
               permissionSetId: permissionSet.id,
@@ -872,29 +850,11 @@ async function seed() {
           });
 
           if (!existing) {
-            existing = userPermissionSetRepository.create({
+            existing = profilePermissionSetRepository.create({
               employeeId: employee.id,
               permissionSetId: permissionSet.id,
             });
-            await userPermissionSetRepository.save(existing);
-          }
-
-          // Also assign to linked user if exists
-          if (employee.userId) {
-            let existingUser = await userPermissionSetRepository.findOne({
-              where: {
-                userId: employee.userId,
-                permissionSetId: permissionSet.id,
-              },
-            });
-
-            if (!existingUser) {
-              existingUser = userPermissionSetRepository.create({
-                userId: employee.userId,
-                permissionSetId: permissionSet.id,
-              });
-              await userPermissionSetRepository.save(existingUser);
-            }
+            await profilePermissionSetRepository.save(existing);
           }
 
           console.log(`Assigned "${config.name}" to ${employee.email}`);

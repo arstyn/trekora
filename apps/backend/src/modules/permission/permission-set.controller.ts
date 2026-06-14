@@ -37,36 +37,20 @@ export class PermissionSetController {
   @Get('my')
   async getMyPermissionSets(@Request() req: ApiRequestJWT) {
     const userId = req.user.userId;
+    const organizationId = req.user.organizationId;
 
-    // Get permission sets assigned to the user
-    const userPermissionSets =
-      await this.permissionSetService.getPermissionSetsForUser(userId);
-
-    // Also check if user has a linked employee and get their permission sets
-    // (They should be in sync, but we check both to be safe)
     const employee = await this.employeeRepository.findOne({
-      where: { userId },
+      where: { userId, organizationId },
     });
 
-    let employeePermissionSets: PermissionSet[] = [];
-    if (employee) {
-      employeePermissionSets =
-        await this.permissionSetService.getPermissionSetsForUser(
-          undefined,
-          employee.id,
-        );
+    if (!employee) {
+      return [];
     }
 
-    // Combine both sets and remove duplicates
-    const allPermissionSets = [
-      ...userPermissionSets,
-      ...employeePermissionSets,
-    ];
-    const uniquePermissionSets = Array.from(
-      new Map(allPermissionSets.map((ps) => [ps.id, ps])).values(),
-    );
+    const employeePermissionSets =
+      await this.permissionSetService.getPermissionSetsForUser(employee.id);
 
-    return uniquePermissionSets;
+    return employeePermissionSets;
   }
 
   // Create a new permission set
@@ -113,51 +97,50 @@ export class PermissionSetController {
     return await this.permissionSetService.delete(id);
   }
 
-  // Assign permission set to user or employee
+  // Assign permission set to an employee
   @Post(':id/assign')
   @RequirePermission('permission-set', 'manage')
   async assignPermissionSet(
     @Param('id') permissionSetId: string,
-    @Body() body: { userId?: string; employeeId?: string },
+    @Body() body: { employeeId: string },
   ) {
     return await this.permissionSetService.assignPermissionSet(
       permissionSetId,
-      body.userId,
       body.employeeId,
     );
   }
 
-  // Remove permission set assignment from user or employee
+  // Remove permission set assignment from employee
   @Delete(':id/assign')
   @RequirePermission('permission-set', 'manage')
   async removePermissionSetAssignment(
     @Param('id') permissionSetId: string,
-    @Body() body: { userId?: string; employeeId?: string },
+    @Body() body: { employeeId: string },
   ): Promise<void> {
     return await this.permissionSetService.removePermissionSetAssignment(
       permissionSetId,
-      body.userId,
       body.employeeId,
     );
   }
 
-  // Get permission sets for a user or employee (admin only for other users)
+  // Get permission sets for a user via their employee profile (admin only for other users)
   @Get('user/:userId')
   @RequirePermission('permission-set', 'read')
   async getPermissionSetsForUser(
     @Request() req: ApiRequestJWT,
     @Param('userId') userId: string,
   ) {
-    // Only allow admins to view other users' permission sets
-    // Users can view their own via the 'my' endpoint
-    return await this.permissionSetService.getPermissionSetsForUser(userId);
+    const employee = await this.employeeRepository.findOne({
+      where: { userId, organizationId: req.user.organizationId },
+    });
+    if (!employee) return [];
+    return await this.permissionSetService.getPermissionSetsForUser(employee.id);
   }
 
   @Get('employee/:employeeId')
   @RequirePermission('permission-set', 'read')
   async getPermissionSetsForEmployee(@Param('employeeId') employeeId: string) {
     return await this.permissionSetService.getPermissionSetsForUser(
-      undefined,
       employeeId,
     );
   }

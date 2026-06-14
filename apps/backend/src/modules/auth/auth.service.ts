@@ -285,7 +285,6 @@ export class AuthService {
         if (adminSet) {
           await this.permissionSetService.assignPermissionSet(
             adminSet.id,
-            savedUser.id,
             savedEmployee.id,
           );
         }
@@ -640,7 +639,7 @@ export class AuthService {
           if (adminSet) {
             await this.permissionSetService.assignPermissionSet(
               adminSet.id,
-              user.id,
+              employee.id,
             );
           }
 

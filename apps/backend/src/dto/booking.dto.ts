@@ -173,9 +173,10 @@ export class BookingResponseDto {
   package: {
     id: string;
     name: string;
-    price: number;
+    basePrice: number;
     destination: string;
-    duration: string;
+    days: number;
+    nights: number;
   };
   batch: {
     id: string;

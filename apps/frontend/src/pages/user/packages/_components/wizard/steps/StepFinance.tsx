@@ -14,6 +14,7 @@ import {
     FormLabel,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     Select,
     SelectContent,
@@ -59,6 +60,24 @@ export function StepFinance({
         name: "cancellationStructure",
     });
 
+    const {
+        fields: tierFields,
+        append: appendTier,
+        remove: removeTier,
+    } = useFieldArray({
+        control: form.control,
+        name: "packageTiers",
+    });
+
+    const {
+        fields: additionalCostFields,
+        append: appendAdditionalCost,
+        remove: removeAdditionalCost,
+    } = useFieldArray({
+        control: form.control,
+        name: "additionalCosts",
+    });
+
     const [newPolicyPoint, setNewPolicyPoint] = useState("");
 
     const addPolicyPoint = () => {
@@ -79,14 +98,288 @@ export function StepFinance({
         );
     };
 
-    const totalPackagePrice = form.watch("price") || 0;
+    const baseAdultCost = (form.watch("packageTiers") || [])[0]?.adultCost || 0;
     const totalPayments = (form.watch("paymentStructure") || []).reduce(
         (sum, milestone) => sum + (milestone.amount || 0),
         0,
     );
 
+    const itinerary = form.watch("itinerary") || [];
+    const itineraryCost = itinerary.reduce((sum, day) => {
+        let dayCost = 0;
+        if (day.activitiesCostType === "per_day") {
+            dayCost += day.activitiesTotalCost || 0;
+        } else {
+            dayCost += (day.activities || []).reduce((s, act) => s + ((act as any).cost || 0), 0);
+        }
+        dayCost += day.accommodationCost || 0;
+        return sum + dayCost;
+    }, 0);
+
+    const mealsCost = form.watch("mealsBreakdown.mealsCost") || 0;
+    const additionalCosts = form.watch("additionalCosts") || [];
+    const addCostsSum = additionalCosts.reduce((sum, cost) => sum + (cost.cost || 0), 0);
+
+    const calculatedBaseCost = itineraryCost + mealsCost + addCostsSum;
+
     return (
         <div className="space-y-6">
+            <Card className="bg-primary/5 border-primary/20">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Calculated Base Cost</CardTitle>
+                    <CardDescription>Aggregated from Itinerary, Meals, and Additional Costs (excluding transportation)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                            <span className="text-muted-foreground block mb-1">Itinerary (Activities & Accomm.)</span>
+                            <span className="font-semibold">₹{itineraryCost}</span>
+                        </div>
+                        <div>
+                            <span className="text-muted-foreground block mb-1">Meals</span>
+                            <span className="font-semibold">₹{mealsCost}</span>
+                        </div>
+                        <div>
+                            <span className="text-muted-foreground block mb-1">Additional Costs</span>
+                            <span className="font-semibold">₹{addCostsSum}</span>
+                        </div>
+                        <div>
+                            <span className="text-muted-foreground block mb-1">Total Base Cost</span>
+                            <span className="font-bold text-lg text-primary">₹{calculatedBaseCost}</span>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Package Pricing Tiers</CardTitle>
+                            <CardDescription>
+                                Define cost structure for Adults, Children, and Infants.
+                            </CardDescription>
+                        </div>
+                        <Button
+                            type="button"
+                            onClick={() =>
+                                appendTier({
+                                    name: "",
+                                    adultCost: 0,
+                                    childCostType: "percentage",
+                                    childCostValue: 0,
+                                    infantCostType: "percentage",
+                                    infantCostValue: 0,
+                                })
+                            }
+                            size="sm"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Tier
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {tierFields.map((field, index) => (
+                        <div key={field.id} className="border rounded-lg p-4 space-y-4">
+                            <div className="flex justify-between items-center">
+                                <h4 className="font-medium">Pricing Tier {index + 1}</h4>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeTier(index)}
+                                >
+                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name={`packageTiers.${index}.name`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Tier Name (e.g. Standard, Premium)</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`packageTiers.${index}.adultCost`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Adult Cost (INR)</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    {...field}
+                                                    onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t">
+                                <div className="space-y-3">
+                                    <Label className="font-medium">Child Pricing</Label>
+                                    <div className="flex gap-2">
+                                        <FormField
+                                            control={form.control}
+                                            name={`packageTiers.${index}.childCostType`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value || "percentage"}>
+                                                        <FormControl>
+                                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                                            <SelectItem value="flat">Flat Amount</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`packageTiers.${index}.childCostValue`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            placeholder="Value"
+                                                            {...field}
+                                                            onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <Label className="font-medium">Infant Pricing</Label>
+                                    <div className="flex gap-2">
+                                        <FormField
+                                            control={form.control}
+                                            name={`packageTiers.${index}.infantCostType`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value || "percentage"}>
+                                                        <FormControl>
+                                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                                            <SelectItem value="flat">Flat Amount</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`packageTiers.${index}.infantCostValue`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            placeholder="Value"
+                                                            {...field}
+                                                            onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    {tierFields.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">No pricing tiers added.</p>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Additional Costs</CardTitle>
+                            <CardDescription>
+                                Add any extra costs not covered in the package tiers.
+                            </CardDescription>
+                        </div>
+                        <Button
+                            type="button"
+                            onClick={() => appendAdditionalCost({ name: "", cost: 0 })}
+                            size="sm"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Cost
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {additionalCostFields.map((field, index) => (
+                        <div key={field.id} className="flex gap-3 items-end">
+                            <FormField
+                                control={form.control}
+                                name={`additionalCosts.${index}.name`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>Cost Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g. Visa Fee" {...field} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`additionalCosts.${index}.cost`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>Amount (INR)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                {...field}
+                                                onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="mb-1"
+                                onClick={() => removeAdditionalCost(index)}
+                            >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                        </div>
+                    ))}
+                    {additionalCostFields.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">No additional costs added.</p>
+                    )}
+                </CardContent>
+            </Card>
+
             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-center">
@@ -120,11 +413,11 @@ export function StepFinance({
                         </span>
                         <div className="flex gap-2 items-center">
                             <span className="text-sm text-muted-foreground">
-                                target: ₹{totalPackagePrice}
+                                target: ₹{baseAdultCost} (Tier 1 Adult)
                             </span>
                             <Badge
                                 variant={
-                                    totalPayments === totalPackagePrice
+                                    totalPayments === baseAdultCost
                                         ? "default"
                                         : "destructive"
                                 }
@@ -372,7 +665,7 @@ export function StepFinance({
                 <Button
                     type="button"
                     onClick={onNext}
-                    disabled={isLoading || totalPayments !== totalPackagePrice}
+                    disabled={isLoading}
                     className="gap-2"
                 >
                     {isLoading ? "Saving..." : "Save \u0026 Next"}

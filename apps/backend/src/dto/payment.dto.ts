@@ -1,16 +1,14 @@
+import { Transform } from 'class-transformer';
 import {
-  IsArray,
+  IsDateString,
   IsEnum,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  Min,
   Max,
-  IsDateString,
-  IsBoolean,
+  Min
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
 import {
   PaymentMethod,
   PaymentStatus,
@@ -239,7 +237,8 @@ export class PaymentResponseDto {
       id: string;
       name: string;
       destination: string;
-      duration: string;
+      days: number;
+      nights: number;
     };
 
     batch: {

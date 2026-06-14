@@ -16,9 +16,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
 import { Plus, Save, Trash, Trash2, Upload } from "lucide-react";
+import { useEffect } from "react";
 import { useFieldArray, type UseFormReturn } from "react-hook-form";
 
 interface StepItineraryProps {
@@ -57,8 +59,8 @@ export function StepItinerary({
             form.getValues(`itinerary.${dayIndex}.activities`) || [];
         form.setValue(`itinerary.${dayIndex}.activities`, [
             ...currentActivities,
-            "",
-        ]);
+            { name: "", cost: 0 },
+        ] as any);
     };
 
     const removeActivity = (dayIndex: number, activityIndex: number) => {
@@ -69,6 +71,34 @@ export function StepItinerary({
             currentActivities.filter((_, i) => i !== activityIndex),
         );
     };
+
+    const numDays = form.watch("days") || 0;
+
+    useEffect(() => {
+        if (numDays > 0) {
+            const currentDays = itineraryFields.length;
+            if (numDays > currentDays) {
+                for (let i = currentDays; i < numDays; i++) {
+                    appendItinerary({
+                        day: i + 1,
+                        title: "",
+                        description: "",
+                        activities: [],
+                        activitiesCostType: "per_day",
+                        meals: [],
+                        accommodation: "",
+                        images: [],
+                    });
+                }
+            } else if (numDays < currentDays) {
+                // To avoid destructive actions, we might just warn or truncate.
+                // For now, let's truncate to match days.
+                for (let i = currentDays - 1; i >= numDays; i--) {
+                    removeItinerary(i);
+                }
+            }
+        }
+    }, [numDays, itineraryFields.length, appendItinerary, removeItinerary]);
 
     return (
         <div className="space-y-6">
@@ -81,24 +111,6 @@ export function StepItinerary({
                                 Plan the day-by-day activities
                             </CardDescription>
                         </div>
-                        <Button
-                            type="button"
-                            onClick={() => {
-                                appendItinerary({
-                                    day: itineraryFields.length + 1,
-                                    title: "",
-                                    description: "",
-                                    activities: [""],
-                                    meals: [],
-                                    accommodation: "",
-                                    images: [],
-                                });
-                            }}
-                            size="sm"
-                        >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Day
-                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -220,9 +232,9 @@ export function StepItinerary({
                             />
 
                             {/* Activities */}
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <Label>Activities</Label>
+                                    <Label className="text-base">Activities</Label>
                                     <Button
                                         type="button"
                                         variant="ghost"
@@ -233,42 +245,113 @@ export function StepItinerary({
                                         Add Activity
                                     </Button>
                                 </div>
+                                <FormField
+                                    control={form.control}
+                                    name={`itinerary.${dayIndex}.activitiesCostType`}
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-3">
+                                            <FormLabel>Cost Configuration</FormLabel>
+                                            <FormControl>
+                                                <RadioGroup
+                                                    onValueChange={field.onChange}
+                                                    defaultValue={field.value || "per_day"}
+                                                    className="flex flex-row space-x-4"
+                                                >
+                                                    <FormItem className="flex items-center space-x-2 space-y-0">
+                                                        <FormControl>
+                                                            <RadioGroupItem value="per_day" />
+                                                        </FormControl>
+                                                        <FormLabel className="font-normal">
+                                                            Total Cost Per Day
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                    <FormItem className="flex items-center space-x-2 space-y-0">
+                                                        <FormControl>
+                                                            <RadioGroupItem value="per_activity" />
+                                                        </FormControl>
+                                                        <FormLabel className="font-normal">
+                                                            Cost Per Activity
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                </RadioGroup>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                {form.watch(`itinerary.${dayIndex}.activitiesCostType`) === "per_day" && (
+                                    <FormField
+                                        control={form.control}
+                                        name={`itinerary.${dayIndex}.activitiesTotalCost`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Total Activities Cost for Day (INR)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder="e.g., 500"
+                                                        {...field}
+                                                        onChange={(e) =>
+                                                            field.onChange(
+                                                                Number.parseInt(e.target.value) || 0
+                                                            )
+                                                        }
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
+
                                 {(
-                                    form.watch(
-                                        `itinerary.${dayIndex}.activities`,
-                                    ) || []
+                                    form.watch(`itinerary.${dayIndex}.activities`) || []
                                 ).map((_, activityIndex) => (
-                                    <div
-                                        key={activityIndex}
-                                        className="flex gap-2"
-                                    >
+                                    <div key={activityIndex} className="flex gap-2 items-end">
                                         <FormField
                                             control={form.control}
-                                            name={`itinerary.${dayIndex}.activities.${activityIndex}`}
+                                            name={`itinerary.${dayIndex}.activities.${activityIndex}.name`}
                                             render={({ field }) => (
                                                 <FormItem className="flex-1">
+                                                    <FormLabel className="sr-only">Activity Name</FormLabel>
                                                     <FormControl>
-                                                        <Input
-                                                            placeholder="Activity name"
-                                                            {...field}
-                                                        />
+                                                        <Input placeholder="Activity name" {...field} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
+                                        {form.watch(`itinerary.${dayIndex}.activitiesCostType`) === "per_activity" && (
+                                            <FormField
+                                                control={form.control}
+                                                name={`itinerary.${dayIndex}.activities.${activityIndex}.cost`}
+                                                render={({ field }) => (
+                                                    <FormItem className="w-32">
+                                                        <FormLabel className="sr-only">Cost</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                placeholder="Cost"
+                                                                {...field}
+                                                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        )}
                                         <Button
                                             type="button"
                                             variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                                removeActivity(
-                                                    dayIndex,
-                                                    activityIndex,
-                                                )
-                                            }
+                                            size="icon"
+                                            className="mb-1"
+                                            onClick={() => removeActivity(dayIndex, activityIndex)}
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="w-4 h-4 text-red-500" />
                                         </Button>
                                     </div>
                                 ))}
@@ -303,16 +386,16 @@ export function StepItinerary({
                                                                         const updated =
                                                                             checked
                                                                                 ? [
-                                                                                      ...current,
-                                                                                      meal,
-                                                                                  ]
+                                                                                    ...current,
+                                                                                    meal,
+                                                                                ]
                                                                                 : current.filter(
-                                                                                      (
-                                                                                          m,
-                                                                                      ) =>
-                                                                                          m !==
-                                                                                          meal,
-                                                                                  );
+                                                                                    (
+                                                                                        m,
+                                                                                    ) =>
+                                                                                        m !==
+                                                                                        meal,
+                                                                                );
                                                                         field.onChange(
                                                                             updated,
                                                                         );
@@ -329,22 +412,47 @@ export function StepItinerary({
                                         )}
                                     </div>
                                 </div>
-                                <FormField
-                                    control={form.control}
-                                    name={`itinerary.${dayIndex}.accommodation`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Accommodation</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="e.g., Luxury Beach Resort"
-                                                    {...field}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <div className="space-y-4">
+                                    <FormField
+                                        control={form.control}
+                                        name={`itinerary.${dayIndex}.accommodation`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Accommodation Name</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="e.g., Luxury Beach Resort"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name={`itinerary.${dayIndex}.accommodationCost`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Accommodation Cost (INR)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder="e.g., 2500"
+                                                        {...field}
+                                                        onChange={(e) =>
+                                                            field.onChange(
+                                                                Number.parseInt(e.target.value) || 0
+                                                            )
+                                                        }
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -362,7 +470,7 @@ export function StepItinerary({
                                         day: 1,
                                         title: "",
                                         description: "",
-                                        activities: [""],
+                                        activities: [{ name: "", cost: 0 }],
                                         meals: [],
                                         accommodation: "",
                                         images: [],

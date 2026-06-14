@@ -720,7 +720,8 @@ export class PaymentService {
           id: payment.booking.package.id,
           name: payment.booking.package.name,
           destination: payment.booking.package.destination,
-          duration: payment.booking.package.duration,
+          days: payment.booking.package.days,
+          nights: payment.booking.package.nights,
         },
 
         batch: {

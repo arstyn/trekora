@@ -12,7 +12,9 @@ import { Inclusion } from 'src/database/entity/package-related/inclusions.entity
 import { MealsBreakdown } from 'src/database/entity/package-related/meals-breakdowns.entity';
 import { PackageLocation } from 'src/database/entity/package-related/package-locations.entity';
 import { PaymentMilestone } from 'src/database/entity/package-related/payment-milestones.entity';
-import { Transportation } from 'src/database/entity/package-related/transportations.entity';
+import { TransportationOption } from 'src/database/entity/package-related/transportation-options.entity';
+import { PackageTier } from 'src/database/entity/package-related/package-tiers.entity';
+import { AdditionalCost } from 'src/database/entity/package-related/additional-costs.entity';
 import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
 import { DataSource, Repository } from 'typeorm';
 import { CancellationPolicy } from '../../database/entity/package-related/cancellation-policies.entity';
@@ -45,8 +47,12 @@ export class PackageService {
     private readonly packageLocationRepository: Repository<PackageLocation>,
     @InjectRepository(PaymentMilestone)
     private readonly paymentMilestoneRepository: Repository<PaymentMilestone>,
-    @InjectRepository(Transportation)
-    private readonly transportationRepository: Repository<Transportation>,
+    @InjectRepository(TransportationOption)
+    private readonly transportationOptionRepository: Repository<TransportationOption>,
+    @InjectRepository(PackageTier)
+    private readonly packageTierRepository: Repository<PackageTier>,
+    @InjectRepository(AdditionalCost)
+    private readonly additionalCostRepository: Repository<AdditionalCost>,
     @InjectRepository(ItineraryDay)
     private readonly itineraryDayRepository: Repository<ItineraryDay>,
     @InjectRepository(PackageActivity)
@@ -54,7 +60,7 @@ export class PackageService {
     @InjectRepository(ChecklistItem)
     private readonly checklistItemRepository: Repository<ChecklistItem>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   async create(
     user: { userId: string; organizationId: string },
@@ -73,6 +79,8 @@ export class PackageService {
       packageLocation,
       transportation,
       mealsBreakdown,
+      additionalCosts,
+      packageTiers,
       ...rest
     } = createPackageDto;
 
@@ -86,7 +94,9 @@ export class PackageService {
         ...rest,
         id: randomUUID(),
         destination: rest.destination === '' ? undefined : rest.destination,
-        duration: rest.duration === '' ? undefined : rest.duration,
+        days: rest.days,
+        nights: rest.nights,
+        basePrice: rest.basePrice,
         description: rest.description === '' ? undefined : rest.description,
         thumbnail: undefined,
         organizationId: user.organizationId,
@@ -250,28 +260,36 @@ export class PackageService {
       }
 
       if (transportation) {
-        // Transform nested structure to flat structure for database
-        const transportationParseData = JSON.parse(
-          transportation,
-        ) as ITransportation;
-        const transportationData = {
-          toMode: transportationParseData.toDestination?.mode || undefined,
-          toDetails:
-            transportationParseData.toDestination?.details || undefined,
-          toIncluded: transportationParseData.toDestination?.included || false,
-          fromMode: transportationParseData.fromDestination?.mode || undefined,
-          fromDetails:
-            transportationParseData.fromDestination?.details || undefined,
-          fromIncluded:
-            transportationParseData.fromDestination?.included || false,
-          duringMode: transportationParseData.duringTrip?.mode || undefined,
-          duringDetails:
-            transportationParseData.duringTrip?.details || undefined,
-          duringIncluded: transportationParseData.duringTrip?.included || false,
-          packageId: savedPackage.id,
-        };
-        const entity = this.transportationRepository.create(transportationData);
-        await queryRunner.manager.save(entity);
+        const transportationParseData = JSON.parse(transportation) as any[];
+        for (const option of transportationParseData) {
+          const entity = this.transportationOptionRepository.create({
+            ...option,
+            packageId: savedPackage.id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (additionalCosts) {
+        const additionalCostsData = JSON.parse(additionalCosts) as any[];
+        for (const cost of additionalCostsData) {
+          const entity = this.additionalCostRepository.create({
+            ...cost,
+            packageId: savedPackage.id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
+
+      if (packageTiers) {
+        const packageTiersData = JSON.parse(packageTiers) as any[];
+        for (const tier of packageTiersData) {
+          const entity = this.packageTierRepository.create({
+            ...tier,
+            packageId: savedPackage.id,
+          });
+          await queryRunner.manager.save(entity);
+        }
       }
 
       await queryRunner.commitTransaction();
@@ -297,8 +315,9 @@ export class PackageService {
         'id',
         'name',
         'destination',
-        'duration',
-        'price',
+        'days',
+        'nights',
+        'basePrice',
         'description',
         'maxGuests',
         'thumbnail',
@@ -319,8 +338,10 @@ export class PackageService {
         'cancellationStructure',
         'cancellationPolicy',
         'mealsBreakdown',
-        'transportation',
+        'transportationOptions',
         'packageLocation',
+        'packageTiers',
+        'additionalCosts',
         'itinerary',
         'documentRequirements',
         'preTripChecklist',
@@ -332,42 +353,29 @@ export class PackageService {
       // Merge draft content into the package data for the UI
       Object.assign(pkg, pkg.draftContent);
     }
-
-    if (pkg.transportation) {
-      this.transformTransportation(pkg);
-    }
-
     return pkg;
   }
 
-  private transformTransportation(pkg: Package) {
-    if (pkg.transportation) {
-      const transformedTransportation = {
-        toDestination: {
-          mode: pkg.transportation.toMode,
-          details: pkg.transportation.toDetails,
-          included: pkg.transportation.toIncluded,
-        },
-        fromDestination: {
-          mode: pkg.transportation.fromMode,
-          details: pkg.transportation.fromDetails,
-          included: pkg.transportation.fromIncluded,
-        },
-        duringTrip: {
-          mode: pkg.transportation.duringMode,
-          details: pkg.transportation.duringDetails,
-          included: pkg.transportation.duringIncluded,
-        },
-      };
-      (pkg as any).transportation = transformedTransportation;
-    }
-  }
 
   async findBasicInfo(id: string) {
     const pkg = await this.packageRepository.findOne({
       where: { id },
     });
     if (!pkg) throw new NotFoundException('Package not found');
+
+    if (pkg.status === 'edited' && pkg.draftContent) {
+      const draft = pkg.draftContent as any;
+      Object.assign(pkg, draft);
+
+      const parseIfString = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
+
+      return {
+        ...pkg,
+        inclusions: draft.inclusions ? parseIfString(draft.inclusions) : [],
+        exclusions: draft.exclusions ? parseIfString(draft.exclusions) : [],
+        packageLocation: draft.packageLocation ? parseIfString(draft.packageLocation) : null,
+      };
+    }
 
     const [inclusions, exclusions, packageLocation] = await Promise.all([
       this.inclusionRepository.find({ where: { packageId: id } }),
@@ -384,6 +392,14 @@ export class PackageService {
   }
 
   async findItinerary(id: string) {
+    const pkg = await this.packageRepository.findOne({ where: { id } });
+    if (!pkg) throw new NotFoundException('Package not found');
+
+    if (pkg.status === 'edited' && pkg.draftContent && (pkg.draftContent as any).itinerary) {
+      const itinerary = (pkg.draftContent as any).itinerary;
+      return typeof itinerary === 'string' ? JSON.parse(itinerary) : itinerary;
+    }
+
     const itinerary = await this.itineraryDayRepository.find({
       where: { packageId: id },
       order: { day: 'ASC' },
@@ -392,6 +408,20 @@ export class PackageService {
   }
 
   async findPaymentsAndCancellation(id: string) {
+    const pkg = await this.packageRepository.findOne({ where: { id } });
+    if (!pkg) throw new NotFoundException('Package not found');
+
+    if (pkg.status === 'edited' && pkg.draftContent) {
+      const draft = pkg.draftContent as any;
+      const parseIfString = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
+
+      return {
+        paymentStructure: draft.paymentStructure ? parseIfString(draft.paymentStructure) : [],
+        cancellationStructure: draft.cancellationStructure ? parseIfString(draft.cancellationStructure) : [],
+        cancellationPolicy: draft.cancellationPolicy ? parseIfString(draft.cancellationPolicy) : [],
+      };
+    }
+
     const [paymentStructure, cancellationStructure, cancellationPolicy] =
       await Promise.all([
         this.paymentMilestoneRepository.find({ where: { packageId: id } }),
@@ -407,6 +437,19 @@ export class PackageService {
   }
 
   async findRequirements(id: string) {
+    const pkg = await this.packageRepository.findOne({ where: { id } });
+    if (!pkg) throw new NotFoundException('Package not found');
+
+    if (pkg.status === 'edited' && pkg.draftContent) {
+      const draft = pkg.draftContent as any;
+      const parseIfString = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
+
+      return {
+        documentRequirements: draft.documentRequirements ? parseIfString(draft.documentRequirements) : [],
+        preTripChecklist: draft.preTripChecklist ? parseIfString(draft.preTripChecklist) : [],
+      };
+    }
+
     const [documentRequirements, preTripChecklist] = await Promise.all([
       this.documentRequirementRepository.find({
         where: { packageId: id },
@@ -423,25 +466,38 @@ export class PackageService {
   }
 
   async findLogistics(id: string) {
-    const [transportation, mealsBreakdown, packageLocation] = await Promise.all(
+    const pkg = await this.packageRepository.findOne({ where: { id } });
+    if (!pkg) throw new NotFoundException('Package not found');
+
+    if (pkg.status === 'edited' && pkg.draftContent) {
+      const draft = pkg.draftContent as any;
+      const parseIfString = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
+
+      let transportation = draft.transportationOptions ? parseIfString(draft.transportationOptions) : null;
+
+      return {
+        transportation: transportation,
+        mealsBreakdown: draft.mealsBreakdown ? parseIfString(draft.mealsBreakdown) : null,
+        packageLocation: draft.packageLocation ? parseIfString(draft.packageLocation) : null,
+      };
+    }
+
+    const [transportationOptions, mealsBreakdown, packageLocation, packageTiers, additionalCosts] = await Promise.all(
       [
-        this.transportationRepository.findOne({ where: { packageId: id } }),
+        this.transportationOptionRepository.find({ where: { packageId: id } }),
         this.mealsBreakdownRepository.findOne({ where: { packageId: id } }),
         this.packageLocationRepository.findOne({ where: { packageId: id } }),
+        this.packageTierRepository.find({ where: { packageId: id } }),
+        this.additionalCostRepository.find({ where: { packageId: id } }),
       ],
     );
 
-    let transformedTransportation = transportation;
-    if (transportation) {
-      const pkg = { transportation } as any;
-      this.transformTransportation(pkg);
-      transformedTransportation = pkg.transportation;
-    }
-
     return {
-      transportation: transformedTransportation,
+      transportation: transportationOptions,
       mealsBreakdown,
       packageLocation,
+      packageTiers,
+      additionalCosts,
     };
   }
 
@@ -500,6 +556,8 @@ export class PackageService {
       packageLocation,
       transportation,
       mealsBreakdown,
+      additionalCosts,
+      packageTiers,
       ...rest
     } = updatePackageDto;
 
@@ -524,7 +582,9 @@ export class PackageService {
         ...rest,
         // Convert empty strings to undefined for optional fields
         destination: rest.destination === '' ? undefined : rest.destination,
-        duration: rest.duration === '' ? undefined : rest.duration,
+        days: rest.days,
+        nights: rest.nights,
+        basePrice: rest.basePrice,
         description: rest.description === '' ? undefined : rest.description,
         thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail,
       };
@@ -574,7 +634,10 @@ export class PackageService {
       await queryRunner.manager.delete(ItineraryDay, { packageId: id });
       await queryRunner.manager.delete(PaymentMilestone, { packageId: id });
       await queryRunner.manager.delete(MealsBreakdown, { packageId: id });
-      await queryRunner.manager.delete(Transportation, { packageId: id });
+      await queryRunner.manager.delete(TransportationOption, { packageId: id });
+      await queryRunner.manager.delete(PackageLocation, { packageId: id });
+      await queryRunner.manager.delete(PackageTier, { packageId: id });
+      await queryRunner.manager.delete(AdditionalCost, { packageId: id });
       await queryRunner.manager.delete(PackageLocation, { packageId: id });
 
       // Recreate all related entities (same logic as create)
@@ -729,30 +792,36 @@ export class PackageService {
       }
 
       if (transportation) {
-        // Transform nested structure to flat structure for database
-        const transportationParseData = JSON.parse(
-          transportation,
-        ) as ITransportation;
+        const transportationParseData = JSON.parse(transportation) as any[];
+        for (const option of transportationParseData) {
+          const entity = this.transportationOptionRepository.create({
+            ...option,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
 
-        const transportationData = {
-          toMode: transportationParseData.toDestination?.mode || undefined,
-          toDetails:
-            transportationParseData.toDestination?.details || undefined,
-          toIncluded: transportationParseData.toDestination?.included || false,
-          fromMode: transportationParseData.fromDestination?.mode || undefined,
-          fromDetails:
-            transportationParseData.fromDestination?.details || undefined,
-          fromIncluded:
-            transportationParseData.fromDestination?.included || false,
-          duringMode: transportationParseData.duringTrip?.mode || undefined,
-          duringDetails:
-            transportationParseData.duringTrip?.details || undefined,
-          duringIncluded: transportationParseData.duringTrip?.included || false,
-          packageId: id,
-        };
+      if (additionalCosts) {
+        const additionalCostsData = JSON.parse(additionalCosts) as any[];
+        for (const cost of additionalCostsData) {
+          const entity = this.additionalCostRepository.create({
+            ...cost,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
+      }
 
-        const entity = this.transportationRepository.create(transportationData);
-        await queryRunner.manager.save(entity);
+      if (packageTiers) {
+        const packageTiersData = JSON.parse(packageTiers) as any[];
+        for (const tier of packageTiersData) {
+          const entity = this.packageTierRepository.create({
+            ...tier,
+            packageId: id,
+          });
+          await queryRunner.manager.save(entity);
+        }
       }
 
       await queryRunner.commitTransaction();
@@ -805,15 +874,17 @@ export class PackageService {
     if (!packageData.destination || packageData.destination.trim() === '') {
       errors.push('Destination is required');
     }
-    if (!packageData.duration || packageData.duration.trim() === '') {
-      errors.push('Duration is required');
+    if (!packageData.days || packageData.days <= 0) {
+      errors.push('Days count is required');
+    }
+    if (!packageData.nights || packageData.nights < 0) {
+      errors.push('Nights count is required');
     }
     if (!packageData.description || packageData.description.trim() === '') {
       errors.push('Description is required');
     }
-    if (!packageData.price || packageData.price <= 0) {
-      errors.push('Valid price is required');
-    }
+    // Price could be calculated now, so we don't strictly validate packageData.price here
+    // Wait, it is basePrice now. Let's validate basePrice if needed or rely on packageTiers.
     if (!packageData.maxGuests || packageData.maxGuests <= 0) {
       errors.push('Valid maximum guests count is required');
     }
@@ -855,11 +926,11 @@ export class PackageService {
         0,
       );
 
-      const packagePrice = Number(packageData.price);
-
-      if (totalAmount !== packagePrice) {
+      const firstTierAdultCost = packageData.packageTiers?.[0]?.adultCost;
+      
+      if (firstTierAdultCost !== undefined && totalAmount !== firstTierAdultCost) {
         errors.push(
-          `Payment structure must total exactly the package price. Current total: ${totalAmount}, Package price: ${packagePrice}`,
+          `Payment structure must total exactly the first tier adult cost. Current total: ${totalAmount}, Target: ${firstTierAdultCost}`,
         );
       }
     }
@@ -885,10 +956,10 @@ export class PackageService {
       errors.push('Document requirements are required');
     }
 
-    const transportation = await this.transportationRepository.findOne({
+    const transportation = await this.transportationOptionRepository.find({
       where: { packageId: id },
     });
-    if (!transportation) {
+    if (transportation.length === 0) {
       errors.push('Transportation details are required');
     }
 

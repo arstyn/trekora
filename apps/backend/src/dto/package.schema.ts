@@ -4,8 +4,9 @@ export interface IPackages {
   id: string;
   name?: string;
   destination?: string;
-  duration?: string;
-  price?: string;
+  days?: number;
+  nights?: number;
+  basePrice?: number;
   description?: string;
   maxGuests?: number;
   category?: 'documents' | 'booking' | 'preparation' | 'communication';
@@ -42,39 +43,27 @@ export const mealsBreakdownSchema = z.object({
   breakfast: z.array(z.string()).optional(),
   lunch: z.array(z.string()).optional(),
   dinner: z.array(z.string()).optional(),
+  mealsCost: z.number().min(0).optional(),
 });
 
-export const transportationSchema = z.object({
-  toDestination: z
-    .object({
-      mode: z.string().optional(),
-      details: z.string().optional(),
-      included: z.boolean().optional(),
-    })
-    .optional(),
-  fromDestination: z
-    .object({
-      mode: z.string().optional(),
-      details: z.string().optional(),
-      included: z.boolean().optional(),
-    })
-    .optional(),
-  duringTrip: z
-    .object({
-      mode: z.string().optional(),
-      details: z.string().optional(),
-      included: z.boolean().optional(),
-    })
-    .optional(),
-});
+export const transportationSchema = z.array(
+  z.object({
+    title: z.string().optional(),
+    details: z.string().optional(),
+    cost: z.number().min(0).optional(),
+  })
+);
 
 export const itineraryDaySchema = z.object({
   day: z.number().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
-  activities: z.array(z.string()).optional(),
+  activitiesCostType: z.enum(['per_day', 'per_activity']).optional(),
+  activitiesTotalCost: z.number().min(0).optional(),
+  activities: z.array(z.object({ name: z.string().optional(), cost: z.number().optional() })).optional(),
   meals: z.array(z.string()).optional(),
   accommodation: z.string().optional(),
+  accommodationCost: z.number().min(0).optional(),
   images: z.array(z.string()).optional(),
 });
 
@@ -97,15 +86,31 @@ export const checklistItemSchema = z.object({
 
 export const packageLocationSchema = z.object({
   type: z.enum(['international', 'local']).optional(),
-  country: z.string().optional(),
-  state: z.string().optional(),
+  countries: z.array(z.string()).optional(),
+  states: z.array(z.string()).optional(),
+  cities: z.array(z.string()).optional(),
+});
+
+export const additionalCostSchema = z.object({
+  name: z.string().optional(),
+  cost: z.number().min(0).optional(),
+});
+
+export const packageTierSchema = z.object({
+  name: z.string().optional(),
+  adultCost: z.number().min(0).optional(),
+  childCostType: z.enum(['flat', 'percentage']).optional(),
+  childCostValue: z.number().min(0).optional(),
+  infantCostType: z.enum(['flat', 'percentage']).optional(),
+  infantCostValue: z.number().min(0).optional(),
 });
 
 export const packageFormSchema = z.object({
   name: z.string().optional(),
   destination: z.string().optional(),
-  duration: z.string().optional(),
-  price: z.number().optional(),
+  days: z.preprocess((val) => (val ? Number(val) : undefined), z.number().optional()),
+  nights: z.preprocess((val) => (val ? Number(val) : undefined), z.number().optional()),
+  basePrice: z.preprocess((val) => (val ? Number(val) : undefined), z.number().optional()),
   description: z.string().optional(),
   maxGuests: z.number().optional(),
   category: z
@@ -131,6 +136,8 @@ export const packageFormSchema = z.object({
   preTripChecklist: z.string().optional(),
   packageLocation: z.string().optional(),
   cancellationPolicy: z.string().optional(),
+  additionalCosts: z.string().optional(),
+  packageTiers: z.string().optional(),
 });
 
 export type PackageFormData = z.infer<typeof packageFormSchema>;
