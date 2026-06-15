@@ -15,10 +15,9 @@ import {
     CheckCircle,
     Edit,
     History,
-    IndianRupee,
     MapPin,
     Users,
-    XCircle,
+    XCircle
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
@@ -470,7 +469,7 @@ export default function ViewPackagePage() {
                                                         const childCost = tier.childCostType === "flat"
                                                             ? Number(tier.childCostValue) || 0
                                                             : (Number(tier.adultCost) * Number(tier.childCostValue || 0)) / 100;
-                                                        
+
                                                         const infantCost = tier.infantCostType === "flat"
                                                             ? Number(tier.infantCostValue) || 0
                                                             : (Number(tier.adultCost) * Number(tier.infantCostValue || 0)) / 100;
@@ -542,32 +541,40 @@ export default function ViewPackagePage() {
                                                     (milestone: any, index) => (
                                                         <div
                                                             key={index}
-                                                            className="flex items-center justify-between p-4 border rounded-lg"
+                                                            className="flex flex-col gap-3 p-4 border rounded-lg bg-card"
                                                         >
-                                                            <div>
-                                                                <h4 className="font-semibold">
-                                                                    {milestone?.name ||
-                                                                        "Payment Milestone"}
-                                                                </h4>
-                                                                <p className="text-sm ">
-                                                                    {milestone?.description ||
-                                                                        "No description"}
-                                                                </p>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <div className="text-2xl font-bold text-primary">
-                                                                    ₹
-                                                                    {milestone?.amount ||
-                                                                        0}
+                                                            <div className="flex items-start justify-between">
+                                                                <div>
+                                                                    <h4 className="font-semibold text-lg">
+                                                                        {milestone?.name || "Payment Milestone"}
+                                                                    </h4>
+                                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                                        {milestone?.description || "No description"}
+                                                                    </p>
                                                                 </div>
-                                                                <div className="text-sm  capitalize">
-                                                                    {milestone?.dueDate?.replace(
-                                                                        "_",
-                                                                        " ",
-                                                                    ) ||
-                                                                        "Not specified"}
+                                                                <div className="text-right">
+                                                                    <div className="text-2xl font-bold text-primary">
+                                                                        {milestone?.amount || 0}%
+                                                                    </div>
+                                                                    <div className="text-sm font-medium capitalize text-muted-foreground mt-1">
+                                                                        {milestone?.dueDate?.replace("_", " ") || "Not specified"}
+                                                                    </div>
                                                                 </div>
                                                             </div>
+                                                            
+                                                            {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 0 && (
+                                                                <div className="bg-secondary/20 rounded-md p-3 mt-1">
+                                                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Estimated Amount per Tier</div>
+                                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                                                        {paymentsAndCancellation.packageTiers.map((pkgTier: any, tIdx: number) => (
+                                                                            <div key={tIdx} className="bg-background rounded p-2 text-sm border shadow-sm">
+                                                                                <div className="text-xs text-muted-foreground truncate" title={pkgTier?.name}>{pkgTier?.name || "Tier"}</div>
+                                                                                <div className="font-semibold mt-0.5">₹{Math.round((pkgTier?.adultCost || 0) * (milestone?.amount || 0) / 100).toLocaleString("en-IN")}</div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ),
                                                 )
@@ -605,24 +612,31 @@ export default function ViewPackagePage() {
                                                     (tier, index) => (
                                                         <div
                                                             key={index}
-                                                            className="flex items-center justify-between p-3  rounded-lg"
+                                                            className="flex flex-col gap-3 p-4 border rounded-lg bg-card"
                                                         >
-                                                            <div>
-                                                                <span className="font-medium">
-                                                                    {tier?.timeframe ||
-                                                                        "Not specified"}
-                                                                </span>
-                                                                <p className="text-sm ">
-                                                                    {tier?.description ||
-                                                                        "No description"}
-                                                                </p>
+                                                            <div className="flex items-start justify-between">
+                                                                <div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-semibold text-lg">{tier?.timeframe || "Not specified"}</span>
+                                                                        <Badge variant="destructive" className="ml-2">{tier?.amount || 0}% fee</Badge>
+                                                                    </div>
+                                                                    <p className="text-sm text-muted-foreground mt-1">{tier?.description || "No description"}</p>
+                                                                </div>
                                                             </div>
-                                                            <Badge variant="outline">
-                                                                ₹
-                                                                {tier?.amount ||
-                                                                    0}{" "}
-                                                                fee
-                                                            </Badge>
+                                                            
+                                                            {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 0 && (
+                                                                <div className="bg-secondary/20 rounded-md p-3 mt-1">
+                                                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Cancellation Fee per Tier</div>
+                                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                                                        {paymentsAndCancellation.packageTiers.map((pkgTier: any, tIdx: number) => (
+                                                                            <div key={tIdx} className="bg-background rounded p-2 text-sm border border-destructive/10 shadow-sm">
+                                                                                <div className="text-xs text-muted-foreground truncate" title={pkgTier?.name}>{pkgTier?.name || "Tier"}</div>
+                                                                                <div className="font-semibold text-destructive mt-0.5">₹{Math.round((pkgTier?.adultCost || 0) * (tier?.amount || 0) / 100).toLocaleString("en-IN")}</div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ),
                                                 )

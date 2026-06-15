@@ -98,7 +98,6 @@ export function StepFinance({
         );
     };
 
-    const baseAdultCost = (form.watch("packageTiers") || [])[0]?.adultCost || 0;
     const totalPayments = (form.watch("paymentStructure") || []).reduce(
         (sum, milestone) => sum + (milestone.amount || 0),
         0,
@@ -108,17 +107,17 @@ export function StepFinance({
     const itineraryCost = itinerary.reduce((sum, day) => {
         let dayCost = 0;
         if (day.activitiesCostType === "per_day") {
-            dayCost += day.activitiesTotalCost || 0;
+            dayCost += Number(day.activitiesTotalCost) || 0;
         } else {
-            dayCost += (day.activities || []).reduce((s, act) => s + ((act as any).cost || 0), 0);
+            dayCost += (day.activities || []).reduce((s, act) => s + (Number((act as any).cost) || 0), 0);
         }
-        dayCost += day.accommodationCost || 0;
+        dayCost += Number(day.accommodationCost) || 0;
         return sum + dayCost;
     }, 0);
 
-    const mealsCost = form.watch("mealsBreakdown.mealsCost") || 0;
+    const mealsCost = Number(form.watch("mealsBreakdown.mealsCost")) || 0;
     const additionalCosts = form.watch("additionalCosts") || [];
-    const addCostsSum = additionalCosts.reduce((sum, cost) => sum + (cost.cost || 0), 0);
+    const addCostsSum = additionalCosts.reduce((sum, cost) => sum + (Number(cost.cost) || 0), 0);
 
     const calculatedBaseCost = itineraryCost + mealsCost + addCostsSum;
 
@@ -413,16 +412,16 @@ export function StepFinance({
                         </span>
                         <div className="flex gap-2 items-center">
                             <span className="text-sm text-muted-foreground">
-                                target: ₹{baseAdultCost} (Tier 1 Adult)
+                                target: 100%
                             </span>
                             <Badge
                                 variant={
-                                    totalPayments === baseAdultCost
+                                    totalPayments === 100
                                         ? "default"
                                         : "destructive"
                                 }
                             >
-                                ₹{totalPayments.toFixed(2)}
+                                {totalPayments.toFixed(0)}%
                             </Badge>
                         </div>
                     </div>
@@ -445,76 +444,80 @@ export function StepFinance({
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <FormField
                                     control={form.control}
-                                    name={`paymentStructure.${index}.name`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Name</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
+                                    name={`paymentStructure.${index}.dueDate`}
+                                    render={({ field }) => {
+                                        const standardDueDates = ["booking", "30_days_before", "2_weeks_before", "1_week_before", "departure"];
+                                        const isCustom = field.value !== undefined && !standardDueDates.includes(field.value);
+                                        const selectValue = isCustom ? "custom" : (field.value || "booking");
+
+                                        return (
+                                            <FormItem>
+                                                <FormLabel>Due Date</FormLabel>
+                                                <Select
+                                                    onValueChange={(val) => {
+                                                        if (val === "custom") {
+                                                            field.onChange("");
+                                                        } else {
+                                                            field.onChange(val);
+                                                        }
+                                                    }}
+                                                    value={selectValue}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="booking">Booking</SelectItem>
+                                                        <SelectItem value="30_days_before">30 Days Before</SelectItem>
+                                                        <SelectItem value="2_weeks_before">2 Weeks Before</SelectItem>
+                                                        <SelectItem value="1_week_before">1 Week Before</SelectItem>
+                                                        <SelectItem value="departure">Departure</SelectItem>
+                                                        <SelectItem value="custom">Custom...</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                {selectValue === "custom" && (
+                                                    <Input
+                                                        placeholder="Enter custom due date..."
+                                                        className="mt-2"
+                                                        value={isCustom ? field.value : ""}
+                                                        onChange={(e) => field.onChange(e.target.value)}
+                                                    />
+                                                )}
+                                            </FormItem>
+                                        );
+                                    }}
                                 />
                                 <FormField
                                     control={form.control}
                                     name={`paymentStructure.${index}.amount`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Amount (₹)</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    {...field}
-                                                    onChange={(e) =>
-                                                        field.onChange(
-                                                            Number.parseFloat(
-                                                                e.target.value,
-                                                            ) || 0,
-                                                        )
-                                                    }
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name={`paymentStructure.${index}.dueDate`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Due Date</FormLabel>
-                                            <Select
-                                                onValueChange={field.onChange}
-                                                defaultValue={field.value}
-                                            >
+                                    render={({ field }) => {
+                                        const percentage = field.value || 0;
+                                        const tiers = form.watch("packageTiers") || [];
+                                        return (
+                                            <FormItem>
+                                                <FormLabel>Percentage (%)</FormLabel>
                                                 <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
+                                                    <Input
+                                                        type="number"
+                                                        {...field}
+                                                        onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                                    />
                                                 </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="booking">
-                                                        Booking
-                                                    </SelectItem>
-                                                    <SelectItem value="30_days_before">
-                                                        30 Days Before
-                                                    </SelectItem>
-                                                    <SelectItem value="2_weeks_before">
-                                                        2 Weeks Before
-                                                    </SelectItem>
-                                                    <SelectItem value="1_week_before">
-                                                        1 Week Before
-                                                    </SelectItem>
-                                                    <SelectItem value="departure">
-                                                        Departure
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </FormItem>
-                                    )}
+                                                {percentage > 0 && tiers.length > 0 && (
+                                                    <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                                                        {tiers.map((tier, i) => (
+                                                            <div key={i}>{tier.name || `Tier ${i + 1}`}: ₹{((tier.adultCost || 0) * (percentage / 100)).toFixed(2)}</div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </FormItem>
+                                        )
+                                    }}
                                 />
                             </div>
                         </div>
@@ -535,7 +538,7 @@ export function StepFinance({
                             type="button"
                             onClick={() =>
                                 appendCancellation({
-                                    timeframe: "",
+                                    timeframe: "30_days_before",
                                     amount: 0,
                                     description: "",
                                 })
@@ -570,41 +573,77 @@ export function StepFinance({
                                 <FormField
                                     control={form.control}
                                     name={`cancellationStructure.${index}.timeframe`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Timeframe</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="e.g., 30+ days before"
-                                                    {...field}
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
+                                    render={({ field }) => {
+                                        const standardTimeframes = ["30_days_before", "2_weeks_before", "1_week_before", "departure"];
+                                        const isCustom = field.value !== undefined && !standardTimeframes.includes(field.value);
+                                        const selectValue = isCustom ? "custom" : (field.value || "30_days_before");
+
+                                        return (
+                                            <FormItem>
+                                                <FormLabel>Timeframe</FormLabel>
+                                                <Select
+                                                    onValueChange={(val) => {
+                                                        if (val === "custom") {
+                                                            field.onChange("");
+                                                        } else {
+                                                            field.onChange(val);
+                                                        }
+                                                    }}
+                                                    value={selectValue}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="30_days_before">30+ Days Before</SelectItem>
+                                                        <SelectItem value="2_weeks_before">15-30 Days Before</SelectItem>
+                                                        <SelectItem value="1_week_before">7-14 Days Before</SelectItem>
+                                                        <SelectItem value="departure">0-7 Days Before / No Show</SelectItem>
+                                                        <SelectItem value="custom">Custom...</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                {selectValue === "custom" && (
+                                                    <Input
+                                                        placeholder="Enter custom timeframe..."
+                                                        className="mt-2"
+                                                        value={isCustom ? field.value : ""}
+                                                        onChange={(e) => field.onChange(e.target.value)}
+                                                    />
+                                                )}
+                                            </FormItem>
+                                        );
+                                    }}
                                 />
                                 <FormField
                                     control={form.control}
                                     name={`cancellationStructure.${index}.amount`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>
-                                                Charge Amount (₹)
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    {...field}
-                                                    onChange={(e) =>
-                                                        field.onChange(
-                                                            Number.parseFloat(
-                                                                e.target.value,
-                                                            ) || 0,
-                                                        )
-                                                    }
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
+                                    render={({ field }) => {
+                                        const percentage = field.value || 0;
+                                        const tiers = form.watch("packageTiers") || [];
+                                        return (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    Charge Percentage (%)
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        {...field}
+                                                        onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                                    />
+                                                </FormControl>
+                                                {percentage > 0 && tiers.length > 0 && (
+                                                    <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                                                        {tiers.map((tier, i) => (
+                                                            <div key={i}>{tier.name || `Tier ${i + 1}`}: ₹{((tier.adultCost || 0) * (percentage / 100)).toFixed(2)}</div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </FormItem>
+                                        )
+                                    }}
                                 />
                             </div>
                         </div>

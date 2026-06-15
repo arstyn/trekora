@@ -38,12 +38,7 @@ export interface IPaymentStructure {
     name?: string;
     amount?: number;
     description?: string;
-    dueDate:
-    | "30_days_before"
-    | "2_weeks_before"
-    | "1_week_before"
-    | "booking"
-    | "departure";
+    dueDate?: string;
 }
 
 export interface IPackages {
@@ -102,15 +97,7 @@ export const paymentMilestoneSchema = z.object({
     name: z.string().optional(),
     amount: z.number().min(0).optional(),
     description: z.string().optional(),
-    dueDate: z
-        .enum([
-            "booking",
-            "30_days_before",
-            "2_weeks_before",
-            "1_week_before",
-            "departure",
-        ])
-        .optional(),
+    dueDate: z.string().optional(),
 });
 
 export const cancellationTierSchema = z.object({
@@ -220,18 +207,16 @@ export const packageFormSchema = z
     })
     .refine(
         (data) => {
-            if (!data.paymentStructure || !data.packageTiers || data.packageTiers.length === 0) return true;
-            const firstTierAdultCost = data.packageTiers[0]?.adultCost;
-            if (!firstTierAdultCost) return true;
-            const totalAmount = data.paymentStructure.reduce(
+            if (!data.paymentStructure || data.paymentStructure.length === 0) return true;
+            const totalPercentage = data.paymentStructure.reduce(
                 (sum, milestone) => sum + (milestone.amount ?? 0),
                 0,
             );
-            return totalAmount === firstTierAdultCost;
+            return totalPercentage === 100;
         },
         {
             message:
-                "Payment structure amounts must total exactly the package base price",
+                "Payment structure percentages must total exactly 100%",
             path: ["paymentStructure"],
         },
     );
