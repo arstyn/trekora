@@ -46,10 +46,21 @@ export const mealsBreakdownSchema = z.object({
   mealsCost: z.number().min(0).optional(),
 });
 
+export const transportationSegmentSchema = z.object({
+  mode: z.enum(['flight', 'train', 'bus']).optional(),
+  number: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  departureTime: z.string().optional(),
+  arrivalTime: z.string().optional(),
+  coachType: z.enum(['1AC', '2AC', '3AC', 'SL', 'CC', 'EC', 'none']).optional(),
+});
+
 export const transportationSchema = z.array(
   z.object({
+    id: z.string().optional(),
     title: z.string().optional(),
-    details: z.string().optional(),
+    segments: z.array(transportationSegmentSchema).optional(),
     cost: z.number().min(0).optional(),
   })
 );
@@ -103,6 +114,7 @@ export const packageTierSchema = z.object({
   childCostValue: z.number().min(0).optional(),
   infantCostType: z.enum(['flat', 'percentage']).optional(),
   infantCostValue: z.number().min(0).optional(),
+  transportationId: z.string().optional(),
 });
 
 export const packageFormSchema = z.object({
@@ -137,6 +149,7 @@ export const packageFormSchema = z.object({
   packageLocation: z.string().optional(),
   cancellationPolicy: z.string().optional(),
   additionalCosts: z.string().optional(),
+  groundTransportationCost: z.preprocess((val) => (val ? Number(val) : undefined), z.number().optional()),
   packageTiers: z.string().optional(),
 });
 

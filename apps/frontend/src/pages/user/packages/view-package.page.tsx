@@ -166,6 +166,30 @@ export default function ViewPackagePage() {
         fetchDetails();
     }, [id]);
 
+    const getTierTotalCost = (tier: any) => {
+        const itineraryCost = itinerary?.reduce((sum, day: any) => {
+            let dayCost = 0;
+            if (day.activitiesCostType === "per_day") {
+                dayCost += Number(day.activitiesTotalCost) || 0;
+            } else {
+                dayCost += (day.activities || []).reduce((s: number, act: any) => s + (Number(act.cost) || 0), 0);
+            }
+            dayCost += Number(day.accommodationCost) || 0;
+            return sum + dayCost;
+        }, 0) || 0;
+
+        const mealsCost = Number((logistics as any)?.mealsBreakdown?.mealsCost) || 0;
+        const additionalCostsSum = paymentsAndCancellation?.additionalCosts?.reduce((sum: number, cost: any) => sum + (Number(cost.cost) || 0), 0) || 0;
+        const groundCost = Number((basicData as any)?.groundTransportationCost) || 0;
+        
+        const baseCost = itineraryCost + mealsCost + additionalCostsSum + groundCost;
+        
+        const transport = logistics?.transportation?.find(t => t.id === tier.transportationId);
+        const transportCost = Number(transport?.cost) || 0;
+        
+        return baseCost + transportCost + (Number(tier.adultCost) || 0);
+    };
+
     if (loadingBasic || !basicData) {
         return (
             <div className="min-h-screen">
@@ -466,13 +490,14 @@ export default function ViewPackagePage() {
                                                 paymentsAndCancellation.packageTiers.length > 0 ? (
                                                 paymentsAndCancellation.packageTiers.map(
                                                     (tier: any, index: number) => {
+                                                        const totalAdultCost = getTierTotalCost(tier);
                                                         const childCost = tier.childCostType === "flat"
                                                             ? Number(tier.childCostValue) || 0
-                                                            : (Number(tier.adultCost) * Number(tier.childCostValue || 0)) / 100;
+                                                            : (totalAdultCost * Number(tier.childCostValue || 0)) / 100;
 
                                                         const infantCost = tier.infantCostType === "flat"
                                                             ? Number(tier.infantCostValue) || 0
-                                                            : (Number(tier.adultCost) * Number(tier.infantCostValue || 0)) / 100;
+                                                            : (totalAdultCost * Number(tier.infantCostValue || 0)) / 100;
 
                                                         return (
                                                             <div
@@ -487,7 +512,7 @@ export default function ViewPackagePage() {
                                                                 <div className="flex flex-wrap gap-4 text-center">
                                                                     <div>
                                                                         <div className="text-sm text-muted-foreground">Adult</div>
-                                                                        <div className="font-medium">₹{tier?.adultCost || 0}</div>
+                                                                        <div className="font-medium">₹{totalAdultCost}</div>
                                                                     </div>
                                                                     <div>
                                                                         <div className="text-sm text-muted-foreground">Child</div>
@@ -569,7 +594,7 @@ export default function ViewPackagePage() {
                                                                         {paymentsAndCancellation.packageTiers.map((pkgTier: any, tIdx: number) => (
                                                                             <div key={tIdx} className="bg-background rounded p-2 text-sm border shadow-sm">
                                                                                 <div className="text-xs text-muted-foreground truncate" title={pkgTier?.name}>{pkgTier?.name || "Tier"}</div>
-                                                                                <div className="font-semibold mt-0.5">₹{Math.round((pkgTier?.adultCost || 0) * (milestone?.amount || 0) / 100).toLocaleString("en-IN")}</div>
+                                                                                <div className="font-semibold mt-0.5">₹{Math.round(getTierTotalCost(pkgTier) * (milestone?.amount || 0) / 100).toLocaleString("en-IN")}</div>
                                                                             </div>
                                                                         ))}
                                                                     </div>
@@ -631,7 +656,7 @@ export default function ViewPackagePage() {
                                                                         {paymentsAndCancellation.packageTiers.map((pkgTier: any, tIdx: number) => (
                                                                             <div key={tIdx} className="bg-background rounded p-2 text-sm border border-destructive/10 shadow-sm">
                                                                                 <div className="text-xs text-muted-foreground truncate" title={pkgTier?.name}>{pkgTier?.name || "Tier"}</div>
-                                                                                <div className="font-semibold text-destructive mt-0.5">₹{Math.round((pkgTier?.adultCost || 0) * (tier?.amount || 0) / 100).toLocaleString("en-IN")}</div>
+                                                                                <div className="font-semibold text-destructive mt-0.5">₹{Math.round(getTierTotalCost(pkgTier) * (tier?.amount || 0) / 100).toLocaleString("en-IN")}</div>
                                                                             </div>
                                                                         ))}
                                                                     </div>
@@ -722,55 +747,33 @@ export default function ViewPackagePage() {
                                                     All Travelers
                                                 </h4>
                                                 <div className="space-y-3">
-                                                    {requirements?.documentRequirements &&
-                                                        requirements
-                                                            .documentRequirements
-                                                            .length > 0 ? (
-                                                        requirements.documentRequirements
-                                                            .filter(
-                                                                (doc) =>
-                                                                    doc?.applicableFor ===
-                                                                    "all",
-                                                            )
-                                                            .map(
-                                                                (
-                                                                    doc,
-                                                                    index,
-                                                                ) => (
-                                                                    <div
-                                                                        key={
-                                                                            index
-                                                                        }
-                                                                        className="p-3 border rounded-lg"
-                                                                    >
-                                                                        <div className="flex items-center gap-2 mb-1">
-                                                                            <h5 className="font-medium">
-                                                                                {doc?.name ||
-                                                                                    "Document"}
-                                                                            </h5>
-                                                                            {doc?.mandatory && (
-                                                                                <Badge
-                                                                                    variant="destructive"
-                                                                                    className="text-xs"
-                                                                                >
-                                                                                    Required
-                                                                                </Badge>
-                                                                            )}
-                                                                        </div>
-                                                                        <p className="text-sm ">
-                                                                            {doc?.description ||
-                                                                                "No description available"}
-                                                                        </p>
+                                                    {(() => {
+                                                        const allDocs = requirements?.documentRequirements?.filter((doc: any) => doc?.applicableFor === "all") || [];
+                                                        if (allDocs.length > 0) {
+                                                            return allDocs.map((doc: any, index: number) => (
+                                                                <div key={index} className="p-3 border rounded-lg">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <h5 className="font-medium">
+                                                                            {doc?.name || "Document"}
+                                                                        </h5>
+                                                                        {doc?.mandatory && (
+                                                                            <Badge variant="destructive" className="text-xs">
+                                                                                Required
+                                                                            </Badge>
+                                                                        )}
                                                                     </div>
-                                                                ),
-                                                            )
-                                                    ) : (
-                                                        <div className="text-muted-foreground text-sm">
-                                                            No documents
-                                                            required for all
-                                                            travelers.
-                                                        </div>
-                                                    )}
+                                                                    <p className="text-sm ">
+                                                                        {doc?.description || "No description available"}
+                                                                    </p>
+                                                                </div>
+                                                            ));
+                                                        }
+                                                        return (
+                                                            <div className="text-muted-foreground text-sm">
+                                                                No document added
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                             <div>
@@ -778,55 +781,33 @@ export default function ViewPackagePage() {
                                                     Children Only
                                                 </h4>
                                                 <div className="space-y-3">
-                                                    {requirements?.documentRequirements &&
-                                                        requirements
-                                                            .documentRequirements
-                                                            .length > 0 ? (
-                                                        requirements.documentRequirements
-                                                            .filter(
-                                                                (doc) =>
-                                                                    doc?.applicableFor ===
-                                                                    "children",
-                                                            )
-                                                            .map(
-                                                                (
-                                                                    doc,
-                                                                    index,
-                                                                ) => (
-                                                                    <div
-                                                                        key={
-                                                                            index
-                                                                        }
-                                                                        className="p-3 border rounded-lg"
-                                                                    >
-                                                                        <div className="flex items-center gap-2 mb-1">
-                                                                            <h5 className="font-medium">
-                                                                                {doc?.name ||
-                                                                                    "Document"}
-                                                                            </h5>
-                                                                            {doc?.mandatory && (
-                                                                                <Badge
-                                                                                    variant="destructive"
-                                                                                    className="text-xs"
-                                                                                >
-                                                                                    Required
-                                                                                </Badge>
-                                                                            )}
-                                                                        </div>
-                                                                        <p className="text-sm ">
-                                                                            {doc?.description ||
-                                                                                "No description available"}
-                                                                        </p>
+                                                    {(() => {
+                                                        const childDocs = requirements?.documentRequirements?.filter((doc: any) => doc?.applicableFor === "children") || [];
+                                                        if (childDocs.length > 0) {
+                                                            return childDocs.map((doc: any, index: number) => (
+                                                                <div key={index} className="p-3 border rounded-lg">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <h5 className="font-medium">
+                                                                            {doc?.name || "Document"}
+                                                                        </h5>
+                                                                        {doc?.mandatory && (
+                                                                            <Badge variant="destructive" className="text-xs">
+                                                                                Required
+                                                                            </Badge>
+                                                                        )}
                                                                     </div>
-                                                                ),
-                                                            )
-                                                    ) : (
-                                                        <div className="text-muted-foreground text-sm">
-                                                            No specific
-                                                            documents required
-                                                            for children.
-                                                        </div>
-                                                    )}
+                                                                    <p className="text-sm ">
+                                                                        {doc?.description || "No description available"}
+                                                                    </p>
+                                                                </div>
+                                                            ));
+                                                        }
+                                                        return (
+                                                            <div className="text-muted-foreground text-sm">
+                                                                No document added
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
@@ -841,10 +822,20 @@ export default function ViewPackagePage() {
                         ) : (
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Meals Included</CardTitle>
-                                    <CardDescription>
-                                        What's included in each meal
-                                    </CardDescription>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle>Meals Included</CardTitle>
+                                            <CardDescription>
+                                                What's included in each meal
+                                            </CardDescription>
+                                        </div>
+                                        {Number((logistics as any)?.mealsBreakdown?.mealsCost) > 0 && (
+                                            <div className="text-right">
+                                                <span className="text-sm text-muted-foreground block">Total Meals Cost</span>
+                                                <span className="font-bold text-primary text-lg">₹{(logistics as any).mealsBreakdown.mealsCost}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -929,33 +920,72 @@ export default function ViewPackagePage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-4">
+                                        {(basicData as any)?.groundTransportationCost > 0 && (
+                                            <div className="flex justify-between items-center p-4 bg-secondary/10 rounded-lg border border-primary/20">
+                                                <span className="font-medium">Ground Transportation Cost</span>
+                                                <span className="font-bold text-primary">₹{(basicData as any)?.groundTransportationCost}</span>
+                                            </div>
+                                        )}
                                         {logistics?.transportation && logistics.transportation.length > 0 ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {logistics.transportation.map((transport, index) => (
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {logistics.transportation.map((transport: any, index: number) => (
                                                     <div key={index} className="p-4 border rounded-lg">
-                                                        <h4 className="font-semibold mb-2">
-                                                            {transport?.title || "Transportation"}
-                                                        </h4>
-                                                        <div className="space-y-1 text-sm">
-                                                            <div className="flex justify-between">
-                                                                <span>Details:</span>
-                                                                <span className="capitalize">
-                                                                    {transport?.details || "Not specified"}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between">
-                                                                <span>Cost:</span>
-                                                                <span>
-                                                                    ₹{transport?.cost || 0}
-                                                                </span>
+                                                        <div className="flex justify-between items-center mb-4">
+                                                            <h4 className="font-semibold text-lg">
+                                                                {transport?.title || "Transportation Option"}
+                                                            </h4>
+                                                            <div className="text-right">
+                                                                <span className="text-sm text-muted-foreground block">Option Cost</span>
+                                                                <span className="font-bold text-primary">₹{transport?.cost || 0}</span>
                                                             </div>
                                                         </div>
+                                                        
+                                                        {transport?.segments && transport.segments.length > 0 ? (
+                                                            <div className="space-y-3 mt-2">
+                                                                <h5 className="text-sm font-medium text-muted-foreground">Journey Segments</h5>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                                                    {transport.segments.map((seg: any, sIdx: number) => (
+                                                                        <div key={sIdx} className="bg-secondary/5 border p-3 rounded-md text-sm relative">
+                                                                            <div className="flex justify-between items-center border-b border-primary/10 pb-2 mb-2">
+                                                                                <span className="font-semibold capitalize flex items-center gap-1.5">
+                                                                                    {seg.mode === 'flight' && '✈️ '}
+                                                                                    {seg.mode === 'train' && '🚆 '}
+                                                                                    {seg.mode === 'bus' && '🚌 '}
+                                                                                    {seg.mode}
+                                                                                </span>
+                                                                                {seg.mode === 'train' && seg.coachType && seg.coachType !== 'none' && (
+                                                                                    <Badge variant="secondary" className="text-[10px] h-5">{seg.coachType}</Badge>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-medium text-foreground">{seg.from || 'Origin'}</span>
+                                                                                    <span className="text-xs text-muted-foreground">{seg.departureTime || '-'}</span>
+                                                                                </div>
+                                                                                <div className="flex flex-col items-center justify-center px-2 opacity-50">
+                                                                                    <span className="text-[10px]">{seg.number || 'No/ID'}</span>
+                                                                                    <span className="text-xs">→</span>
+                                                                                </div>
+                                                                                <div className="flex flex-col text-right">
+                                                                                    <span className="font-medium text-foreground">{seg.to || 'Dest'}</span>
+                                                                                    <span className="text-xs text-muted-foreground">{seg.arrivalTime || '-'}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-sm text-muted-foreground bg-secondary/5 p-3 rounded-md mt-2">
+                                                                {transport?.details || "No details provided"}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
                                         ) : (
-                                            <div className="text-center py-8 text-muted-foreground">
-                                                <p>No transportation details have been provided yet.</p>
+                                            <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                                                <p>No transportation options have been provided yet.</p>
                                             </div>
                                         )}
                                     </div>
