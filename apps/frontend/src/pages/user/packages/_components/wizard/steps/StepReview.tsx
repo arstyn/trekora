@@ -20,6 +20,30 @@ import {
     Trash2,
 } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
+import { useEffect } from "react";
+
+const FIELD_STEP_MAPPING: Record<string, { field: string; stepIndex: number }> = {
+    name: { field: "Name", stepIndex: 0 },
+    destination: { field: "Destination", stepIndex: 0 },
+    days: { field: "Days", stepIndex: 0 },
+    nights: { field: "Nights", stepIndex: 0 },
+    basePrice: { field: "Base Price", stepIndex: 0 },
+    description: { field: "Description", stepIndex: 0 },
+    maxGuests: { field: "Max Guests", stepIndex: 0 },
+    category: { field: "Category", stepIndex: 0 },
+    thumbnail: { field: "Thumbnail", stepIndex: 0 },
+    packageLocation: { field: "Location", stepIndex: 0 },
+    itinerary: { field: "Itinerary", stepIndex: 1 },
+    inclusions: { field: "Inclusions", stepIndex: 2 },
+    exclusions: { field: "Exclusions", stepIndex: 2 },
+    transportation: { field: "Transportation", stepIndex: 3 },
+    mealsBreakdown: { field: "Meals Breakdown", stepIndex: 3 },
+    paymentStructure: { field: "Payment Structure", stepIndex: 4 },
+    cancellationStructure: { field: "Cancellation Structure", stepIndex: 4 },
+    cancellationPolicy: { field: "Cancellation Policy", stepIndex: 4 },
+    documentRequirements: { field: "Document Requirements", stepIndex: 5 },
+    preTripChecklist: { field: "Pre-trip Checklist", stepIndex: 5 },
+};
 
 interface StepReviewProps {
     form: UseFormReturn<PackageFormData>;
@@ -28,6 +52,7 @@ interface StepReviewProps {
     onDelete: () => void;
     onArchive: () => void;
     onUnpublish: () => void;
+    onJumpToStep?: (stepIndex: number) => void;
     isLoading?: boolean;
     packageData?: IPackages | null;
 }
@@ -39,14 +64,31 @@ export function StepReview({
     onDelete,
     onArchive,
     onUnpublish,
+    onJumpToStep,
     isLoading,
     packageData,
 }: StepReviewProps) {
     const values = form.getValues();
 
+    useEffect(() => {
+        form.trigger();
+    }, [form]);
+
     const getChanges = () => {
         if (!packageData) return [];
         const changes: { field: string; from: any; to: any }[] = [];
+
+        const safeArray = (val: any): any[] => {
+            if (!val) return [];
+            if (Array.isArray(val)) return val;
+            if (typeof val === "string") {
+                try {
+                    const parsed = JSON.parse(val);
+                    if (Array.isArray(parsed)) return parsed;
+                } catch (_) {}
+            }
+            return [];
+        };
 
         const compareSimple = (key: keyof PackageFormData, label: string) => {
             const current = values[key];
@@ -64,21 +106,21 @@ export function StepReview({
 
         const compareArray = (key: keyof PackageFormData, label: string) => {
             const current = (values[key] as any[]) || [];
-            let originalRaw = (packageData as any)[key] as any[];
+            let originalRaw = safeArray((packageData as any)[key]);
             let original: any[] = [];
 
             if (key === "inclusions" || key === "exclusions") {
                 original =
-                    originalRaw?.map((item) =>
+                    originalRaw.map((item) =>
                         typeof item === "object" ? item.item : item,
-                    ) || [];
+                    );
             } else if (key === "cancellationPolicy") {
                 original =
-                    originalRaw?.map((item) =>
+                    originalRaw.map((item) =>
                         typeof item === "object" ? item.text : item,
-                    ) || [];
+                    );
             } else {
-                original = originalRaw || [];
+                original = originalRaw;
             }
 
             if (JSON.stringify(current) !== JSON.stringify(original)) {
@@ -92,7 +134,7 @@ export function StepReview({
 
         const compareItinerary = () => {
             const current = values.itinerary || [];
-            const original = packageData.itinerary || [];
+            const original = safeArray(packageData.itinerary);
             if (current.length !== original.length) {
                 changes.push({
                     field: "Itinerary",
@@ -162,42 +204,95 @@ export function StepReview({
 
     const pendingChanges = getChanges();
 
-    // Basic validation for review
-    const issues: {
+    const getZodErrors = () => {
+        const { errors } = form.formState;
+        const zodIssues: {
+            field: string;
+            message: string;
+            severity: "error" | "warning";
+            stepIndex: number;
+        }[] = [];
+
+        const collectErrors = (obj: any, parentKey: string) => {
+            if (!obj) return;
+            if (typeof obj.message === "string") {
+                const mapping = FIELD_STEP_MAPPING[parentKey];
+                zodIssues.push({
+                    field: mapping?.field || parentKey,
+                    message: obj.message,
+                    severity: "error",
+                    stepIndex: mapping?.stepIndex ?? 0,
+                });
+                return;
+            }
+            if (Array.isArray(obj)) {
+                obj.forEach((item) => collectErrors(item, parentKey));
+            } else if (typeof obj === "object") {
+                Object.keys(obj).forEach((key) => {
+                    const nextKey = FIELD_STEP_MAPPING[key] ? key : parentKey;
+                    collectErrors(obj[key], nextKey);
+                });
+            }
+        };
+
+        Object.keys(errors).forEach((key) => {
+            collectErrors(errors[key as keyof typeof errors], key);
+        });
+
+        if (errors.root?.message) {
+            zodIssues.push({
+                field: "Global",
+                message: errors.root.message,
+                severity: "error",
+                stepIndex: 0,
+            });
+        }
+
+        return zodIssues;
+    };
+
+    const zodIssues = getZodErrors();
+    const manualIssues: {
         field: string;
         message: string;
         severity: "error" | "warning";
+        stepIndex: number;
     }[] = [];
 
     if (!values.name)
-        issues.push({
+        manualIssues.push({
             field: "Name",
             message: "Package name is missing",
             severity: "error",
+            stepIndex: 0,
         });
     if (!values.packageTiers || values.packageTiers.length === 0)
-        issues.push({
+        manualIssues.push({
             field: "Package Tiers",
             message: "At least one package tier must be defined",
             severity: "error",
+            stepIndex: 4,
         });
     if (!values.destination)
-        issues.push({
+        manualIssues.push({
             field: "Destination",
             message: "Destination is missing",
             severity: "error",
+            stepIndex: 0,
         });
     if (!values.description)
-        issues.push({
+        manualIssues.push({
             field: "Description",
             message: "Description is missing",
             severity: "warning",
+            stepIndex: 0,
         });
     if (!values.itinerary || values.itinerary.length === 0)
-        issues.push({
+        manualIssues.push({
             field: "Itinerary",
             message: "At least one day in itinerary is required",
             severity: "error",
+            stepIndex: 1,
         });
 
     const totalMilestones = (values.paymentStructure || []).reduce(
@@ -207,13 +302,25 @@ export function StepReview({
     if (values.packageTiers && values.packageTiers.length > 0) {
         const firstTierAdultCost = values.packageTiers[0].adultCost || 0;
         if (totalMilestones !== firstTierAdultCost) {
-            issues.push({
+            manualIssues.push({
                 field: "Payments",
                 message: `Milestone total (₹${totalMilestones}) doesn't match the first tier adult cost (₹${firstTierAdultCost})`,
                 severity: "error",
+                stepIndex: 4,
             });
         }
     }
+
+    // Combine and deduplicate
+    const issues = [...zodIssues];
+    manualIssues.forEach((m) => {
+        const isDuplicate = issues.some(
+            (i) => i.field.toLowerCase() === m.field.toLowerCase() || i.message === m.message
+        );
+        if (!isDuplicate) {
+            issues.push(m);
+        }
+    });
 
     const hasErrors = issues.some((i) => i.severity === "error");
 
@@ -247,21 +354,33 @@ export function StepReview({
                             {issues.map((issue, idx) => (
                                 <div
                                     key={idx}
-                                    className={`flex items-start gap-3 p-3 rounded-lg border ${
+                                    className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${
                                         issue.severity === "error"
-                                            ? "border-red-100 bg-red-50/50 text-red-800"
-                                            : "border-yellow-100 bg-yellow-50/50 text-yellow-800"
+                                            ? "border-red-100 bg-red-50/50 text-red-800 dark:text-red-400 dark:border-red-900/50 dark:bg-red-950/10"
+                                            : "border-yellow-100 bg-yellow-50/50 text-yellow-800 dark:text-yellow-400 dark:border-yellow-900/50 dark:bg-yellow-950/10"
                                     }`}
                                 >
-                                    <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
-                                    <div>
-                                        <p className="font-semibold text-sm">
-                                            {issue.field}
-                                        </p>
-                                        <p className="text-sm">
-                                            {issue.message}
-                                        </p>
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+                                        <div>
+                                            <p className="font-semibold text-sm">
+                                                {issue.field}
+                                            </p>
+                                            <p className="text-sm opacity-90">
+                                                {issue.message}
+                                            </p>
+                                        </div>
                                     </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => onJumpToStep?.(issue.stepIndex)}
+                                        className="gap-1 shrink-0 bg-background hover:bg-muted text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800"
+                                    >
+                                        <FileEdit className="w-4 h-4" />
+                                        Edit
+                                    </Button>
                                 </div>
                             ))}
                         </div>

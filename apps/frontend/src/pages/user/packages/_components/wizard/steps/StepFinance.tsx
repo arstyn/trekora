@@ -28,6 +28,7 @@ import { Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
+import { StepErrors } from "../../step-errors";
 
 interface StepFinanceProps {
     form: UseFormReturn<PackageFormData>;
@@ -658,19 +659,25 @@ export function StepFinance({
                 </CardContent>
             </Card>
 
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center gap-4">
                 <Button type="button" variant="outline" onClick={onBack}>
                     Back
                 </Button>
-                <Button
-                    type="button"
-                    onClick={onNext}
-                    disabled={isLoading}
-                    className="gap-2"
-                >
-                    {isLoading ? "Saving..." : "Save \u0026 Next"}
-                    <Save className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-4">
+                    <StepErrors
+                        form={form}
+                        fields={["paymentStructure", "cancellationStructure", "cancellationPolicy"]}
+                    />
+                    <Button
+                        type="button"
+                        onClick={onNext}
+                        disabled={isLoading}
+                        className="gap-2"
+                    >
+                        {isLoading ? "Saving..." : "Save \u0026 Next"}
+                        <Save className="w-4 h-4" />
+                    </Button>
+                </div>
             </div>
         </div>
     );

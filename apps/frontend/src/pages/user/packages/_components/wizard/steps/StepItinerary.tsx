@@ -22,6 +22,7 @@ import type { PackageFormData } from "@/types/package.schema";
 import { Plus, Save, Trash, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useFieldArray, type UseFormReturn } from "react-hook-form";
+import { StepErrors } from "../../step-errors";
 
 interface StepItineraryProps {
     form: UseFormReturn<PackageFormData>;
@@ -519,19 +520,25 @@ export function StepItinerary({
                 </CardContent>
             </Card>
 
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center gap-4">
                 <Button type="button" variant="outline" onClick={onBack}>
                     Back
                 </Button>
-                <Button
-                    type="button"
-                    onClick={onNext}
-                    disabled={isLoading}
-                    className="gap-2"
-                >
-                    {isLoading ? "Saving..." : "Save \u0026 Next"}
-                    <Save className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-4">
+                    <StepErrors
+                        form={form}
+                        fields={["itinerary"]}
+                    />
+                    <Button
+                        type="button"
+                        onClick={onNext}
+                        disabled={isLoading}
+                        className="gap-2"
+                    >
+                        {isLoading ? "Saving..." : "Save \u0026 Next"}
+                        <Save className="w-4 h-4" />
+                    </Button>
+                </div>
             </div>
         </div>
     );

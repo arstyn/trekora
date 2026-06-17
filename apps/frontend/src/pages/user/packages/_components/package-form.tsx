@@ -164,6 +164,18 @@ export function PackageForm({
         (backendData: Partial<IPackages>) => {
             const transformed: any = { ...backendData };
 
+            const safeArray = (val: any): any[] => {
+                if (!val) return [];
+                if (Array.isArray(val)) return val;
+                if (typeof val === "string") {
+                    try {
+                        const parsed = JSON.parse(val);
+                        if (Array.isArray(parsed)) return parsed;
+                    } catch (_) {}
+                }
+                return [];
+            };
+
             if (backendData.basePrice !== undefined)
                 transformed.basePrice = Number(backendData.basePrice) || 0;
             if (backendData.days !== undefined)
@@ -175,19 +187,19 @@ export function PackageForm({
 
             if (backendData.inclusions !== undefined) {
                 transformed.inclusions =
-                    backendData.inclusions?.map((inc: any) =>
+                    safeArray(backendData.inclusions).map((inc: any) =>
                         typeof inc === "object" ? inc?.item : inc,
-                    ) || [];
+                    );
             }
             if (backendData.exclusions !== undefined) {
                 transformed.exclusions =
-                    backendData.exclusions?.map((exc: any) =>
+                    safeArray(backendData.exclusions).map((exc: any) =>
                         typeof exc === "object" ? exc?.item : exc,
-                    ) || [];
+                    );
             }
 
             if (backendData.itinerary !== undefined) {
-                transformed.itinerary = backendData.itinerary?.map(
+                transformed.itinerary = safeArray(backendData.itinerary).map(
                     (iti, index) => {
                         const { images, ...rest } = iti;
                         if (images && Array.isArray(images)) {
@@ -208,7 +220,7 @@ export function PackageForm({
 
             if (backendData.paymentStructure !== undefined) {
                 transformed.paymentStructure =
-                    backendData.paymentStructure?.map((pay) => ({
+                    safeArray(backendData.paymentStructure).map((pay) => ({
                         ...pay,
                         amount: parseFloat(pay.amount?.toString() ?? "0"),
                     }));
@@ -216,7 +228,7 @@ export function PackageForm({
 
             if (backendData.cancellationStructure !== undefined) {
                 transformed.cancellationStructure =
-                    backendData.cancellationStructure?.map((can) => ({
+                    safeArray(backendData.cancellationStructure).map((can) => ({
                         ...can,
                         amount: parseFloat(can.amount?.toString() ?? "0"),
                     }));
@@ -224,17 +236,17 @@ export function PackageForm({
 
             if (backendData.cancellationPolicy !== undefined) {
                 transformed.cancellationPolicy =
-                    backendData.cancellationPolicy?.map(
+                    safeArray(backendData.cancellationPolicy).map(
                         (can: any) => can.text || can,
-                    ) || [];
+                    );
             }
 
             if (backendData.preTripChecklist !== undefined) {
                 transformed.preTripChecklist =
-                    backendData.preTripChecklist?.map((item: any) => ({
+                    safeArray(backendData.preTripChecklist).map((item: any) => ({
                         ...item,
                         dueDate: item.dueDate?.toString() || "",
-                    })) || [];
+                    }));
             }
 
             if (backendData.packageLocation === null) {
@@ -487,6 +499,32 @@ export function PackageForm({
     };
 
     const handleNext = async () => {
+        const stepKey =
+            currentStep === 0
+                ? "basic"
+                : currentStep === 1
+                    ? "itinerary"
+                    : currentStep === 2
+                        ? "details"
+                        : currentStep === 3
+                            ? "logistics"
+                            : currentStep === 4
+                                ? "payments-cancellation"
+                                : currentStep === 5
+                                    ? "requirements"
+                                    : "all";
+
+        let isValid = true;
+        if (stepKey !== "all") {
+            const fieldsToValidate = SECTION_KEYS[stepKey] as any[];
+            isValid = await form.trigger(fieldsToValidate);
+        }
+
+        if (!isValid) {
+            toast.error("Please fix the validation errors before proceeding.");
+            return;
+        }
+
         const success = await saveDraft(form.getValues());
         if (success) {
             setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
@@ -500,6 +538,11 @@ export function PackageForm({
     };
 
     const handlePublish = async () => {
+        const isValid = await form.trigger();
+        if (!isValid) {
+            toast.error("Please fix all validation errors before publishing.");
+            return;
+        }
         const data = form.getValues();
         data.status = "published";
         const success = await saveDraft(data, true);
@@ -755,6 +798,7 @@ export function PackageForm({
                             onDelete={handleDelete}
                             onArchive={handleArchive}
                             onUnpublish={handleUnpublish}
+                            onJumpToStep={setCurrentStep}
                             isLoading={isSaving}
                             packageData={packageData}
                         />

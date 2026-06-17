@@ -27,6 +27,7 @@ import type { PackageFormData } from "@/types/package.schema";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
+import { StepErrors } from "../../step-errors";
 
 interface StepBasicInfoProps {
     form: UseFormReturn<PackageFormData>;
@@ -419,7 +420,23 @@ export function StepBasicInfo({
                 </CardContent>
             </Card>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end items-center gap-4">
+                <StepErrors
+                    form={form}
+                    fields={[
+                        "name",
+                        "destination",
+                        "days",
+                        "nights",
+                        "basePrice",
+                        "description",
+                        "maxGuests",
+                        "category",
+                        "thumbnail",
+                        "status",
+                        "packageLocation",
+                    ]}
+                />
                 <Button
                     type="button"
                     onClick={onNext}
