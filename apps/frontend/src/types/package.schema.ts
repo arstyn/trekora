@@ -38,12 +38,7 @@ export interface IPaymentStructure {
     name?: string;
     amount?: number;
     description?: string;
-    dueDate:
-    | "30_days_before"
-    | "2_weeks_before"
-    | "1_week_before"
-    | "booking"
-    | "departure";
+    dueDate?: string;
 }
 
 export interface IPackages {
@@ -80,6 +75,7 @@ export interface IPackages {
     preTripChecklist?: IChecklistItem[];
     mealsBreakdown?: MealsBreakdown;
     transportation?: Transportation[];
+    groundTransportationCost?: number;
     packageTiers?: PackageTier[];
     additionalCosts?: AdditionalCost[];
 }
@@ -96,21 +92,14 @@ export interface PackageTier {
     childCostValue?: number;
     infantCostType?: "flat" | "percentage";
     infantCostValue?: number;
+    transportationId?: string;
 }
 
 export const paymentMilestoneSchema = z.object({
     name: z.string().optional(),
     amount: z.number().min(0).optional(),
     description: z.string().optional(),
-    dueDate: z
-        .enum([
-            "booking",
-            "30_days_before",
-            "2_weeks_before",
-            "1_week_before",
-            "departure",
-        ])
-        .optional(),
+    dueDate: z.string().optional(),
 });
 
 export const cancellationTierSchema = z.object({
@@ -126,9 +115,20 @@ export const mealsBreakdownSchema = z.object({
     mealsCost: z.number().min(0).optional(),
 });
 
+export const transportationSegmentSchema = z.object({
+    mode: z.enum(["flight", "train", "bus"]).optional(),
+    number: z.string().optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+    departureTime: z.string().optional(),
+    arrivalTime: z.string().optional(),
+    coachType: z.enum(["1AC", "2AC", "3AC", "SL", "CC", "EC", "none"]).optional(),
+});
+
 export const transportationSchema = z.object({
+    id: z.string().optional(),
     title: z.string().optional(),
-    details: z.string().optional(),
+    segments: z.array(transportationSegmentSchema).optional(),
     cost: z.number().min(0).optional(),
 });
 
@@ -181,6 +181,7 @@ export const packageTierSchema = z.object({
     childCostValue: z.number().min(0).optional(),
     infantCostType: z.enum(["flat", "percentage"]).optional(),
     infantCostValue: z.number().min(0).optional(),
+    transportationId: z.string().optional(),
 });
 
 export const packageFormSchema = z
@@ -216,22 +217,21 @@ export const packageFormSchema = z
         packageLocation: packageLocationSchema.optional(),
         cancellationPolicy: z.array(z.string()).optional(),
         additionalCosts: z.array(additionalCostSchema).optional(),
+        groundTransportationCost: z.number().min(0).optional(),
         packageTiers: z.array(packageTierSchema).optional(),
     })
     .refine(
         (data) => {
-            if (!data.paymentStructure || !data.packageTiers || data.packageTiers.length === 0) return true;
-            const firstTierAdultCost = data.packageTiers[0]?.adultCost;
-            if (!firstTierAdultCost) return true;
-            const totalAmount = data.paymentStructure.reduce(
+            if (!data.paymentStructure || data.paymentStructure.length === 0) return true;
+            const totalPercentage = data.paymentStructure.reduce(
                 (sum, milestone) => sum + (milestone.amount ?? 0),
                 0,
             );
-            return totalAmount === firstTierAdultCost;
+            return totalPercentage === 100;
         },
         {
             message:
-                "Payment structure amounts must total exactly the package base price",
+                "Payment structure percentages must total exactly 100%",
             path: ["paymentStructure"],
         },
     );
@@ -241,6 +241,7 @@ export type PaymentMilestone = z.infer<typeof paymentMilestoneSchema>;
 export type CancellationTier = z.infer<typeof cancellationTierSchema>;
 export type MealsBreakdown = z.infer<typeof mealsBreakdownSchema>;
 export type Transportation = z.infer<typeof transportationSchema>;
+export type TransportationSegment = z.infer<typeof transportationSegmentSchema>;
 export type ItineraryDay = z.infer<typeof itineraryDaySchema>;
 export type DocumentRequirement = z.infer<typeof documentRequirementSchema>;
 export type IChecklistItem = z.infer<typeof checklistItemSchema>;

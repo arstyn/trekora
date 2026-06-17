@@ -105,22 +105,22 @@ export function StepReview({
         };
 
         const compareArray = (key: keyof PackageFormData, label: string) => {
-            const current = (values[key] as any[]) || [];
-            let originalRaw = safeArray((packageData as any)[key]);
+            const current = Array.isArray(values[key]) ? (values[key] as any[]) : [];
+            let originalRaw = (packageData as any)[key];
             let original: any[] = [];
 
             if (key === "inclusions" || key === "exclusions") {
-                original =
+                original = Array.isArray(originalRaw) ?
                     originalRaw.map((item) =>
-                        typeof item === "object" ? item.item : item,
-                    );
+                        typeof item === "object" && item !== null ? item.item : item,
+                    ) : [];
             } else if (key === "cancellationPolicy") {
-                original =
+                original = Array.isArray(originalRaw) ?
                     originalRaw.map((item) =>
-                        typeof item === "object" ? item.text : item,
-                    );
+                        typeof item === "object" && item !== null ? item.text : item,
+                    ) : [];
             } else {
-                original = originalRaw;
+                original = Array.isArray(originalRaw) ? originalRaw : [];
             }
 
             if (JSON.stringify(current) !== JSON.stringify(original)) {
@@ -304,7 +304,7 @@ export function StepReview({
         if (totalMilestones !== firstTierAdultCost) {
             manualIssues.push({
                 field: "Payments",
-                message: `Milestone total (₹${totalMilestones}) doesn't match the first tier adult cost (₹${firstTierAdultCost})`,
+                message: `Milestone percentages total ${totalMilestones}%, but must equal exactly 100%.`,
                 severity: "error",
                 stepIndex: 4,
             });

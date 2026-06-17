@@ -29,6 +29,9 @@ export class PackageTier {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   infantCostValue: number;
 
+  @Column({ type: 'varchar', nullable: true })
+  transportationId: string;
+
   @Column({ type: 'uuid', nullable: true })
   packageId: string;
 

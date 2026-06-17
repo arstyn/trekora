@@ -14,10 +14,17 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import type { PackageFormData } from "@/types/package.schema";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { Clock, Hash, MapPin, Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useFieldArray, type UseFormReturn } from "react-hook-form";
+import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 import { StepErrors } from "../../step-errors";
 
 interface StepLogisticsProps {
@@ -25,6 +32,185 @@ interface StepLogisticsProps {
     onNext: () => void;
     onBack: () => void;
     isLoading?: boolean;
+}
+
+function TransportationSegmentList({ control, index }: { control: any; index: number }) {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `transportation.${index}.segments`,
+    });
+
+    const watchedSegments = useWatch({
+        control,
+        name: `transportation.${index}.segments`,
+    }) || [];
+
+    return (
+        <div className="space-y-4 pl-4 border-l-2 border-primary/20 mt-4 bg-secondary/5 p-4 rounded-r-lg">
+            <h5 className="text-sm font-medium text-muted-foreground mb-2 flex items-center justify-between">
+                <span>Journey Segments</span>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ mode: "flight", number: "", from: "", to: "", departureTime: "", arrivalTime: "", coachType: "none" })}
+                >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add Segment
+                </Button>
+            </h5>
+
+            {fields.map((field, segIndex) => {
+                const modeName = `transportation.${index}.segments.${segIndex}.mode`;
+                return (
+                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 items-end border-b border-primary/10 pb-4 last:border-0 last:pb-0 relative pt-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute -right-2 -top-2 h-6 w-6 text-red-500 hover:bg-red-50"
+                            onClick={() => remove(segIndex)}
+                        >
+                            <Trash2 className="w-3 h-3" />
+                        </Button>
+
+                        <FormField
+                            control={control}
+                            name={modeName as any}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Mode</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value || "flight"}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="flight">Flight</SelectItem>
+                                            <SelectItem value="train">Train</SelectItem>
+                                            <SelectItem value="bus">Bus</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
+                            name={`transportation.${index}.segments.${segIndex}.number` as any}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Number (Flight/Train/Bus)</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Hash className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                                            <Input className="h-8 text-xs pl-6" placeholder="e.g. AI-101" {...field} />
+                                        </div>
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
+                            name={`transportation.${index}.segments.${segIndex}.from` as any}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">From</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                                            <Input className="h-8 text-xs pl-6" placeholder="Origin" {...field} />
+                                        </div>
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
+                            name={`transportation.${index}.segments.${segIndex}.to` as any}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">To</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                                            <Input className="h-8 text-xs pl-6" placeholder="Destination" {...field} />
+                                        </div>
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
+                            name={`transportation.${index}.segments.${segIndex}.departureTime` as any}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Departure Time</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Clock className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                                            <Input type="time" className="h-8 text-xs pl-6" {...field} />
+                                        </div>
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
+                            name={`transportation.${index}.segments.${segIndex}.arrivalTime` as any}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Arrival Time</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Clock className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                                            <Input type="time" className="h-8 text-xs pl-6" {...field} />
+                                        </div>
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Render Coach Type only if mode is train */}
+                        {watchedSegments[segIndex]?.mode === 'train' && (
+                            <FormField
+                                control={control}
+                                name={`transportation.${index}.segments.${segIndex}.coachType` as any}
+                                render={({ field }) => {
+                                    return (
+                                        <FormItem>
+                                            <FormLabel className="text-xs">Coach Type (Train only)</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="none">None</SelectItem>
+                                                    <SelectItem value="1AC">1AC (First AC)</SelectItem>
+                                                    <SelectItem value="2AC">2AC (Second AC)</SelectItem>
+                                                    <SelectItem value="3AC">3AC (Third AC)</SelectItem>
+                                                    <SelectItem value="SL">SL (Sleeper)</SelectItem>
+                                                    <SelectItem value="CC">CC (AC Chair Car)</SelectItem>
+                                                    <SelectItem value="EC">EC (Exec Chair Car)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    );
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            })}
+
+            {fields.length === 0 && (
+                <p className="text-xs text-muted-foreground italic">No segments added. Click 'Add Segment' to build this journey.</p>
+            )}
+        </div>
+    );
 }
 
 export function StepLogistics({
@@ -142,16 +328,17 @@ export function StepLogistics({
                             name="mealsBreakdown.mealsCost"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Total Meals Cost (INR)</FormLabel>
+                                    <FormLabel>Total Meals Cost (₹)</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             min="0"
                                             placeholder="e.g., 5000"
                                             {...field}
+                                            value={field.value ?? ""}
                                             onChange={(e) =>
                                                 field.onChange(
-                                                    Number.parseInt(e.target.value) || 0
+                                                    e.target.value === "" ? "" : Number(e.target.value)
                                                 )
                                             }
                                         />
@@ -172,7 +359,7 @@ export function StepLogistics({
                         </div>
                         <Button
                             type="button"
-                            onClick={() => appendTransportation({ title: "", details: "", cost: 0 })}
+                            onClick={() => appendTransportation({ id: crypto.randomUUID(), title: "", segments: [], cost: 0 })}
                             size="sm"
                         >
                             <Plus className="w-4 h-4 mr-2" />
@@ -182,59 +369,57 @@ export function StepLogistics({
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {transportationFields.map((field, index) => (
-                        <div key={field.id} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_1fr_auto] gap-3 items-start border-b pb-4 last:border-0 last:pb-0">
-                            <FormField
-                                control={form.control}
-                                name={`transportation.${index}.title`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Tier/Mode</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., Standard Flight" {...field} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name={`transportation.${index}.details`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Details</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., Economy class round trip" {...field} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name={`transportation.${index}.cost`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Cost (INR)</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                placeholder="0"
-                                                {...field}
-                                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
-                                            />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <div className="pt-8">
+                        <div key={field.id} className="border rounded-lg p-4 space-y-4">
+                            <div className="flex justify-between items-center pb-2 border-b">
+                                <h4 className="font-medium text-primary flex items-center gap-2">
+                                    Transportation Option {index + 1}
+                                </h4>
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
                                     onClick={() => removeTransportation(index)}
                                 >
                                     <Trash2 className="w-4 h-4 text-red-500" />
                                 </Button>
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name={`transportation.${index}.title`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Title</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., Two-Way Flight, Mixed (Train+Flight)" {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name={`transportation.${index}.cost`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Total Option Cost (₹)</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    placeholder="0"
+                                                    {...field}
+                                                    value={field.value ?? ""}
+                                                    onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <TransportationSegmentList control={form.control} index={index} />
                         </div>
                     ))}
                     {transportationFields.length === 0 && (
@@ -247,7 +432,35 @@ export function StepLogistics({
 
 
 
-            <div className="flex justify-between items-center gap-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Ground Transportation</CardTitle>
+                    <CardDescription>Overall ground transportation costs for the package</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <FormField
+                        control={form.control}
+                        name="groundTransportationCost"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Ground Transportation Cost (₹)</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        placeholder="e.g., 2000"
+                                        {...field}
+                                        value={field.value ?? ""}
+                                        onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                </CardContent>
+            </Card>
+
+            <div className="flex justify-between">
                 <Button type="button" variant="outline" onClick={onBack}>
                     Back
                 </Button>

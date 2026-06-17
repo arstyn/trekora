@@ -303,16 +303,17 @@ export function StepItinerary({
                                         name={`itinerary.${dayIndex}.activitiesTotalCost`}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Total Activities Cost for Day (INR)</FormLabel>
+                                                <FormLabel>Total Activities Cost for Day (₹)</FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         type="number"
                                                         min="0"
                                                         placeholder="e.g., 500"
                                                         {...field}
+                                                        value={field.value ?? ""}
                                                         onChange={(e) =>
                                                             field.onChange(
-                                                                Number.parseInt(e.target.value) || 0
+                                                                e.target.value === "" ? "" : Number(e.target.value)
                                                             )
                                                         }
                                                     />
@@ -353,7 +354,8 @@ export function StepItinerary({
                                                                 min="0"
                                                                 placeholder="Cost"
                                                                 {...field}
-                                                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                                                value={field.value ?? ""}
+                                                                onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
@@ -469,16 +471,17 @@ export function StepItinerary({
                                         name={`itinerary.${dayIndex}.accommodationCost`}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Accommodation Cost (INR)</FormLabel>
+                                                <FormLabel>Accommodation Cost (₹)</FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         type="number"
                                                         min="0"
                                                         placeholder="e.g., 2500"
                                                         {...field}
+                                                        value={field.value ?? ""}
                                                         onChange={(e) =>
                                                             field.onChange(
-                                                                Number.parseInt(e.target.value) || 0
+                                                                e.target.value === "" ? "" : Number(e.target.value)
                                                             )
                                                         }
                                                     />
