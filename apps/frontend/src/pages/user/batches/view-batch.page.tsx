@@ -308,6 +308,19 @@ export default function BatchDetailsPage() {
                                 </p>
                             </div>
                         </div>
+                        {batch?.seatChangeReason && (
+                            <div className="flex items-start gap-2 pt-2 mt-2 border-t">
+                                <ClipboardList className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">
+                                        Seat Change Reason
+                                    </p>
+                                    <p className="font-medium text-sm">
+                                        {batch.seatChangeReason}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -344,7 +357,7 @@ export default function BatchDetailsPage() {
                             <p className="text-lg font-bold">
                                 {batch &&
                                     BookingService.formatCurrency(
-                                        Number(batch.package?.price || 0),
+                                        Number(batch.package?.basePrice || 0),
                                     )}
                             </p>
                         </div>
@@ -876,13 +889,13 @@ export default function BatchDetailsPage() {
                                     <div className="absolute left-0 mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 bg-background shadow-md z-10 transition-transform group-hover:scale-110">
                                         <div
                                             className={`h-4 w-4 rounded-md flex items-center justify-center ${log.action === "create"
-                                                    ? "bg-emerald-500 text-white"
-                                                    : log.action ===
-                                                        "status_change"
-                                                        ? "bg-blue-500 text-white"
-                                                        : log.action === "delete"
-                                                            ? "bg-rose-500 text-white"
-                                                            : "bg-primary text-white"
+                                                ? "bg-emerald-500 text-white"
+                                                : log.action ===
+                                                    "status_change"
+                                                    ? "bg-blue-500 text-white"
+                                                    : log.action === "delete"
+                                                        ? "bg-rose-500 text-white"
+                                                        : "bg-primary text-white"
                                                 }`}
                                         >
                                             <div className="w-1.5 h-1.5 rounded-full bg-white" />

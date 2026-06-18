@@ -14,8 +14,8 @@ export class TransportationOption {
   @Column({ type: 'varchar', nullable: true })
   title: string;
 
-  @Column({ type: 'varchar', nullable: true })
-  details: string;
+  @Column({ type: 'jsonb', nullable: true })
+  segments: any;
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   cost: number;

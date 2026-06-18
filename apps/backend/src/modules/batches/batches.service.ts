@@ -267,6 +267,7 @@ export class BatchesService {
   async getBatchDashboardStats(organizationId: string): Promise<{
     activeBatches: number;
     upcomingBatches: number;
+    completedBatches: number;
     availableSeats: number;
     fastFilling: number;
   }> {
@@ -278,6 +279,7 @@ export class BatchesService {
 
     let activeBatches = 0;
     let upcomingBatches = 0;
+    let completedBatches = 0;
     let availableSeats = 0;
     let fastFilling = 0;
 
@@ -294,6 +296,10 @@ export class BatchesService {
         availableSeats += (batch.totalSeats ?? 0) - (batch.bookedSeats ?? 0);
       }
 
+      if (end < now || batch.status === BatchStatus.COMPLETED) {
+        completedBatches++;
+      }
+
       if (
         batch.totalSeats &&
         (batch.bookedSeats / batch.totalSeats >= 0.8 ||
@@ -306,6 +312,7 @@ export class BatchesService {
     return {
       activeBatches,
       upcomingBatches,
+      completedBatches,
       availableSeats,
       fastFilling,
     };

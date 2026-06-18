@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
@@ -8,9 +9,8 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-import { BookingStatus } from 'src/database/entity/booking.entity';
 import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
+import { BookingStatus } from 'src/database/entity/booking.entity';
 
 export class CreatePaymentDto {
   @IsNumber()
@@ -142,14 +142,14 @@ export class BookingSummaryDto {
 export class BookingCustomerResponseDto {
   id: string;
   firstName: string;
-  lastName: string;
+  lastName?: string;
   middleName?: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   alternativePhone?: string;
-  dateOfBirth: Date;
-  gender: string;
-  address: string;
+  dateOfBirth?: Date;
+  gender?: string;
+  address?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   emergencyContactRelation?: string;

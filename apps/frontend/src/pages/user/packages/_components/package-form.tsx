@@ -14,7 +14,7 @@ import {
     Rocket,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -58,7 +58,6 @@ const defaultValues: PackageFormData = {
     ],
     paymentStructure: [
         {
-            name: "Booking Advance",
             amount: 0,
             description: "Initial booking amount",
             dueDate: "booking",
@@ -66,7 +65,7 @@ const defaultValues: PackageFormData = {
     ],
     cancellationStructure: [
         {
-            timeframe: "30+ days before",
+            timeframe: "30_days_before",
             amount: 0,
             description: "Minimal cancellation fee",
         },
@@ -75,6 +74,8 @@ const defaultValues: PackageFormData = {
         "Cancellation must be made in writing",
         "Refunds will be processed within 7-10 business days",
     ],
+    packageTiers: [],
+    additionalCosts: [],
     mealsBreakdown: {
         breakfast: [],
         lunch: [],
@@ -106,24 +107,26 @@ const SECTION_KEYS: Record<string, string[]> = {
         "maxGuests",
         "category",
         "thumbnail",
-        "inclusions",
-        "exclusions",
         "status",
+        "packageLocation",
     ],
     itinerary: ["itinerary"],
-    logistics: ["transportation", "mealsBreakdown", "packageLocation"],
+    details: ["inclusions", "exclusions"],
+    logistics: ["transportation", "mealsBreakdown"],
     "payments-cancellation": [
         "paymentStructure",
         "cancellationStructure",
         "cancellationPolicy",
+        "additionalCosts",
+        "packageTiers",
     ],
     requirements: ["documentRequirements", "preTripChecklist"],
 };
 
 const STEPS = [
     { title: "Basic Info", icon: PackageIcon },
-    { title: "Details", icon: PackageIcon },
     { title: "Itinerary", icon: PackageIcon },
+    { title: "Inclusion & Exclusion", icon: PackageIcon },
     { title: "Logistics", icon: PackageIcon },
     { title: "Finance", icon: PackageIcon },
     { title: "Requirements", icon: PackageIcon },
@@ -174,20 +177,20 @@ export function PackageForm({
                 transformed.maxGuests = Number(backendData.maxGuests) || 0;
 
             if (backendData.inclusions !== undefined) {
-                transformed.inclusions =
-                    backendData.inclusions?.map((inc: any) =>
+                transformed.inclusions = Array.isArray(backendData.inclusions) ?
+                    backendData.inclusions.map((inc: any) =>
                         typeof inc === "object" ? inc?.item : inc,
-                    ) || [];
+                    ) : [];
             }
             if (backendData.exclusions !== undefined) {
-                transformed.exclusions =
-                    backendData.exclusions?.map((exc: any) =>
+                transformed.exclusions = Array.isArray(backendData.exclusions) ?
+                    backendData.exclusions.map((exc: any) =>
                         typeof exc === "object" ? exc?.item : exc,
-                    ) || [];
+                    ) : [];
             }
 
             if (backendData.itinerary !== undefined) {
-                transformed.itinerary = backendData.itinerary?.map(
+                transformed.itinerary = Array.isArray(backendData.itinerary) ? backendData.itinerary.map(
                     (iti, index) => {
                         const { images, ...rest } = iti;
                         if (images && Array.isArray(images)) {
@@ -203,38 +206,58 @@ export function PackageForm({
                         }
                         return { ...rest, images: [] };
                     },
-                );
+                ) : [];
             }
 
             if (backendData.paymentStructure !== undefined) {
-                transformed.paymentStructure =
-                    backendData.paymentStructure?.map((pay) => ({
+                transformed.paymentStructure = Array.isArray(backendData.paymentStructure) ?
+                    backendData.paymentStructure.map((pay) => ({
                         ...pay,
                         amount: parseFloat(pay.amount?.toString() ?? "0"),
-                    }));
+                    })) : [];
             }
 
             if (backendData.cancellationStructure !== undefined) {
-                transformed.cancellationStructure =
-                    backendData.cancellationStructure?.map((can) => ({
+                transformed.cancellationStructure = Array.isArray(backendData.cancellationStructure) ?
+                    backendData.cancellationStructure.map((can) => ({
                         ...can,
                         amount: parseFloat(can.amount?.toString() ?? "0"),
-                    }));
+                    })) : [];
             }
 
             if (backendData.cancellationPolicy !== undefined) {
-                transformed.cancellationPolicy =
-                    backendData.cancellationPolicy?.map(
+                transformed.cancellationPolicy = Array.isArray(backendData.cancellationPolicy) ?
+                    backendData.cancellationPolicy.map(
                         (can: any) => can.text || can,
-                    ) || [];
+                    ) : [];
             }
 
             if (backendData.preTripChecklist !== undefined) {
-                transformed.preTripChecklist =
-                    backendData.preTripChecklist?.map((item: any) => ({
+                transformed.preTripChecklist = Array.isArray(backendData.preTripChecklist) ?
+                    backendData.preTripChecklist.map((item: any) => ({
                         ...item,
                         dueDate: item.dueDate?.toString() || "",
-                    })) || [];
+                    })) : [];
+            }
+
+            if (backendData.additionalCosts !== undefined) {
+                transformed.additionalCosts = Array.isArray(backendData.additionalCosts) ? backendData.additionalCosts.map((cost: any) => ({
+                    ...cost,
+                    cost: parseFloat(cost.cost?.toString() ?? "0")
+                })) : [];
+            }
+
+            if (backendData.packageTiers !== undefined) {
+                transformed.packageTiers = Array.isArray(backendData.packageTiers) ? backendData.packageTiers.map((tier: any) => ({
+                    ...tier,
+                    adultCost: parseFloat(tier.adultCost?.toString() ?? "0"),
+                    childCostValue: parseFloat(tier.childCostValue?.toString() ?? "0"),
+                    infantCostValue: parseFloat(tier.infantCostValue?.toString() ?? "0"),
+                })) : [];
+            }
+
+            if (backendData.packageLocation === null) {
+                delete transformed.packageLocation;
             }
 
             return transformed as Partial<PackageFormData>;
@@ -276,6 +299,8 @@ export function PackageForm({
                         }
                         if (res.data.id) setPackageId(res.data.id);
                     }
+                    
+                    setLoadedSections((prev) => new Set(prev).add(section));
 
                     setPackageData(
                         (prev) =>
@@ -284,7 +309,6 @@ export function PackageForm({
                                 ...res.data,
                             }) as IPackages,
                     );
-                    setLoadedSections((prev) => new Set(prev).add(section));
                 }
             } catch (error) {
                 console.error(`Failed to load ${section} data:`, error);
@@ -296,42 +320,29 @@ export function PackageForm({
         [packageId, loadedSections, form, transformBackendDataToForm],
     );
 
-    // Progressive loading effect based on currentStep
+    const initialLoadStarted = useRef(false);
+
+    // Load all sections on mount when editing so skipping steps doesn't cause missing data
     useEffect(() => {
-        if (!isEditing || !packageId) return;
+        if (!isEditing || !packageId || initialLoadStarted.current) return;
+        initialLoadStarted.current = true;
 
-        const loadSectionForStep = async () => {
-            // Always ensure basic is loaded for context
-            if (!loadedSections.has("basic")) {
-                await fetchSection("basic");
-            }
-
-            if (currentStep === 0 || currentStep === 1) {
-                // Done (basic already loading/loaded above)
-            } else if (currentStep === 2) {
-                await fetchSection("itinerary");
-            } else if (currentStep === 3) {
-                await fetchSection("logistics");
-            } else if (currentStep === 4) {
-                await fetchSection("payments-cancellation");
-            } else if (currentStep === 5) {
-                await fetchSection("requirements");
-            } else if (currentStep === 6) {
-                // For review step, ensure everything is loaded
-                const sections = [
-                    "itinerary",
-                    "logistics",
-                    "payments-cancellation",
-                    "requirements",
-                ];
-                for (const section of sections) {
-                    await fetchSection(section);
-                }
+        const loadAllSections = async () => {
+            const sections = [
+                "basic",
+                "itinerary",
+                "details",
+                "logistics",
+                "payments-cancellation",
+                "requirements",
+            ];
+            for (const section of sections) {
+                await fetchSection(section);
             }
         };
 
-        loadSectionForStep();
-    }, [currentStep, isEditing, packageId, fetchSection]);
+        loadAllSections();
+    }, [isEditing, packageId, fetchSection]);
 
     const packageFormDataToFormData = (
         data: PackageFormData,
@@ -410,17 +421,19 @@ export function PackageForm({
             let keysToInclude: Set<string> | undefined;
             if (packageId && !isExplicitPublish) {
                 const stepKey =
-                    currentStep === 0 || currentStep === 1
+                    currentStep === 0
                         ? "basic"
-                        : currentStep === 2
+                        : currentStep === 1
                             ? "itinerary"
-                            : currentStep === 3
-                                ? "logistics"
-                                : currentStep === 4
-                                    ? "payments-cancellation"
-                                    : currentStep === 5
-                                        ? "requirements"
-                                        : "all";
+                            : currentStep === 2
+                                ? "details"
+                                : currentStep === 3
+                                    ? "logistics"
+                                    : currentStep === 4
+                                        ? "payments-cancellation"
+                                        : currentStep === 5
+                                            ? "requirements"
+                                            : "all";
 
                 if (stepKey !== "all") {
                     const sections = new Set(loadedSections);
@@ -696,19 +709,19 @@ export function PackageForm({
                         />
                     )}
                     {currentStep === 1 && (
-                        <StepDetails
+                        <StepItinerary
                             form={form}
+                            itineraryPreviewUrls={itineraryPreviewUrls}
+                            handleDayImageUpload={handleDayImageUpload}
+                            removeDayImage={removeDayImage}
                             onNext={handleNext}
                             onBack={handleBack}
                             isLoading={isSaving}
                         />
                     )}
                     {currentStep === 2 && (
-                        <StepItinerary
+                        <StepDetails
                             form={form}
-                            itineraryPreviewUrls={itineraryPreviewUrls}
-                            handleDayImageUpload={handleDayImageUpload}
-                            removeDayImage={removeDayImage}
                             onNext={handleNext}
                             onBack={handleBack}
                             isLoading={isSaving}

@@ -46,6 +46,9 @@ export class Package {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   basePrice: number;
 
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  groundTransportationCost: number;
+
   @Column('text', { nullable: true })
   description: string;
 

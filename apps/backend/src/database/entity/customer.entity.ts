@@ -33,37 +33,38 @@ export class Customer {
   @Column({ name: 'first_name' })
   firstName: string;
 
-  @Column({ name: 'last_name' })
-  lastName: string;
+  @Column({ name: 'last_name', nullable: true })
+  lastName?: string;
 
   @Column({ nullable: true, name: 'middle_name' })
   middleName?: string;
 
-  @Column({ type: 'date', name: 'date_of_birth' })
-  dateOfBirth: Date;
+  @Column({ type: 'date', name: 'date_of_birth', nullable: true })
+  dateOfBirth?: Date;
 
   @Column({
     type: 'enum',
     enum: Gender,
     name: 'gender',
+    nullable: true,
   })
-  gender: Gender;
+  gender?: Gender;
 
   @Column({ nullable: true, name: 'profile_photo' })
   profilePhoto?: string;
 
   // Contact Information
-  @Column({ unique: true, name: 'email' })
-  email: string;
+  @Column({ unique: true, name: 'email', nullable: true })
+  email?: string;
 
-  @Column({ name: 'phone' })
-  phone: string;
+  @Column({ name: 'phone', nullable: true })
+  phone?: string;
 
   @Column({ nullable: true, name: 'alternative_phone' })
   alternativePhone?: string;
 
-  @Column({ name: 'address' })
-  address: string;
+  @Column({ name: 'address', nullable: true })
+  address?: string;
 
   // Emergency Contact
   @Column({ nullable: true, name: 'emergency_contact_name' })

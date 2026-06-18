@@ -53,7 +53,6 @@ export function StepReview({
             let original = (packageData as any)[key];
 
             // Normalize
-            if (key === "basePrice") original = Number(original) || 0;
             if (key === "maxGuests") original = Number(original) || 0;
 
             if (current !== original && original !== undefined) {
@@ -64,22 +63,22 @@ export function StepReview({
         };
 
         const compareArray = (key: keyof PackageFormData, label: string) => {
-            const current = (values[key] as any[]) || [];
-            let originalRaw = (packageData as any)[key] as any[];
+            const current = Array.isArray(values[key]) ? (values[key] as any[]) : [];
+            let originalRaw = (packageData as any)[key];
             let original: any[] = [];
 
             if (key === "inclusions" || key === "exclusions") {
-                original =
-                    originalRaw?.map((item) =>
-                        typeof item === "object" ? item.item : item,
-                    ) || [];
+                original = Array.isArray(originalRaw) ?
+                    originalRaw.map((item) =>
+                        typeof item === "object" && item !== null ? item.item : item,
+                    ) : [];
             } else if (key === "cancellationPolicy") {
-                original =
-                    originalRaw?.map((item) =>
-                        typeof item === "object" ? item.text : item,
-                    ) || [];
+                original = Array.isArray(originalRaw) ?
+                    originalRaw.map((item) =>
+                        typeof item === "object" && item !== null ? item.text : item,
+                    ) : [];
             } else {
-                original = originalRaw || [];
+                original = Array.isArray(originalRaw) ? originalRaw : [];
             }
 
             if (JSON.stringify(current) !== JSON.stringify(original)) {
@@ -123,7 +122,6 @@ export function StepReview({
 
         compareSimple("name", "Name");
         compareSimple("destination", "Destination");
-        compareSimple("basePrice", "Price");
         compareSimple("days", "Days");
         compareSimple("nights", "Nights");
         compareSimple("description", "Description");
@@ -137,6 +135,8 @@ export function StepReview({
         compareArray("cancellationStructure", "Cancellation Structure");
         compareArray("documentRequirements", "Document Requirements");
         compareArray("preTripChecklist", "Pre-trip Checklist");
+        compareArray("packageTiers", "Package Tiers");
+        compareArray("additionalCosts", "Additional Costs");
 
         compareItinerary();
 
@@ -175,10 +175,10 @@ export function StepReview({
             message: "Package name is missing",
             severity: "error",
         });
-    if (!values.basePrice)
+    if (!values.packageTiers || values.packageTiers.length === 0)
         issues.push({
-            field: "Price",
-            message: "Price is not set",
+            field: "Package Tiers",
+            message: "At least one package tier must be defined",
             severity: "error",
         });
     if (!values.destination)
@@ -204,12 +204,14 @@ export function StepReview({
         (sum, m) => sum + (m.amount || 0),
         0,
     );
-    if (totalMilestones !== values.basePrice) {
-        issues.push({
-            field: "Payments",
-            message: `Milestone total (₹${totalMilestones}) doesn't match package price (₹${values.basePrice})`,
-            severity: "error",
-        });
+    if (values.paymentStructure && values.paymentStructure.length > 0) {
+        if (totalMilestones !== 100) {
+            issues.push({
+                field: "Payments",
+                message: `Milestone percentages total ${totalMilestones}%, but must equal exactly 100%.`,
+                severity: "error",
+            });
+        }
     }
 
     const hasErrors = issues.some((i) => i.severity === "error");
@@ -336,9 +338,9 @@ export function StepReview({
                             </span>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
-                            <span className="text-muted-foreground">Price</span>
+                            <span className="text-muted-foreground">Price (Starting from)</span>
                             <Badge variant="outline" className="text-base">
-                                ₹{values.basePrice || 0}
+                                ₹{values.packageTiers?.[0]?.adultCost || 0}
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">

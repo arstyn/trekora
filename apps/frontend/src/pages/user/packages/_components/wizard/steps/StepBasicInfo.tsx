@@ -181,9 +181,10 @@ export function StepBasicInfo({
                                             min="0"
                                             placeholder="7"
                                             {...field}
+                                            value={field.value ?? ""}
                                             onChange={(e) =>
                                                 field.onChange(
-                                                    Number.parseInt(e.target.value) || 0
+                                                    e.target.value === "" ? "" : Number(e.target.value)
                                                 )
                                             }
                                         />
@@ -204,9 +205,10 @@ export function StepBasicInfo({
                                             min="0"
                                             placeholder="6"
                                             {...field}
+                                            value={field.value ?? ""}
                                             onChange={(e) =>
                                                 field.onChange(
-                                                    Number.parseInt(e.target.value) || 0
+                                                    e.target.value === "" ? "" : Number(e.target.value)
                                                 )
                                             }
                                         />
@@ -227,11 +229,10 @@ export function StepBasicInfo({
                                             min="0"
                                             placeholder="12"
                                             {...field}
+                                            value={field.value ?? ""}
                                             onChange={(e) =>
                                                 field.onChange(
-                                                    Number.parseInt(
-                                                        e.target.value,
-                                                    ) || 0,
+                                                    e.target.value === "" ? "" : Number(e.target.value)
                                                 )
                                             }
                                         />

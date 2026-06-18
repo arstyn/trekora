@@ -67,8 +67,8 @@ export class PaymentService {
       bookingNumber: booking.bookingNumber,
       customer: {
         id: booking.customer.id,
-        name: booking.customer.firstName + ' ' + booking.customer.lastName,
-        email: booking.customer.email,
+        name: booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
+        email: booking.customer.email || '',
       },
       package: {
         id: booking.package.id,
@@ -504,8 +504,8 @@ export class PaymentService {
           bookingId: booking.id,
           bookingNumber: booking.bookingNumber,
           customerName:
-            booking.customer.firstName + ' ' + booking.customer.lastName,
-          customerEmail: booking.customer.email,
+            booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
+          customerEmail: booking.customer.email || '',
           packageName: booking.package.name,
           dueAmount: booking.balanceAmount,
           dueDate: booking.batch.startDate,
@@ -711,9 +711,9 @@ export class PaymentService {
           name:
             payment.booking.customer.firstName +
             ' ' +
-            payment.booking.customer.lastName,
-          email: payment.booking.customer.email,
-          phone: payment.booking.customer.phone,
+            (payment.booking.customer.lastName || ''),
+          email: payment.booking.customer.email || '',
+          phone: payment.booking.customer.phone || '',
         },
 
         package: {

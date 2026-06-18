@@ -51,6 +51,11 @@ export class PackageController {
     return this.packageService.findBasicInfo(id);
   }
 
+  @Get(':id/details')
+  findDetails(@Param('id') id: string) {
+    return this.packageService.findDetails(id);
+  }
+
   @Get(':id/itinerary')
   findItinerary(@Param('id') id: string) {
     return this.packageService.findItinerary(id);

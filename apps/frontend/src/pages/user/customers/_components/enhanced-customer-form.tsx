@@ -562,14 +562,13 @@ export default function EnhancedCustomerForm({
                                                 htmlFor="lastName"
                                                 className="text-sm font-medium"
                                             >
-                                                Last Name *
+                                                Last Name
                                             </Label>
                                             <Input
                                                 id="lastName"
                                                 name="lastName"
                                                 value={formData.lastName}
                                                 onChange={handleChange}
-                                                required
                                                 className="h-9"
                                             />
                                         </div>
@@ -578,7 +577,7 @@ export default function EnhancedCustomerForm({
                                                 htmlFor="gender"
                                                 className="text-sm font-medium"
                                             >
-                                                Gender *
+                                                Gender
                                             </Label>
                                             <Select
                                                 value={formData.gender}
@@ -611,7 +610,7 @@ export default function EnhancedCustomerForm({
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-sm font-medium">
-                                            Date of Birth *
+                                            Date of Birth
                                         </Label>
                                         <Popover>
                                             <PopoverTrigger asChild>
@@ -680,7 +679,7 @@ export default function EnhancedCustomerForm({
                                                 htmlFor="email"
                                                 className="text-sm font-medium"
                                             >
-                                                Email *
+                                                Email
                                             </Label>
                                             <Input
                                                 id="email"
@@ -688,7 +687,6 @@ export default function EnhancedCustomerForm({
                                                 type="email"
                                                 value={formData.email}
                                                 onChange={handleChange}
-                                                required
                                                 className="h-9"
                                             />
                                         </div>
@@ -697,14 +695,13 @@ export default function EnhancedCustomerForm({
                                                 htmlFor="phone"
                                                 className="text-sm font-medium"
                                             >
-                                                Phone *
+                                                Phone
                                             </Label>
                                             <Input
                                                 id="phone"
                                                 name="phone"
                                                 value={formData.phone}
                                                 onChange={handleChange}
-                                                required
                                                 className="h-9"
                                             />
                                         </div>
@@ -729,14 +726,13 @@ export default function EnhancedCustomerForm({
                                             htmlFor="address"
                                             className="text-sm font-medium"
                                         >
-                                            Address *
+                                            Address
                                         </Label>
                                         <Textarea
                                             id="address"
                                             name="address"
                                             value={formData.address}
                                             onChange={handleChange}
-                                            required
                                             rows={3}
                                             className="resize-none"
                                         />
