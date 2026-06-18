@@ -11,6 +11,7 @@ export interface IBatches {
     totalSeats: number;
     bookedSeats: number;
     status: string;
+    seatChangeReason?: string;
     packageId: string;
     package?: IPackages;
     coordinators?: IEmployee[];
@@ -22,6 +23,7 @@ export interface IBatches {
 export interface IBatchStats {
     activeBatches: number;
     upcomingBatches: number;
+    completedBatches: number;
     availableSeats: number;
     fastFilling: number;
 }

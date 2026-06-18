@@ -4,19 +4,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Batch } from 'src/database/entity/batch.entity';
+import { BookingDocument } from 'src/database/entity/booking-document.entity';
+import { BookingLog } from 'src/database/entity/booking-log.entity';
 import {
   BookingPayment,
   PaymentStatus,
 } from 'src/database/entity/booking-payment.entity';
 import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
-import { DataSource, In, Repository } from 'typeorm';
-import { BookingLog } from 'src/database/entity/booking-log.entity';
-import { Batch } from 'src/database/entity/batch.entity';
-import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
-import { WorkflowService } from '../workflow/workflow.service';
-import { WorkflowType } from '../../database/entity/workflow/workflow.entity';
 import {
   BookingCustomerResponseDto,
   BookingResponseDto,
@@ -26,6 +23,9 @@ import {
   CreatePaymentDto,
   UpdateBookingDto,
 } from 'src/dto/booking.dto';
+import { DataSource, In, Repository } from 'typeorm';
+import { WorkflowType } from '../../database/entity/workflow/workflow.entity';
+import { WorkflowService } from '../workflow/workflow.service';
 
 @Injectable()
 export class BookingService {
@@ -46,7 +46,7 @@ export class BookingService {
     private logRepository: Repository<BookingLog>,
     private workflowService: WorkflowService,
     private dataSource: DataSource,
-  ) {}
+  ) { }
 
   async getLogs(bookingId: string) {
     return this.logRepository.find({
@@ -203,12 +203,12 @@ export class BookingService {
               config:
                 item.type === 'individual'
                   ? {
-                      completions: customers.map((c) => ({
-                        customerId: c.id,
-                        customerName: `${c.firstName} ${c.lastName}`,
-                        completed: false,
-                      })),
-                    }
+                    completions: customers.map((c) => ({
+                      customerId: c.id,
+                      customerName: `${c.firstName} ${c.lastName}`,
+                      completed: false,
+                    })),
+                  }
                   : {},
             },
             userId,
@@ -277,8 +277,8 @@ export class BookingService {
       id: booking.id,
       bookingNumber: booking.bookingNumber,
       customerName:
-        booking.customer.firstName + ' ' + booking.customer.lastName,
-      customerEmail: booking.customer.email,
+        booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
+      customerEmail: booking.customer.email || '',
       packageName: booking.package.name,
       batchStartDate: booking.batch.startDate,
       numberOfCustomers: booking.numberOfCustomers,
@@ -289,10 +289,10 @@ export class BookingService {
       createdAt: booking.createdAt,
       createdBy: booking.createdBy
         ? {
-            id: booking.createdBy.id,
-            name: booking.createdBy.name,
-            email: booking.createdBy.email,
-          }
+          id: booking.createdBy.id,
+          name: booking.createdBy.name,
+          email: booking.createdBy.email,
+        }
         : null,
     }));
   }
@@ -330,8 +330,8 @@ export class BookingService {
       id: booking.id,
       bookingNumber: booking.bookingNumber,
       customerName:
-        booking.customer.firstName + ' ' + booking.customer.lastName,
-      customerEmail: booking.customer.email,
+        booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
+      customerEmail: booking.customer.email || '',
       packageName: booking.package.name,
       batchStartDate: booking.batch.startDate,
       numberOfCustomers: booking.numberOfCustomers,
@@ -342,10 +342,10 @@ export class BookingService {
       createdAt: booking.createdAt,
       createdBy: booking.createdBy
         ? {
-            id: booking.createdBy.id,
-            name: booking.createdBy.name,
-            email: booking.createdBy.email,
-          }
+          id: booking.createdBy.id,
+          name: booking.createdBy.name,
+          email: booking.createdBy.email,
+        }
         : null,
     }));
   }
@@ -375,10 +375,10 @@ export class BookingService {
       primaryCustomer: {
         id: booking.customer.id,
         firstName: booking.customer.firstName,
-        lastName: booking.customer.lastName,
-        email: booking.customer.email,
-        phone: booking.customer.phone,
-        address: booking.customer.address,
+        lastName: booking.customer.lastName || '',
+        email: booking.customer.email || '',
+        phone: booking.customer.phone || '',
+        address: booking.customer.address || '',
       },
       package: {
         id: booking.package.id,
@@ -889,7 +889,7 @@ export class BookingService {
       previousData,
       newData,
     });
-    
+
     if (manager) {
       await manager.save(BookingLog, log);
     } else {

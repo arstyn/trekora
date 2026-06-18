@@ -9,17 +9,16 @@ export interface ICustomer {
 	id?: string;
 	// Personal Details
 	firstName: string;
-	lastName: string;
+	lastName?: string;
 	middleName?: string;
-	dateOfBirth: string;
-	gender: "male" | "female" | "other" | "prefer_not_to_say";
+	dateOfBirth?: string;
+	gender?: "male" | "female" | "other" | "prefer_not_to_say";
 	profilePhoto?: string;
 
-	// Contact Information
-	email: string;
-	phone: string;
+	email?: string;
+	phone?: string;
 	alternativePhone?: string;
-	address: string;
+	address?: string;
 
 	// Emergency Contact
 	emergencyContactName?: string;
