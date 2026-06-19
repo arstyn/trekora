@@ -35,41 +35,42 @@ export class CreateCustomerDto {
   @IsString({ message: 'First name must be a valid text' })
   firstName: string;
 
-  @IsNotEmpty({ message: 'Last name is required' })
+  @IsOptional()
   @IsString({ message: 'Last name must be a valid text' })
-  lastName: string;
+  lastName?: string;
 
   @IsOptional()
   @IsString({ message: 'Middle name must be a valid text' })
   middleName?: string;
 
-  @IsNotEmpty({ message: 'Date of birth is required' })
+  @IsOptional()
   @IsDateString({}, { message: 'Please enter a valid date in YYYY-MM-DD format' })
-  dateOfBirth: string;
+  dateOfBirth?: string;
 
-  @IsNotEmpty({ message: 'Gender is required' })
+  @IsOptional()
   @IsEnum(Gender, { message: 'Please select a valid gender' })
-  gender: Gender;
+  gender?: Gender;
 
   @IsOptional()
   @IsString({ message: 'Profile photo must be a valid URL' })
   profilePhoto?: string;
 
   // Contact Information
+  @IsOptional()
   @IsEmail({}, { message: 'Please enter a valid email address' })
-  email: string;
+  email?: string;
 
-  @IsNotEmpty({ message: 'Phone number is required' })
+  @IsOptional()
   @IsString({ message: 'Phone number must be a valid text' })
-  phone: string;
+  phone?: string;
 
   @IsOptional()
   @IsString({ message: 'Alternative phone must be a valid text' })
   alternativePhone?: string;
 
-  @IsNotEmpty({ message: 'Address is required' })
+  @IsOptional()
   @IsString({ message: 'Address must be a valid text' })
-  address: string;
+  address?: string;
 
   // Emergency Contact
   @IsOptional()

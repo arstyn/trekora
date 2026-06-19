@@ -39,7 +39,7 @@ import {
     Search,
 } from "lucide-react";
 import type React from "react";
-import { useLayoutEffect, useState, useMemo } from "react";
+import { useLayoutEffect, useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -67,8 +67,10 @@ export function CreateBatchDialog({
         startDate: "",
         endDate: "",
         totalSeats: "",
+        seatChangeReason: "",
         coordinators: [] as IEmployee[],
     });
+    const [changeSeats, setChangeSeats] = useState(false);
 
     // Filtered employees for coordinator search
     const filteredEmployees = useMemo(() => {
@@ -103,8 +105,18 @@ export function CreateBatchDialog({
         if (!formData.startDate)
             newErrors.startDate = "Please select a start date";
         if (!formData.endDate) newErrors.endDate = "Please select an end date";
-        if (!formData.totalSeats || parseInt(formData.totalSeats) < 1) {
-            newErrors.totalSeats = "Please enter a valid number of seats";
+        if (changeSeats) {
+            if (!formData.totalSeats || parseInt(formData.totalSeats) < 1) {
+                newErrors.totalSeats = "Please enter a valid number of seats";
+            }
+            if (!formData.seatChangeReason?.trim()) {
+                newErrors.seatChangeReason = "Please provide a reason for changing seats";
+            }
+        } else {
+            const selectedPkg = packages.find((p) => p.id === formData.packageId);
+            if (!selectedPkg?.maxGuests) {
+                newErrors.totalSeats = "Selected package doesn't have a max guests limit. Please check 'Change seat number' to enter manually.";
+            }
         }
         if (
             formData.startDate &&
@@ -148,6 +160,41 @@ export function CreateBatchDialog({
         }
     }, [open]);
 
+    useEffect(() => {
+        if (formData.packageId && formData.startDate) {
+            const selectedPkg = packages.find((p) => p.id === formData.packageId);
+            if (selectedPkg?.days) {
+                const startDateObj = new Date(formData.startDate);
+                startDateObj.setDate(
+                    startDateObj.getDate() + selectedPkg.days,
+                );
+
+                const year = startDateObj.getFullYear();
+                const month = String(startDateObj.getMonth() + 1).padStart(
+                    2,
+                    "0",
+                );
+                const day = String(startDateObj.getDate()).padStart(2, "0");
+                const calculatedEndDate = `${year}-${month}-${day}`;
+
+                if (formData.endDate !== calculatedEndDate) {
+                    setFormData((prev) => ({
+                        ...prev,
+                        endDate: calculatedEndDate,
+                    }));
+                    setErrors((prev) => {
+                        if (prev.endDate) {
+                            const newErrors = { ...prev };
+                            delete newErrors.endDate;
+                            return newErrors;
+                        }
+                        return prev;
+                    });
+                }
+            }
+        }
+    }, [formData.packageId, formData.startDate, packages, formData.endDate]);
+
     const removeCoordinator = (index: number) => {
         setFormData((prev) => ({
             ...prev,
@@ -165,9 +212,12 @@ export function CreateBatchDialog({
 
         setIsSubmitting(true);
         try {
+            const selectedPkg = packages.find((p) => p.id === formData.packageId);
+            const finalSeats = changeSeats ? formData.totalSeats : selectedPkg?.maxGuests;
             const payload = {
                 ...formData,
-                totalSeats: parseInt(formData.totalSeats, 10),
+                totalSeats: parseInt(String(finalSeats), 10),
+                seatChangeReason: changeSeats ? formData.seatChangeReason : undefined,
                 coordinators: formData.coordinators.map((c) => c.id),
             };
             await axiosInstance.post(`/batches`, payload);
@@ -181,8 +231,10 @@ export function CreateBatchDialog({
                 startDate: "",
                 endDate: "",
                 totalSeats: "",
+                seatChangeReason: "",
                 coordinators: [],
             });
+            setChangeSeats(false);
             setErrors({});
             setPackageSearch("");
             setCoordinatorSearch("");
@@ -233,7 +285,7 @@ export function CreateBatchDialog({
                         onSubmit={handleSubmit}
                         className="flex flex-col flex-1 min-h-0"
                     >
-                        <div className="space-y-6 p-5 overflow-auto grid grid-cols-2 gap-5">
+                        <div className="space-y-6 px-5 overflow-auto">
                             <div className="space-y-5">
                                 {/* Tour Package Selection */}
                                 <Card className="border-0 shadow-sm">
@@ -259,11 +311,10 @@ export function CreateBatchDialog({
                                                         <Button
                                                             variant="outline"
                                                             role="combobox"
-                                                            className={`w-full justify-between ${
-                                                                errors.packageId
-                                                                    ? "border-destructive"
-                                                                    : ""
-                                                            }`}
+                                                            className={`w-full justify-between ${errors.packageId
+                                                                ? "border-destructive"
+                                                                : ""
+                                                                }`}
                                                         >
                                                             <span className="flex items-center gap-2">
                                                                 <Package className="h-4 w-4" />
@@ -312,7 +363,7 @@ export function CreateBatchDialog({
                                                         <ScrollArea className="max-h-60">
                                                             <div className="p-2">
                                                                 {filteredPackages.length >
-                                                                0 ? (
+                                                                    0 ? (
                                                                     <div className="space-y-1">
                                                                         {filteredPackages.map(
                                                                             (
@@ -445,28 +496,15 @@ export function CreateBatchDialog({
                                                                             "No description available"}
                                                                     </p>
                                                                     <div className="flex flex-wrap gap-2">
-                                                                        {selectedPackage.days && (
+                                                                        {(selectedPackage.days !== undefined || selectedPackage.nights !== undefined) && (
                                                                             <Badge
                                                                                 variant="secondary"
                                                                                 className="text-xs"
                                                                             >
                                                                                 Duration:{" "}
-                                                                                {
-                                                                                    selectedPackage.days
-                                                                                }{" "}
-                                                                                days
-                                                                            </Badge>
-                                                                        )}
-                                                                        {selectedPackage.basePrice && (
-                                                                            <Badge
-                                                                                variant="secondary"
-                                                                                className="text-xs"
-                                                                            >
-                                                                                Price:
-                                                                                ₹
-                                                                                {
-                                                                                    selectedPackage.basePrice
-                                                                                }
+                                                                                {selectedPackage.days ? `${selectedPackage.days} Days` : ''}
+                                                                                {selectedPackage.days && selectedPackage.nights ? ' - ' : ''}
+                                                                                {selectedPackage.nights ? `${selectedPackage.nights} Nights` : ''}
                                                                             </Badge>
                                                                         )}
                                                                         {selectedPackage.maxGuests && (
@@ -529,23 +567,21 @@ export function CreateBatchDialog({
                                                     <PopoverTrigger asChild>
                                                         <Button
                                                             variant="outline"
-                                                            className={`w-full justify-start text-left font-normal ${
-                                                                !formData.startDate
-                                                                    ? "text-muted-foreground"
-                                                                    : ""
-                                                            } ${
-                                                                errors.startDate
+                                                            className={`w-full justify-start text-left font-normal ${!formData.startDate
+                                                                ? "text-muted-foreground"
+                                                                : ""
+                                                                } ${errors.startDate
                                                                     ? "border-destructive"
                                                                     : ""
-                                                            }`}
+                                                                }`}
                                                         >
                                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                                             {formData.startDate &&
-                                                            !isNaN(
-                                                                new Date(
-                                                                    formData.startDate,
-                                                                ).getTime(),
-                                                            ) ? (
+                                                                !isNaN(
+                                                                    new Date(
+                                                                        formData.startDate,
+                                                                    ).getTime(),
+                                                                ) ? (
                                                                 format(
                                                                     new Date(
                                                                         formData.startDate,
@@ -569,8 +605,8 @@ export function CreateBatchDialog({
                                                             selected={
                                                                 formData.startDate
                                                                     ? new Date(
-                                                                          formData.startDate,
-                                                                      )
+                                                                        formData.startDate,
+                                                                    )
                                                                     : undefined
                                                             }
                                                             onSelect={(
@@ -583,7 +619,7 @@ export function CreateBatchDialog({
                                                                     const month =
                                                                         String(
                                                                             date.getMonth() +
-                                                                                1,
+                                                                            1,
                                                                         ).padStart(
                                                                             2,
                                                                             "0",
@@ -646,23 +682,21 @@ export function CreateBatchDialog({
                                                     <PopoverTrigger asChild>
                                                         <Button
                                                             variant="outline"
-                                                            className={`w-full justify-start text-left font-normal ${
-                                                                !formData.endDate
-                                                                    ? "text-muted-foreground"
-                                                                    : ""
-                                                            } ${
-                                                                errors.endDate
+                                                            className={`w-full justify-start text-left font-normal ${!formData.endDate
+                                                                ? "text-muted-foreground"
+                                                                : ""
+                                                                } ${errors.endDate
                                                                     ? "border-destructive"
                                                                     : ""
-                                                            }`}
+                                                                }`}
                                                         >
                                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                                             {formData.endDate &&
-                                                            !isNaN(
-                                                                new Date(
-                                                                    formData.endDate,
-                                                                ).getTime(),
-                                                            ) ? (
+                                                                !isNaN(
+                                                                    new Date(
+                                                                        formData.endDate,
+                                                                    ).getTime(),
+                                                                ) ? (
                                                                 format(
                                                                     new Date(
                                                                         formData.endDate,
@@ -686,10 +720,27 @@ export function CreateBatchDialog({
                                                             selected={
                                                                 formData.endDate
                                                                     ? new Date(
-                                                                          formData.endDate,
-                                                                      )
+                                                                        formData.endDate,
+                                                                    )
                                                                     : undefined
                                                             }
+                                                            disabled={(date) => {
+                                                                if (!formData.startDate) return true;
+                                                                const selectedPkg = packages.find(
+                                                                    (p) => p.id === formData.packageId
+                                                                );
+                                                                if (selectedPkg?.days) {
+                                                                    const expectedEndDate = new Date(formData.startDate);
+                                                                    expectedEndDate.setDate(expectedEndDate.getDate() + selectedPkg.days);
+                                                                    expectedEndDate.setHours(0, 0, 0, 0);
+                                                                    const checkDate = new Date(date);
+                                                                    checkDate.setHours(0, 0, 0, 0);
+                                                                    return checkDate.getTime() !== expectedEndDate.getTime();
+                                                                }
+                                                                const startDateObj = new Date(formData.startDate);
+                                                                startDateObj.setHours(0, 0, 0, 0);
+                                                                return date < startDateObj;
+                                                            }}
                                                             onSelect={(
                                                                 date,
                                                             ) => {
@@ -700,7 +751,7 @@ export function CreateBatchDialog({
                                                                     const month =
                                                                         String(
                                                                             date.getMonth() +
-                                                                                1,
+                                                                            1,
                                                                         ).padStart(
                                                                             2,
                                                                             "0",
@@ -740,7 +791,6 @@ export function CreateBatchDialog({
                                                                     }
                                                                 }
                                                             }}
-                                                            disabled={{ before: formData.startDate ? new Date(formData.startDate) : new Date(new Date().setHours(0, 0, 0, 0)) }}
                                                         />
                                                     </PopoverContent>
                                                 </Popover>
@@ -752,44 +802,102 @@ export function CreateBatchDialog({
                                             </div>
                                         </div>
                                         {/* Total Seats */}
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="totalSeats"
-                                                className="text-sm font-medium"
-                                            >
-                                                Total Seats
-                                            </Label>
-                                            <Input
-                                                id="totalSeats"
-                                                type="number"
-                                                min="1"
-                                                placeholder="Enter number of seats"
-                                                value={formData.totalSeats}
-                                                onChange={(e) => {
-                                                    setFormData((prev) => ({
-                                                        ...prev,
-                                                        totalSeats:
-                                                            e.target.value,
-                                                    }));
-                                                    // Clear error when user types
-                                                    if (errors.totalSeats) {
-                                                        setErrors((prev) => ({
-                                                            ...prev,
-                                                            totalSeats: "",
-                                                        }));
-                                                    }
-                                                }}
-                                                className={
-                                                    errors.totalSeats
-                                                        ? "border-destructive"
-                                                        : ""
-                                                }
-                                                required
-                                            />
-                                            {errors.totalSeats && (
-                                                <p className="text-sm text-destructive">
-                                                    {errors.totalSeats}
-                                                </p>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-2 pt-2">
+                                                <Checkbox
+                                                    id="changeSeats"
+                                                    checked={changeSeats}
+                                                    onCheckedChange={(checked) => {
+                                                        setChangeSeats(checked as boolean);
+                                                        if (!checked) {
+                                                            setErrors(prev => ({ ...prev, totalSeats: "", seatChangeReason: "" }));
+                                                        }
+                                                    }}
+                                                />
+                                                <label
+                                                    htmlFor="changeSeats"
+                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                >
+                                                    Change seat number
+                                                </label>
+                                            </div>
+
+                                            {changeSeats && (
+                                                <div className="space-y-4 pl-6 border-l-2 border-muted mt-2">
+                                                    <div className="space-y-2">
+                                                        <Label
+                                                            htmlFor="totalSeats"
+                                                            className="text-sm font-medium"
+                                                        >
+                                                            Total Seats
+                                                        </Label>
+                                                        <Input
+                                                            id="totalSeats"
+                                                            type="number"
+                                                            min="1"
+                                                            placeholder="Enter number of seats"
+                                                            value={formData.totalSeats}
+                                                            onChange={(e) => {
+                                                                setFormData((prev) => ({
+                                                                    ...prev,
+                                                                    totalSeats:
+                                                                        e.target.value,
+                                                                }));
+                                                                if (errors.totalSeats) {
+                                                                    setErrors((prev) => ({
+                                                                        ...prev,
+                                                                        totalSeats: "",
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className={
+                                                                errors.totalSeats
+                                                                    ? "border-destructive"
+                                                                    : ""
+                                                            }
+                                                        />
+                                                        {errors.totalSeats && (
+                                                            <p className="text-sm text-destructive">
+                                                                {errors.totalSeats}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label
+                                                            htmlFor="seatChangeReason"
+                                                            className="text-sm font-medium"
+                                                        >
+                                                            Reason for changing seats
+                                                        </Label>
+                                                        <Input
+                                                            id="seatChangeReason"
+                                                            placeholder="Enter reason"
+                                                            value={formData.seatChangeReason}
+                                                            onChange={(e) => {
+                                                                setFormData((prev) => ({
+                                                                    ...prev,
+                                                                    seatChangeReason: e.target.value,
+                                                                }));
+                                                                if (errors.seatChangeReason) {
+                                                                    setErrors((prev) => ({
+                                                                        ...prev,
+                                                                        seatChangeReason: "",
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className={
+                                                                errors.seatChangeReason
+                                                                    ? "border-destructive"
+                                                                    : ""
+                                                            }
+                                                        />
+                                                        {errors.seatChangeReason && (
+                                                            <p className="text-sm text-destructive">
+                                                                {errors.seatChangeReason}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
                                     </CardContent>
@@ -821,29 +929,26 @@ export function CreateBatchDialog({
                                                         <Button
                                                             variant="outline"
                                                             role="combobox"
-                                                            className={`w-full justify-between ${
-                                                                errors.coordinators
-                                                                    ? "border-destructive"
-                                                                    : ""
-                                                            }`}
+                                                            className={`w-full justify-between ${errors.coordinators
+                                                                ? "border-destructive"
+                                                                : ""
+                                                                }`}
                                                         >
                                                             <span className="flex items-center gap-2">
                                                                 <UserPlus className="h-4 w-4" />
                                                                 {formData
                                                                     .coordinators
                                                                     .length > 0
-                                                                    ? `${
-                                                                          formData
-                                                                              .coordinators
-                                                                              .length
-                                                                      } coordinator${
-                                                                          formData
-                                                                              .coordinators
-                                                                              .length >
-                                                                          1
-                                                                              ? "s"
-                                                                              : ""
-                                                                      } selected`
+                                                                    ? `${formData
+                                                                        .coordinators
+                                                                        .length
+                                                                    } coordinator${formData
+                                                                        .coordinators
+                                                                        .length >
+                                                                        1
+                                                                        ? "s"
+                                                                        : ""
+                                                                    } selected`
                                                                     : "Select coordinators"}
                                                             </span>
                                                         </Button>
@@ -876,7 +981,7 @@ export function CreateBatchDialog({
                                                         <ScrollArea className="max-h-60">
                                                             <div className="p-2">
                                                                 {filteredEmployees.length >
-                                                                0 ? (
+                                                                    0 ? (
                                                                     <div className="space-y-1">
                                                                         {filteredEmployees.map(
                                                                             (
@@ -952,74 +1057,74 @@ export function CreateBatchDialog({
                                             {/* Selected Coordinators */}
                                             {formData.coordinators.length >
                                                 0 && (
-                                                <div className="space-y-2">
-                                                    <Label className="text-sm font-medium">
-                                                        Selected Coordinators (
-                                                        {
-                                                            formData
-                                                                .coordinators
-                                                                .length
-                                                        }
-                                                        )
-                                                    </Label>
                                                     <div className="space-y-2">
-                                                        {formData.coordinators.map(
-                                                            (
-                                                                coordinator,
-                                                                index,
-                                                            ) => (
-                                                                <div
-                                                                    key={
-                                                                        coordinator.id
-                                                                    }
-                                                                    className="flex items-center justify-between p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                                                                >
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                                                            <span className="text-sm font-medium text-primary">
-                                                                                {coordinator.name
-                                                                                    .charAt(
-                                                                                        0,
-                                                                                    )
-                                                                                    .toUpperCase()}
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <p className="font-medium text-sm">
-                                                                                {
-                                                                                    coordinator.name
-                                                                                }
-                                                                            </p>
-                                                                            <p className="text-xs text-muted-foreground">
-                                                                                {
-                                                                                    coordinator.phone
-                                                                                }{" "}
-                                                                                •{" "}
-                                                                                {
-                                                                                    coordinator.email
-                                                                                }
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        onClick={() =>
-                                                                            removeCoordinator(
-                                                                                index,
-                                                                            )
+                                                        <Label className="text-sm font-medium">
+                                                            Selected Coordinators (
+                                                            {
+                                                                formData
+                                                                    .coordinators
+                                                                    .length
+                                                            }
+                                                            )
+                                                        </Label>
+                                                        <div className="space-y-2">
+                                                            {formData.coordinators.map(
+                                                                (
+                                                                    coordinator,
+                                                                    index,
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            coordinator.id
                                                                         }
-                                                                        className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                                                        className="flex items-center justify-between p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                                                                     >
-                                                                        <X className="w-4 h-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            ),
-                                                        )}
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                                                <span className="text-sm font-medium text-primary">
+                                                                                    {coordinator.name
+                                                                                        .charAt(
+                                                                                            0,
+                                                                                        )
+                                                                                        .toUpperCase()}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="font-medium text-sm">
+                                                                                    {
+                                                                                        coordinator.name
+                                                                                    }
+                                                                                </p>
+                                                                                <p className="text-xs text-muted-foreground">
+                                                                                    {
+                                                                                        coordinator.phone
+                                                                                    }{" "}
+                                                                                    •{" "}
+                                                                                    {
+                                                                                        coordinator.email
+                                                                                    }
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            onClick={() =>
+                                                                                removeCoordinator(
+                                                                                    index,
+                                                                                )
+                                                                            }
+                                                                            className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                                                        >
+                                                                            <X className="w-4 h-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            )}
+                                                )}
                                         </div>
                                     </CardContent>
                                 </Card>

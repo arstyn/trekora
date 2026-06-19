@@ -59,7 +59,7 @@ export default function CustomerManagement() {
 	const filteredCustomers = customers.filter(
 		(customer) =>
 			customer.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			customer.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			customer.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			customer.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			customer.passportNumber?.toLowerCase().includes(searchQuery.toLowerCase())

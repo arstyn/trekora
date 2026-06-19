@@ -37,6 +37,9 @@ export class Batch {
   @Column({ name: 'booked_seats', nullable: true, default: 0 })
   bookedSeats: number;
 
+  @Column({ name: 'seat_change_reason', type: 'text', nullable: true })
+  seatChangeReason: string;
+
   @Column({
     type: 'enum',
     enum: BatchStatus,

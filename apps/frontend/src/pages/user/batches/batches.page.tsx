@@ -247,12 +247,12 @@ export default function BatchesPage() {
 					<div className="lg:col-span-3">
 						<Tabs defaultValue="active" className="space-y-4">
 							<TabsList>
-								<TabsTrigger value="active">Active Batches</TabsTrigger>
+								<TabsTrigger value="active">Active Batches {(dashboardStats && dashboardStats.activeBatches) ? `(${dashboardStats.activeBatches})` : ""}</TabsTrigger>
 								<TabsTrigger value="upcoming">
-									Upcoming Batches
+									Upcoming Batches {(dashboardStats && dashboardStats.upcomingBatches) ? `(${dashboardStats.upcomingBatches})` : ""}
 								</TabsTrigger>
 								<TabsTrigger value="completed">
-									Completed Batches
+									Completed Batches {(dashboardStats && dashboardStats.completedBatches) ? `(${dashboardStats.completedBatches})` : ""}
 								</TabsTrigger>
 								<TabsTrigger value="calendar">Calendar View</TabsTrigger>
 							</TabsList>
