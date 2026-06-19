@@ -445,19 +445,19 @@ export function CreateBatchDialog({
                                                                             "No description available"}
                                                                     </p>
                                                                     <div className="flex flex-wrap gap-2">
-                                                                        {selectedPackage.duration && (
+                                                                        {selectedPackage.days && (
                                                                             <Badge
                                                                                 variant="secondary"
                                                                                 className="text-xs"
                                                                             >
                                                                                 Duration:{" "}
                                                                                 {
-                                                                                    selectedPackage.duration
+                                                                                    selectedPackage.days
                                                                                 }{" "}
                                                                                 days
                                                                             </Badge>
                                                                         )}
-                                                                        {selectedPackage.price && (
+                                                                        {selectedPackage.basePrice && (
                                                                             <Badge
                                                                                 variant="secondary"
                                                                                 className="text-xs"
@@ -465,7 +465,7 @@ export function CreateBatchDialog({
                                                                                 Price:
                                                                                 ₹
                                                                                 {
-                                                                                    selectedPackage.price
+                                                                                    selectedPackage.basePrice
                                                                                 }
                                                                             </Badge>
                                                                         )}

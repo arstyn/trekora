@@ -99,7 +99,7 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 						<DollarSign className="w-4 h-4 text-muted-foreground" />
 						<div className="text-sm">
 							<span className="font-medium">Price: </span>
-							{batch.package?.price}
+							{batch.package?.basePrice}
 						</div>
 					</div>
 

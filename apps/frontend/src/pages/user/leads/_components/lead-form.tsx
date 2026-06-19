@@ -298,7 +298,7 @@ export function LeadForm({
 																			<p className="text-xs text-muted-foreground">
 																				₹
 																				{
-																					pkg.price
+																					pkg.basePrice
 																				}
 																			</p>
 																		</div>
@@ -466,7 +466,7 @@ export function LeadForm({
 																			<p className="text-xs text-muted-foreground">
 																				₹
 																				{
-																					pkg.price
+																					pkg.basePrice
 																				}
 																			</p>
 																		</div>

@@ -344,7 +344,7 @@ export default function BatchDetailsPage() {
                             <p className="text-lg font-bold">
                                 {batch &&
                                     BookingService.formatCurrency(
-                                        Number(batch.package?.price || 0),
+                                        Number(batch.package?.basePrice || 0),
                                     )}
                             </p>
                         </div>
