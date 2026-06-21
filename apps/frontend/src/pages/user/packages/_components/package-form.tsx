@@ -82,9 +82,9 @@ const defaultValues: PackageFormData = {
         dinner: [],
     },
     transportation: [
-        { title: "To Destination", details: "Flight", cost: 0 },
-        { title: "From Destination", details: "Flight", cost: 0 },
-        { title: "During Trip", details: "Bus", cost: 0 },
+        { title: "To Destination", cost: 0, segments: [{ mode: "flight" }] },
+        { title: "From Destination", cost: 0, segments: [{ mode: "flight" }] },
+        { title: "During Trip", cost: 0, segments: [{ mode: "bus" }] },
     ],
     documentRequirements: [],
     preTripChecklist: [],
