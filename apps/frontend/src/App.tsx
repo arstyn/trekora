@@ -45,6 +45,10 @@ import ManagerOverviewPage from "./pages/user/manager/overview.page";
 import SettingsPage from "./pages/user/settings/settings.page";
 import TodosPage from "./pages/user/todos/todos.page";
 import OnboardingPage from "./pages/auth/onboarding";
+import MealsPage from "./pages/user/meals/meals.page";
+import CreateMealPage from "./pages/user/meals/create-meal.page";
+import EditMealPage from "./pages/user/meals/edit-meal.page";
+import ViewMealPage from "./pages/user/meals/view-meal.page";
 
 function AuthenticatedApp() {
     // Add your dashboard and other protected routes here
@@ -118,6 +122,10 @@ function AuthenticatedApp() {
                     />
                     <Route path="/import" element={<ImportPage />} />
                     <Route path="/todos" element={<TodosPage />} />
+                    <Route path="/meals" element={<MealsPage />} />
+                    <Route path="/meals/create" element={<CreateMealPage />} />
+                    <Route path="/meals/edit/:id" element={<EditMealPage />} />
+                    <Route path="/meals/:id" element={<ViewMealPage />} />
                 </Routes>
             </SidebarInset>
         </SidebarProvider>
