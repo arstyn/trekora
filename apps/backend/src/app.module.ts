@@ -31,6 +31,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PermissionModule } from './modules/permission/permission.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
+import { MealsModule } from './modules/meals/meals.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { ActivityLogModule } from './modules/activity-log/activity-log.module';
     DashboardModule,
     WorkflowModule,
     ActivityLogModule,
+    MealsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

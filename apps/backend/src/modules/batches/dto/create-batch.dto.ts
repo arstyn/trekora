@@ -20,4 +20,7 @@ export class CreateBatchDto {
   @IsOptional()
   @IsString()
   seatChangeReason?: string;
+
+  @IsOptional()
+  ignoreConflicts?: boolean;
 }

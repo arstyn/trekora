@@ -9,7 +9,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BatchTooltip } from "./batch-tooltip";
 
-export function CalendarView() {
+interface CalendarViewProps {
+	refreshKey?: number;
+}
+
+export function CalendarView({ refreshKey }: CalendarViewProps) {
 	const [batches, setBatches] = useState<IBatches[]>([]);
 
 	const [currentDate, setCurrentDate] = useState(new Date());
@@ -40,7 +44,7 @@ export function CalendarView() {
 		};
 
 		getBranch();
-	}, []);
+	}, [refreshKey]);
 
 	// Generate calendar days
 	const calendarDays = [];

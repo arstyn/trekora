@@ -69,7 +69,7 @@ export const itineraryDaySchema = z.object({
   day: z.number().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
-  activitiesCostType: z.enum(['per_day', 'per_activity']).optional(),
+  activitiesCostType: z.enum(['per_day', 'per_activity', 'no_cost']).optional(),
   activitiesTotalCost: z.number().min(0).optional(),
   activities: z.array(z.object({ name: z.string().optional(), cost: z.number().optional() })).optional(),
   meals: z.array(z.string()).optional(),

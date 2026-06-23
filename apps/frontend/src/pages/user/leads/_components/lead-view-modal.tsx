@@ -391,7 +391,7 @@ export function ViewLeadDialog({
                                                                                                     <p className="text-xs text-muted-foreground">
                                                                                                         ₹
                                                                                                         {
-                                                                                                            pkg.price
+                                                                                                            pkg.basePrice
                                                                                                         }
                                                                                                     </p>
                                                                                                 </div>
@@ -549,7 +549,7 @@ export function ViewLeadDialog({
                                                                                                         <p className="text-xs text-muted-foreground">
                                                                                                             ₹
                                                                                                             {
-                                                                                                                pkg.price
+                                                                                                                pkg.basePrice
                                                                                                             }
                                                                                                         </p>
                                                                                                     </div>
@@ -621,7 +621,7 @@ export function ViewLeadDialog({
                                                                                         p.id ===
                                                                                         preferredPackageId
                                                                                 )
-                                                                                    ?.price ||
+                                                                                    ?.basePrice ||
                                                                                 0
                                                                             ) *
                                                                             numberOfPassengers
@@ -642,7 +642,7 @@ export function ViewLeadDialog({
                                                                         (p) =>
                                                                             p.id ===
                                                                             preferredPackageId
-                                                                    )?.price || 0}
+                                                                    )?.basePrice || 0}
                                                                 </p>
                                                             </div>
                                                         )}

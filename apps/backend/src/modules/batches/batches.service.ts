@@ -1,14 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { BatchLog } from 'src/database/entity/batch-log.entity';
 import { Batch, BatchStatus } from 'src/database/entity/batch.entity';
-import { Employee } from 'src/database/entity/employee.entity';
 import { BookingStatus } from 'src/database/entity/booking.entity';
+import { Employee } from 'src/database/entity/employee.entity';
 import { WorkflowStepStatus } from 'src/database/entity/workflow/workflow-step.entity';
 import { In, Repository } from 'typeorm';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
-
-import { BatchLog } from 'src/database/entity/batch-log.entity';
 
 @Injectable()
 export class BatchesService {
@@ -16,7 +15,7 @@ export class BatchesService {
     @InjectRepository(Batch) private batchRepo: Repository<Batch>,
     @InjectRepository(Employee) private empRepo: Repository<Employee>,
     @InjectRepository(BatchLog) private logRepo: Repository<BatchLog>,
-  ) {}
+  ) { }
 
   async logAction(
     batchId: string,
@@ -44,7 +43,24 @@ export class BatchesService {
   }
 
   async create(data: CreateBatchDto, organizationId: string, userId: string): Promise<Batch> {
-    const { packageId, coordinators, ...rest } = data;
+    const { packageId, coordinators, ignoreConflicts, ...rest } = data;
+
+    if (!ignoreConflicts) {
+      const conflicts = await this.checkConflicts(
+        organizationId,
+        packageId,
+        data.startDate,
+        data.endDate,
+        coordinators,
+      );
+
+      if (conflicts.length > 0) {
+        throw new BadRequestException({
+          message: 'Potential scheduling conflicts detected.',
+          conflicts,
+        });
+      }
+    }
 
     const coordinatorsData = await this.empRepo.findBy({
       id: In(coordinators),
@@ -67,28 +83,104 @@ export class BatchesService {
   async findAll(
     organizationId: string,
     status?: BatchStatus,
-  ): Promise<Batch[]> {
-    let query: { organizationId: string; status?: BatchStatus } = {
-      organizationId,
-    };
+    page?: number,
+    limit?: number,
+    search?: string,
+  ): Promise<any> {
+    const query = this.batchRepo
+      .createQueryBuilder('batch')
+      .leftJoinAndSelect('batch.package', 'package')
+      .leftJoinAndSelect('batch.coordinators', 'coordinators')
+      .where('batch.organizationId = :organizationId', { organizationId });
+
     if (status) {
-      query.status = status;
+      query.andWhere('batch.status = :status', { status });
     }
-    return this.batchRepo.find({
-      where: query,
+
+    if (search) {
+      query.andWhere('package.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    query.orderBy('batch.startDate', 'ASC');
+
+    if (page !== undefined && limit !== undefined) {
+      const skip = (page - 1) * limit;
+      query.skip(skip).take(limit);
+
+      const [data, total] = await query.getManyAndCount();
+
+      return {
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    }
+
+    return query.getMany();
+  }
+
+  async checkConflicts(
+    organizationId: string,
+    packageId: string,
+    startDateStr: string,
+    endDateStr: string,
+    coordinatorIds: string[],
+  ): Promise<string[]> {
+    const conflicts: string[] = [];
+    if (!packageId || !startDateStr || !endDateStr) {
+      return conflicts;
+    }
+
+    const newStart = new Date(startDateStr);
+    const newEnd = new Date(endDateStr);
+
+    const batches = await this.batchRepo.find({
+      where: { organizationId },
       relations: ['package', 'coordinators'],
-      select: {
-        package: {
-          id: true,
-          name: true,
-        },
-        coordinators: {
-          id: true,
-          name: true,
-          status: true,
-        },
-      },
     });
+
+    batches.forEach((batch) => {
+      const batchStart = new Date(batch.startDate);
+      const batchEnd = new Date(batch.endDate);
+
+      // Overlap check: S1 <= E2 && S2 <= E1
+      const datesOverlap = newStart <= batchEnd && batchStart <= newEnd;
+
+      if (datesOverlap) {
+        // 1. Same package conflict
+        if (batch.packageId === packageId) {
+          const pkgName = batch.package?.name || 'this package';
+          const startFormatted = batchStart.toLocaleDateString('en-GB');
+          const endFormatted = batchEnd.toLocaleDateString('en-GB');
+          conflicts.push(
+            `An overlapping batch for package "${pkgName}" already exists from ${startFormatted} to ${endFormatted}.`,
+          );
+        }
+
+        // 2. Coordinator conflict
+        if (coordinatorIds && coordinatorIds.length > 0 && batch.coordinators && batch.coordinators.length > 0) {
+          const commonCoordinators = batch.coordinators.filter((c) =>
+            coordinatorIds.includes(c.id),
+          );
+
+          if (commonCoordinators.length > 0) {
+            const names = commonCoordinators.map((c) => c.name).join(', ');
+            const conflictingPkgName = batch.package?.name || 'another package';
+            const startFormatted = batchStart.toLocaleDateString('en-GB');
+            const endFormatted = batchEnd.toLocaleDateString('en-GB');
+            conflicts.push(
+              `Coordinator(s) (${names}) are already assigned to batch of "${conflictingPkgName}" during this timeframe (${startFormatted} - ${endFormatted}).`,
+            );
+          }
+        }
+      }
+    });
+
+    return conflicts;
   }
 
   async findOne(id: string): Promise<Batch> {
@@ -258,8 +350,8 @@ export class BatchesService {
       fillRate:
         batch.totalSeats > 0
           ? parseFloat(
-              ((batch.bookedSeats / batch.totalSeats) * 100).toFixed(2),
-            )
+            ((batch.bookedSeats / batch.totalSeats) * 100).toFixed(2),
+          )
           : null,
     }));
   }

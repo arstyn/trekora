@@ -289,6 +289,14 @@ export function StepItinerary({
                                                             Cost Per Activity
                                                         </FormLabel>
                                                     </FormItem>
+                                                    <FormItem className="flex items-center space-x-2 space-y-0">
+                                                        <FormControl>
+                                                            <RadioGroupItem value="no_cost" />
+                                                        </FormControl>
+                                                        <FormLabel className="font-normal">
+                                                            No Cost
+                                                        </FormLabel>
+                                                    </FormItem>
                                                 </RadioGroup>
                                             </FormControl>
                                             <FormMessage />
