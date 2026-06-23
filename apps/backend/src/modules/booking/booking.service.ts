@@ -253,9 +253,11 @@ export class BookingService {
   async findAll(
     organizationId: string,
     status?: BookingStatus,
-    limit = 50,
-    offset = 0,
-  ): Promise<BookingSummaryDto[]> {
+    page?: number,
+    limit?: number,
+    offset?: number,
+    search?: string,
+  ): Promise<any> {
     const queryBuilder = this.bookingRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.customer', 'customer')
@@ -263,12 +265,64 @@ export class BookingService {
       .leftJoinAndSelect('booking.batch', 'batch')
       .leftJoinAndSelect('booking.createdBy', 'createdBy')
       .where('booking.organizationId = :organizationId', { organizationId })
-      .orderBy('booking.createdAt', 'DESC')
-      .take(limit)
-      .skip(offset);
+      .orderBy('booking.createdAt', 'DESC');
 
     if (status) {
       queryBuilder.andWhere('booking.status = :status', { status });
+    }
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR booking.bookingNumber ILIKE :search OR package.name ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    if (page !== undefined && limit !== undefined) {
+      const skip = (page - 1) * limit;
+      queryBuilder.skip(skip).take(limit);
+
+      const [bookings, total] = await queryBuilder.getManyAndCount();
+
+      const data = bookings.map((booking) => ({
+        id: booking.id,
+        bookingNumber: booking.bookingNumber,
+        customerName:
+          booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
+        customerEmail: booking.customer.email || '',
+        packageName: booking.package.name,
+        batchStartDate: booking.batch.startDate,
+        numberOfCustomers: booking.numberOfCustomers,
+        totalAmount: booking.totalAmount,
+        advancePaid: booking.advancePaid,
+        balanceAmount: booking.balanceAmount,
+        status: booking.status,
+        createdAt: booking.createdAt,
+        createdBy: booking.createdBy
+          ? {
+              id: booking.createdBy.id,
+              name: booking.createdBy.name,
+              email: booking.createdBy.email,
+            }
+          : null,
+      }));
+
+      return {
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    }
+
+    if (limit !== undefined) {
+      queryBuilder.take(limit);
+    }
+    if (offset !== undefined) {
+      queryBuilder.skip(offset);
     }
 
     const bookings = await queryBuilder.getMany();
@@ -289,10 +343,10 @@ export class BookingService {
       createdAt: booking.createdAt,
       createdBy: booking.createdBy
         ? {
-          id: booking.createdBy.id,
-          name: booking.createdBy.name,
-          email: booking.createdBy.email,
-        }
+            id: booking.createdBy.id,
+            name: booking.createdBy.name,
+            email: booking.createdBy.email,
+          }
         : null,
     }));
   }
@@ -645,7 +699,8 @@ export class BookingService {
     organizationId: string,
     limit = 5,
   ): Promise<BookingSummaryDto[]> {
-    return this.findAll(organizationId, undefined, limit, 0);
+    const res = await this.findAll(organizationId, undefined, undefined, limit, 0);
+    return Array.isArray(res) ? res : res.data;
   }
 
   private async generateBookingNumber(organizationId: string): Promise<string> {

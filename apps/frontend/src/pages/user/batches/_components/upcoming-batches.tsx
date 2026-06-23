@@ -9,7 +9,11 @@ import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { toast } from "sonner";
 
-export function UpcomingBatches() {
+interface UpcomingBatchesProps {
+	refreshKey?: number;
+}
+
+export function UpcomingBatches({ refreshKey }: UpcomingBatchesProps) {
 	const [upcomingBatches, setUpcomingBatches] = useState<IBatches[]>([]);
 	const [loading, setLoading] = useState(true);
 
@@ -33,7 +37,7 @@ export function UpcomingBatches() {
 		};
 
 		getUpcomingBatches();
-	}, []);
+	}, [refreshKey]);
 
 	const getDaysUntilStart = (startDate: Date) => {
 		const today = new Date();

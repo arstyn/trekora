@@ -19,7 +19,7 @@ export class ItineraryDay {
   activities: any;
 
   @Column({ type: 'varchar', nullable: true })
-  activitiesCostType: 'per_day' | 'per_activity';
+  activitiesCostType: 'per_day' | 'per_activity' | 'no_cost';
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   activitiesTotalCost: number;

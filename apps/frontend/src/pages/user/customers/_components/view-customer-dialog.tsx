@@ -97,7 +97,7 @@ export function ViewCustomerDialog({
                                 />
                                 <AvatarFallback className="text-lg">
                                     {customer.firstName.charAt(0)}
-                                    {customer.lastName.charAt(0)}
+                                    {customer.lastName?.charAt(0) || ""}
                                 </AvatarFallback>
                             </Avatar>
                             {customer.profilePhoto && (

@@ -49,14 +49,18 @@ export class BookingController {
   findAll(
     @Request() req: ApiRequestJWT,
     @Query('status') status?: BookingStatus,
+    @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
+    @Query('search') search?: string,
   ) {
     return this.bookingService.findAll(
       req.user.organizationId,
       status,
-      limit,
-      offset,
+      page ? Number(page) : undefined,
+      limit ? Number(limit) : undefined,
+      offset ? Number(offset) : undefined,
+      search,
     );
   }
 

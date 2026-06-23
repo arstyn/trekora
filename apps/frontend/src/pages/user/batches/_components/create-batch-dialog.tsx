@@ -1,5 +1,15 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
     DialogContent,
@@ -14,48 +24,44 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import axiosInstance from "@/lib/axios";
 import type { IEmployee } from "@/types/employee.types";
 import type { IPackages } from "@/types/package.schema";
+import { format } from "date-fns";
 import {
-    CalendarIcon,
-    X,
-    Users,
-    Calendar,
-    UserPlus,
-    Package,
     AlertCircle,
+    AlertTriangle,
+    Calendar,
+    CalendarIcon,
     CheckCircle2,
     Loader2,
+    Package,
     Plus,
     Search,
+    UserPlus,
+    Users,
+    X,
 } from "lucide-react";
 import type React from "react";
-import { useLayoutEffect, useState, useMemo, useEffect } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface CreateBatchDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
 }
 
 export function CreateBatchDialog({
     open,
     onOpenChange,
+    onSuccess,
 }: CreateBatchDialogProps) {
     const [packages, setPackages] = useState<IPackages[]>([]);
     const [employees, setEmployees] = useState<IEmployee[]>([]);
+    const [showWarningAlert, setShowWarningAlert] = useState(false);
+    const [activeWarnings, setActiveWarnings] = useState<string[]>([]);
+    const [ignoredWarnings, setIgnoredWarnings] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [coordinatorSearch, setCoordinatorSearch] = useState("");
@@ -157,6 +163,9 @@ export function CreateBatchDialog({
 
         if (open) {
             getData();
+            setActiveWarnings([]);
+            setShowWarningAlert(false);
+            setIgnoredWarnings(false);
         }
     }, [open]);
 
@@ -195,6 +204,13 @@ export function CreateBatchDialog({
         }
     }, [formData.packageId, formData.startDate, packages, formData.endDate]);
 
+    useEffect(() => {
+        setActiveWarnings([]);
+        setShowWarningAlert(false);
+        setIgnoredWarnings(false);
+    }, [formData.packageId, formData.startDate, formData.endDate, formData.coordinators]);
+
+
     const removeCoordinator = (index: number) => {
         setFormData((prev) => ({
             ...prev,
@@ -219,11 +235,13 @@ export function CreateBatchDialog({
                 totalSeats: parseInt(String(finalSeats), 10),
                 seatChangeReason: changeSeats ? formData.seatChangeReason : undefined,
                 coordinators: formData.coordinators.map((c) => c.id),
+                ignoreConflicts: ignoredWarnings,
             };
             await axiosInstance.post(`/batches`, payload);
 
             toast.success("Batch created successfully!");
             onOpenChange(false);
+            onSuccess?.();
 
             // Reset form
             setFormData({
@@ -238,8 +256,16 @@ export function CreateBatchDialog({
             setErrors({});
             setPackageSearch("");
             setCoordinatorSearch("");
-        } catch (error: unknown) {
-            if (error instanceof Error) {
+            setActiveWarnings([]);
+            setShowWarningAlert(false);
+            setIgnoredWarnings(false);
+        } catch (error: any) {
+            const responseData = error?.response?.data;
+            if (responseData && Array.isArray(responseData.conflicts)) {
+                setActiveWarnings(responseData.conflicts);
+                setShowWarningAlert(true);
+                toast.warning("Potential scheduling conflicts detected.");
+            } else if (error instanceof Error) {
                 toast.error(error.message);
             } else {
                 toast.error("Failed to create batch");
@@ -1130,6 +1156,32 @@ export function CreateBatchDialog({
                                 </Card>
                             </div>
                         </div>
+
+                        {showWarningAlert && activeWarnings.length > 0 && (
+                            <div className="px-6 py-3 border-t bg-amber-50/50 dark:bg-amber-950/10 border-amber-200">
+                                <Alert className="border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                    <AlertDescription className="mt-2">
+                                        <p className="font-semibold mb-1">Scheduling Warnings:</p>
+                                        <ul className="list-disc pl-5 space-y-1 text-xs">
+                                            {activeWarnings.map((w, idx) => (
+                                                <li key={idx}>{w}</li>
+                                            ))}
+                                        </ul>
+                                        <div className="mt-4 flex items-center gap-2">
+                                            <Checkbox
+                                                id="ignore-warnings"
+                                                checked={ignoredWarnings}
+                                                onCheckedChange={(checked) => setIgnoredWarnings(!!checked)}
+                                            />
+                                            <Label htmlFor="ignore-warnings" className="text-xs font-medium cursor-pointer">
+                                                I understand the conflicts and want to proceed.
+                                            </Label>
+                                        </div>
+                                    </AlertDescription>
+                                </Alert>
+                            </div>
+                        )}
 
                         {/* Footer */}
                         <div className="px-6 py-4 border-t bg-background flex-shrink-0">

@@ -1,3 +1,4 @@
+import DataTableFooter from "@/components/data-table-footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,8 +30,6 @@ import {
     AlertTriangle,
     CreditCard,
     Loader2,
-    ChevronLeft,
-    ChevronRight,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { NavLink } from "react-router-dom";
@@ -77,6 +76,7 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
     const loadPayments = async (
         page: number = pagination.page,
         search: string = searchTerm,
+        customLimit?: number,
     ) => {
         try {
             setLoading(true);
@@ -90,11 +90,12 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
                 sortOrder: "DESC",
             };
 
+            const currentLimit = customLimit ?? pagination.limit;
             const response: PaymentListResponse =
                 await PaymentService.getPayments({
                     ...filters,
                     page,
-                    limit: pagination.limit,
+                    limit: currentLimit,
                 });
 
             setPayments(response.data);
@@ -252,8 +253,13 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= pagination.totalPages) {
-            loadPayments(newPage);
+            loadPayments(newPage, searchTerm, pagination.limit);
         }
+    };
+
+    const handleLimitChange = (newLimit: number) => {
+        setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }));
+        loadPayments(1, searchTerm, newLimit);
     };
 
     const handleExport = async () => {
@@ -564,48 +570,16 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
                 </Table>
 
                 {/* Pagination */}
-                {!loading && pagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between space-x-2 py-4">
-                        <div className="text-sm text-muted-foreground">
-                            Showing{" "}
-                            {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                            {Math.min(
-                                pagination.page * pagination.limit,
-                                pagination.total,
-                            )}{" "}
-                            of {pagination.total} results
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                    handlePageChange(pagination.page - 1)
-                                }
-                                disabled={pagination.page <= 1}
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                                Previous
-                            </Button>
-                            <div className="text-sm font-medium">
-                                Page {pagination.page} of{" "}
-                                {pagination.totalPages}
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                    handlePageChange(pagination.page + 1)
-                                }
-                                disabled={
-                                    pagination.page >= pagination.totalPages
-                                }
-                            >
-                                Next
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
+                {!loading && pagination.total > 0 && (
+                    <DataTableFooter
+                        page={pagination.page}
+                        limit={pagination.limit}
+                        total={pagination.total}
+                        totalPages={pagination.totalPages}
+                        onPageChange={handlePageChange}
+                        onLimitChange={handleLimitChange}
+                        entityName="payments"
+                    />
                 )}
             </CardContent>
         </Card>
