@@ -1,3 +1,4 @@
+import DataTableFooter from "@/components/data-table-footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,24 +47,38 @@ export function BookingList({ status }: BookingListProps) {
 	const [bookings, setBookings] = useState<IBookingListItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [pagination, setPagination] = useState({
+		page: 1,
+		limit: 10,
+		total: 0,
+		totalPages: 0,
+	});
 
-	// Fetch bookings on component mount and when status changes
-	useEffect(() => {
-		fetchBookings();
-	}, [status]);
-
-	const fetchBookings = async () => {
+	const loadBookings = async (page: number, search: string, customLimit?: number) => {
 		try {
 			setLoading(true);
 			setError(null);
 
-			const data = await BookingService.getAllBookings({
+			const currentLimit = customLimit ?? pagination.limit;
+			const res = await BookingService.getAllBookings({
 				status: status as BookingStatus | "all",
-				limit: 100, // You can implement pagination later
-				offset: 0,
+				page,
+				limit: currentLimit,
+				search,
 			});
 
-			setBookings(data);
+			if (res && res.pagination) {
+				setBookings(res.data);
+				setPagination(res.pagination);
+			} else {
+				setBookings(Array.isArray(res) ? res : []);
+				setPagination({
+					page: 1,
+					limit: currentLimit,
+					total: Array.isArray(res) ? res.length : 0,
+					totalPages: 1,
+				});
+			}
 		} catch (err) {
 			console.error("Error fetching bookings:", err);
 			setError("Failed to load bookings. Please try again.");
@@ -72,12 +87,34 @@ export function BookingList({ status }: BookingListProps) {
 		}
 	};
 
+	// Debounced search fetching
+	useEffect(() => {
+		const handler = setTimeout(() => {
+			loadBookings(1, searchTerm);
+		}, 300);
+
+		return () => {
+			clearTimeout(handler);
+		};
+	}, [searchTerm, status]);
+
+	const handlePageChange = (newPage: number) => {
+		if (newPage >= 1 && newPage <= pagination.totalPages) {
+			loadBookings(newPage, searchTerm, pagination.limit);
+		}
+	};
+
+	const handleLimitChange = (newLimit: number) => {
+		setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }));
+		loadBookings(1, searchTerm, newLimit);
+	};
+
 	const handleCancelBooking = async (id: string) => {
 		if (!confirm("Are you sure you want to cancel this booking?")) return;
 		try {
 			await BookingService.cancelBooking(id);
 			toast.success("Booking cancelled successfully");
-			fetchBookings();
+			loadBookings(pagination.page, searchTerm, pagination.limit);
 		} catch (error: any) {
 			toast.error(error.response?.data?.message || "Failed to cancel booking");
 		}
@@ -88,18 +125,11 @@ export function BookingList({ status }: BookingListProps) {
 		try {
 			await BookingService.deleteBooking(id);
 			toast.success("Booking deleted successfully");
-			fetchBookings();
+			loadBookings(pagination.page, searchTerm, pagination.limit);
 		} catch (error: any) {
 			toast.error(error.response?.data?.message || "Failed to delete booking");
 		}
 	};
-
-	const filteredBookings = bookings.filter(
-		(booking) =>
-			booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			booking.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			booking.packageName.toLowerCase().includes(searchTerm.toLowerCase())
-	);
 
 	const getStatusBadge = (status: BookingStatus) => {
 		switch (status) {
@@ -143,7 +173,7 @@ export function BookingList({ status }: BookingListProps) {
 								variant="outline"
 								size="sm"
 								className="ml-4"
-								onClick={fetchBookings}
+								onClick={() => loadBookings(pagination.page, searchTerm)}
 							>
 								Try Again
 							</Button>
@@ -174,7 +204,7 @@ export function BookingList({ status }: BookingListProps) {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={fetchBookings}
+							onClick={() => loadBookings(pagination.page, searchTerm)}
 							disabled={loading}
 						>
 							{loading ? (
@@ -212,8 +242,8 @@ export function BookingList({ status }: BookingListProps) {
 									))}
 								</TableRow>
 							))
-						) : filteredBookings.length > 0 ? (
-							filteredBookings.map((booking) => (
+						) : bookings.length > 0 ? (
+							bookings.map((booking) => (
 								<TableRow key={booking.id}>
 									<TableCell className="font-medium">
 										{BookingService.formatBookingNumber(
@@ -346,6 +376,17 @@ export function BookingList({ status }: BookingListProps) {
 						)}
 					</TableBody>
 				</Table>
+				{!loading && pagination.total > 0 && (
+					<DataTableFooter
+						page={pagination.page}
+						limit={pagination.limit}
+						total={pagination.total}
+						totalPages={pagination.totalPages}
+						onPageChange={handlePageChange}
+						onLimitChange={handleLimitChange}
+						entityName="bookings"
+					/>
+				)}
 			</CardContent>
 		</Card>
 	);

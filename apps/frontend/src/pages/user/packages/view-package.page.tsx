@@ -219,7 +219,7 @@ export default function ViewPackagePage() {
             let dayCost = 0;
             if (day.activitiesCostType === "per_day") {
                 dayCost += Number(day.activitiesTotalCost) || 0;
-            } else {
+            } else if (day.activitiesCostType === "per_activity") {
                 dayCost += (day.activities || []).reduce((s: number, act: any) => s + (Number(act.cost) || 0), 0);
             }
             dayCost += Number(day.accommodationCost) || 0;

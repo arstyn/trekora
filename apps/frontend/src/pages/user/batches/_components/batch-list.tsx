@@ -1,3 +1,4 @@
+import DataTableFooter from "@/components/data-table-footer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,39 +41,72 @@ import { toast } from "sonner";
 
 interface BatchListProps {
     status: "active" | "upcoming" | "completed";
+    refreshKey?: number;
 }
 
-export function BatchList({ status }: BatchListProps) {
+export function BatchList({ status, refreshKey }: BatchListProps) {
     const [batches, setBatches] = useState<IBatches[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [isLoading, setIsLoading] = useState(true);
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+    });
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const getBranch = async () => {
-            try {
-                setIsLoading(true);
-                const res = await axiosInstance.get(
-                    `/batches?status=${status}`,
-                );
-                setBatches(res.data);
-            } catch (error: unknown) {
-                if (error instanceof Error) {
-                    toast.error(error.message);
-                } else {
-                    toast.error("Failed to load batches");
-                }
-            } finally {
-                setIsLoading(false);
+    const loadBatches = async (page: number, search: string, customLimit?: number) => {
+        try {
+            setIsLoading(true);
+            const currentLimit = customLimit ?? pagination.limit;
+            const res = await axiosInstance.get(
+                `/batches?status=${status}&page=${page}&limit=${currentLimit}&search=${search}`,
+            );
+            // Check if backend returned paginated object or fallback
+            if (res.data && res.data.pagination) {
+                setBatches(res.data.data);
+                setPagination(res.data.pagination);
+            } else {
+                setBatches(Array.isArray(res.data) ? res.data : []);
+                setPagination({
+                    page: 1,
+                    limit: currentLimit,
+                    total: Array.isArray(res.data) ? res.data.length : 0,
+                    totalPages: 1,
+                });
             }
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                toast.error(error.message);
+            } else {
+                toast.error("Failed to load batches");
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            loadBatches(1, searchTerm);
+        }, 300);
+
+        return () => {
+            clearTimeout(handler);
         };
+    }, [searchTerm, status, refreshKey]);
 
-        getBranch();
-    }, [status]);
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= pagination.totalPages) {
+            loadBatches(newPage, searchTerm, pagination.limit);
+        }
+    };
 
-    const filteredBatches = batches.filter((batch) =>
-        batch.package?.name?.toLowerCase().includes(searchTerm.toLowerCase()),
-    );
+    const handleLimitChange = (newLimit: number) => {
+        setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }));
+        loadBatches(1, searchTerm, newLimit);
+    };
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -167,7 +201,7 @@ export function BatchList({ status }: BatchListProps) {
                                     <TableCell><Skeleton className="h-6 w-full" /></TableCell>
                                 </TableRow>
                             ))
-                        ) : filteredBatches.map((batch) => (
+                        ) : batches.map((batch) => (
                             <TableRow
                                 key={batch.id}
                                 className="cursor-pointer hover:bg-muted/50"
@@ -291,7 +325,7 @@ export function BatchList({ status }: BatchListProps) {
                         ))}
                     </TableBody>
                 </Table>
-                {!isLoading && filteredBatches.length === 0 && (
+                {!isLoading && batches.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12">
                         <div className="text-center">
                             <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4">
@@ -309,6 +343,19 @@ export function BatchList({ status }: BatchListProps) {
                             </p>
                         </div>
                     </div>
+                )}
+
+                {/* Pagination */}
+                {!isLoading && pagination.total > 0 && (
+                    <DataTableFooter
+                        page={pagination.page}
+                        limit={pagination.limit}
+                        total={pagination.total}
+                        totalPages={pagination.totalPages}
+                        onPageChange={handlePageChange}
+                        onLimitChange={handleLimitChange}
+                        entityName="batches"
+                    />
                 )}
             </CardContent>
         </Card>

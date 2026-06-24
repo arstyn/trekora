@@ -108,7 +108,7 @@ export function StepFinance({
         let dayCost = 0;
         if (day.activitiesCostType === "per_day") {
             dayCost += Number(day.activitiesTotalCost) || 0;
-        } else {
+        } else if (day.activitiesCostType === "per_activity") {
             dayCost += (day.activities || []).reduce((s, act) => s + (Number((act as any).cost) || 0), 0);
         }
         dayCost += Number(day.accommodationCost) || 0;

@@ -20,7 +20,7 @@ import { UpdateBatchDto } from './dto/update-batch.dto';
 @UseGuards(AuthGuard)
 @Controller('batches')
 export class BatchesController {
-  constructor(private readonly batchService: BatchesService) {}
+  constructor(private readonly batchService: BatchesService) { }
 
   @Post()
   create(@Body() dto: CreateBatchDto, @Request() req: ApiRequestJWT) {
@@ -35,8 +35,17 @@ export class BatchesController {
   findAll(
     @Request() req: ApiRequestJWT,
     @Query('status') status?: BatchStatus,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
   ) {
-    return this.batchService.findAll(req.user.organizationId, status);
+    return this.batchService.findAll(
+      req.user.organizationId,
+      status,
+      page ? Number(page) : undefined,
+      limit ? Number(limit) : undefined,
+      search,
+    );
   }
 
   @Get('fast-filling')

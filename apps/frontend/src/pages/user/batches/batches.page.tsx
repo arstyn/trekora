@@ -20,6 +20,11 @@ export default function BatchesPage() {
 	const [fastFillingBatches, setFastFillingBatches] = useState<IBatches[]>([]);
 	const [dashboardStats, setDashboardStats] = useState<IBatchStats>();
 	const [isLoading, setIsLoading] = useState(true);
+	const [refreshKey, setRefreshKey] = useState(0);
+
+	const handleRefresh = () => {
+		setRefreshKey((prev) => prev + 1);
+	};
 
 	useEffect(() => {
 		const getBatches = async () => {
@@ -44,7 +49,7 @@ export default function BatchesPage() {
 		};
 
 		getBatches();
-	}, []);
+	}, [refreshKey]);
 
 	return (
 		<div className="container mx-auto p-6">
@@ -258,32 +263,33 @@ export default function BatchesPage() {
 							</TabsList>
 
 							<TabsContent value="active">
-								<BatchList status="active" />
+								<BatchList status="active" refreshKey={refreshKey} />
 							</TabsContent>
 
 							<TabsContent value="upcoming">
-								<BatchList status="upcoming" />
+								<BatchList status="upcoming" refreshKey={refreshKey} />
 							</TabsContent>
 
 							<TabsContent value="completed">
-								<BatchList status="completed" />
+								<BatchList status="completed" refreshKey={refreshKey} />
 							</TabsContent>
 
 							<TabsContent value="calendar">
-								<CalendarView />
+								<CalendarView refreshKey={refreshKey} />
 							</TabsContent>
 						</Tabs>
 					</div>
 				</div>
 				{/* Sidebar - Upcoming Batches */}
 				<div className="lg:col-span-1">
-					<UpcomingBatches />
+					<UpcomingBatches refreshKey={refreshKey} />
 				</div>
 			</div>
 
 			<CreateBatchDialog
 				open={createDialogOpen}
 				onOpenChange={setCreateDialogOpen}
+				onSuccess={handleRefresh}
 			/>
 		</div>
 	);

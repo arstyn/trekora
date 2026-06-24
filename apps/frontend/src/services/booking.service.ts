@@ -18,19 +18,27 @@ export class BookingService {
     /* -------- Booking APIs -------- */
     static async getAllBookings(params?: {
         status?: BookingStatus | "all";
+        page?: number;
         limit?: number;
         offset?: number;
-    }): Promise<IBookingListItem[]> {
+        search?: string;
+    }): Promise<any> {
         const queryParams = new URLSearchParams();
 
         if (params?.status && params.status !== "all") {
             queryParams.append("status", params.status);
+        }
+        if (params?.page) {
+            queryParams.append("page", params.page.toString());
         }
         if (params?.limit) {
             queryParams.append("limit", params.limit.toString());
         }
         if (params?.offset) {
             queryParams.append("offset", params.offset.toString());
+        }
+        if (params?.search) {
+            queryParams.append("search", params.search);
         }
 
         const response = await axiosInstance.get(
