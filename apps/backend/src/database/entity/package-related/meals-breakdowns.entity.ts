@@ -24,6 +24,9 @@ export class MealsBreakdown {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   mealsCost: number;
 
+  @Column({ type: 'uuid', nullable: true, name: 'meal_id' })
+  mealId: string;
+
   @Column({ type: 'uuid', nullable: true })
   packageId: string;
 

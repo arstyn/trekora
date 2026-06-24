@@ -76,6 +76,8 @@ export function StepItinerary({
 
     const syncInProgress = useRef(false);
 
+
+
     useEffect(() => {
         if (numDays > 0 && !syncInProgress.current) {
             const currentDays = itineraryFields.length;
@@ -376,9 +378,9 @@ export function StepItinerary({
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
+                                <div className="space-y-4">
                                     <div className="flex justify-between items-center mb-2">
-                                        <Label>Meals Included</Label>
+                                        <Label className="text-base font-semibold">Meals Included</Label>
                                         <Button
                                             type="button"
                                             variant="ghost"
@@ -386,66 +388,46 @@ export function StepItinerary({
                                             className="h-6 px-2 text-xs"
                                             onClick={() => {
                                                 const currentMeals = form.getValues(`itinerary.${dayIndex}.meals`) || [];
-                                                if (currentMeals.length === 3) {
-                                                    form.setValue(`itinerary.${dayIndex}.meals`, []);
+                                                const hasAll = currentMeals.includes("Breakfast") && currentMeals.includes("Lunch") && currentMeals.includes("Dinner");
+                                                if (hasAll) {
+                                                    form.setValue(`itinerary.${dayIndex}.meals`, [], { shouldDirty: true });
                                                 } else {
-                                                    form.setValue(`itinerary.${dayIndex}.meals`, ["Breakfast", "Lunch", "Dinner"]);
+                                                    form.setValue(`itinerary.${dayIndex}.meals`, ["Breakfast", "Lunch", "Dinner"], { shouldDirty: true });
                                                 }
                                             }}
                                         >
-                                            {form.watch(`itinerary.${dayIndex}.meals`)?.length === 3 ? "Deselect All" : "Select All"}
+                                            {(() => {
+                                                const currentMeals = form.watch(`itinerary.${dayIndex}.meals`) || [];
+                                                const hasAll = currentMeals.includes("Breakfast") && currentMeals.includes("Lunch") && currentMeals.includes("Dinner");
+                                                return hasAll ? "Deselect All" : "Select All";
+                                            })()}
                                         </Button>
                                     </div>
-                                    <div className="space-y-2">
-                                        {["Breakfast", "Lunch", "Dinner"].map(
-                                            (meal) => (
-                                                <FormField
-                                                    key={meal}
-                                                    control={form.control}
-                                                    name={`itinerary.${dayIndex}.meals`}
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                                            <FormControl>
-                                                                <Checkbox
-                                                                    checked={(
-                                                                        field.value ||
-                                                                        []
-                                                                    ).includes(
-                                                                        meal,
-                                                                    )}
-                                                                    onCheckedChange={(
-                                                                        checked,
-                                                                    ) => {
-                                                                        const current =
-                                                                            field.value ||
-                                                                            [];
-                                                                        const updated =
-                                                                            checked
-                                                                                ? [
-                                                                                    ...current,
-                                                                                    meal,
-                                                                                ]
-                                                                                : current.filter(
-                                                                                    (
-                                                                                        m,
-                                                                                    ) =>
-                                                                                        m !==
-                                                                                        meal,
-                                                                                );
-                                                                        field.onChange(
-                                                                            updated,
-                                                                        );
-                                                                    }}
-                                                                />
-                                                            </FormControl>
-                                                            <FormLabel className="font-normal">
-                                                                {meal}
-                                                            </FormLabel>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            ),
-                                        )}
+                                    <div className="flex flex-row gap-6 border rounded-lg p-4 bg-muted/10">
+                                        {(["Breakfast", "Lunch", "Dinner"] as const).map((mealName) => {
+                                            const currentMeals = form.watch(`itinerary.${dayIndex}.meals`) || [];
+                                            const isChecked = currentMeals.includes(mealName);
+                                            return (
+                                                <div key={mealName} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`day-${dayIndex}-${mealName}`}
+                                                        checked={isChecked}
+                                                        onCheckedChange={() => {
+                                                            const updated = isChecked
+                                                                ? currentMeals.filter((m) => m !== mealName)
+                                                                : [...currentMeals, mealName];
+                                                            form.setValue(`itinerary.${dayIndex}.meals`, updated, { shouldDirty: true });
+                                                        }}
+                                                    />
+                                                    <Label
+                                                        htmlFor={`day-${dayIndex}-${mealName}`}
+                                                        className="font-medium text-sm cursor-pointer select-none"
+                                                    >
+                                                        {mealName}
+                                                    </Label>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                                 <div className="space-y-4">

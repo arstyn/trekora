@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNotEmpty, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, IsArray, ValidateNested, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MealItemDto {
@@ -9,12 +9,20 @@ export class MealItemDto {
   @IsString()
   @IsOptional()
   curry?: string;
+
+  @IsNumber()
+  @IsOptional()
+  price?: number;
 }
 
 export class IMealCreateDTO {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  type: string;
 
   @IsArray()
   @IsOptional()

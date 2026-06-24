@@ -32,6 +32,54 @@ import {
     SidebarSkeleton,
 } from "./_components/package-skeleton";
 
+const formatDayMeals = (meals?: string[]) => {
+    if (!meals || meals.length === 0) return "None";
+
+    const groups: { breakfast: string[]; lunch: string[]; dinner: string[] } = {
+        breakfast: [],
+        lunch: [],
+        dinner: [],
+    };
+    const generic: string[] = [];
+
+    meals.forEach((m) => {
+        if (m.startsWith("breakfast:")) {
+            groups.breakfast.push(m.substring(10));
+        } else if (m.startsWith("lunch:")) {
+            groups.lunch.push(m.substring(6));
+        } else if (m.startsWith("dinner:")) {
+            groups.dinner.push(m.substring(7));
+        } else {
+            generic.push(m);
+        }
+    });
+
+    const parts: string[] = [];
+
+    const breakfastItems = groups.breakfast.length > 0
+        ? `Breakfast (${groups.breakfast.join(", ")})`
+        : generic.includes("Breakfast") ? "Breakfast" : "";
+    if (breakfastItems) parts.push(breakfastItems);
+
+    const lunchItems = groups.lunch.length > 0
+        ? `Lunch (${groups.lunch.join(", ")})`
+        : generic.includes("Lunch") ? "Lunch" : "";
+    if (lunchItems) parts.push(lunchItems);
+
+    const dinnerItems = groups.dinner.length > 0
+        ? `Dinner (${groups.dinner.join(", ")})`
+        : generic.includes("Dinner") ? "Dinner" : "";
+    if (dinnerItems) parts.push(dinnerItems);
+
+    generic.forEach((g) => {
+        if (g !== "Breakfast" && g !== "Lunch" && g !== "Dinner") {
+            parts.push(g);
+        }
+    });
+
+    return parts.join(" | ") || "None";
+};
+
 export default function ViewPackagePage() {
     const { id } = useParams<{ id: string }>();
 
@@ -431,19 +479,12 @@ export default function ViewPackagePage() {
                                                             Details
                                                         </h4>
                                                         <div className="space-y-2 text-sm">
-                                                            <div className="flex justify-between">
-                                                                <span>
+                                                            <div className="flex justify-between items-start gap-4">
+                                                                <span className="shrink-0">
                                                                     Meals:
                                                                 </span>
-                                                                <span>
-                                                                    {day?.meals &&
-                                                                        day.meals
-                                                                            .length >
-                                                                        0
-                                                                        ? day.meals.join(
-                                                                            ", ",
-                                                                        )
-                                                                        : "None"}
+                                                                <span className="text-right">
+                                                                    {formatDayMeals(day?.meals)}
                                                                 </span>
                                                             </div>
                                                             <div className="flex justify-between">

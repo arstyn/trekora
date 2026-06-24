@@ -6,6 +6,7 @@ import { ArrowLeft, ChefHat, Edit, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useMyPermissionSets } from "@/hooks/use-permissions";
 import type { IMeal } from "@/types/meals.types";
 import mealsService from "@/services/meals.service";
@@ -80,6 +81,19 @@ export default function ViewMealPage() {
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
                             <Utensils className="h-6 w-6 text-primary" /> {meal.name}
+                            {meal.type === "veg" ? (
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 capitalize font-medium ml-2">
+                                    Veg
+                                </Badge>
+                            ) : meal.type === "non-veg" ? (
+                                <Badge className="bg-rose-500/10 text-rose-600 border border-rose-500/20 capitalize font-medium ml-2">
+                                    Non-Veg
+                                </Badge>
+                            ) : (
+                                <Badge className="bg-blue-500/10 text-blue-600 border border-blue-500/20 capitalize font-medium ml-2">
+                                    All
+                                </Badge>
+                            )}
                         </h1>
                         <p className="text-xs text-muted-foreground mt-1">
                             Created at {new Date(meal.createdAt).toLocaleString()}
@@ -111,9 +125,16 @@ export default function ViewMealPage() {
                                 <ul className="divide-y divide-muted/50">
                                     {sec.items.map((item, idx) => (
                                         <li key={idx} className="py-3 flex flex-col space-y-1">
-                                            <span className="font-semibold text-sm text-foreground capitalize">
-                                                {item.name}
-                                            </span>
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-semibold text-sm text-foreground capitalize">
+                                                    {item.name}
+                                                </span>
+                                                {item.price !== undefined && item.price !== null && (
+                                                    <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                                        ₹{item.price}
+                                                    </span>
+                                                )}
+                                            </div>
                                             {item.curry && (
                                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />

@@ -113,6 +113,7 @@ export const mealsBreakdownSchema = z.object({
     lunch: z.array(z.string()).optional(),
     dinner: z.array(z.string()).optional(),
     mealsCost: z.number().min(0).optional(),
+    mealId: z.string().optional(),
 });
 
 export const transportationSegmentSchema = z.object({
