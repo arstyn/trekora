@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChefHat, Edit, Eye, Leaf, Plus, Trash2, Utensils, X } from "lucide-react";
+import { ChefHat, Edit, Plus, Search, Trash2, Utensils } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Table,
     TableBody,
@@ -24,6 +26,7 @@ export default function MealsPage() {
     const [meals, setMeals] = useState<IMeal[]>([]);
     const [loading, setLoading] = useState(true);
     const [typeFilter, setTypeFilter] = useState<"veg" | "non-veg" | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const { permissionSets, loading: permissionLoading } = useMyPermissionSets();
     const isAdminOrManager = permissionSets.some(
@@ -63,20 +66,14 @@ export default function MealsPage() {
         }
     };
 
-    const handleCardClick = (type: "veg" | "non-veg") => {
-        if (typeFilter === type) {
-            setTypeFilter(null); // Clear filter if already selected
-        } else {
-            setTypeFilter(type);
-        }
-    };
-
     const vegCount = meals.filter((m) => m.type === "veg").length;
     const nonVegCount = meals.filter((m) => m.type === "non-veg").length;
 
-    const filteredMeals = typeFilter
-        ? meals.filter((m) => m.type === typeFilter)
-        : meals;
+    const filteredMeals = meals.filter((m) => {
+        const matchesType = !typeFilter || m.type === typeFilter;
+        const matchesSearch = !searchQuery || m.name.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesType && matchesSearch;
+    });
 
     const isLoaded = !loading && !permissionLoading;
 
@@ -98,73 +95,44 @@ export default function MealsPage() {
                 )}
             </div>
 
-            {/* Default Veg and Non-Veg Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card
-                    onClick={() => handleCardClick("veg")}
-                    className={`cursor-pointer border-2 transition-all duration-300 hover:shadow-md ${
-                        typeFilter === "veg"
-                            ? "border-emerald-500 bg-emerald-500/5 shadow-sm"
-                            : "border-muted/50 hover:border-emerald-500/30 hover:bg-emerald-500/5"
-                    }`}
-                >
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-lg font-bold text-emerald-600 flex items-center gap-2">
-                            <Leaf className="h-5 w-5 text-emerald-500" /> Veg Meals
-                        </CardTitle>
-                        <Badge variant="outline" className="text-emerald-600 bg-emerald-500/10 border-emerald-500/20">
-                            Vegetarian
-                        </Badge>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-emerald-700">{vegCount}</div>
-                        <p className="text-xs text-emerald-600/70 mt-1">
-                            {typeFilter === "veg" ? "Currently filtering Veg meals (Click to reset)" : "Click to filter vegetarian meal options"}
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card
-                    onClick={() => handleCardClick("non-veg")}
-                    className={`cursor-pointer border-2 transition-all duration-300 hover:shadow-md ${
-                        typeFilter === "non-veg"
-                            ? "border-rose-500 bg-rose-500/5 shadow-sm"
-                            : "border-muted/50 hover:border-rose-500/30 hover:bg-rose-500/5"
-                    }`}
-                >
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-lg font-bold text-rose-600 flex items-center gap-2">
-                            <Utensils className="h-5 w-5 text-rose-500" /> Non-Veg Meals
-                        </CardTitle>
-                        <Badge variant="outline" className="text-rose-600 bg-rose-500/10 border-rose-500/20">
-                            Non-Vegetarian
-                        </Badge>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-rose-700">{nonVegCount}</div>
-                        <p className="text-xs text-rose-600/70 mt-1">
-                            {typeFilter === "non-veg" ? "Currently filtering Non-Veg meals (Click to reset)" : "Click to filter non-vegetarian meal options"}
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {typeFilter && (
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Active Filter:</span>
-                    <Badge variant="secondary" className="gap-1 pr-1 py-1 font-medium capitalize bg-primary/10 text-primary border border-primary/20">
-                        {typeFilter}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4 p-0 hover:bg-transparent rounded-full"
-                            onClick={() => setTypeFilter(null)}
-                        >
-                            <X className="h-3 w-3" />
-                        </Button>
-                    </Badge>
+            {/* Table Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/20 p-3 rounded-xl border border-muted/70">
+                {/* Search Input */}
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search meal plans..."
+                        className="pl-9 h-9 transition-all"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
-            )}
+
+                {/* Filter Tabs */}
+                <Tabs
+                    value={typeFilter || "all"}
+                    onValueChange={(val) => setTypeFilter(val === "all" ? null : val as "veg" | "non-veg")}
+                    className="w-fit"
+                >
+                    <TabsList className="grid grid-cols-3 h-9 w-[280px]">
+                        <TabsTrigger value="all" className="text-xs font-semibold">
+                            All ({meals.length})
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="veg" 
+                            className="text-xs font-semibold data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                        >
+                            Veg ({vegCount})
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="non-veg" 
+                            className="text-xs font-semibold data-[state=active]:bg-rose-600 data-[state=active]:text-white"
+                        >
+                            Non-Veg ({nonVegCount})
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
 
             {loading || permissionLoading ? (
                 <Card className="border border-muted">
@@ -210,7 +178,11 @@ export default function MealsPage() {
                                 const dinnerSample = meal.dinner?.map((i) => i.name).join(", ") || "None";
 
                                 return (
-                                    <TableRow key={meal.id} className="hover:bg-muted/20 transition-colors">
+                                    <TableRow 
+                                        key={meal.id} 
+                                        className="hover:bg-muted/20 transition-colors cursor-pointer"
+                                        onClick={() => navigate(`/meals/${meal.id}`)}
+                                    >
                                         <TableCell className="font-semibold text-foreground max-w-[200px] truncate" title={meal.name}>
                                             {meal.name}
                                         </TableCell>
@@ -246,21 +218,15 @@ export default function MealsPage() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => navigate(`/meals/${meal.id}`)}
-                                                    className="h-8 w-8 hover:bg-muted"
-                                                    title="View Details"
-                                                >
-                                                    <Eye className="h-4 w-4 text-muted-foreground" />
-                                                </Button>
                                                 {isAdminOrManager && (
                                                     <>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => navigate(`/meals/edit/${meal.id}`)}
+                                                            onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 navigate(`/meals/edit/${meal.id}`);
+                                                            }}
                                                             className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/5"
                                                             title="Edit Plan"
                                                         >
@@ -269,7 +235,10 @@ export default function MealsPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => handleDelete(meal.id, meal.name)}
+                                                            onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 handleDelete(meal.id, meal.name);
+                                                            }}
                                                             className="h-8 w-8 hover:text-destructive hover:bg-destructive/10 text-muted-foreground"
                                                             title="Delete"
                                                         >
