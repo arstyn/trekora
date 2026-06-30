@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { mealFormSchema, type MealFormData, type IMeal } from "@/types/meals.types";
 import mealsService from "@/services/meals.service";
 
@@ -35,14 +36,14 @@ const SectionItems: React.FC<SectionItemsProps> = ({ control, name, label }) => 
             <div className="flex justify-between items-center">
                 <div>
                     <h3 className="text-lg font-semibold capitalize text-foreground">{label} List</h3>
-                    <p className="text-xs text-muted-foreground">Add items and matching curries for {label}</p>
+                    <p className="text-xs text-muted-foreground">Add items, matching curries, and prices for {label}</p>
                 </div>
-                <Button
+                 <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     className="h-8 border-dashed hover:border-primary hover:text-primary transition-all duration-200"
-                    onClick={() => append({ name: "", curry: "" })}
+                    onClick={() => append({ name: "", curry: "", price: undefined })}
                 >
                     <Plus className="mr-1 h-3.5 w-3.5" /> Add {label} Item
                 </Button>
@@ -50,14 +51,14 @@ const SectionItems: React.FC<SectionItemsProps> = ({ control, name, label }) => 
 
             {fields.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 border border-dashed border-muted rounded-xl bg-muted/10 text-center">
-                    <ChefHat className="h-8 w-8 text-muted-foreground/60 mb-2 animate-bounce" />
+                    <ChefHat className="h-8 w-8 text-muted-foreground/60 mb-2" />
                     <p className="text-sm font-medium text-muted-foreground">No items added to {label} yet.</p>
                     <Button
                         type="button"
                         variant="link"
                         size="sm"
                         className="text-xs text-primary"
-                        onClick={() => append({ name: "", curry: "" })}
+                        onClick={() => append({ name: "", curry: "", price: undefined })}
                     >
                         Click here to add one
                     </Button>
@@ -107,6 +108,29 @@ const SectionItems: React.FC<SectionItemsProps> = ({ control, name, label }) => 
                                     )}
                                 />
                             </div>
+                            <div className="w-28 shrink-0">
+                                <FormField
+                                    control={control}
+                                    name={`${name}.${index}.price`}
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-1">
+                                            <FormLabel className="text-xs font-semibold">Price (₹)</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    className="h-9 transition-all duration-200 focus:ring-1 focus:ring-primary"
+                                                    placeholder="e.g. 50"
+                                                    {...field}
+                                                    value={field.value === 0 ? "" : (field.value ?? "")}
+                                                    onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -132,6 +156,7 @@ export const MealForm: React.FC<MealFormProps> = ({ initialData, isEditing = fal
         resolver: zodResolver(mealFormSchema),
         defaultValues: {
             name: initialData?.name || "",
+            type: initialData?.type || "veg",
             breakfast: initialData?.breakfast || [],
             lunch: initialData?.lunch || [],
             dinner: initialData?.dinner || [],
@@ -187,9 +212,9 @@ export const MealForm: React.FC<MealFormProps> = ({ initialData, isEditing = fal
                     <Card className="border border-muted shadow-sm hover:shadow-md transition-shadow duration-300">
                         <CardHeader>
                             <CardTitle className="text-lg">Basic Information</CardTitle>
-                            <CardDescription>Enter a recognizable name for this meal combo</CardDescription>
+                            <CardDescription>Enter a recognizable name and type for this meal combo</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -203,6 +228,29 @@ export const MealForm: React.FC<MealFormProps> = ({ initialData, isEditing = fal
                                                 {...field}
                                             />
                                         </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="type"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-sm font-semibold">Meal Type</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value || "veg"}>
+                                            <FormControl>
+                                                <SelectTrigger className="h-10 text-base">
+                                                    <SelectValue placeholder="Select type" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="veg">Veg</SelectItem>
+                                                <SelectItem value="non-veg">Non-Veg</SelectItem>
+                                                <SelectItem value="all">All (Mixed)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )}

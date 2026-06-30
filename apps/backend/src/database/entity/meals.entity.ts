@@ -13,6 +13,7 @@ import { User } from './user.entity';
 export interface MealItem {
   name: string;
   curry?: string;
+  price?: number;
 }
 
 @Entity('meals')
@@ -40,6 +41,9 @@ export class Meals {
   })
   @JoinColumn({ name: 'organization_id' })
   organization: Organization;
+
+  @Column({ type: 'varchar', name: 'type', default: 'veg' })
+  type: string;
 
   @Column({ type: 'jsonb', nullable: true, name: 'breakfast' })
   breakfast?: MealItem[];

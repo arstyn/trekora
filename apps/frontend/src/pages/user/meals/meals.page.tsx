@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChefHat, Edit, Eye, Plus, Trash2, Utensils } from "lucide-react";
+import { ChefHat, Edit, Plus, Search, Trash2, Utensils } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { useMyPermissionSets } from "@/hooks/use-permissions";
 import type { IMeal } from "@/types/meals.types";
 import mealsService from "@/services/meals.service";
@@ -14,6 +25,8 @@ export default function MealsPage() {
     const navigate = useNavigate();
     const [meals, setMeals] = useState<IMeal[]>([]);
     const [loading, setLoading] = useState(true);
+    const [typeFilter, setTypeFilter] = useState<"veg" | "non-veg" | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const { permissionSets, loading: permissionLoading } = useMyPermissionSets();
     const isAdminOrManager = permissionSets.some(
@@ -53,6 +66,15 @@ export default function MealsPage() {
         }
     };
 
+    const vegCount = meals.filter((m) => m.type === "veg").length;
+    const nonVegCount = meals.filter((m) => m.type === "non-veg").length;
+
+    const filteredMeals = meals.filter((m) => {
+        const matchesType = !typeFilter || m.type === typeFilter;
+        const matchesSearch = !searchQuery || m.name.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesType && matchesSearch;
+    });
+
     const isLoaded = !loading && !permissionLoading;
 
     return (
@@ -73,131 +95,165 @@ export default function MealsPage() {
                 )}
             </div>
 
-            {loading || permissionLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Array.from({ length: 6 }).map((_, idx) => (
-                        <Card key={idx} className="border border-muted">
-                            <CardHeader className="space-y-2">
-                                <Skeleton className="h-6 w-3/4" />
-                                <Skeleton className="h-4 w-1/2" />
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-full" />
-                            </CardContent>
-                            <CardFooter>
-                                <Skeleton className="h-9 w-20" />
-                            </CardFooter>
-                        </Card>
-                    ))}
+            {/* Table Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/20 p-3 rounded-xl border border-muted/70">
+                {/* Search Input */}
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search meal plans..."
+                        className="pl-9 h-9 transition-all"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
-            ) : meals.length === 0 ? (
+
+                {/* Filter Tabs */}
+                <Tabs
+                    value={typeFilter || "all"}
+                    onValueChange={(val) => setTypeFilter(val === "all" ? null : val as "veg" | "non-veg")}
+                    className="w-fit"
+                >
+                    <TabsList className="grid grid-cols-3 h-9 w-[280px]">
+                        <TabsTrigger value="all" className="text-xs font-semibold">
+                            All ({meals.length})
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="veg" 
+                            className="text-xs font-semibold data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                        >
+                            Veg ({vegCount})
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="non-veg" 
+                            className="text-xs font-semibold data-[state=active]:bg-rose-600 data-[state=active]:text-white"
+                        >
+                            Non-Veg ({nonVegCount})
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
+
+            {loading || permissionLoading ? (
+                <Card className="border border-muted">
+                    <CardContent className="p-6 space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-20 w-full" />
+                        <Skeleton className="h-20 w-full" />
+                    </CardContent>
+                </Card>
+            ) : filteredMeals.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-12 border border-dashed border-muted rounded-xl bg-card text-center min-h-[300px]">
                     <div className="bg-primary/10 p-4 rounded-full mb-4">
                         <ChefHat className="h-12 w-12 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold text-foreground">No Meals Configured</h3>
                     <p className="text-muted-foreground max-w-sm mt-2 text-sm">
-                        Standardized menus make it easy to configure itineraries. Let's create your first menu plan.
+                        No meal plans match your selection. Let's create one or adjust your filters.
                     </p>
                     {isAdminOrManager && (
                         <Button onClick={() => navigate("/meals/create")} className="mt-6">
-                            <Plus className="mr-2 h-4 w-4" /> Create First Meal Option
+                            <Plus className="mr-2 h-4 w-4" /> Create Meal Option
                         </Button>
                     )}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {meals.map((meal) => {
-                        const breakfastCount = meal.breakfast?.length || 0;
-                        const lunchCount = meal.lunch?.length || 0;
-                        const dinnerCount = meal.dinner?.length || 0;
+                <Card className="border border-muted shadow-sm overflow-hidden bg-card/45 backdrop-blur-sm">
+                    <Table>
+                        <TableHeader className="bg-muted/40">
+                            <TableRow>
+                                <TableHead className="font-bold">Meal Plan Name</TableHead>
+                                <TableHead className="font-bold w-[120px]">Type</TableHead>
+                                <TableHead className="font-bold">Breakfast Items</TableHead>
+                                <TableHead className="font-bold">Lunch Items</TableHead>
+                                <TableHead className="font-bold">Dinner Items</TableHead>
+                                <TableHead className="font-bold w-[130px]">Created At</TableHead>
+                                <TableHead className="font-bold text-right w-[180px]">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredMeals.map((meal) => {
+                                const breakfastSample = meal.breakfast?.map((i) => i.name).join(", ") || "None";
+                                const lunchSample = meal.lunch?.map((i) => i.name).join(", ") || "None";
+                                const dinnerSample = meal.dinner?.map((i) => i.name).join(", ") || "None";
 
-                        return (
-                            <Card
-                                key={meal.id}
-                                className="border border-muted shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300 bg-card/45 backdrop-blur-sm flex flex-col justify-between"
-                            >
-                                <CardHeader className="pb-3">
-                                    <div className="flex justify-between items-start">
-                                        <CardTitle className="text-lg font-bold text-foreground line-clamp-1">
-                                            {meal.name}
-                                        </CardTitle>
-                                    </div>
-                                    <CardDescription className="text-xs">
-                                        Created at {new Date(meal.createdAt).toLocaleDateString()}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="pb-3 flex-grow">
-                                    <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
-                                        <div className="p-2 bg-amber-500/10 rounded-lg text-amber-600 border border-amber-500/20">
-                                            <div className="font-bold text-lg">{breakfastCount}</div>
-                                            <div>Breakfast</div>
-                                        </div>
-                                        <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-600 border border-emerald-500/20">
-                                            <div className="font-bold text-lg">{lunchCount}</div>
-                                            <div>Lunch</div>
-                                        </div>
-                                        <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-600 border border-indigo-500/20">
-                                            <div className="font-bold text-lg">{dinnerCount}</div>
-                                            <div>Dinner</div>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 text-xs text-muted-foreground flex flex-col gap-1">
-                                        <div className="flex justify-between">
-                                            <span>Breakfast sample:</span>
-                                            <span className="font-medium text-foreground truncate max-w-[140px]">
-                                                {meal.breakfast?.[0]?.name || "None"}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Lunch sample:</span>
-                                            <span className="font-medium text-foreground truncate max-w-[140px]">
-                                                {meal.lunch?.[0]?.name || "None"}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Dinner sample:</span>
-                                            <span className="font-medium text-foreground truncate max-w-[140px]">
-                                                {meal.dinner?.[0]?.name || "None"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                                <CardFooter className="pt-2 border-t border-muted/50 flex justify-between gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
+                                return (
+                                    <TableRow 
+                                        key={meal.id} 
+                                        className="hover:bg-muted/20 transition-colors cursor-pointer"
                                         onClick={() => navigate(`/meals/${meal.id}`)}
-                                        className="h-8 flex-1"
                                     >
-                                        <Eye className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" /> View
-                                    </Button>
-                                    {isAdminOrManager && (
-                                        <>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => navigate(`/meals/edit/${meal.id}`)}
-                                                className="h-8 flex-1 border-primary/20 hover:border-primary/50 text-primary hover:text-primary hover:bg-primary/5"
-                                            >
-                                                <Edit className="mr-1.5 h-3.5 w-3.5" /> Edit
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleDelete(meal.id, meal.name)}
-                                                className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </>
-                                    )}
-                                </CardFooter>
-                            </Card>
-                        );
-                    })}
-                </div>
+                                        <TableCell className="font-semibold text-foreground max-w-[200px] truncate" title={meal.name}>
+                                            {meal.name}
+                                        </TableCell>
+                                        <TableCell>
+                                            {meal.type === "veg" ? (
+                                                <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15 border border-emerald-500/20 capitalize font-medium">
+                                                    Veg
+                                                </Badge>
+                                            ) : meal.type === "non-veg" ? (
+                                                <Badge className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/15 border border-rose-500/20 capitalize font-medium">
+                                                    Non-Veg
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/15 border border-blue-500/20 capitalize font-medium">
+                                                    All
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="max-w-[150px] truncate text-muted-foreground text-xs" title={breakfastSample}>
+                                            <span className="font-semibold text-foreground block text-xs">{meal.breakfast?.length || 0} items</span>
+                                            {breakfastSample}
+                                        </TableCell>
+                                        <TableCell className="max-w-[150px] truncate text-muted-foreground text-xs" title={lunchSample}>
+                                            <span className="font-semibold text-foreground block text-xs">{meal.lunch?.length || 0} items</span>
+                                            {lunchSample}
+                                        </TableCell>
+                                        <TableCell className="max-w-[150px] truncate text-muted-foreground text-xs" title={dinnerSample}>
+                                            <span className="font-semibold text-foreground block text-xs">{meal.dinner?.length || 0} items</span>
+                                            {dinnerSample}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-xs">
+                                            {new Date(meal.createdAt).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                {isAdminOrManager && (
+                                                    <>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 navigate(`/meals/edit/${meal.id}`);
+                                                            }}
+                                                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/5"
+                                                            title="Edit Plan"
+                                                        >
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 handleDelete(meal.id, meal.name);
+                                                            }}
+                                                            className="h-8 w-8 hover:text-destructive hover:bg-destructive/10 text-muted-foreground"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </Card>
             )}
         </div>
     );

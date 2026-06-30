@@ -7,6 +7,10 @@ export class IMealUpdateDTO {
   @IsOptional()
   name?: string;
 
+  @IsString()
+  @IsOptional()
+  type?: string;
+
   @IsArray()
   @IsOptional()
   @ValidateNested({ each: true })

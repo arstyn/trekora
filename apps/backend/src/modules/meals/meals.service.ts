@@ -62,6 +62,7 @@ export class MealsService {
     const meal = await this.findOne(id, organizationId);
     
     if (updateData.name !== undefined) meal.name = updateData.name;
+    if (updateData.type !== undefined) meal.type = updateData.type;
     if (updateData.breakfast !== undefined) meal.breakfast = updateData.breakfast;
     if (updateData.lunch !== undefined) meal.lunch = updateData.lunch;
     if (updateData.dinner !== undefined) meal.dinner = updateData.dinner;
