@@ -307,8 +307,8 @@ export class InvoiceService {
                   }</small>
                 </td>
                 <td>${booking.customers.length}</td>
-                <td class="amount">$${booking.package.price.toLocaleString()}</td>
-                <td class="amount">$${booking.totalAmount.toLocaleString()}</td>
+                 <td class="amount">$${(booking.totalAmount / (booking.customers.length || 1)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                 <td class="amount">$${booking.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             </tbody>
           </table>

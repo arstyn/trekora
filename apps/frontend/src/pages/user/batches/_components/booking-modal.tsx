@@ -268,28 +268,16 @@ export function BookingModal({
                                             {booking.package.name}
                                         </p>
                                     </div>
-                                    <div className="flex justify-between">
+                                    {booking.package.duration && (
                                         <div>
                                             <p className="text-xs font-medium text-muted-foreground uppercase">
-                                                Rate
+                                                Duration
                                             </p>
-                                            <p className="font-medium text-sm">
-                                                {BookingService.formatCurrency(
-                                                    booking.package.price,
-                                                )}
+                                            <p className="font-semibold text-sm">
+                                                {booking.package.duration}
                                             </p>
                                         </div>
-                                        {booking.package.duration && (
-                                            <div className="text-right">
-                                                <p className="text-xs font-medium text-muted-foreground uppercase">
-                                                    Duration
-                                                </p>
-                                                <p className="font-medium text-sm">
-                                                    {booking.package.duration}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    )}
                                     {booking.package.destination && (
                                         <div>
                                             <p className="text-xs font-medium text-muted-foreground uppercase">
