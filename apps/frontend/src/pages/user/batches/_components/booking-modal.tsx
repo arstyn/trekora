@@ -28,6 +28,7 @@ import {
 import { format } from "date-fns";
 import BookingService from "@/services/booking.service";
 import { InvoiceService } from "@/services/invoice.service";
+import { useAuth } from "@/context/authContext";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import type { IBatches } from "@/types/batches.types";
@@ -47,6 +48,7 @@ export function BookingModal({
 }: BookingModalProps) {
     if (!booking) return null;
 
+    const { user } = useAuth();
     const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
     const [isMoving, setIsMoving] = useState(false);
     const [selectedBatchId, setSelectedBatchId] = useState<string>("");
@@ -358,6 +360,8 @@ export function BookingModal({
                                         onClick={() =>
                                             InvoiceService.generateAndDownloadInvoice(
                                                 booking,
+                                                user?.organization?.name,
+                                                user?.organization?.domain,
                                             )
                                         }
                                         disabled={

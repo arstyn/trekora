@@ -598,7 +598,24 @@ export function CreateBookingDialog({
 
     return (
         <Dialog open={open} onOpenChange={(val) => { if (!val) resetForm(); onOpenChange(val); }}>
-            <DialogContent className="sm:max-w-6xl w-[95vw] h-[85vh] overflow-hidden p-0 flex gap-0 flex-col rounded-xl border bg-background shadow-2xl">
+            <DialogContent className="responsive-dialog sm:max-w-6xl w-[95vw] h-[85vh] max-lg:h-auto max-lg:max-h-[90vh] overflow-hidden max-lg:overflow-y-auto p-0 flex gap-0 flex-col rounded-xl border bg-background shadow-2xl">
+                <style>{`
+                    @media (max-height: 800px) {
+                        .responsive-dialog {
+                            height: auto !important;
+                            max-height: 90vh !important;
+                            overflow-y: auto !important;
+                        }
+                        .responsive-layout, .responsive-left {
+                            overflow: visible !important;
+                            height: auto !important;
+                        }
+                        .responsive-scroll {
+                            height: auto !important;
+                            overflow: visible !important;
+                        }
+                    }
+                `}</style>
                 {/* Stepper Header */}
                 <div className="pl-6 pr-12 py-4 border-b bg-card flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
                     <div>
@@ -638,9 +655,9 @@ export function CreateBookingDialog({
                         </div>
                     </div>
                 ) : (
-                    <div className="flex-1 flex overflow-hidden min-h-0 p-0 m-0">
+                    <div className="responsive-layout flex-1 flex overflow-hidden max-lg:overflow-visible min-h-0 p-0 m-0">
                         {/* Left Side: Step View */}
-                        <div className="flex-1 flex flex-col overflow-hidden min-h-0 bg-background">
+                        <div className="responsive-left flex-1 flex flex-col overflow-hidden max-lg:overflow-visible min-h-0 bg-background">
                             {error && (
                                 <div className="px-6 pt-4 flex-shrink-0">
                                     <Alert variant="destructive" className="py-2">
@@ -650,8 +667,7 @@ export function CreateBookingDialog({
                                 </div>
                             )}
 
-                            <ScrollArea className="flex-1 px-6 py-4">
-                                <div className="max-w-3xl mx-auto space-y-6 pb-6">
+                            <div className="responsive-scroll flex-1 overflow-y-auto px-6 py-4 max-lg:h-auto max-lg:overflow-visible">
                                     {/* STEP 1: PACKAGE & BATCH SELECTION */}
                                     {step === 1 && (
                                         <div className="space-y-6">
@@ -1147,7 +1163,6 @@ export function CreateBookingDialog({
                                         </div>
                                     )}
                                 </div>
-                            </ScrollArea>
 
                             {/* Navigation Footer */}
                             <div className="px-6 py-4 border-t bg-card flex items-center justify-between flex-shrink-0">

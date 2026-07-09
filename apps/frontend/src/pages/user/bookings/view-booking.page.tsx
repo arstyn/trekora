@@ -38,6 +38,7 @@ import {
 import { WorkflowManager } from "@/components/workflow/workflow-manager";
 import BookingService from "@/services/booking.service";
 import { InvoiceService } from "@/services/invoice.service";
+import { useAuth } from "@/context/authContext";
 import type { IBatches } from "@/types/batches.types";
 import type {
     BookingStatus,
@@ -76,6 +77,7 @@ import { toast } from "sonner";
 export default function BookingDetailsPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [booking, setBooking] = useState<IBooking | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -241,7 +243,7 @@ export default function BookingDetailsPage() {
 
         try {
             setIsGeneratingInvoice(true);
-            await InvoiceService.generateAndDownloadInvoice(booking);
+            await InvoiceService.generateAndDownloadInvoice(booking, user?.organization?.name, user?.organization?.domain);
         } catch (err) {
             console.error("Error generating invoice:", err);
             // You could show a toast or alert here

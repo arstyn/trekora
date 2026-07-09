@@ -26,6 +26,9 @@ import {
 import { useState, useEffect } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import PaymentService from "@/services/payment.service";
+import BookingService from "@/services/booking.service";
+import { InvoiceService } from "@/services/invoice.service";
+import { useAuth } from "@/context/authContext";
 import type { Payment, FileManager } from "@/types/payment.types";
 import { useToast } from "@/hooks/use-toast";
 import { getFileUrl } from "@/lib/utils";
@@ -43,6 +46,31 @@ export default function PaymentDetailsPage() {
     const [selectedDocument, setSelectedDocument] =
         useState<FileManager | null>(null);
     const { toast } = useToast();
+    const { user } = useAuth();
+    const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+
+    const handleDownloadInvoice = async () => {
+        if (!paymentData?.booking?.id) return;
+
+        try {
+            setIsGeneratingInvoice(true);
+            const fullBooking = await BookingService.getBookingById(paymentData.booking.id);
+            await InvoiceService.generateAndDownloadInvoice(
+                fullBooking,
+                user?.organization?.name,
+                user?.organization?.domain
+            );
+        } catch (err) {
+            console.error("Error generating invoice:", err);
+            toast({
+                title: "Error",
+                description: (err as Error).message || "Failed to generate invoice",
+                variant: "destructive",
+            });
+        } finally {
+            setIsGeneratingInvoice(false);
+        }
+    };
 
     useEffect(() => {
         if (id) {
@@ -258,9 +286,9 @@ export default function PaymentDetailsPage() {
     };
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-US", {
+        return new Intl.NumberFormat("en-IN", {
             style: "currency",
-            currency: "USD",
+            currency: "INR",
         }).format(amount);
     };
 
@@ -587,8 +615,24 @@ export default function PaymentDetailsPage() {
 
                     {/* Booking Information */}
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between pb-3">
                             <CardTitle>Booking Information</CardTitle>
+                            {paymentData && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-lg h-9"
+                                    onClick={handleDownloadInvoice}
+                                    disabled={isGeneratingInvoice}
+                                >
+                                    {isGeneratingInvoice ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Download className="w-4 h-4 mr-2" />
+                                    )}
+                                    Invoice
+                                </Button>
+                            )}
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="flex justify-between">
