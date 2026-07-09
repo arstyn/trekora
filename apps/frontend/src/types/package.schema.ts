@@ -86,6 +86,7 @@ export interface AdditionalCost {
 }
 
 export interface PackageTier {
+    id?: string;
     name?: string;
     adultCost?: number;
     childCostType?: "flat" | "percentage";
@@ -93,6 +94,7 @@ export interface PackageTier {
     infantCostType?: "flat" | "percentage";
     infantCostValue?: number;
     transportationId?: string;
+    totalAdultCost?: number;
 }
 
 export const paymentMilestoneSchema = z.object({
@@ -175,8 +177,10 @@ export const additionalCostSchema = z.object({
 });
 
 export const packageTierSchema = z.object({
+    id: z.string().optional(),
     name: z.string().optional(),
     adultCost: z.number().min(0).optional(),
+    totalAdultCost: z.number().optional(),
     childCostType: z.enum(["flat", "percentage"]).optional(),
     childCostValue: z.number().min(0).optional(),
     infantCostType: z.enum(["flat", "percentage"]).optional(),

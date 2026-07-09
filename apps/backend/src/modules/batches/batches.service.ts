@@ -188,6 +188,8 @@ export class BatchesService {
       where: { id },
       relations: [
         'package',
+        'package.packageTiers',
+        'package.transportationOptions',
         'coordinators',
         'bookings',
         'bookings.customers',
@@ -201,6 +203,8 @@ export class BatchesService {
           description: true,
           basePrice: true,
           destination: true,
+          packageTiers: true,
+          transportationOptions: true,
         },
       },
     });

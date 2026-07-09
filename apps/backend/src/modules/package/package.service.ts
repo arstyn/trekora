@@ -323,6 +323,7 @@ export class PackageService {
         'thumbnail',
         'status',
       ],
+      relations: ['packageTiers', 'transportationOptions']
     });
 
     return res;

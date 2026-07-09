@@ -8,6 +8,7 @@ import type {
     IBookingPayment,
     BookingStatus,
     IBookingLog,
+    IPackage,
 } from "@/types/booking.types";
 import type { IBatches } from "@/types/batches.types";
 
@@ -143,9 +144,7 @@ export class BookingService {
         return response.data;
     }
 
-    static async getPackages(): Promise<
-        Array<{ id: string; name: string; price: number }>
-    > {
+    static async getPackages(): Promise<IPackage[]> {
         const response = await axiosInstance.get("/packages?status=published");
         return response.data;
     }
