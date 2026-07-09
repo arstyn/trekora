@@ -17,6 +17,9 @@ export class PackageTier {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   adultCost: number;
 
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  totalAdultCost: number;
+
   @Column({ type: 'varchar', nullable: true })
   childCostType: 'flat' | 'percentage';
 

@@ -11,6 +11,18 @@ import {
 } from 'class-validator';
 import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
 import { BookingStatus } from 'src/database/entity/booking.entity';
+import { IsBoolean } from 'class-validator';
+
+export class CustomerSelectionDto {
+  @IsUUID()
+  customerId: string;
+
+  @IsUUID()
+  tierId: string;
+
+  @IsEnum(['adult', 'child', 'infant'])
+  ageCategory: 'adult' | 'child' | 'infant';
+}
 
 export class CreatePaymentDto {
   @IsNumber()
@@ -50,6 +62,10 @@ export class CreateBookingDto {
   @IsUUID()
   batchId: string;
 
+  @IsOptional()
+  @IsUUID()
+  packageTierId?: string;
+
   @IsArray()
   @IsUUID(4, { each: true })
   customerIds: string[];
@@ -69,6 +85,16 @@ export class CreateBookingDto {
   @ValidateNested()
   @Type(() => CreatePaymentDto)
   initialPayment?: CreatePaymentDto;
+
+  @IsOptional()
+  @IsBoolean()
+  isCommonTier?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CustomerSelectionDto)
+  customerSelections?: CustomerSelectionDto[];
 }
 
 export class UpdateBookingDto {
@@ -199,6 +225,9 @@ export class BookingResponseDto {
     status: string;
     paymentDate?: Date;
     paymentReference?: string;
+    transactionId?: string;
+    notes?: string;
+    receiptFilePath?: string;
   }[];
   currentWorkflowId?: string;
   currentWorkflow?: any;

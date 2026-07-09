@@ -110,6 +110,7 @@ export const additionalCostSchema = z.object({
 export const packageTierSchema = z.object({
   name: z.string().optional(),
   adultCost: z.number().min(0).optional(),
+  totalAdultCost: z.number().min(0).optional(),
   childCostType: z.enum(['flat', 'percentage']).optional(),
   childCostValue: z.number().min(0).optional(),
   infantCostType: z.enum(['flat', 'percentage']).optional(),

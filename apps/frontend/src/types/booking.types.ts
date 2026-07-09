@@ -22,6 +22,7 @@ export interface IBookingPayment {
     status?: PaymentStatus;
     notes?: string;
     filePath?: string;
+    receiptFilePath?: string;
 }
 
 export interface ICustomer {
@@ -52,13 +53,16 @@ export interface ICustomer {
     updatedAt?: string;
 }
 
+import type { PackageTier } from "./package.schema";
+
 export interface IPackage {
     id: string;
     name: string;
-    price: number;
     destination?: string;
     duration?: string;
     description?: string;
+    packageTiers?: PackageTier[];
+    transportation?: any[];
 }
 
 export interface IBatch {
@@ -116,11 +120,18 @@ export interface IBookingListItem {
 export interface ICreateBookingRequest {
     customerId: string;
     packageId: string;
+    packageTierId?: string;
     batchId: string;
     customerIds: string[];
     totalAmount: number;
     specialRequests?: string;
     initialPayment?: Omit<IBookingPayment, "id" | "status">;
+    isCommonTier?: boolean;
+    customerSelections?: {
+        customerId: string;
+        tierId: string;
+        ageCategory: 'adult' | 'child' | 'infant';
+    }[];
 }
 
 // For updating bookings

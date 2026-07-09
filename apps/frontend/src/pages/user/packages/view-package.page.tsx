@@ -181,12 +181,12 @@ export default function ViewPackagePage() {
         const mealsCost = Number((logistics as any)?.mealsBreakdown?.mealsCost) || 0;
         const additionalCostsSum = paymentsAndCancellation?.additionalCosts?.reduce((sum: number, cost: any) => sum + (Number(cost.cost) || 0), 0) || 0;
         const groundCost = Number((basicData as any)?.groundTransportationCost) || 0;
-        
+
         const baseCost = itineraryCost + mealsCost + additionalCostsSum + groundCost;
-        
+
         const transport = logistics?.transportation?.find(t => t.id === tier.transportationId);
         const transportCost = Number(transport?.cost) || 0;
-        
+
         return baseCost + transportCost + (Number(tier.adultCost) || 0);
     };
 
@@ -586,7 +586,7 @@ export default function ViewPackagePage() {
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            
+
                                                             {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 0 && (
                                                                 <div className="bg-secondary/20 rounded-md p-3 mt-1">
                                                                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Estimated Amount per Tier</div>
@@ -648,7 +648,7 @@ export default function ViewPackagePage() {
                                                                     <p className="text-sm text-muted-foreground mt-1">{tier?.description || "No description"}</p>
                                                                 </div>
                                                             </div>
-                                                            
+
                                                             {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 0 && (
                                                                 <div className="bg-secondary/20 rounded-md p-3 mt-1">
                                                                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Cancellation Fee per Tier</div>
@@ -939,7 +939,7 @@ export default function ViewPackagePage() {
                                                                 <span className="font-bold text-primary">₹{transport?.cost || 0}</span>
                                                             </div>
                                                         </div>
-                                                        
+
                                                         {transport?.segments && transport.segments.length > 0 ? (
                                                             <div className="space-y-3 mt-2">
                                                                 <h5 className="text-sm font-medium text-muted-foreground">Journey Segments</h5>
