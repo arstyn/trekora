@@ -28,7 +28,7 @@ export interface IBookingPayment {
 export interface ICustomer {
     id: string;
     firstName: string;
-    lastName: string;
+    lastName?: string;
     middleName?: string;
     email: string;
     phone: string;
