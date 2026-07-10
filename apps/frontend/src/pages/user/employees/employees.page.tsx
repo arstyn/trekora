@@ -76,9 +76,11 @@ export function EmployeesPage() {
     const [currentTab, setCurrentTab] = useState<"active" | "archived">("active");
     const [isLoading, setIsLoading] = useState(true);
 
-    const getEmployees = async (showArchived = false) => {
+    const getEmployees = async (showArchived = false, showLoading = true) => {
         try {
-            setIsLoading(true);
+            if (showLoading) {
+                setIsLoading(true);
+            }
             const res = await axiosInstance.get<IEmployee[]>(`/employee?archived=${showArchived}`);
             setEmployees(res.data);
         } catch (error) {
@@ -88,7 +90,9 @@ export function EmployeesPage() {
                 toast.error("Failed to load updates");
             }
         } finally {
-            setIsLoading(false);
+            if (showLoading) {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -340,7 +344,7 @@ export function EmployeesPage() {
             } else {
                 toast.success("Activation invite sent successfully");
             }
-            getEmployees(currentTab === "archived");
+            getEmployees(currentTab === "archived", false);
         } catch (error) {
             toast.error("Failed to send invite");
         }
@@ -350,7 +354,7 @@ export function EmployeesPage() {
         try {
             await axiosInstance.patch(`/employee/${employee.id}/reactivate`, {});
             toast.success("Employee reactivated successfully");
-            getEmployees(currentTab === "archived");
+            getEmployees(currentTab === "archived", false);
         } catch (error) {
             toast.error("Failed to reactivate employee");
         }
@@ -360,7 +364,7 @@ export function EmployeesPage() {
         try {
             await axiosInstance.patch(`/employee/${employee.id}/archive`, {});
             toast.success("Employee archived successfully");
-            getEmployees(currentTab === "archived");
+            getEmployees(currentTab === "archived", false);
         } catch (error) {
             toast.error("Failed to archive employee");
         }
@@ -369,10 +373,10 @@ export function EmployeesPage() {
     const handleUnarchiveEmployee = async (employee: IEmployee) => {
         try {
             await axiosInstance.patch(`/employee/${employee.id}/unarchive`, {});
-            toast.success("Employee unarchived successfully");
-            getEmployees(currentTab === "archived");
+            toast.success("Employee un-archived successfully");
+            getEmployees(currentTab === "archived", false);
         } catch (error) {
-            toast.error("Failed to unarchive employee");
+            toast.error("Failed to un-archive employee");
         }
     };
 
@@ -385,7 +389,7 @@ export function EmployeesPage() {
                     : employee,
             ),
         );
-        getEmployees(currentTab === "archived");
+        getEmployees(currentTab === "archived", false);
     };
 
     // Handle employee row click
@@ -418,7 +422,7 @@ export function EmployeesPage() {
                 {},
             );
             toast.success("Activation invite sent successfully");
-            getEmployees(currentTab === "archived");
+            getEmployees(currentTab === "archived", false);
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -566,8 +570,13 @@ export function EmployeesPage() {
                 }}
                 employee={selectedEmployee}
                 employees={employees}
-                onSuccess={(_, action) => {
-                    getEmployees(currentTab === "archived");
+                onSuccess={(updatedEmp, action) => {
+                    if (action === "edit") {
+                        setEmployees((prev) =>
+                            prev.map((emp) => (emp.id === updatedEmp.id ? updatedEmp : emp))
+                        );
+                    }
+                    getEmployees(currentTab === "archived", false);
                     if (action === "add") {
                         table.setPageIndex(0);
                         table.resetColumnFilters();
