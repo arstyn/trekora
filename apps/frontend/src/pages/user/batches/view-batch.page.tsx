@@ -83,7 +83,15 @@ export default function BatchDetailsPage() {
             const batchData = await axiosInstance.get<IBatches>(
                 `/batches/${id}`,
             );
-            setBatch(batchData.data);
+            const rawBatch = batchData.data;
+            if (rawBatch && rawBatch.bookings) {
+                rawBatch.bookings = rawBatch.bookings.map((booking: any) => ({
+                    ...booking,
+                    primaryCustomer: booking.primaryCustomer || booking.customer,
+                    customers: booking.customers || booking.bookingCustomers?.map((bc: any) => bc.customer).filter(Boolean) || [],
+                }));
+            }
+            setBatch(rawBatch);
             fetchLogs();
         } catch (error: unknown) {
             if (error instanceof Error) {
