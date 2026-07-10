@@ -594,11 +594,11 @@ export default function BatchDetailsPage() {
                                                     >
                                                         <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
                                                             {c.firstName[0]}
-                                                            {c.lastName[0]}
+                                                            {c?.lastName?.[0] ?? ""}
                                                         </div>
                                                         <span className="truncate">
                                                             {c.firstName}{" "}
-                                                            {c.lastName}
+                                                            {c?.lastName?.[0] ?? ""}
                                                         </span>
                                                     </div>
                                                 ))}
@@ -776,14 +776,14 @@ export default function BatchDetailsPage() {
                                                                     }
                                                                     {
                                                                         c
-                                                                            .lastName[0]
+                                                                            ?.lastName?.[0] ?? ""
                                                                     }
                                                                 </div>
                                                                 <span className="truncate line-through text-muted-foreground">
                                                                     {
                                                                         c.firstName
                                                                     }{" "}
-                                                                    {c.lastName}
+                                                                    {c?.lastName ?? ""}
                                                                 </span>
                                                             </div>
                                                         ),
