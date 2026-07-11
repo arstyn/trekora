@@ -1,3 +1,4 @@
+import { FileUploader } from "@/components/file-uploader";
 import StatusBadge from "@/components/status-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -38,8 +39,8 @@ import type { IEmployee } from "@/types/employee.types";
 import type { PermissionSet } from "@/types/permission.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Briefcase, CalendarIcon, ChevronDown, ChevronRight, FileText, History, Mail, ShieldAlert, Upload, User, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Briefcase, CalendarIcon, ChevronDown, ChevronRight, FileText, History, Mail, ShieldAlert, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -118,12 +119,9 @@ export function EmployeeModal({
 
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
-	const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+	const [profilePhotoRemoved, setProfilePhotoRemoved] = useState(false);
 	const [verificationDocFile, setVerificationDocFile] = useState<File | null>(null);
-	const [verificationDocPreview, setVerificationDocPreview] = useState<string | null>(null);
-
-	const profilePhotoRef = useRef<HTMLInputElement>(null);
-	const verificationDocRef = useRef<HTMLInputElement>(null);
+	const [verificationDocRemoved, setVerificationDocRemoved] = useState(false);
 
 	const [allPermissionSets, setAllPermissionSets] = useState<PermissionSet[]>([]);
 	const [selectedPermissionSetIds, setSelectedPermissionSetIds] = useState<string[]>([]);
@@ -179,6 +177,8 @@ export function EmployeeModal({
 			setStep(1);
 			setSearchManagerQuery("");
 			setManagerPopoverOpen(false);
+			setProfilePhotoRemoved(false);
+			setVerificationDocRemoved(false);
 			if ((mode === "edit" || mode === "view") && employee) {
 				form.reset({
 					name: employee.name,
@@ -221,11 +221,11 @@ export function EmployeeModal({
 			}
 		} else {
 			setProfilePhotoFile(null);
-			setProfilePhotoPreview(null);
 			setVerificationDocFile(null);
-			setVerificationDocPreview(null);
 			setSearchManagerQuery("");
 			setManagerPopoverOpen(false);
+			setProfilePhotoRemoved(false);
+			setVerificationDocRemoved(false);
 		}
 	}, [open, mode, employee]);
 
@@ -281,7 +281,7 @@ export function EmployeeModal({
 				formDataToSubmit.append(`departments[${index}]`, dept);
 			});
 		}
-		if (data.status) formDataToSubmit.append("status", data.status);
+		if (mode !== "add" && data.status) formDataToSubmit.append("status", data.status);
 		formDataToSubmit.append("joinDate", format(data.joinDate, "yyyy-MM-dd"));
 		if (data.address) formDataToSubmit.append("address", data.address);
 		if (data.phone) formDataToSubmit.append("phone", data.phone);
@@ -342,20 +342,7 @@ export function EmployeeModal({
 		}
 	};
 
-	const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) { setProfilePhotoFile(file); setProfilePhotoPreview(URL.createObjectURL(file)); }
-	};
-	const handleVerificationDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) {
-			setVerificationDocFile(file);
-			if (file.type.startsWith("image/")) setVerificationDocPreview(URL.createObjectURL(file));
-			else setVerificationDocPreview(null);
-		}
-	};
-	const removeProfilePhoto = () => { setProfilePhotoFile(null); setProfilePhotoPreview(null); if (profilePhotoRef.current) profilePhotoRef.current.value = ""; };
-	const removeVerificationDoc = () => { setVerificationDocFile(null); setVerificationDocPreview(null); if (verificationDocRef.current) verificationDocRef.current.value = ""; };
+
 
 	const formattedDate = employee?.joinDate ? format(new Date(employee.joinDate), "PPP") : "";
 	const formattedDOB = employee?.dateOfBirth ? format(new Date(employee.dateOfBirth), "PPP") : "";
@@ -551,20 +538,29 @@ export function EmployeeModal({
 												</h3>
 												{/* Profile Photo centered */}
 												<div className="flex flex-col items-center justify-center pb-6">
-													<div className="relative group">
-														<Avatar className="h-28 w-28 border-2 border-primary/20 shadow-md">
-															<AvatarImage src={profilePhotoPreview || employee?.profilePhoto || "/placeholder.svg"} className="object-cover w-full h-full" />
-															<AvatarFallback className="text-2xl">{form.watch("name")?.charAt(0) || "U"}</AvatarFallback>
-														</Avatar>
-														<input ref={profilePhotoRef} type="file" accept="image/*" onChange={handleProfilePhotoChange} className="hidden" />
-														<div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-															<Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-white hover:text-white/80" onClick={() => profilePhotoRef.current?.click()}><Upload className="h-4 w-4" /></Button>
-															{(profilePhotoPreview || employee?.profilePhoto) && (
-																<Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-red-400 hover:text-red-300" onClick={removeProfilePhoto}><X className="h-4 w-4" /></Button>
-															)}
-														</div>
-													</div>
-													<span className="text-xs text-muted-foreground mt-2">Click photo to upload profile picture</span>
+													<Label className="text-xs font-semibold mb-2">Profile Photo</Label>
+													<FileUploader
+														value={
+															profilePhotoFile
+																? [profilePhotoFile]
+																: (employee?.profilePhoto && !profilePhotoRemoved ? [employee.profilePhoto] : [])
+														}
+														onChange={(files) => {
+															if (files.length > 0) {
+																setProfilePhotoFile(files[0]);
+																setProfilePhotoRemoved(false);
+															}
+														}}
+														onRemoveNew={() => {
+															setProfilePhotoFile(null);
+														}}
+														onRemoveExisting={() => {
+															setProfilePhotoRemoved(true);
+														}}
+														maxFiles={1}
+														isCircular={true}
+														accept="image/*"
+													/>
 												</div>
 												<div className="space-y-4">
 													<FormField control={form.control} name="name" render={({ field }) => (
@@ -761,15 +757,17 @@ export function EmployeeModal({
 														</FormItem>
 													)} />
 
-													<FormField control={form.control} name="status" render={({ field }) => (
-														<FormItem className="space-y-3"><FormLabel>Status</FormLabel><FormControl>
-															<RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
-																<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="inactive" /></FormControl><FormLabel className="font-normal text-xs cursor-pointer">Inactive</FormLabel></FormItem>
-																<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="suspended" /></FormControl><FormLabel className="font-normal text-xs cursor-pointer">Suspended</FormLabel></FormItem>
-																<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="terminated" /></FormControl><FormLabel className="font-normal text-xs cursor-pointer">Terminated</FormLabel></FormItem>
-															</RadioGroup>
-														</FormControl><FormMessage /></FormItem>
-													)} />
+													{mode !== "add" && (
+														<FormField control={form.control} name="status" render={({ field }) => (
+															<FormItem className="space-y-3"><FormLabel>Status</FormLabel><FormControl>
+																<RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+																	<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="inactive" /></FormControl><FormLabel className="font-normal text-xs cursor-pointer">Inactive</FormLabel></FormItem>
+																	<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="suspended" /></FormControl><FormLabel className="font-normal text-xs cursor-pointer">Suspended</FormLabel></FormItem>
+																	<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="terminated" /></FormControl><FormLabel className="font-normal text-xs cursor-pointer">Terminated</FormLabel></FormItem>
+																</RadioGroup>
+															</FormControl><FormMessage /></FormItem>
+														)} />
+													)}
 												</div>
 											</div>
 										</div>
@@ -804,18 +802,27 @@ export function EmployeeModal({
 
 													<div className="space-y-2 pt-2">
 														<Label className="text-xs font-semibold">Upload Identification File</Label>
-														<div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-muted rounded-xl bg-muted/10 min-h-[140px] relative group">
-															{verificationDocPreview ? <img src={verificationDocPreview} alt="Document preview" className="w-full h-full max-h-[120px] object-contain rounded-lg" /> : employee?.verificationDocument ? <img src={employee.verificationDocument} alt="Document preview" className="w-full h-full max-h-[120px] object-contain rounded-lg" /> : (
-																<div className="text-center"><FileText className="h-8 w-8 text-muted-foreground mx-auto mb-1" /><span className="text-[10px] text-muted-foreground">Upload Passport, ID Card or PDF</span></div>
-															)}
-															<input ref={verificationDocRef} type="file" accept="image/*,.pdf" onChange={handleVerificationDocChange} className="hidden" />
-															<div className="mt-3 flex gap-2">
-																<Button type="button" variant="outline" onClick={() => verificationDocRef.current?.click()} size="sm"><Upload className="h-3.5 w-3.5 mr-1" />Select File</Button>
-																{(verificationDocPreview || employee?.verificationDocument) && (
-																	<Button type="button" variant="destructive" size="sm" onClick={removeVerificationDoc}><X className="h-3.5 w-3.5" /></Button>
-																)}
-															</div>
-														</div>
+														<FileUploader
+															value={
+																verificationDocFile
+																	? [verificationDocFile]
+																	: (employee?.verificationDocument && !verificationDocRemoved ? [employee.verificationDocument] : [])
+															}
+															onChange={(files) => {
+																if (files.length > 0) {
+																	setVerificationDocFile(files[0]);
+																	setVerificationDocRemoved(false);
+																}
+															}}
+															onRemoveNew={() => {
+																setVerificationDocFile(null);
+															}}
+															onRemoveExisting={() => {
+																setVerificationDocRemoved(true);
+															}}
+															maxFiles={1}
+															accept="image/*,.pdf"
+														/>
 													</div>
 												</div>
 											</div>
