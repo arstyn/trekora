@@ -146,9 +146,6 @@ export function PackageForm({
         initialPackageId,
     );
     const [thumbnailFile, setThumbnailFile] = useState<string>();
-    const [itineraryPreviewUrls, setItineraryPreviewUrls] = useState<
-        Record<number, string[]>
-    >({});
     const [existingItineraryImages, setExistingItineraryImages] = useState<
         Record<number, string[]>
     >({});
@@ -197,11 +194,6 @@ export function PackageForm({
                             setExistingItineraryImages((prev) => ({
                                 ...prev,
                                 [index]: images,
-                            }));
-                            const urls = images;
-                            setItineraryPreviewUrls((prev) => ({
-                                ...prev,
-                                [index]: urls,
                             }));
                         }
                         return { ...rest, images: [] };
@@ -614,55 +606,7 @@ export function PackageForm({
         }
     };
 
-    const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (ev) =>
-                setThumbnailFile(ev.target?.result as string);
-            reader.readAsDataURL(file);
-            form.setValue("thumbnail", file);
-        }
-    };
 
-    const handleDayImageUpload = (
-        dayIndex: number,
-        e: React.ChangeEvent<HTMLInputElement>,
-    ) => {
-        const files = Array.from(e.target.files || []);
-        const urls = files.map((f) => URL.createObjectURL(f));
-        setItineraryPreviewUrls((prev) => ({
-            ...prev,
-            [dayIndex]: [...(prev[dayIndex] || []), ...urls],
-        }));
-        const current = form.getValues(`itinerary.${dayIndex}.images`) || [];
-        form.setValue(`itinerary.${dayIndex}.images`, [...current, ...files]);
-    };
-
-    const removeDayImage = (dayIndex: number, imageIndex: number) => {
-        const existing = existingItineraryImages[dayIndex] || [];
-        const isExisting = imageIndex < existing.length;
-        if (isExisting) {
-            setExistingItineraryImages((prev) => ({
-                ...prev,
-                [dayIndex]: existing.filter((_, i) => i !== imageIndex),
-            }));
-        } else {
-            const formImages =
-                form.getValues(`itinerary.${dayIndex}.images`) || [];
-            const newIndex = imageIndex - existing.length;
-            form.setValue(
-                `itinerary.${dayIndex}.images`,
-                formImages.filter((_, i) => i !== newIndex),
-            );
-        }
-        setItineraryPreviewUrls((prev) => ({
-            ...prev,
-            [dayIndex]: (prev[dayIndex] || []).filter(
-                (_, i) => i !== imageIndex,
-            ),
-        }));
-    };
 
     if (isLoading) {
         return (
@@ -732,7 +676,7 @@ export function PackageForm({
                         <StepBasicInfo
                             form={form}
                             thumbnailFile={thumbnailFile}
-                            handleThumbnailUpload={handleThumbnailUpload}
+                            setThumbnailFile={setThumbnailFile}
                             onNext={handleNext}
                             isLoading={isSaving}
                         />
@@ -740,9 +684,8 @@ export function PackageForm({
                     {currentStep === 1 && (
                         <StepItinerary
                             form={form}
-                            itineraryPreviewUrls={itineraryPreviewUrls}
-                            handleDayImageUpload={handleDayImageUpload}
-                            removeDayImage={removeDayImage}
+                            existingItineraryImages={existingItineraryImages}
+                            setExistingItineraryImages={setExistingItineraryImages}
                             onNext={handleNext}
                             onBack={handleBack}
                             isLoading={isSaving}

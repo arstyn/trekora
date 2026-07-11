@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { FileUploader } from "@/components/file-uploader";
 import {
     Card,
     CardContent,
@@ -25,13 +26,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
 import { Plus, Save, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 interface StepBasicInfoProps {
     form: UseFormReturn<PackageFormData>;
     thumbnailFile?: string;
-    handleThumbnailUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    setThumbnailFile: (val?: string) => void;
     onNext: () => void;
     isLoading?: boolean;
 }
@@ -39,10 +40,26 @@ interface StepBasicInfoProps {
 export function StepBasicInfo({
     form,
     thumbnailFile,
-    handleThumbnailUpload,
+    setThumbnailFile,
     onNext,
     isLoading,
 }: StepBasicInfoProps) {
+    const selectedThumbnail = form.watch("thumbnail");
+    const hasThumbnail = !!(selectedThumbnail || thumbnailFile);
+    const [localPreview, setLocalPreview] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (selectedThumbnail instanceof File) {
+            const url = URL.createObjectURL(selectedThumbnail);
+            setLocalPreview(url);
+            return () => URL.revokeObjectURL(url);
+        } else {
+            setLocalPreview(null);
+        }
+    }, [selectedThumbnail]);
+
+    const thumbnailSrc = localPreview || thumbnailFile;
+
     const [newItem, setNewItem] = useState<{
         type: "countries" | "states" | "cities";
         value: string;
@@ -73,37 +90,49 @@ export function StepBasicInfo({
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center gap-4">
-                        <div className="relative group overflow-hidden rounded-lg border aspect-[4/3] w-[200px]">
-                            <img
-                                src={thumbnailFile || "/placeholder.svg"}
-                                alt="Package thumbnail"
-                                className={`w-full h-full object-cover transition-all duration-300 ${!thumbnailFile ? "blur-sm grayscale" : "hover:scale-105"}`}
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).src =
-                                        "/placeholder.svg";
-                                }}
-                            />
-                            {!thumbnailFile && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/5">
-                                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    {hasThumbnail ? (
+                        <div className="space-y-4">
+                            <Label className="text-sm font-medium mb-2 block">Package Thumbnail</Label>
+                            <div className="relative group overflow-hidden rounded-xl border aspect-[16/9] w-full max-h-[360px] bg-muted flex items-center justify-center shadow-md">
+                                <img
+                                    src={thumbnailSrc}
+                                    alt="Package thumbnail"
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        className="shadow-lg"
+                                        onClick={() => {
+                                            form.setValue("thumbnail", undefined);
+                                            setThumbnailFile(undefined);
+                                        }}
+                                    >
+                                        Remove Thumbnail
+                                    </Button>
                                 </div>
-                            )}
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="thumbnail">Upload Thumbnail</Label>
-                            <Input
-                                id="thumbnail"
-                                type="file"
+                    ) : (
+                        <div className="w-full">
+                            <Label className="text-sm font-medium mb-2 block">Upload Thumbnail</Label>
+                            <FileUploader
+                                value={[]}
+                                onChange={(files) => {
+                                    if (files.length > 0) {
+                                        form.setValue("thumbnail", files[0]);
+                                    }
+                                }}
+                                maxFiles={1}
                                 accept="image/*"
-                                onChange={handleThumbnailUpload}
                                 className="w-full"
                             />
-                            <p className="text-sm">
-                                Recommended: 400x300px, JPG or PNG
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Recommended: 400x300px, JPG or PNG (under 5MB)
                             </p>
                         </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
 
