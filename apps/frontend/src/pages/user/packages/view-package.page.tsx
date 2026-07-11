@@ -552,7 +552,7 @@ export default function ViewPackagePage() {
 
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Payment Milestones</CardTitle>
+                                        <CardTitle>Payment Structure</CardTitle>
                                         <CardDescription>
                                             How and when to pay for this package
                                         </CardDescription>
@@ -571,7 +571,7 @@ export default function ViewPackagePage() {
                                                             <div className="flex items-start justify-between">
                                                                 <div>
                                                                     <h4 className="font-semibold text-lg">
-                                                                        {milestone?.name || "Payment Milestone"}
+                                                                        {milestone?.name || "Payment Option"}
                                                                     </h4>
                                                                     <p className="text-sm text-muted-foreground mt-1">
                                                                         {milestone?.description || "No description"}
@@ -582,7 +582,7 @@ export default function ViewPackagePage() {
                                                                         {milestone?.amount || 0}%
                                                                     </div>
                                                                     <div className="text-sm font-medium capitalize text-muted-foreground mt-1">
-                                                                        {milestone?.dueDate?.replace("_", " ") || "Not specified"}
+                                                                        {milestone?.dueDate?.replace(/_/g, " ") || "Not specified"}
                                                                     </div>
                                                                 </div>
                                                             </div>

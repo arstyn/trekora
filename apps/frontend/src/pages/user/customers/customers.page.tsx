@@ -51,10 +51,12 @@ export default function CustomerManagement() {
 				setIsAddingCustomer(false);
 			}
 		} else {
-			setSelectedCustomer(null);
+			if (!isEditDialogOpen) {
+				setSelectedCustomer(null);
+			}
 			setIsViewDialogOpen(false);
 		}
-	}, [location.search, customers]);
+	}, [location.search, customers, isEditDialogOpen]);
 
 	const filteredCustomers = customers.filter(
 		(customer) =>

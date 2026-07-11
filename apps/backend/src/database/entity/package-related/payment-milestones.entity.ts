@@ -18,6 +18,9 @@ export class PaymentMilestone {
   @Column({ nullable: true })
   dueDate: string;
 
+  @Column({ type: 'int', default: 1 })
+  order: number;
+
   @Column({ type: 'uuid', nullable: true })
   packageId: string;
 

@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { FileUploader } from "@/components/file-uploader";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,8 +6,6 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
-    DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -30,16 +28,17 @@ import axiosInstance from "@/lib/axios";
 import type { ICustomer, IRelative } from "@/types/customer.type";
 import { format } from "date-fns";
 import {
+    ArrowLeft,
+    ArrowRight,
     CalendarIcon,
-    Eye,
+    ChevronRight,
     Image as ImageIcon,
     Loader2,
     Plus,
-    Upload,
     X,
 } from "lucide-react";
 import type React from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 interface EnhancedCustomerFormProps {
     customer?: ICustomer;
@@ -98,15 +97,57 @@ export default function EnhancedCustomerForm({
         voterIdPhotos: customer?.voterIdPhotos || [],
         aadhaarIdPhotos: customer?.aadhaarIdPhotos || [],
     });
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
-    const [imageModalOpen, setImageModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const fileInputRefs = {
-        profilePhoto: useRef<HTMLInputElement>(null),
-        passportPhotos: useRef<HTMLInputElement>(null),
-        voterIdPhotos: useRef<HTMLInputElement>(null),
-        aadhaarIdPhotos: useRef<HTMLInputElement>(null),
+    const [step, setStep] = useState(1);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+
+    const parseLocalYYYYMMDD = (dateStr: string | undefined): Date | undefined => {
+        if (!dateStr) return undefined;
+        const parts = dateStr.split("-");
+        if (parts.length !== 3) return undefined;
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // 0-indexed
+        const day = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+    };
+
+    const toLocalYYYYMMDD = (date: Date): string => {
+        return format(date, "yyyy-MM-dd");
+    };
+
+    const formatLocalString = (dateStr: string | undefined, formatStr: string = "PPP"): string => {
+        const parsed = parseLocalYYYYMMDD(dateStr);
+        if (!parsed) return "Select date";
+        return format(parsed, formatStr);
+    };
+
+    const validateStep = (currentStep: number) => {
+        const newErrors: Record<string, string> = {};
+
+        if (currentStep === 1) {
+            if (!formData.firstName || !formData.firstName.trim()) {
+                newErrors.firstName = "First Name is required";
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleNext = () => {
+        if (validateStep(step)) {
+            setStep((prev) => prev + 1);
+            setError(null);
+        } else {
+            setError("Please fill in the required fields to proceed.");
+        }
+    };
+
+    const handleBack = () => {
+        setStep((prev) => prev - 1);
+        setError(null);
     };
 
     const handleChange = (
@@ -120,68 +161,55 @@ export default function EnhancedCustomerForm({
         setFormData({ ...formData, [name]: value });
     };
 
-    const handleFileChange = (
-        e: React.ChangeEvent<HTMLInputElement>,
-        field: string,
-    ) => {
-        const selectedFiles = Array.from(e.target.files || []);
+    const handleFileUploaderChange = (field: string, newFiles: File[], maxFiles: number) => {
+        if (maxFiles === 1) {
+            // Revoke old previews first
+            if (filePreviews[field]) {
+                filePreviews[field].forEach((url) => URL.revokeObjectURL(url));
+            }
+            setExistingImages((prev) => ({ ...prev, [field]: [] }));
+            setFiles((prev) => ({ ...prev, [field]: newFiles }));
+            setFilePreviews((prev) => ({
+                ...prev,
+                [field]: newFiles.map((file) => URL.createObjectURL(file)),
+            }));
+        } else {
+            setFiles((prev) => ({
+                ...prev,
+                [field]: [...(prev[field] || []), ...newFiles],
+            }));
+            setFilePreviews((prev) => ({
+                ...prev,
+                [field]: [
+                    ...(prev[field] || []),
+                    ...newFiles.map((file) => URL.createObjectURL(file)),
+                ],
+            }));
+        }
+    };
 
-        // Store files for submission
-        setFiles((prev) => ({
+    const handleFileUploaderRemoveExisting = (field: string, index: number) => {
+        setExistingImages((prev) => ({
             ...prev,
-            [field]: [...(prev[field] || []), ...selectedFiles],
-        }));
-
-        // Create preview URLs
-        const previewUrls = selectedFiles.map((file) =>
-            URL.createObjectURL(file),
-        );
-        setFilePreviews((prev) => ({
-            ...prev,
-            [field]: [...(prev[field] || []), ...previewUrls],
-        }));
-
-        // Update form data with file names
-        const fileNames = selectedFiles.map((f) => f.name);
-        setFormData((prev) => ({
-            ...prev,
-            [field]: [
-                ...((prev[field as keyof ICustomer] as string[]) || []),
-                ...fileNames,
-            ],
+            [field]: prev[field]?.filter((_, i) => i !== index) || [],
         }));
     };
 
-    const removeFile = (
-        index: number,
-        field: string,
-        isExisting: boolean = false,
-    ) => {
-        if (isExisting) {
-            // Remove existing image
-            setExistingImages((prev) => ({
+    const handleFileUploaderRemoveNew = (field: string, index: number) => {
+        setFiles((prev) => ({
+            ...prev,
+            [field]: prev[field]?.filter((_, i) => i !== index) || [],
+        }));
+        setFilePreviews((prev) => {
+            const previews = prev[field] || [];
+            if (previews[index]) {
+                URL.revokeObjectURL(previews[index]);
+            }
+            return {
                 ...prev,
-                [field]: prev[field]?.filter((_, i) => i !== index) || [],
-            }));
-        } else {
-            // Remove from files
-            setFiles((prev) => ({
-                ...prev,
-                [field]: (prev[field] || []).filter((_, i) => i !== index),
-            }));
-
-            // Remove preview URL and revoke it
-            setFilePreviews((prev) => {
-                const previews = prev[field] || [];
-                if (previews[index]) {
-                    URL.revokeObjectURL(previews[index]);
-                }
-                return {
-                    ...prev,
-                    [field]: previews.filter((_, i) => i !== index),
-                };
-            });
-        }
+                [field]: previews.filter((_, i) => i !== index),
+            };
+        });
     };
 
     const addRelative = () => {
@@ -206,14 +234,17 @@ export default function EnhancedCustomerForm({
         setRelatives(updated);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
+    const submitFormData = async () => {
         const formDataToSubmit = new FormData();
 
-        // Add all form fields (filter out empty values)
+        // Add all form fields (filter out empty values and file fields that we handle via existingImages/files)
         Object.entries(formData).forEach(([key, value]) => {
-            if (key === "relatives") return; // Handle separately
+            if (
+                key === "relatives" ||
+                ["profilePhoto", "passportPhotos", "voterIdPhotos", "aadhaarIdPhotos"].includes(key)
+            ) {
+                return; // Handle separately
+            }
 
             // Skip empty strings, null, undefined, and empty arrays
             if (
@@ -231,6 +262,19 @@ export default function EnhancedCustomerForm({
                 });
             } else {
                 formDataToSubmit.append(key, value.toString());
+            }
+        });
+
+        // Add existing images that weren't deleted
+        Object.entries(existingImages).forEach(([fieldName, urls]) => {
+            if (fieldName === "profilePhoto") {
+                if (urls.length > 0 && urls[0]) {
+                    formDataToSubmit.append("profilePhoto", urls[0]);
+                }
+            } else {
+                urls.forEach((url, index) => {
+                    formDataToSubmit.append(`${fieldName}[${index}]`, url);
+                });
             }
         });
 
@@ -301,601 +345,219 @@ export default function EnhancedCustomerForm({
         }
     };
 
-    const FileUploadSection = ({
-        field,
-        label,
-        acceptedTypes = "image/*",
-        isProfilePhoto = false,
-    }: {
-        field: string;
-        label: string;
-        acceptedTypes?: string;
-        isProfilePhoto?: boolean;
-    }) => {
-        const previews = filePreviews[field] || [];
-        const existingImagesForField = existingImages[field] || [];
-        const fileInputRef = fileInputRefs[field as keyof typeof fileInputRefs];
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
 
-        return (
-            <div className="space-y-3">
-                <Label className="text-sm font-medium">{label}</Label>
+        if (step < 4) {
+            handleNext();
+            return;
+        }
 
-                {isProfilePhoto ? (
-                    <div className="flex items-start gap-6">
-                        <div className="flex-shrink-0">
-                            <div className="w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden bg-gray-50 flex items-center justify-center">
-                                {previews.length > 0 ? (
-                                    <img
-                                        src={previews[0]}
-                                        alt="Profile preview"
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : existingImagesForField.length > 0 ? (
-                                    <img
-                                        src={existingImagesForField[0]}
-                                        alt="Profile preview"
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="text-center">
-                                        <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                                        <span className="text-sm text-gray-500">
-                                            No image
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="flex-1 space-y-3">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => fileInputRef?.current?.click()}
-                                className="flex items-center gap-2 h-10 px-4"
-                                size="sm"
-                            >
-                                <Upload className="h-4 w-4" />
-                                {previews.length > 0 ||
-                                    existingImagesForField.length > 0
-                                    ? "Change Photo"
-                                    : "Upload Photo"}
-                            </Button>
-                            {(previews.length > 0 ||
-                                existingImagesForField.length > 0) && (
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                            removeFile(
-                                                0,
-                                                field,
-                                                existingImagesForField.length > 0 &&
-                                                previews.length === 0,
-                                            )
-                                        }
-                                        className="h-10 px-4 text-destructive hover:text-destructive"
-                                    >
-                                        Remove
-                                    </Button>
-                                )}
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept={acceptedTypes}
-                                onChange={(e) => handleFileChange(e, field)}
-                                className="hidden"
-                            />
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => fileInputRef?.current?.click()}
-                                className="flex items-center gap-2 h-9 px-3"
-                                size="sm"
-                            >
-                                <Upload className="h-4 w-4" />
-                                Upload Files
-                            </Button>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                multiple
-                                accept={acceptedTypes}
-                                onChange={(e) => handleFileChange(e, field)}
-                                className="hidden"
-                            />
-                        </div>
+        if (!validateStep(1)) {
+            setError("First name is required.");
+            setStep(1);
+            return;
+        }
 
-                        {/* Show existing images */}
-                        {existingImagesForField.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                {existingImagesForField.map((image, index) => (
-                                    <div
-                                        key={`existing-${index}`}
-                                        className="relative group"
-                                    >
-                                        <div className="w-full h-20 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50">
-                                            <img
-                                                src={image}
-                                                alt={`Existing ${index + 1}`}
-                                                className="w-full h-full object-cover cursor-pointer"
-                                                onClick={() => {
-                                                    setSelectedImage(image);
-                                                    setImageModalOpen(true);
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="absolute inset-0 group-hover:bg-black/40 transition-all duration-200 rounded-lg flex items-center justify-center">
-                                            <Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </div>
-                                        <Badge
-                                            variant="secondary"
-                                            className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                                        >
-                                            {index + 1}
-                                        </Badge>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                                removeFile(index, field, true)
-                                            }
-                                            className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white rounded-full"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Show new upload previews */}
-                        {previews.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                {previews.map((preview, index) => (
-                                    <div
-                                        key={`new-${index}`}
-                                        className="relative group"
-                                    >
-                                        <div className="w-full h-20 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50">
-                                            <img
-                                                src={preview}
-                                                alt={`Preview ${index + 1}`}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                                removeFile(index, field, false)
-                                            }
-                                            className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white rounded-full"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        );
+        await submitFormData();
     };
+
+    const handleSaveEarly = async () => {
+        if (!validateStep(1)) {
+            setError("First name is required.");
+            setStep(1);
+            return;
+        }
+
+        await submitFormData();
+    };
+
+
 
     return (
         <Dialog open={true} onOpenChange={onCancel}>
-            <DialogContent className="min-w-7xl w-[90vw] h-[90vh] max-h-[90vh]  flex flex-col">
-                <form onSubmit={handleSubmit} className="flex flex-col h-full">
-                    <DialogHeader className="flex-shrink-0 pb-4">
-                        <DialogTitle className="text-2xl font-bold">
+            <DialogContent className="responsive-dialog sm:max-w-6xl w-[95vw] h-[85vh] max-lg:h-auto max-lg:max-h-[90vh] overflow-hidden max-lg:overflow-y-auto p-0 flex gap-0 flex-col rounded-xl border bg-background shadow-2xl">
+                <style>{`
+                    @media (max-height: 800px) {
+                        .responsive-dialog {
+                            height: auto !important;
+                            max-height: 90vh !important;
+                            overflow-y: auto !important;
+                        }
+                        .responsive-layout, .responsive-left {
+                            overflow: visible !important;
+                            height: auto !important;
+                        }
+                        .responsive-scroll {
+                            height: auto !important;
+                            overflow: visible !important;
+                        }
+                    }
+                `}</style>
+
+                {/* Stepper Header */}
+                <div className="pl-6 pr-12 py-4 border-b bg-card flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
+                    <div>
+                        <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
                             {customer ? "Edit Customer" : "Add New Customer"}
                         </DialogTitle>
-                        <DialogDescription className="text-base">
+                        <DialogDescription className="text-xs text-muted-foreground mt-0.5">
                             {customer
-                                ? "Update customer information in your travel agency database."
-                                : "Add a new customer to your travel agency database."}
+                                ? "Update customer details, documentation, and preferences."
+                                : "Follow the steps to add a new customer to your database."}
                         </DialogDescription>
-                    </DialogHeader>
+                    </div>
 
-                    <ScrollArea className="flex-1 pr-4 overflow-y-auto">
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            {/* Personal Information Section */}
-                            <div className="rounded-lg border p-4">
-                                <h3 className="text-lg font-semibold mb-4 text-primary border-b pb-2">
-                                    Personal Information
-                                </h3>
-                                <div className="space-y-4">
-                                    {/* Profile Photo Section - Moved to top and made bigger */}
-                                    <div className="space-y-2">
-                                        <FileUploadSection
-                                            field="profilePhoto"
-                                            label="Profile Photo"
-                                            isProfilePhoto={true}
-                                        />
-                                    </div>
+                    {/* Stepper Steps */}
+                    <div className="flex items-center gap-2 self-start md:self-auto flex-shrink-0">
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold flex-shrink-0 ${step >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>1</span>
+                            <span className={`text-xs hidden sm:inline font-medium flex-shrink-0 ${step === 1 ? 'text-foreground' : 'text-muted-foreground'}`}>Personal</span>
+                        </div>
+                        <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold flex-shrink-0 ${step >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>2</span>
+                            <span className={`text-xs hidden sm:inline font-medium flex-shrink-0 ${step === 2 ? 'text-foreground' : 'text-muted-foreground'}`}>Contact</span>
+                        </div>
+                        <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold flex-shrink-0 ${step >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>3</span>
+                            <span className={`text-xs hidden sm:inline font-medium flex-shrink-0 ${step === 3 ? 'text-foreground' : 'text-muted-foreground'}`}>Documents</span>
+                        </div>
+                        <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold flex-shrink-0 ${step >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>4</span>
+                            <span className={`text-xs hidden sm:inline font-medium flex-shrink-0 ${step === 4 ? 'text-foreground' : 'text-muted-foreground'}`}>Preferences</span>
+                        </div>
+                    </div>
+                </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="firstName"
-                                                className="text-sm font-medium"
-                                            >
-                                                First Name *
-                                            </Label>
-                                            <Input
-                                                id="firstName"
-                                                name="firstName"
-                                                value={formData.firstName}
-                                                onChange={handleChange}
-                                                required
-                                                className="h-9"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="middleName"
-                                                className="text-sm font-medium"
-                                            >
-                                                Middle Name
-                                            </Label>
-                                            <Input
-                                                id="middleName"
-                                                name="middleName"
-                                                value={formData.middleName}
-                                                onChange={handleChange}
-                                                className="h-9"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="lastName"
-                                                className="text-sm font-medium"
-                                            >
-                                                Last Name
-                                            </Label>
-                                            <Input
-                                                id="lastName"
-                                                name="lastName"
-                                                value={formData.lastName}
-                                                onChange={handleChange}
-                                                className="h-9"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="gender"
-                                                className="text-sm font-medium"
-                                            >
-                                                Gender
-                                            </Label>
-                                            <Select
-                                                value={formData.gender}
-                                                onValueChange={(value) =>
-                                                    handleSelectChange(
-                                                        "gender",
-                                                        value,
-                                                    )
-                                                }
-                                            >
-                                                <SelectTrigger className="h-9">
-                                                    <SelectValue placeholder="Select gender" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="male">
-                                                        Male
-                                                    </SelectItem>
-                                                    <SelectItem value="female">
-                                                        Female
-                                                    </SelectItem>
-                                                    <SelectItem value="other">
-                                                        Other
-                                                    </SelectItem>
-                                                    <SelectItem value="prefer_not_to_say">
-                                                        Prefer not to say
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-medium">
-                                            Date of Birth
-                                        </Label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className="h-9 justify-start text-left font-normal"
-                                                >
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {formData.dateOfBirth
-                                                        ? format(
-                                                            new Date(
-                                                                formData.dateOfBirth,
-                                                            ),
-                                                            "PPP",
-                                                        )
-                                                        : "Select date"}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent
-                                                className="w-auto p-0"
-                                                align="start"
-                                            >
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={
-                                                        formData.dateOfBirth
-                                                            ? new Date(
-                                                                formData.dateOfBirth,
-                                                            )
-                                                            : undefined
-                                                    }
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            setFormData({
-                                                                ...formData,
-                                                                dateOfBirth:
-                                                                    date
-                                                                        .toISOString()
-                                                                        .split(
-                                                                            "T",
-                                                                        )[0],
-                                                            });
-                                                        }
-                                                    }}
-                                                    disabled={[
-                                                        { after: new Date() },
-                                                        { before: new Date("1900-01-01") }
-                                                    ]}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Contact Information Section */}
-                            <div className="rounded-lg border p-4">
-                                <h3 className="text-lg font-semibold mb-4 text-primary border-b pb-2">
-                                    Contact Information
-                                </h3>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="email"
-                                                className="text-sm font-medium"
-                                            >
-                                                Email
-                                            </Label>
-                                            <Input
-                                                id="email"
-                                                name="email"
-                                                type="email"
-                                                value={formData.email}
-                                                onChange={handleChange}
-                                                className="h-9"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="phone"
-                                                className="text-sm font-medium"
-                                            >
-                                                Phone
-                                            </Label>
-                                            <Input
-                                                id="phone"
-                                                name="phone"
-                                                value={formData.phone}
-                                                onChange={handleChange}
-                                                className="h-9"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label
-                                            htmlFor="alternativePhone"
-                                            className="text-sm font-medium"
-                                        >
-                                            Alternative Phone
-                                        </Label>
-                                        <Input
-                                            id="alternativePhone"
-                                            name="alternativePhone"
-                                            value={formData.alternativePhone}
-                                            onChange={handleChange}
-                                            className="h-9"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label
-                                            htmlFor="address"
-                                            className="text-sm font-medium"
-                                        >
-                                            Address
-                                        </Label>
-                                        <Textarea
-                                            id="address"
-                                            name="address"
-                                            value={formData.address}
-                                            onChange={handleChange}
-                                            rows={3}
-                                            className="resize-none"
-                                        />
-                                    </div>
+                <form onSubmit={handleSubmit} className="responsive-layout flex-1 flex overflow-hidden max-lg:overflow-visible min-h-0 p-0 m-0">
+                    {/* Left Side: Step Forms */}
+                    <div className="responsive-left flex-1 flex flex-col overflow-hidden max-lg:overflow-visible min-h-0 bg-background border-r">
+                        <ScrollArea className="responsive-scroll flex-1 overflow-y-auto px-6 py-6 max-lg:h-auto max-lg:overflow-visible">
+                            {/* STEP 1: PERSONAL DETAILS */}
+                            {step === 1 && (
+                                <div className="space-y-6">
                                     <div>
-                                        <h4 className="font-semibold text-base mb-3">
-                                            Emergency Contact
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor="emergencyContactName"
-                                                    className="text-sm font-medium"
-                                                >
-                                                    Name
-                                                </Label>
-                                                <Input
-                                                    id="emergencyContactName"
-                                                    name="emergencyContactName"
-                                                    value={
-                                                        formData.emergencyContactName
-                                                    }
-                                                    onChange={handleChange}
-                                                    className="h-9"
+                                        <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">
+                                            Personal Details
+                                        </h3>
+                                        <div className="space-y-6">
+                                            {/* Profile Photo Section */}
+                                            <div className="flex flex-col items-center">
+                                                <Label className="text-sm font-medium mb-2">Profile Photo</Label>
+                                                <FileUploader
+                                                    value={[
+                                                        ...(existingImages.profilePhoto || []),
+                                                        ...(files.profilePhoto || []),
+                                                    ]}
+                                                    onChange={(newFiles) => handleFileUploaderChange("profilePhoto", newFiles, 1)}
+                                                    onRemoveExisting={(idx) => handleFileUploaderRemoveExisting("profilePhoto", idx)}
+                                                    onRemoveNew={(idx) => handleFileUploaderRemoveNew("profilePhoto", idx)}
+                                                    maxFiles={1}
+                                                    isCircular={true}
+                                                    accept="image/*"
                                                 />
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor="emergencyContactPhone"
-                                                    className="text-sm font-medium"
-                                                >
-                                                    Phone
-                                                </Label>
-                                                <Input
-                                                    id="emergencyContactPhone"
-                                                    name="emergencyContactPhone"
-                                                    value={
-                                                        formData.emergencyContactPhone
-                                                    }
-                                                    onChange={handleChange}
-                                                    className="h-9"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor="emergencyContactRelation"
-                                                    className="text-sm font-medium"
-                                                >
-                                                    Relation
-                                                </Label>
-                                                <Input
-                                                    id="emergencyContactRelation"
-                                                    name="emergencyContactRelation"
-                                                    value={
-                                                        formData.emergencyContactRelation
-                                                    }
-                                                    onChange={handleChange}
-                                                    className="h-9"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* Documents Section */}
-                            <div className="rounded-lg border p-4">
-                                <h3 className="text-lg font-semibold mb-4 text-primary border-b pb-2">
-                                    Documents
-                                </h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="firstName" className="text-sm font-medium">
+                                                        First Name *
+                                                    </Label>
+                                                    <Input
+                                                        id="firstName"
+                                                        name="firstName"
+                                                        value={formData.firstName}
+                                                        onChange={handleChange}
+                                                        className={`h-9 ${errors.firstName ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                                                    />
+                                                    {errors.firstName && (
+                                                        <p className="text-xs text-destructive font-medium">{errors.firstName}</p>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="middleName" className="text-sm font-medium">
+                                                        Middle Name
+                                                    </Label>
+                                                    <Input
+                                                        id="middleName"
+                                                        name="middleName"
+                                                        value={formData.middleName}
+                                                        onChange={handleChange}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                            </div>
 
-                                {/* Passport Details */}
-                                <div className="mb-6">
-                                    <h4 className="text-base font-medium mb-3">
-                                        Passport Details
-                                    </h4>
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor="passportNumber"
-                                                    className="text-sm font-medium"
-                                                >
-                                                    Passport Number
-                                                </Label>
-                                                <Input
-                                                    id="passportNumber"
-                                                    name="passportNumber"
-                                                    value={
-                                                        formData.passportNumber
-                                                    }
-                                                    onChange={handleChange}
-                                                    className="h-9"
-                                                />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="lastName" className="text-sm font-medium">
+                                                        Last Name
+                                                    </Label>
+                                                    <Input
+                                                        id="lastName"
+                                                        name="lastName"
+                                                        value={formData.lastName}
+                                                        onChange={handleChange}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="gender" className="text-sm font-medium">
+                                                        Gender
+                                                    </Label>
+                                                    <Select
+                                                        value={formData.gender}
+                                                        onValueChange={(value) =>
+                                                            handleSelectChange("gender", value)
+                                                        }
+                                                    >
+                                                        <SelectTrigger className="h-9">
+                                                            <SelectValue placeholder="Select gender" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="male">Male</SelectItem>
+                                                            <SelectItem value="female">Female</SelectItem>
+                                                            <SelectItem value="other">Other</SelectItem>
+                                                            <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor="passportCountry"
-                                                    className="text-sm font-medium"
-                                                >
-                                                    Country
-                                                </Label>
-                                                <Input
-                                                    id="passportCountry"
-                                                    name="passportCountry"
-                                                    value={
-                                                        formData.passportCountry
-                                                    }
-                                                    onChange={handleChange}
-                                                    className="h-9"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-medium">
-                                                    Issue Date
+
+                                            <div className="space-y-2 flex flex-col">
+                                                <Label className="text-sm font-medium mb-1">
+                                                    Date of Birth
                                                 </Label>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <Button
+                                                            type="button"
                                                             variant="outline"
-                                                            className="h-9 justify-start text-left font-normal"
+                                                            className="h-9 justify-start text-left font-normal w-full"
                                                         >
-                                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                                            {formData.passportIssueDate
-                                                                ? format(
-                                                                    new Date(
-                                                                        formData.passportIssueDate,
-                                                                    ),
-                                                                    "PPP",
-                                                                )
+                                                            <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                            {formData.dateOfBirth
+                                                                ? formatLocalString(formData.dateOfBirth, "PPP")
                                                                 : "Select date"}
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent
-                                                        className="w-auto p-0"
-                                                        align="start"
-                                                    >
+                                                    <PopoverContent className="w-auto p-0" align="start">
                                                         <Calendar
                                                             mode="single"
                                                             selected={
-                                                                formData.passportIssueDate
-                                                                    ? new Date(
-                                                                        formData.passportIssueDate,
-                                                                    )
+                                                                formData.dateOfBirth
+                                                                    ? parseLocalYYYYMMDD(formData.dateOfBirth)
                                                                     : undefined
                                                             }
-                                                            onSelect={(
-                                                                date,
-                                                            ) => {
+                                                            onSelect={(date) => {
                                                                 if (date) {
-                                                                    setFormData(
-                                                                        {
-                                                                            ...formData,
-                                                                            passportIssueDate:
-                                                                                date
-                                                                                    .toISOString()
-                                                                                    .split(
-                                                                                        "T",
-                                                                                    )[0],
-                                                                        },
-                                                                    );
+                                                                    setFormData({
+                                                                        ...formData,
+                                                                        dateOfBirth: toLocalYYYYMMDD(date),
+                                                                    });
                                                                 }
                                                             }}
                                                             disabled={[
@@ -907,407 +569,670 @@ export default function EnhancedCustomerForm({
                                                     </PopoverContent>
                                                 </Popover>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-medium">
-                                                    Expiry Date
-                                                </Label>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            className="h-9 justify-start text-left font-normal"
-                                                        >
-                                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                                            {formData.passportExpiryDate
-                                                                ? format(
-                                                                    new Date(
-                                                                        formData.passportExpiryDate,
-                                                                    ),
-                                                                    "PPP",
-                                                                )
-                                                                : "Select date"}
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent
-                                                        className="w-auto p-0"
-                                                        align="start"
-                                                    >
-                                                        <Calendar
-                                                            mode="single"
-                                                            selected={
-                                                                formData.passportExpiryDate
-                                                                    ? new Date(
-                                                                        formData.passportExpiryDate,
-                                                                    )
-                                                                    : undefined
-                                                            }
-                                                            onSelect={(
-                                                                date,
-                                                            ) => {
-                                                                if (date) {
-                                                                    setFormData(
-                                                                        {
-                                                                            ...formData,
-                                                                            passportExpiryDate:
-                                                                                date
-                                                                                    .toISOString()
-                                                                                    .split(
-                                                                                        "T",
-                                                                                    )[0],
-                                                                        },
-                                                                    );
-                                                                }
-                                                            }}
-                                                            disabled={{ before: new Date() }}
-                                                            initialFocus
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <FileUploadSection
-                                                field="passportPhotos"
-                                                label="Passport Photos"
-                                            />
                                         </div>
                                     </div>
                                 </div>
+                            )}
 
-                                {/* ID Documents */}
-                                <div>
-                                    <h4 className="text-base font-medium mb-3">
-                                        ID Documents
-                                    </h4>
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor="voterId"
-                                                    className="text-sm font-medium"
-                                                >
-                                                    Voter ID
-                                                </Label>
-                                                <Input
-                                                    id="voterId"
-                                                    name="voterId"
-                                                    value={formData.voterId}
-                                                    onChange={handleChange}
-                                                    className="h-9"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor="aadhaarId"
-                                                    className="text-sm font-medium"
-                                                >
-                                                    Aadhaar ID
-                                                </Label>
-                                                <Input
-                                                    id="aadhaarId"
-                                                    name="aadhaarId"
-                                                    value={formData.aadhaarId}
-                                                    onChange={handleChange}
-                                                    className="h-9"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FileUploadSection
-                                                field="voterIdPhotos"
-                                                label="Voter ID Photos"
-                                            />
-                                            <FileUploadSection
-                                                field="aadhaarIdPhotos"
-                                                label="Aadhaar ID Photos"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Relatives Section */}
-                            <div className="rounded-lg border p-4">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-semibold text-primary border-b pb-2">
-                                        Relatives Information
-                                    </h3>
-                                    <Button
-                                        type="button"
-                                        onClick={addRelative}
-                                        size="sm"
-                                        className="h-8 px-3"
-                                    >
-                                        <Plus className="h-4 w-4 mr-1" />
-                                        Add Relative
-                                    </Button>
-                                </div>
-                                <div className="space-y-4">
-                                    {relatives.map((relative, index) => (
-                                        <Card
-                                            key={index}
-                                            className="border-l-4 border-l-blue-500"
-                                        >
-                                            <CardContent className="p-4">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <h4 className="font-semibold text-sm">
-                                                        Relative {index + 1}
-                                                    </h4>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            removeRelative(
-                                                                index,
-                                                            )
-                                                        }
-                                                        className="h-7 w-7 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
+                            {/* STEP 2: CONTACT INFORMATION */}
+                            {step === 2 && (
+                                <div className="space-y-6">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">
+                                            Contact & Emergency Details
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="email" className="text-sm font-medium">
+                                                        Email Address
+                                                    </Label>
+                                                    <Input
+                                                        id="email"
+                                                        name="email"
+                                                        type="email"
+                                                        value={formData.email}
+                                                        onChange={handleChange}
+                                                        className="h-9"
+                                                    />
                                                 </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="phone" className="text-sm font-medium">
+                                                        Phone Number
+                                                    </Label>
+                                                    <Input
+                                                        id="phone"
+                                                        name="phone"
+                                                        value={formData.phone}
+                                                        onChange={handleChange}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="alternativePhone" className="text-sm font-medium">
+                                                    Alternative Phone
+                                                </Label>
+                                                <Input
+                                                    id="alternativePhone"
+                                                    name="alternativePhone"
+                                                    value={formData.alternativePhone}
+                                                    onChange={handleChange}
+                                                    className="h-9"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="address" className="text-sm font-medium">
+                                                    Physical Address
+                                                </Label>
+                                                <Textarea
+                                                    id="address"
+                                                    name="address"
+                                                    value={formData.address}
+                                                    onChange={handleChange}
+                                                    rows={3}
+                                                    className="resize-none"
+                                                />
+                                            </div>
+
+                                            <div className="pt-4 border-t">
+                                                <h4 className="font-semibold text-base mb-3 text-foreground">
+                                                    Emergency Contact
+                                                </h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <div className="space-y-2">
-                                                        <Label className="text-sm font-medium">
-                                                            Name
+                                                        <Label htmlFor="emergencyContactName" className="text-sm font-medium">
+                                                            Contact Name
                                                         </Label>
                                                         <Input
-                                                            value={
-                                                                relative.name
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateRelative(
-                                                                    index,
-                                                                    "name",
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
+                                                            id="emergencyContactName"
+                                                            name="emergencyContactName"
+                                                            value={formData.emergencyContactName}
+                                                            onChange={handleChange}
                                                             className="h-9"
                                                         />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-sm font-medium">
+                                                        <Label htmlFor="emergencyContactPhone" className="text-sm font-medium">
+                                                            Contact Phone
+                                                        </Label>
+                                                        <Input
+                                                            id="emergencyContactPhone"
+                                                            name="emergencyContactPhone"
+                                                            value={formData.emergencyContactPhone}
+                                                            onChange={handleChange}
+                                                            className="h-9"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="emergencyContactRelation" className="text-sm font-medium">
                                                             Relation
                                                         </Label>
                                                         <Input
-                                                            value={
-                                                                relative.relation
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateRelative(
-                                                                    index,
-                                                                    "relation",
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="h-9"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium">
-                                                            Phone
-                                                        </Label>
-                                                        <Input
-                                                            value={
-                                                                relative.phone
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateRelative(
-                                                                    index,
-                                                                    "phone",
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="h-9"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium">
-                                                            Address
-                                                        </Label>
-                                                        <Input
-                                                            value={
-                                                                relative.address
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateRelative(
-                                                                    index,
-                                                                    "address",
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
+                                                            id="emergencyContactRelation"
+                                                            name="emergencyContactRelation"
+                                                            value={formData.emergencyContactRelation}
+                                                            onChange={handleChange}
                                                             className="h-9"
                                                         />
                                                     </div>
                                                 </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                    {relatives.length === 0 && (
-                                        <div className="text-center py-8">
-                                            <div className="text-muted-foreground">
-                                                <Plus className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                                <p className="text-sm font-medium">
-                                                    No relatives added yet
-                                                </p>
-                                                <p className="text-xs">
-                                                    Click "Add Relative" to get
-                                                    started
-                                                </p>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Travel Preferences Section */}
-                            <div className="rounded-lg border p-4">
-                                <h3 className="text-lg font-semibold mb-4 text-primary border-b pb-2">
-                                    Travel Preferences
-                                </h3>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="dietaryRestrictions"
-                                                className="text-sm font-medium"
-                                            >
-                                                Dietary Restrictions
-                                            </Label>
-                                            <Textarea
-                                                id="dietaryRestrictions"
-                                                name="dietaryRestrictions"
-                                                value={
-                                                    formData.dietaryRestrictions
-                                                }
-                                                onChange={handleChange}
-                                                rows={3}
-                                                className="resize-none"
-                                                placeholder="Enter any dietary restrictions or preferences..."
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="medicalConditions"
-                                                className="text-sm font-medium"
-                                            >
-                                                Medical Conditions
-                                            </Label>
-                                            <Textarea
-                                                id="medicalConditions"
-                                                name="medicalConditions"
-                                                value={
-                                                    formData.medicalConditions
-                                                }
-                                                onChange={handleChange}
-                                                rows={3}
-                                                className="resize-none"
-                                                placeholder="Enter any medical conditions or health requirements..."
-                                            />
-                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="specialRequests"
-                                                className="text-sm font-medium"
-                                            >
-                                                Special Requests
-                                            </Label>
-                                            <Textarea
-                                                id="specialRequests"
-                                                name="specialRequests"
-                                                value={formData.specialRequests}
-                                                onChange={handleChange}
-                                                rows={3}
-                                                className="resize-none"
-                                                placeholder="Enter any special requests or preferences..."
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="notes"
-                                                className="text-sm font-medium"
-                                            >
-                                                Additional Notes
-                                            </Label>
-                                            <Textarea
-                                                id="notes"
-                                                name="notes"
-                                                value={formData.notes}
-                                                onChange={handleChange}
-                                                rows={3}
-                                                className="resize-none"
-                                                placeholder="Enter any additional notes or comments..."
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </ScrollArea>
-
-                    <DialogFooter className="flex-shrink-0 pt-4 border-t">
-                        <div className="flex gap-3 w-full justify-between items-center">
-                            {error && (
-                                <div className="text-sm text-destructive font-medium">
-                                    {error}
                                 </div>
                             )}
-                            <div className="flex gap-3">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={onCancel}
-                                    className="h-9 px-4"
-                                    disabled={isLoading}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    className="h-9 px-4"
-                                    disabled={isLoading}
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            {customer ? "Updating..." : "Adding..."}
-                                        </>
-                                    ) : (
-                                        <>
-                                            {customer ? "Update Customer" : "Add Customer"}
-                                        </>
+
+                            {/* STEP 3: IDENTIFICATION DOCUMENTS */}
+                            {step === 3 && (
+                                <div className="space-y-6">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">
+                                            Identification & Travel Documents
+                                        </h3>
+
+                                        {/* Passport details */}
+                                        <div className="mb-6 space-y-4">
+                                            <h4 className="text-base font-medium text-foreground">
+                                                Passport Details
+                                            </h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="passportNumber" className="text-sm font-medium">
+                                                        Passport Number
+                                                    </Label>
+                                                    <Input
+                                                        id="passportNumber"
+                                                        name="passportNumber"
+                                                        value={formData.passportNumber}
+                                                        onChange={handleChange}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="passportCountry" className="text-sm font-medium">
+                                                        Issuing Country
+                                                    </Label>
+                                                    <Input
+                                                        id="passportCountry"
+                                                        name="passportCountry"
+                                                        value={formData.passportCountry}
+                                                        onChange={handleChange}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2 flex flex-col">
+                                                    <Label className="text-sm font-medium mb-1">
+                                                        Issue Date
+                                                    </Label>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                className="h-9 justify-start text-left font-normal w-full"
+                                                            >
+                                                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                                {formData.passportIssueDate
+                                                                    ? formatLocalString(formData.passportIssueDate, "PPP")
+                                                                    : "Select date"}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0" align="start">
+                                                            <Calendar
+                                                                mode="single"
+                                                                selected={
+                                                                    formData.passportIssueDate
+                                                                        ? parseLocalYYYYMMDD(formData.passportIssueDate)
+                                                                        : undefined
+                                                                }
+                                                                onSelect={(date) => {
+                                                                    if (date) {
+                                                                        setFormData({
+                                                                            ...formData,
+                                                                            passportIssueDate: toLocalYYYYMMDD(date),
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                disabled={[
+                                                                    { after: new Date() },
+                                                                    { before: new Date("1900-01-01") }
+                                                                ]}
+                                                                initialFocus
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </div>
+
+                                                <div className="space-y-2 flex flex-col">
+                                                    <Label className="text-sm font-medium mb-1">
+                                                        Expiry Date
+                                                    </Label>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                className="h-9 justify-start text-left font-normal w-full"
+                                                            >
+                                                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                                {formData.passportExpiryDate
+                                                                    ? formatLocalString(formData.passportExpiryDate, "PPP")
+                                                                    : "Select date"}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0" align="start">
+                                                            <Calendar
+                                                                mode="single"
+                                                                selected={
+                                                                    formData.passportExpiryDate
+                                                                        ? parseLocalYYYYMMDD(formData.passportExpiryDate)
+                                                                        : undefined
+                                                                }
+                                                                onSelect={(date) => {
+                                                                    if (date) {
+                                                                        setFormData({
+                                                                            ...formData,
+                                                                            passportExpiryDate: toLocalYYYYMMDD(date),
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                disabled={{ before: new Date() }}
+                                                                initialFocus
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-2">
+                                                <Label className="text-sm font-medium mb-1">Passport Photos</Label>
+                                                <FileUploader
+                                                    value={[
+                                                        ...(existingImages.passportPhotos || []),
+                                                        ...(files.passportPhotos || []),
+                                                    ]}
+                                                    onChange={(newFiles) => handleFileUploaderChange("passportPhotos", newFiles, 10)}
+                                                    onRemoveExisting={(idx) => handleFileUploaderRemoveExisting("passportPhotos", idx)}
+                                                    onRemoveNew={(idx) => handleFileUploaderRemoveNew("passportPhotos", idx)}
+                                                    maxFiles={10}
+                                                    accept="image/*,application/pdf"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* ID Documents */}
+                                        <div className="pt-4 border-t space-y-4">
+                                            <h4 className="text-base font-medium text-foreground">
+                                                National IDs
+                                            </h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="voterId" className="text-sm font-medium">
+                                                        Voter ID Number
+                                                    </Label>
+                                                    <Input
+                                                        id="voterId"
+                                                        name="voterId"
+                                                        value={formData.voterId}
+                                                        onChange={handleChange}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="aadhaarId" className="text-sm font-medium">
+                                                        Aadhaar ID Number
+                                                    </Label>
+                                                    <Input
+                                                        id="aadhaarId"
+                                                        name="aadhaarId"
+                                                        value={formData.aadhaarId}
+                                                        onChange={handleChange}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                                <div className="space-y-1">
+                                                    <Label className="text-sm font-medium mb-1">Voter ID Photos</Label>
+                                                    <FileUploader
+                                                        value={[
+                                                            ...(existingImages.voterIdPhotos || []),
+                                                            ...(files.voterIdPhotos || []),
+                                                        ]}
+                                                        onChange={(newFiles) => handleFileUploaderChange("voterIdPhotos", newFiles, 10)}
+                                                        onRemoveExisting={(idx) => handleFileUploaderRemoveExisting("voterIdPhotos", idx)}
+                                                        onRemoveNew={(idx) => handleFileUploaderRemoveNew("voterIdPhotos", idx)}
+                                                        maxFiles={10}
+                                                        accept="image/*,application/pdf"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-sm font-medium mb-1">Aadhaar ID Photos</Label>
+                                                    <FileUploader
+                                                        value={[
+                                                            ...(existingImages.aadhaarIdPhotos || []),
+                                                            ...(files.aadhaarIdPhotos || []),
+                                                        ]}
+                                                        onChange={(newFiles) => handleFileUploaderChange("aadhaarIdPhotos", newFiles, 10)}
+                                                        onRemoveExisting={(idx) => handleFileUploaderRemoveExisting("aadhaarIdPhotos", idx)}
+                                                        onRemoveNew={(idx) => handleFileUploaderRemoveNew("aadhaarIdPhotos", idx)}
+                                                        maxFiles={10}
+                                                        accept="image/*,application/pdf"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* STEP 4: PREFERENCES & RELATIVES */}
+                            {step === 4 && (
+                                <div className="space-y-6">
+                                    {/* Relatives */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-4 border-b pb-2">
+                                            <h3 className="text-lg font-semibold text-primary">
+                                                Relatives Information
+                                            </h3>
+                                            <Button
+                                                type="button"
+                                                onClick={addRelative}
+                                                size="sm"
+                                                className="h-8 px-3"
+                                            >
+                                                <Plus className="h-4 w-4 mr-1" />
+                                                Add Relative
+                                            </Button>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {relatives.map((relative, idx) => (
+                                                <Card key={idx} className="border-l-4 border-l-primary/60 shadow-sm">
+                                                    <CardContent className="p-4">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h4 className="font-semibold text-sm text-foreground">
+                                                                Relative {idx + 1}
+                                                            </h4>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => removeRelative(idx)}
+                                                                className="h-7 w-7 p-0 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">Name</Label>
+                                                                <Input
+                                                                    value={relative.name}
+                                                                    onChange={(e) => updateRelative(idx, "name", e.target.value)}
+                                                                    className="h-9"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">Relation</Label>
+                                                                <Input
+                                                                    value={relative.relation}
+                                                                    onChange={(e) => updateRelative(idx, "relation", e.target.value)}
+                                                                    className="h-9"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">Phone</Label>
+                                                                <Input
+                                                                    value={relative.phone}
+                                                                    onChange={(e) => updateRelative(idx, "phone", e.target.value)}
+                                                                    className="h-9"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">Address</Label>
+                                                                <Input
+                                                                    value={relative.address}
+                                                                    onChange={(e) => updateRelative(idx, "address", e.target.value)}
+                                                                    className="h-9"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                            {relatives.length === 0 && (
+                                                <div className="text-center py-6 border border-dashed rounded-lg bg-card/20">
+                                                    <p className="text-xs text-muted-foreground">No relatives added yet. Click "Add Relative" if you want to link relatives.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Preferences */}
+                                    <div className="pt-4 border-t">
+                                        <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">
+                                            Preferences & Notes
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="dietaryRestrictions" className="text-sm font-medium">
+                                                        Dietary Restrictions
+                                                    </Label>
+                                                    <Textarea
+                                                        id="dietaryRestrictions"
+                                                        name="dietaryRestrictions"
+                                                        value={formData.dietaryRestrictions}
+                                                        onChange={handleChange}
+                                                        rows={2}
+                                                        className="resize-none"
+                                                        placeholder="Allergies, veg/non-veg preferences..."
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="medicalConditions" className="text-sm font-medium">
+                                                        Medical Conditions
+                                                    </Label>
+                                                    <Textarea
+                                                        id="medicalConditions"
+                                                        name="medicalConditions"
+                                                        value={formData.medicalConditions}
+                                                        onChange={handleChange}
+                                                        rows={2}
+                                                        className="resize-none"
+                                                        placeholder="Any medical issues or conditions..."
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="specialRequests" className="text-sm font-medium">
+                                                        Special Requests
+                                                    </Label>
+                                                    <Textarea
+                                                        id="specialRequests"
+                                                        name="specialRequests"
+                                                        value={formData.specialRequests}
+                                                        onChange={handleChange}
+                                                        rows={2}
+                                                        className="resize-none"
+                                                        placeholder="Seat preferences, wheelchair, etc..."
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="notes" className="text-sm font-medium">
+                                                        Additional Notes
+                                                    </Label>
+                                                    <Textarea
+                                                        id="notes"
+                                                        name="notes"
+                                                        value={formData.notes}
+                                                        onChange={handleChange}
+                                                        rows={2}
+                                                        className="resize-none"
+                                                        placeholder="Enter any additional notes or comments..."
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </ScrollArea>
+
+                        <div className="flex-shrink-0 pt-4 border-t px-6 py-4 bg-card/10">
+                            {error && (
+                                <p className="text-sm text-destructive font-medium mb-3 text-center md:text-left">{error}</p>
+                            )}
+                            <div className="grid grid-cols-3 items-center w-full">
+                                {/* Left: Cancel */}
+                                <div className="flex justify-start">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={onCancel}
+                                        className="h-9 px-4"
+                                        disabled={isLoading}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+
+                                {/* Center: Back & Next */}
+                                <div className="flex justify-center gap-2">
+                                    {step > 1 && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={handleBack}
+                                            className="h-9 px-4"
+                                            disabled={isLoading}
+                                        >
+                                            <ArrowLeft className="mr-2 h-4 w-4" />
+                                            Back
+                                        </Button>
                                     )}
-                                </Button>
+                                    {step < 4 && (
+                                        <Button
+                                            type="button"
+                                            onClick={handleNext}
+                                            className="h-9 px-4"
+                                            disabled={isLoading}
+                                        >
+                                            Next
+                                            <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+
+                                {/* Right: Save/Submit */}
+                                <div className="flex justify-end">
+                                    {step < 4 ? (
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            onClick={handleSaveEarly}
+                                            className="h-9 px-4 font-semibold text-primary hover:bg-primary/10 hover:text-primary min-w-[100px]"
+                                            disabled={isLoading}
+                                        >
+                                            {isLoading ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                "Save"
+                                            )}
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            type="submit"
+                                            className="h-9 px-4 min-w-[120px]"
+                                            disabled={isLoading}
+                                        >
+                                            {isLoading ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {customer ? "Update Customer" : "Add Customer"}
+                                                </>
+                                            )}
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </DialogFooter>
+                    </div>
+
+                    {/* Right Side: Customer Live Summary Preview */}
+                    <div className="w-80 border-l bg-card/40 hidden lg:flex flex-col flex-shrink-0">
+                        <div className="p-5 border-b bg-card">
+                            <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Customer Preview</h3>
+                        </div>
+                        <ScrollArea className="flex-1 p-5">
+                            <div className="space-y-6">
+                                {/* Profile photo and Name */}
+                                <div className="flex flex-col items-center text-center space-y-3">
+                                    <div className="w-24 h-24 rounded-full border-2 border-primary/20 overflow-hidden bg-muted flex items-center justify-center relative">
+                                        {filePreviews.profilePhoto?.[0] ? (
+                                            <img src={filePreviews.profilePhoto[0]} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : existingImages.profilePhoto?.[0] ? (
+                                            <img src={existingImages.profilePhoto[0]} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                                        )}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="text-sm font-semibold text-foreground truncate max-w-[220px]">
+                                            {[formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(" ") || "Unnamed Customer"}
+                                        </h4>
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded inline-block">
+                                            {formData.gender || "Gender unspecified"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Contact Summary */}
+                                <div className="space-y-2">
+                                    <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Contact Details</h4>
+                                    <div className="space-y-1.5 p-3 rounded-xl border bg-background text-xs">
+                                        <div className="flex justify-between gap-2">
+                                            <span className="text-muted-foreground">Phone:</span>
+                                            <span className="font-medium text-foreground truncate max-w-[150px]">{formData.phone || "N/A"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-2">
+                                            <span className="text-muted-foreground">Email:</span>
+                                            <span className="font-medium text-foreground truncate max-w-[150px]">{formData.email || "N/A"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-2">
+                                            <span className="text-muted-foreground">DOB:</span>
+                                            <span className="font-medium text-foreground">
+                                                {formData.dateOfBirth ? formatLocalString(formData.dateOfBirth, "PP") : "N/A"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Document checklist summary */}
+                                <div className="space-y-2">
+                                    <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Documents Provided</h4>
+                                    <div className="space-y-1.5 p-3 rounded-xl border bg-background text-xs">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Passport:</span>
+                                            <span className={`font-semibold ${formData.passportNumber ? "text-green-600" : "text-amber-500"}`}>
+                                                {formData.passportNumber ? "Yes" : "No"}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Aadhaar:</span>
+                                            <span className={`font-semibold ${formData.aadhaarId ? "text-green-600" : "text-amber-500"}`}>
+                                                {formData.aadhaarId ? "Yes" : "No"}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Voter ID:</span>
+                                            <span className={`font-semibold ${formData.voterId ? "text-green-600" : "text-amber-500"}`}>
+                                                {formData.voterId ? "Yes" : "No"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Extras Summary */}
+                                <div className="space-y-2">
+                                    <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Extras</h4>
+                                    <div className="space-y-1.5 p-3 rounded-xl border bg-background text-xs">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Relatives:</span>
+                                            <span className="font-semibold text-foreground">{relatives.length}</span>
+                                        </div>
+                                        {formData.dietaryRestrictions && (
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-muted-foreground">Dietary:</span>
+                                                <span className="text-[10px] text-foreground bg-accent/30 p-1.5 rounded line-clamp-2">{formData.dietaryRestrictions}</span>
+                                            </div>
+                                        )}
+                                        {formData.specialRequests && (
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-muted-foreground">Special Request:</span>
+                                                <span className="text-[10px] text-foreground bg-accent/30 p-1.5 rounded line-clamp-2">{formData.specialRequests}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </ScrollArea>
+                    </div>
                 </form>
             </DialogContent>
 
-            {/* Image Modal */}
-            <Dialog open={imageModalOpen} onOpenChange={setImageModalOpen}>
-                <DialogContent className="max-w-4xl">
-                    <DialogHeader>
-                        <DialogTitle>Image Preview</DialogTitle>
-                    </DialogHeader>
-                    {selectedImage && (
-                        <div className="flex justify-center">
-                            <img
-                                src={selectedImage}
-                                alt="Preview"
-                                className="max-h-[70vh] max-w-full object-contain rounded-lg"
-                            />
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
         </Dialog>
     );
 }

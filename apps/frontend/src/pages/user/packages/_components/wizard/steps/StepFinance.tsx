@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
-import { Plus, Save, Trash2, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
@@ -492,8 +492,11 @@ export function StepFinance({
                             className="border rounded-lg p-4 space-y-3"
                         >
                             <div className="flex justify-between items-center">
-                                <h4 className="font-medium">
-                                    Milestone {index + 1}
+                                <h4 className="font-medium flex items-center gap-2">
+                                    <span>Milestone {index + 1}</span>
+                                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-muted-foreground font-normal">
+                                        Order: {index + 1}
+                                    </Badge>
                                 </h4>
                                 <Button
                                     type="button"

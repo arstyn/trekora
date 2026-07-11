@@ -113,8 +113,9 @@ export class EmployeeService {
       const newEmployeeData = this.employeeRepository.create({
         ...rest,
         id: employeeId,
-        status:
-          EmployeeStatus[status.toUpperCase() as keyof typeof EmployeeStatus],
+        status: status
+          ? EmployeeStatus[status.toUpperCase() as keyof typeof EmployeeStatus]
+          : EmployeeStatus.INACTIVE,
         joinDate: joinDate ? new Date(joinDate) : undefined,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
         profilePhoto: fileUploads.profilePhoto,

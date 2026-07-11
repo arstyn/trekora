@@ -53,7 +53,7 @@ export interface ICustomer {
     updatedAt?: string;
 }
 
-import type { PackageTier } from "./package.schema";
+import type { PackageTier, IPaymentStructure } from "./package.schema";
 
 export interface IPackage {
     id: string;
@@ -61,8 +61,10 @@ export interface IPackage {
     destination?: string;
     duration?: string;
     description?: string;
+    thumbnail?: string;
     packageTiers?: PackageTier[];
     transportation?: any[];
+    paymentStructure?: IPaymentStructure[];
 }
 
 export interface IBatch {
@@ -132,6 +134,9 @@ export interface ICreateBookingRequest {
         tierId: string;
         ageCategory: 'adult' | 'child' | 'infant';
     }[];
+    paymentStructureId?: string;
+    isPaymentOverridden?: boolean;
+    paymentOverrideReason?: string;
 }
 
 // For updating bookings

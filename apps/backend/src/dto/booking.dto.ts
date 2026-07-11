@@ -95,6 +95,18 @@ export class CreateBookingDto {
   @ValidateNested({ each: true })
   @Type(() => CustomerSelectionDto)
   customerSelections?: CustomerSelectionDto[];
+
+  @IsOptional()
+  @IsUUID()
+  paymentStructureId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPaymentOverridden?: boolean;
+
+  @IsOptional()
+  @IsString()
+  paymentOverrideReason?: string;
 }
 
 export class UpdateBookingDto {

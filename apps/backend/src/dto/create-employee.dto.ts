@@ -19,7 +19,8 @@ export class IEmployeeCreateDTO {
   departments?: string[];
 
   @IsString()
-  status: 'active' | 'inactive' | 'suspended' | 'terminated' | 'pending_activation';
+  @IsOptional()
+  status?: 'active' | 'inactive' | 'suspended' | 'terminated' | 'pending_activation';
 
   @IsString()
   @IsOptional()
