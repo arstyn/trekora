@@ -1,7 +1,5 @@
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
     DialogContent,
@@ -10,11 +8,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { useState } from "react";
-import type { IBatches } from "@/types/batches.types";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import BookingService from "@/services/booking.service";
+import type { IBatches } from "@/types/batches.types";
+import { useState } from "react";
 import { toast } from "sonner";
-import { DollarSign } from "lucide-react";
 
 interface BatchReportModalProps {
     open: boolean;
@@ -304,9 +303,9 @@ export function BatchReportModal({
                 </thead>
                 <tbody>
                     ${activeBookings.map(b => {
-                        const statusClass = b.status === "confirmed" ? "badge-success" : b.status === "pending" ? "badge-warning" : "badge-info";
-                        const travelersList = (b.customers || []).filter(c => c.id !== b.primaryCustomer?.id);
-                        return `
+                const statusClass = b.status === "confirmed" ? "badge-success" : b.status === "pending" ? "badge-warning" : "badge-info";
+                const travelersList = (b.customers || []).filter(c => c.id !== b.primaryCustomer?.id);
+                return `
                         <tr>
                             <td><strong>#${b.bookingNumber}</strong></td>
                             <td>
@@ -345,7 +344,7 @@ export function BatchReportModal({
                             ` : ""}
                         </tr>
                         `;
-                    }).join("")}
+            }).join("")}
                 </tbody>
             </table>
             `;
@@ -366,8 +365,8 @@ export function BatchReportModal({
                 </thead>
                 <tbody>
                     ${cancelledBookings.map(b => {
-                        const travelersList = (b.customers || []).filter(c => c.id !== b.primaryCustomer?.id);
-                        return `
+                const travelersList = (b.customers || []).filter(c => c.id !== b.primaryCustomer?.id);
+                return `
                         <tr>
                             <td><strong style="text-decoration: line-through; color: #9ca3af;">#${b.bookingNumber}</strong></td>
                             <td>
@@ -396,7 +395,7 @@ export function BatchReportModal({
                             ` : ""}
                         </tr>
                         `;
-                    }).join("")}
+            }).join("")}
                 </tbody>
             </table>
             `;
@@ -436,9 +435,9 @@ export function BatchReportModal({
                         <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">General Information</h4>
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                                <Checkbox 
-                                    id="includeOverview" 
-                                    checked={downloadOptions.includeOverview} 
+                                <Checkbox
+                                    id="includeOverview"
+                                    checked={downloadOptions.includeOverview}
                                     onCheckedChange={() => toggleOption('includeOverview')}
                                 />
                                 <Label htmlFor="includeOverview" className="cursor-pointer text-sm font-medium">
@@ -446,9 +445,9 @@ export function BatchReportModal({
                                 </Label>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Checkbox 
-                                    id="includeCoordinators" 
-                                    checked={downloadOptions.includeCoordinators} 
+                                <Checkbox
+                                    id="includeCoordinators"
+                                    checked={downloadOptions.includeCoordinators}
                                     onCheckedChange={() => toggleOption('includeCoordinators')}
                                 />
                                 <Label htmlFor="includeCoordinators" className="cursor-pointer text-sm font-medium">
@@ -463,9 +462,9 @@ export function BatchReportModal({
                     <div className="space-y-3">
                         <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Financials</h4>
                         <div className="flex items-center gap-2">
-                            <Checkbox 
-                                id="includeFinancials" 
-                                checked={downloadOptions.includeFinancials} 
+                            <Checkbox
+                                id="includeFinancials"
+                                checked={downloadOptions.includeFinancials}
                                 onCheckedChange={() => toggleOption('includeFinancials')}
                             />
                             <Label htmlFor="includeFinancials" className="cursor-pointer text-sm font-medium">
@@ -480,9 +479,9 @@ export function BatchReportModal({
                         <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Bookings & Details</h4>
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                                <Checkbox 
-                                    id="includeActiveBookings" 
-                                    checked={downloadOptions.includeActiveBookings} 
+                                <Checkbox
+                                    id="includeActiveBookings"
+                                    checked={downloadOptions.includeActiveBookings}
                                     onCheckedChange={() => toggleOption('includeActiveBookings')}
                                 />
                                 <Label htmlFor="includeActiveBookings" className="cursor-pointer text-sm font-medium">
@@ -490,9 +489,9 @@ export function BatchReportModal({
                                 </Label>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Checkbox 
-                                    id="includeCancelledBookings" 
-                                    checked={downloadOptions.includeCancelledBookings} 
+                                <Checkbox
+                                    id="includeCancelledBookings"
+                                    checked={downloadOptions.includeCancelledBookings}
                                     onCheckedChange={() => toggleOption('includeCancelledBookings')}
                                 />
                                 <Label htmlFor="includeCancelledBookings" className="cursor-pointer text-sm font-medium">
@@ -500,9 +499,9 @@ export function BatchReportModal({
                                 </Label>
                             </div>
                             <div className="flex items-center gap-2 pl-6">
-                                <Checkbox 
-                                    id="includeTravelers" 
-                                    checked={downloadOptions.includeTravelers} 
+                                <Checkbox
+                                    id="includeTravelers"
+                                    checked={downloadOptions.includeTravelers}
                                     disabled={!downloadOptions.includeActiveBookings && !downloadOptions.includeCancelledBookings}
                                     onCheckedChange={() => toggleOption('includeTravelers')}
                                 />
@@ -511,9 +510,9 @@ export function BatchReportModal({
                                 </Label>
                             </div>
                             <div className="flex items-center gap-2 pl-6">
-                                <Checkbox 
-                                    id="includeWorkflow" 
-                                    checked={downloadOptions.includeWorkflow} 
+                                <Checkbox
+                                    id="includeWorkflow"
+                                    checked={downloadOptions.includeWorkflow}
                                     disabled={!downloadOptions.includeActiveBookings}
                                     onCheckedChange={() => toggleOption('includeWorkflow')}
                                 />
@@ -522,9 +521,9 @@ export function BatchReportModal({
                                 </Label>
                             </div>
                             <div className="flex items-center gap-2 pl-6">
-                                <Checkbox 
-                                    id="includeBookingPayments" 
-                                    checked={downloadOptions.includeBookingPayments} 
+                                <Checkbox
+                                    id="includeBookingPayments"
+                                    checked={downloadOptions.includeBookingPayments}
                                     disabled={!downloadOptions.includeActiveBookings && !downloadOptions.includeCancelledBookings}
                                     onCheckedChange={() => toggleOption('includeBookingPayments')}
                                 />
