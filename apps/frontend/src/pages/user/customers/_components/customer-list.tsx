@@ -75,7 +75,7 @@ export default function CustomerList({
                     />
 
                     <span className="font-medium">
-                        {row.original.firstName} {row.original.lastName}
+                        {[row.original.firstName, row.original.middleName, row.original.lastName].filter(Boolean).join(" ")}
                     </span>
                 </div>
             ),

@@ -145,7 +145,7 @@ export default function ItineraryView({
 	const getCustomerName = (customerId: string) => {
 		const customer = customers.find((c) => c.id === customerId);
 		return customer
-			? customer.firstName + " " + customer.lastName
+			? [customer.firstName, customer.middleName, customer.lastName].filter(Boolean).join(" ")
 			: "Unknown Customer";
 	};
 
@@ -299,9 +299,7 @@ export default function ItineraryView({
 													key={customer.id}
 													value={customer.id || ""}
 												>
-													{customer.firstName +
-														" " +
-														customer.lastName}
+													{[customer.firstName, customer.middleName, customer.lastName].filter(Boolean).join(" ")}
 												</SelectItem>
 											))}
 										</SelectContent>

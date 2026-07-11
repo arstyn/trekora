@@ -92,7 +92,7 @@ export function ViewCustomerDialog({
                             <Avatar className="h-16 w-16">
                                 <AvatarImage
                                     src={profilePhotoUrl}
-                                    alt={`${customer.firstName} ${customer.lastName}`}
+                                    alt={[customer.firstName, customer.middleName, customer.lastName].filter(Boolean).join(" ")}
                                     className="object-cover"
                                 />
                                 <AvatarFallback className="text-lg">
@@ -108,12 +108,9 @@ export function ViewCustomerDialog({
                         </div>
                         <div className="flex items-center justify-between w-full px-4">
                             <div>
-                                <h3 className="text-xl font-semibold">
-                                    {customer.firstName}{" "}
-                                    {customer.middleName &&
-                                        `${customer.middleName} `}
-                                    {customer.lastName}
-                                </h3>
+                                 <h3 className="text-xl font-semibold">
+                                     {[customer.firstName, customer.middleName, customer.lastName].filter(Boolean).join(" ")}
+                                 </h3>
                                 <p className="text-sm text-muted-foreground">
                                     {customer.email}
                                 </p>
@@ -145,7 +142,7 @@ export function ViewCustomerDialog({
                                 />
                                 <Detail
                                     label="Last Name"
-                                    value={customer.lastName}
+                                    value={display(customer.lastName)}
                                 />
                                 <Detail
                                     label="Date of Birth"
@@ -219,7 +216,7 @@ export function ViewCustomerDialog({
                         customer.passportCountry ||
                         customer.passportIssueDate ||
                         customer.passportExpiryDate ||
-                        customer.passportPhotos?.length) && (
+                        (customer.passportPhotos && customer.passportPhotos.length > 0)) && (
                         <div className="space-y-4">
                             <h4 className="text-lg font-semibold text-primary mt-5">
                                 Passport Information
@@ -272,8 +269,8 @@ export function ViewCustomerDialog({
                     {/* ID Documents */}
                     {(customer.aadhaarId ||
                         customer.voterId ||
-                        customer.aadhaarIdPhotos?.length ||
-                        customer.voterIdPhotos?.length) && (
+                        (customer.aadhaarIdPhotos && customer.aadhaarIdPhotos.length > 0) ||
+                        (customer.voterIdPhotos && customer.voterIdPhotos.length > 0)) && (
                         <div className="space-y-4">
                             <h4 className="text-lg font-semibold text-primary mt-5">
                                 ID Documents
