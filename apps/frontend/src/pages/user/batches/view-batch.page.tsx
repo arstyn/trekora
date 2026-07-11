@@ -39,6 +39,8 @@ import {
     Calendar,
     ChevronRight,
     ClipboardList,
+    DollarSign,
+    Download,
     Edit,
     History,
     Mail,
@@ -52,6 +54,7 @@ import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { BookingModal } from "./_components/booking-modal";
 import { CoordinatorModal } from "./_components/coordinator-modal";
+import { BatchReportModal } from "./_components/batch-report-modal";
 
 export default function BatchDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -66,6 +69,8 @@ export default function BatchDetailsPage() {
     const [batchLogs, setBatchLogs] = useState<IBatchLog[]>([]);
     const [showStatusConfirm, setShowStatusConfirm] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+
+    const [showDownloadModal, setShowDownloadModal] = useState(false);
 
     const fetchLogs = useCallback(async () => {
         try {
@@ -194,6 +199,10 @@ export default function BatchDetailsPage() {
     const cancelledBookings =
         batch?.bookings?.filter((b) => b.status === "cancelled") || [];
 
+    const totalBatchExpected = activeBookings.reduce((sum, b) => sum + (Number(b.totalAmount) || 0), 0);
+    const totalBatchPaid = activeBookings.reduce((sum, b) => sum + (Number(b.advancePaid) || 0), 0);
+    const totalBatchRemaining = activeBookings.reduce((sum, b) => sum + (Number(b.balanceAmount) || 0), 0);
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case "active":
@@ -258,6 +267,10 @@ export default function BatchDetailsPage() {
                             </SelectContent>
                         </Select>
                     </div>
+                    <Button variant="outline" onClick={() => setShowDownloadModal(true)}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Report
+                    </Button>
                     <NavLink to={`/batches/edit/${id}`}>
                         <Button>
                             <Edit className="w-4 h-4 mr-2" />
@@ -273,62 +286,111 @@ export default function BatchDetailsPage() {
                     <CardHeader>
                         <CardTitle>Batch Overview</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-muted-foreground" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">
-                                        Start Date
-                                    </p>
-                                    <p className="font-medium">
-                                        {batch &&
-                                            new Date(
-                                                batch.startDate,
-                                            ).toLocaleDateString()}
-                                    </p>
+                    <CardContent className="space-y-6">
+                        {/* General Info */}
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Start Date
+                                        </p>
+                                        <p className="font-medium">
+                                            {batch &&
+                                                new Date(
+                                                    batch.startDate,
+                                                ).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">
+                                            End Date
+                                        </p>
+                                        <p className="font-medium">
+                                            {batch &&
+                                                new Date(
+                                                    batch.endDate,
+                                                ).toLocaleDateString()}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-muted-foreground" />
+                                <Users className="w-4 h-4 text-muted-foreground" />
                                 <div>
                                     <p className="text-sm text-muted-foreground">
-                                        End Date
+                                        Capacity
                                     </p>
                                     <p className="font-medium">
-                                        {batch &&
-                                            new Date(
-                                                batch.endDate,
-                                            ).toLocaleDateString()}
+                                        {batch && batch.bookedSeats}/
+                                        {batch && batch.totalSeats} customers
                                     </p>
                                 </div>
                             </div>
+                            {batch?.seatChangeReason && (
+                                <div className="flex items-start gap-2 pt-2 mt-2 border-t">
+                                    <ClipboardList className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Seat Change Reason
+                                        </p>
+                                        <p className="font-medium text-sm">
+                                            {batch.seatChangeReason}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-muted-foreground" />
-                            <div>
-                                <p className="text-sm text-muted-foreground">
-                                    Capacity
-                                </p>
-                                <p className="font-medium">
-                                    {batch && batch.bookedSeats}/
-                                    {batch && batch.totalSeats} customers
-                                </p>
-                            </div>
-                        </div>
-                        {batch?.seatChangeReason && (
-                            <div className="flex items-start gap-2 pt-2 mt-2 border-t">
-                                <ClipboardList className="w-4 h-4 mt-0.5 text-muted-foreground" />
+
+                        <Separator />
+
+                        {/* Financial Summary */}
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                                Batch Financials
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-muted/30 p-4 rounded-xl border">
                                 <div>
-                                    <p className="text-sm text-muted-foreground">
-                                        Seat Change Reason
+                                    <p className="text-xs text-muted-foreground font-medium mb-1">Total Expected</p>
+                                    <p className="text-xl font-black">
+                                        {BookingService.formatCurrency(totalBatchExpected)}
                                     </p>
-                                    <p className="font-medium text-sm">
-                                        {batch.seatChangeReason}
+                                </div>
+                                <div className="border-t pt-3 sm:border-t-0 sm:pt-0 sm:border-l sm:pl-4 border-muted">
+                                    <p className="text-xs text-muted-foreground font-medium mb-1">Total Collected</p>
+                                    <p className="text-xl font-black text-emerald-600">
+                                        {BookingService.formatCurrency(totalBatchPaid)}
+                                    </p>
+                                </div>
+                                <div className="border-t pt-3 sm:border-t-0 sm:pt-0 sm:border-l sm:pl-4 border-muted">
+                                    <p className="text-xs text-muted-foreground font-medium mb-1">Total Pending</p>
+                                    <p className="text-xl font-black text-red-600">
+                                        {BookingService.formatCurrency(totalBatchRemaining)}
                                     </p>
                                 </div>
                             </div>
-                        )}
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs font-bold">
+                                    <span>Collection Progress</span>
+                                    <span>
+                                        {totalBatchExpected > 0 ? Math.round((totalBatchPaid / totalBatchExpected) * 100) : 0}%
+                                    </span>
+                                </div>
+                                <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-emerald-500 transition-all duration-500"
+                                        style={{
+                                            width: `${totalBatchExpected > 0 ? Math.min(100, Math.round((totalBatchPaid / totalBatchExpected) * 100)) : 0}%`,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -578,35 +640,78 @@ export default function BatchDetailsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        {/* Customers List Under Booking */}
-                                        <div className="space-y-3">
-                                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                <Users className="w-3 h-3" />
-                                                Travelers (
-                                                {booking.customers?.length})
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {booking.customers?.map((c) => (
-                                                    <div
-                                                        key={c.id}
-                                                        className="flex items-center gap-2 p-2 rounded-lg bg-background border text-sm"
-                                                    >
-                                                        <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
-                                                            {c.firstName[0]}
-                                                            {c?.lastName?.[0] ?? ""}
-                                                        </div>
-                                                        <span className="truncate">
-                                                            {c.firstName}{" "}
-                                                            {c?.lastName?.[0] ?? ""}
-                                                        </span>
+                                    <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                        {(() => {
+                                            const travelers = booking.customers?.filter((c) => c.id !== booking.primaryCustomer?.id) || [];
+                                            return (
+                                                <div className="space-y-3">
+                                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                        <Users className="w-3 h-3" />
+                                                        Additional Travelers ({travelers.length})
                                                     </div>
-                                                ))}
+                                                    {travelers.length > 0 ? (
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                            {travelers.map((c) => (
+                                                                <div
+                                                                    key={c.id}
+                                                                    className="flex items-center gap-2 p-2 rounded-lg bg-background border text-sm"
+                                                                >
+                                                                    <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
+                                                                        {c.firstName[0]}
+                                                                        {c?.lastName?.[0] ?? ""}
+                                                                    </div>
+                                                                    <span className="truncate">
+                                                                        {c.firstName}{" "}
+                                                                        {c?.lastName?.[0] ?? ""}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-muted-foreground italic">No additional travelers</p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Payment Status */}
+                                        <div className="space-y-3 border-t pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6 border-muted">
+                                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                <DollarSign className="w-3 h-3 text-primary" />
+                                                Payment Status
+                                            </div>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-muted-foreground">Total:</span>
+                                                    <span className="font-semibold text-foreground">
+                                                        {BookingService.formatCurrency(booking.totalAmount)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-muted-foreground">Paid:</span>
+                                                    <span className="font-semibold text-emerald-600">
+                                                        {BookingService.formatCurrency(booking.advancePaid)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-muted-foreground">Remaining:</span>
+                                                    <span className={`font-semibold ${booking.balanceAmount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                                        {BookingService.formatCurrency(booking.balanceAmount)}
+                                                    </span>
+                                                </div>
+                                                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+                                                    <div
+                                                        className={`h-full transition-all duration-500 ${booking.balanceAmount === 0 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                                        style={{
+                                                            width: `${booking.totalAmount > 0 ? Math.min(100, Math.round((booking.advancePaid / booking.totalAmount) * 100)) : 0}%`,
+                                                        }}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 
                                         {/* Workflow Tasks Preview */}
-                                        <div className="space-y-3">
+                                        <div className="space-y-3 border-t pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6 border-muted">
                                             <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                                                 <ClipboardList className="w-3 h-3" />
                                                 Workflow Status
@@ -754,45 +859,78 @@ export default function BatchDetailsPage() {
                                     </div>
 
                                     <div className="p-4 bg-muted/5 opacity-60">
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                            {/* Travelers List */}
-                                            <div className="space-y-3">
-                                                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                    <Users className="w-3 h-3" />
-                                                    Travelers (
-                                                    {booking.customers?.length})
-                                                </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                    {booking.customers?.map(
-                                                        (c) => (
-                                                            <div
-                                                                key={c.id}
-                                                                className="flex items-center gap-2 p-2 rounded-lg bg-background border text-sm"
-                                                            >
-                                                                <div className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-[8px] font-bold opacity-70">
-                                                                    {
-                                                                        c
-                                                                            .firstName[0]
-                                                                    }
-                                                                    {
-                                                                        c
-                                                                            ?.lastName?.[0] ?? ""
-                                                                    }
-                                                                </div>
-                                                                <span className="truncate line-through text-muted-foreground">
-                                                                    {
-                                                                        c.firstName
-                                                                    }{" "}
-                                                                    {c?.lastName ?? ""}
-                                                                </span>
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                            {(() => {
+                                                const travelers = booking.customers?.filter((c) => c.id !== booking.primaryCustomer?.id) || [];
+                                                return (
+                                                    <div className="space-y-3">
+                                                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                            <Users className="w-3 h-3" />
+                                                            Additional Travelers ({travelers.length})
+                                                        </div>
+                                                        {travelers.length > 0 ? (
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                {travelers.map((c) => (
+                                                                    <div
+                                                                        key={c.id}
+                                                                        className="flex items-center gap-2 p-2 rounded-lg bg-background border text-sm"
+                                                                    >
+                                                                        <div className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-[8px] font-bold opacity-70">
+                                                                            {c.firstName[0]}
+                                                                            {c?.lastName?.[0] ?? ""}
+                                                                        </div>
+                                                                        <span className="truncate line-through text-muted-foreground">
+                                                                            {c.firstName}{" "}
+                                                                            {c?.lastName ?? ""}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
                                                             </div>
-                                                        ),
-                                                    )}
+                                                        ) : (
+                                                            <p className="text-xs text-muted-foreground italic">No additional travelers</p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {/* Payment Status */}
+                                            <div className="space-y-3 border-t pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6 border-muted">
+                                                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                    <DollarSign className="w-3 h-3 text-primary" />
+                                                    Payment Status
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-muted-foreground">Total:</span>
+                                                        <span className="font-semibold text-foreground">
+                                                            {BookingService.formatCurrency(booking.totalAmount)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-muted-foreground">Paid:</span>
+                                                        <span className="font-semibold text-emerald-600">
+                                                            {BookingService.formatCurrency(booking.advancePaid)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-muted-foreground">Remaining:</span>
+                                                        <span className={`font-semibold ${booking.balanceAmount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                                            {BookingService.formatCurrency(booking.balanceAmount)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+                                                        <div
+                                                            className={`h-full transition-all duration-500 ${booking.balanceAmount === 0 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                                            style={{
+                                                                width: `${booking.totalAmount > 0 ? Math.min(100, Math.round((booking.advancePaid / booking.totalAmount) * 100)) : 0}%`,
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
 
                                             {/* Workflow Tasks Preview */}
-                                            <div className="space-y-3">
+                                            <div className="space-y-3 border-t pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6 border-muted">
                                                 <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                                                     <ClipboardList className="w-3 h-3" />
                                                     Final Workflow Status
@@ -837,6 +975,14 @@ export default function BatchDetailsPage() {
                     open={!!selectedBooking}
                     onOpenChange={(open) => !open && setSelectedBooking(null)}
                     onUpdate={getBranch}
+                />
+            )}
+
+            {batch && (
+                <BatchReportModal
+                    open={showDownloadModal}
+                    onOpenChange={setShowDownloadModal}
+                    batch={batch}
                 />
             )}
 
