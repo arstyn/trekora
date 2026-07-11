@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
-import { Plus, Save, Trash2, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";

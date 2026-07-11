@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
 import { FileUploader } from "@/components/file-uploader";
+import { Button } from "@/components/ui/button";
 import {
     Card,
     CardContent,
@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
-import { Plus, Save, Trash, Trash2, Upload } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useFieldArray, type UseFormReturn } from "react-hook-form";
 

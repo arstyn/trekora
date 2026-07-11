@@ -13,8 +13,7 @@ import {
     Package as PackageIcon,
     Rocket,
 } from "lucide-react";
-import type React from "react";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -291,7 +290,7 @@ export function PackageForm({
                         }
                         if (res.data.id) setPackageId(res.data.id);
                     }
-                    
+
                     setLoadedSections((prev) => new Set(prev).add(section));
 
                     setPackageData(
