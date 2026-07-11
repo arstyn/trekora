@@ -5,6 +5,8 @@ import {
     Card,
     CardContent
 } from "@/components/ui/card";
+import { FileUploader } from "@/components/file-uploader";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
@@ -14,11 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Select,
@@ -48,8 +45,6 @@ import {
     Package as PackageIcon,
     Plus,
     Search,
-    Upload,
-    UserPlus,
     X
 } from "lucide-react";
 import type React from "react";
@@ -78,6 +73,9 @@ export interface ICreateBookingFormData {
     specialRequests: string;
     isCommonTier: boolean;
     customerSelections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>;
+    paymentStructureId: string;
+    isPaymentOverridden: boolean;
+    paymentOverrideReason: string;
 }
 
 export function CreateBookingDialog({
@@ -94,9 +92,8 @@ export function CreateBookingDialog({
     const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
     const [loadingData, setLoadingData] = useState(false);
     const [customerSearch, setCustomerSearch] = useState("");
-    const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
     const [packageSearch, setPackageSearch] = useState("");
-    const [packagePopoverOpen, setPackagePopoverOpen] = useState(false);
+    const [packagePage, setPackagePage] = useState(1);
     const [customerPagination, setCustomerPagination] = useState({
         offset: 0,
         limit: 10,
@@ -121,9 +118,13 @@ export function CreateBookingDialog({
         specialRequests: "",
         isCommonTier: true,
         customerSelections: {},
+        paymentStructureId: "",
+        isPaymentOverridden: false,
+        paymentOverrideReason: "",
     });
 
     const selectedPackage = packages.find((p) => p.id === formData.packageId);
+    const paymentStructure = selectedPackage?.paymentStructure || [];
     const selectedBatch = availableBatches.find((b) => b.id === formData.batchId);
 
     // Form validation per step
@@ -145,6 +146,9 @@ export function CreateBookingDialog({
             if (formData.advanceAmount > 0 && !formData.paymentMethod) {
                 newErrors.paymentMethod = "Please select a payment method for advance payment";
             }
+            if (formData.isPaymentOverridden && !formData.paymentOverrideReason.trim()) {
+                newErrors.paymentOverrideReason = "Please provide a reason for overriding the payment amount";
+            }
         }
 
         setErrors(newErrors);
@@ -155,8 +159,6 @@ export function CreateBookingDialog({
         if (validateStep(step)) {
             setStep((prev) => prev + 1);
             setError(null);
-        } else {
-            setError("Please fill in the required fields to proceed.");
         }
     };
 
@@ -286,6 +288,44 @@ export function CreateBookingDialog({
         }
     }, [formData.packageId]);
 
+    // Sync default milestone and advance amount when selected package or total amount changes
+    useEffect(() => {
+        if (!selectedPackage) return;
+        const paymentStructure = selectedPackage.paymentStructure || [];
+        if (paymentStructure.length === 0) return;
+
+        setFormData((prev) => {
+            // If payment structure is overridden, don't change anything
+            if (prev.isPaymentOverridden) return prev;
+
+            // Find current active milestone or default to the first one (order = 1)
+            let activeMilestone = paymentStructure.find(m => m.id === prev.paymentStructureId);
+            if (!activeMilestone) {
+                // Default to the first one (order = 1)
+                activeMilestone = paymentStructure[0];
+            }
+
+            // Calculate cumulative percent up to this milestone
+            const milestoneIdx = paymentStructure.findIndex(m => m.id === activeMilestone.id);
+            const cumulativePercent = paymentStructure
+                .slice(0, milestoneIdx + 1)
+                .reduce((sum, m) => sum + Number(m.amount || 0), 0);
+
+            const newAdvanceAmount = Math.round((prev.totalAmount * cumulativePercent) / 100);
+
+            // Only update state if values actually changed to avoid infinite loop
+            if (prev.paymentStructureId === activeMilestone.id && prev.advanceAmount === newAdvanceAmount) {
+                return prev;
+            }
+
+            return {
+                ...prev,
+                paymentStructureId: activeMilestone.id || "",
+                advanceAmount: newAdvanceAmount,
+            };
+        });
+    }, [selectedPackage, formData.totalAmount, formData.isPaymentOverridden]);
+
     const loadAvailableBatches = async (packageId: string) => {
         try {
             const batches = await BookingService.getAvailableBatches(packageId);
@@ -379,6 +419,7 @@ export function CreateBookingDialog({
             });
         }
 
+        setError(null);
         if (errors.customers) {
             setErrors((prev) => ({
                 ...prev,
@@ -427,6 +468,7 @@ export function CreateBookingDialog({
             };
         });
 
+        setError(null);
         if (errors.packageId) {
             setErrors((prev) => ({
                 ...prev,
@@ -453,13 +495,21 @@ export function CreateBookingDialog({
     };
 
     const filteredPackages = packages.filter((pkg) =>
-        pkg.name.toLowerCase().includes(packageSearch.toLowerCase()),
+        pkg.name.toLowerCase().includes(packageSearch.toLowerCase()) ||
+        pkg.destination?.toLowerCase().includes(packageSearch.toLowerCase()) ||
+        pkg.description?.toLowerCase().includes(packageSearch.toLowerCase())
     );
 
-    const handleFileUpload = async (
-        event: React.ChangeEvent<HTMLInputElement>,
-    ) => {
-        const file = event.target.files?.[0];
+    const packageLimit = 3;
+    const totalPackagePages = Math.ceil(filteredPackages.length / packageLimit) || 1;
+    const currentPackagePage = Math.min(packagePage, totalPackagePages);
+    const paginatedPackages = filteredPackages.slice(
+        (currentPackagePage - 1) * packageLimit,
+        currentPackagePage * packageLimit
+    );
+
+    const handleFileUpload = (files: File[]) => {
+        const file = files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) {
                 setError("File size must be less than 5MB");
@@ -475,7 +525,7 @@ export function CreateBookingDialog({
                 setError("File must be an image (JPEG, PNG) or PDF");
                 return;
             }
-
+            setError(null);
             setFormData((prev) => ({ ...prev, paymentScreenshot: file }));
         }
     };
@@ -510,6 +560,9 @@ export function CreateBookingDialog({
                     tierId: selection.tierId,
                     ageCategory: selection.ageCategory
                 })),
+                paymentStructureId: formData.paymentStructureId || undefined,
+                isPaymentOverridden: formData.isPaymentOverridden,
+                paymentOverrideReason: formData.paymentOverrideReason || undefined,
                 initialPayment:
                     formData.advanceAmount > 0
                         ? {
@@ -581,10 +634,12 @@ export function CreateBookingDialog({
             specialRequests: "",
             isCommonTier: true,
             customerSelections: {},
+            paymentStructureId: "",
+            isPaymentOverridden: false,
+            paymentOverrideReason: "",
         });
         setStep(1);
         setCustomerSearch("");
-        setCustomerPopoverOpen(false);
         setCustomerPagination({
             offset: 0,
             limit: 10,
@@ -594,6 +649,8 @@ export function CreateBookingDialog({
         setLoadingCustomers(false);
         setError(null);
         setErrors({});
+        setPackageSearch("");
+        setPackagePage(1);
     };
 
     return (
@@ -671,119 +728,218 @@ export function CreateBookingDialog({
                                     {/* STEP 1: PACKAGE & BATCH SELECTION */}
                                     {step === 1 && (
                                         <div className="space-y-6">
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-semibold">1. Select Tour Package</Label>
-                                                <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
-                                                    <PopoverTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            role="combobox"
-                                                            className={`w-full justify-between h-12 px-4 text-left font-normal border-input hover:bg-accent/50 transition-colors ${errors.packageId ? "border-destructive" : ""}`}
-                                                        >
-                                                            <span className="flex items-center gap-2.5 truncate">
-                                                                <PackageIcon className="h-4.5 w-4.5 text-primary flex-shrink-0" />
-                                                                {selectedPackage ? (
-                                                                    <span className="font-medium text-foreground truncate">{selectedPackage.name}</span>
-                                                                ) : (
-                                                                    <span className="text-muted-foreground">Choose a tour package...</span>
-                                                                )}
-                                                            </span>
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-[min(90vw,480px)] p-0" align="start">
-                                                        <div className="p-3 border-b bg-card">
-                                                            <div className="relative">
-                                                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                                <Input
-                                                                    placeholder="Search packages..."
-                                                                    value={packageSearch}
-                                                                    onChange={(e) => setPackageSearch(e.target.value)}
-                                                                    className="pl-9 h-9"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <ScrollArea className="h-64">
-                                                            <div className="p-2 space-y-1">
-                                                                {filteredPackages.length > 0 ? (
-                                                                    filteredPackages.map((pkg) => (
-                                                                        <div
-                                                                            key={pkg.id}
-                                                                            className={`flex items-center justify-between p-2.5 rounded-lg hover:bg-accent cursor-pointer transition-colors ${formData.packageId === pkg.id ? 'bg-accent/80' : ''}`}
-                                                                            onClick={() => {
-                                                                                handlePackageSelect(pkg);
-                                                                                setPackagePopoverOpen(false);
-                                                                            }}
-                                                                        >
-                                                                            <div className="flex-1 min-w-0 pr-4">
-                                                                                <p className="text-sm font-semibold truncate text-foreground">{pkg.name}</p>
-                                                                                <p className="text-xs text-muted-foreground truncate">{pkg.description || 'No description available'}</p>
-                                                                            </div>
-                                                                            {formData.packageId === pkg.id && (
-                                                                                <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                                                                            )}
-                                                                        </div>
-                                                                    ))
-                                                                ) : (
-                                                                    <div className="text-center py-6 text-sm text-muted-foreground">No packages found</div>
-                                                                )}
-                                                            </div>
-                                                        </ScrollArea>
-                                                    </PopoverContent>
-                                                </Popover>
-                                                {errors.packageId && <p className="text-xs text-destructive mt-1 font-medium">{errors.packageId}</p>}
-                                            </div>
-
-                                            {selectedPackage && (
+                                            {!formData.packageId ? (
                                                 <div className="space-y-4">
-                                                    <Label className="text-sm font-semibold">2. Select Travel Batch</Label>
-                                                    {availableBatches.length > 0 ? (
-                                                        <div className="grid gap-3 sm:grid-cols-2">
-                                                            {availableBatches.map((batch) => {
-                                                                const availableSeats = batch.totalSeats - batch.bookedSeats;
-                                                                const isSelected = formData.batchId === batch.id;
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="packageSearch" className="text-sm font-semibold">1. Search and Select Tour Package</Label>
+                                                        <div className="relative">
+                                                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                            <Input
+                                                                id="packageSearch"
+                                                                placeholder="Search by package name, destination, or description..."
+                                                                value={packageSearch}
+                                                                onChange={(e) => {
+                                                                    setPackageSearch(e.target.value);
+                                                                    setPackagePage(1);
+                                                                }}
+                                                                className="pl-10 h-10 border-input bg-background"
+                                                            />
+                                                        </div>
+                                                        {errors.packageId && (
+                                                            <p className="text-xs text-destructive font-medium">
+                                                                {errors.packageId}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Packages list */}
+                                                    {paginatedPackages.length > 0 ? (
+                                                        <div className="space-y-2.5 max-h-[48vh] overflow-y-auto pr-1">
+                                                            {paginatedPackages.map((pkg) => {
+                                                                const isSelected = formData.packageId === pkg.id;
+                                                                const thumbnailSrc = pkg.thumbnail || "/placeholder.svg";
                                                                 return (
                                                                     <div
-                                                                        key={batch.id}
-                                                                        className={`relative p-4 border rounded-xl cursor-pointer transition-all duration-200 flex flex-col justify-between h-32 hover:border-primary/50 hover:shadow-sm ${isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "bg-card border-border"}`}
-                                                                        onClick={() => {
-                                                                            setFormData(prev => ({ ...prev, batchId: batch.id }));
-                                                                            if (errors.batchId) setErrors(prev => ({ ...prev, batchId: "" }));
-                                                                        }}
+                                                                        key={pkg.id}
+                                                                        className={`p-3 border rounded-xl cursor-pointer transition-all duration-200 flex gap-4 items-center hover:border-primary/50 hover:shadow-xs ${isSelected
+                                                                            ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                                                            : "bg-card border-border"
+                                                                            }`}
+                                                                        onClick={() => handlePackageSelect(pkg)}
                                                                     >
-                                                                        <div className="flex items-start justify-between">
-                                                                            <div className="space-y-1">
-                                                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Travel Dates</p>
-                                                                                <p className="text-sm font-bold text-foreground">
-                                                                                    {new Date(batch.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                                                </p>
-                                                                                <p className="text-xs font-semibold text-muted-foreground">
-                                                                                    to {new Date(batch.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                                                </p>
-                                                                            </div>
-                                                                            {isSelected && (
-                                                                                <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                                                                                    <Check className="h-3 w-3 text-primary-foreground" />
-                                                                                </span>
+                                                                        {/* Package Thumbnail Image */}
+                                                                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
+                                                                            {pkg.thumbnail ? (
+                                                                                <img
+                                                                                    src={thumbnailSrc}
+                                                                                    alt={pkg.name}
+                                                                                    className="w-full h-full object-cover"
+                                                                                    onError={(e) => {
+                                                                                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                                                                                    }}
+                                                                                />
+                                                                            ) : (
+                                                                                <PackageIcon className="h-6 w-6 text-muted-foreground/60" />
                                                                             )}
                                                                         </div>
-                                                                        <div className="flex items-center justify-between mt-auto">
-                                                                            <span className="text-xs font-medium text-muted-foreground">Seats Available</span>
-                                                                            <Badge variant={availableSeats > 5 ? "secondary" : "destructive"} className="text-[10px] font-bold">
-                                                                                {availableSeats} left
-                                                                            </Badge>
+                                                                        {/* Package Details */}
+                                                                        <div className="flex-1 min-w-0 pr-4">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="font-bold text-sm text-foreground truncate">
+                                                                                    {pkg.name}
+                                                                                </span>
+                                                                                {pkg.destination && (
+                                                                                    <Badge variant="outline" className="text-[10px] font-medium py-0 px-1.5 capitalize">
+                                                                                        {pkg.destination}
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
+                                                                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                                                                {pkg.description || 'No description available'}
+                                                                            </p>
                                                                         </div>
+                                                                        {/* Selected Indicator */}
+                                                                        {isSelected && (
+                                                                            <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0 mr-2">
+                                                                                <Check className="h-3 w-3 text-primary-foreground" />
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 );
                                                             })}
+
+                                                            {/* Pagination Controls */}
+                                                            {totalPackagePages > 1 && (
+                                                                <div className="flex justify-between items-center mt-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => setPackagePage((p) => Math.max(p - 1, 1))}
+                                                                        disabled={currentPackagePage === 1}
+                                                                    >
+                                                                        Previous
+                                                                    </Button>
+                                                                    <span className="text-sm text-muted-foreground">Page {currentPackagePage} of {totalPackagePages}</span>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => setPackagePage((p) => Math.min(p + 1, totalPackagePages))}
+                                                                        disabled={currentPackagePage === totalPackagePages}
+                                                                    >
+                                                                        Next
+                                                                    </Button>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-xl bg-muted/20 text-center">
-                                                            <Calendar className="h-8 w-8 text-muted-foreground/60 mb-2" />
-                                                            <p className="text-sm font-semibold text-muted-foreground">No active batches available</p>
-                                                            <p className="text-xs text-muted-foreground/80 mt-1">Please select another tour package.</p>
+                                                            <PackageIcon className="h-8 w-8 text-muted-foreground/60 mb-2" />
+                                                            <p className="text-sm font-semibold text-muted-foreground">No tour packages found</p>
+                                                            <p className="text-xs text-muted-foreground/80 mt-1">
+                                                                {packageSearch ? `No packages matched "${packageSearch}".` : "No packages available."}
+                                                            </p>
                                                         </div>
                                                     )}
-                                                    {errors.batchId && <p className="text-xs text-destructive mt-1 font-medium">{errors.batchId}</p>}
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-5">
+                                                    <div className="flex items-center justify-between border-b pb-2">
+                                                        <h4 className="text-sm font-semibold text-foreground">1. Selected Tour Package</h4>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setFormData((prev) => ({ ...prev, packageId: "", batchId: "" }));
+                                                            }}
+                                                            className="text-xs h-8 border-dashed hover:border-destructive hover:text-destructive"
+                                                        >
+                                                            <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+                                                            Change Package
+                                                        </Button>
+                                                    </div>
+
+                                                    <Card className="border border-muted/80 bg-muted/10 shadow-none">
+                                                        <CardContent className="p-4 flex gap-4 items-center text-xs">
+                                                            <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
+                                                                {selectedPackage?.thumbnail ? (
+                                                                    <img
+                                                                        src={selectedPackage.thumbnail}
+                                                                        alt={selectedPackage.name}
+                                                                        className="w-full h-full object-cover"
+                                                                        onError={(e) => {
+                                                                            (e.target as HTMLImageElement).src = "/placeholder.svg";
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <PackageIcon className="h-6 w-6 text-muted-foreground/60" />
+                                                                )}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <p className="font-bold text-sm text-foreground">{selectedPackage?.name}</p>
+                                                                {selectedPackage?.destination && (
+                                                                    <p className="text-xs text-muted-foreground font-medium">Destination: {selectedPackage.destination}</p>
+                                                                )}
+                                                                {selectedPackage?.duration && (
+                                                                    <p className="text-xs text-muted-foreground font-medium">Duration: {selectedPackage.duration} Days</p>
+                                                                )}
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+
+                                                    <div className="space-y-4 pt-2">
+                                                        <Label className="text-sm font-semibold">2. Select Travel Batch</Label>
+                                                        {availableBatches.length > 0 ? (
+                                                            <div className="grid gap-3 grid-cols-1">
+                                                                {availableBatches.map((batch) => {
+                                                                    const availableSeats = batch.totalSeats - batch.bookedSeats;
+                                                                    const isSelected = formData.batchId === batch.id;
+                                                                    return (
+                                                                        <div
+                                                                            key={batch.id}
+                                                                            className={`relative p-4 border rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-between hover:border-primary/50 hover:shadow-xs ${isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "bg-card border-border"}`}
+                                                                            onClick={() => {
+                                                                                setFormData(prev => ({ ...prev, batchId: batch.id }));
+                                                                                setError(null);
+                                                                                if (errors.batchId) setErrors(prev => ({ ...prev, batchId: "" }));
+                                                                            }}
+                                                                        >
+                                                                            <div className="flex items-center gap-3">
+                                                                                <Calendar className="h-4.5 w-4.5 text-primary flex-shrink-0" />
+                                                                                <div className="space-y-0.5">
+                                                                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Travel Dates</p>
+                                                                                    <p className="text-sm font-bold text-foreground">
+                                                                                        {new Date(batch.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                                                        <span className="text-xs font-semibold text-muted-foreground mx-1.5">to</span>
+                                                                                        {new Date(batch.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-4">
+                                                                                <div className="text-right">
+                                                                                    <p className="text-[10px] font-medium text-muted-foreground">Seats Available</p>
+                                                                                    <Badge variant={availableSeats > 5 ? "secondary" : "destructive"} className="text-[10px] font-bold mt-0.5">
+                                                                                        {availableSeats} left
+                                                                                    </Badge>
+                                                                                </div>
+                                                                                {isSelected && (
+                                                                                    <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                                                                                        <Check className="h-3 w-3 text-primary-foreground" />
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-xl bg-muted/20 text-center">
+                                                                <Calendar className="h-8 w-8 text-muted-foreground/60 mb-2" />
+                                                                <p className="text-sm font-semibold text-muted-foreground">No active batches available</p>
+                                                                <p className="text-xs text-muted-foreground/80 mt-1">Please select another tour package.</p>
+                                                            </div>
+                                                        )}
+                                                        {errors.batchId && <p className="text-xs text-destructive mt-1 font-medium">{errors.batchId}</p>}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -792,76 +948,75 @@ export function CreateBookingDialog({
                                     {/* STEP 2: TRAVELERS & PRICING SELECTION */}
                                     {step === 2 && (
                                         <div className="space-y-6">
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-semibold">1. Select Customers</Label>
-                                                <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
-                                                    <PopoverTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            className={`w-full justify-between h-12 px-4 text-left font-normal border-input hover:bg-accent/50 transition-colors ${errors.customers ? "border-destructive" : ""}`}
-                                                        >
-                                                            <span className="flex items-center gap-2.5 truncate">
-                                                                <UserPlus className="h-4.5 w-4.5 text-primary flex-shrink-0" />
-                                                                {formData.customers.length > 0 ? (
-                                                                    <span className="font-semibold text-foreground">{formData.customers.length} customer{formData.customers.length > 1 ? "s" : ""} selected</span>
-                                                                ) : (
-                                                                    <span className="text-muted-foreground">Search and select travelers...</span>
-                                                                )}
-                                                            </span>
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-[min(90vw,480px)] p-0" align="start">
-                                                        <div className="p-3 border-b bg-card">
-                                                            <div className="relative">
-                                                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                                <Input
-                                                                    placeholder="Search customers..."
-                                                                    value={customerSearch}
-                                                                    onChange={(e) => {
-                                                                        setCustomerSearch(e.target.value);
-                                                                        searchCustomers(e.target.value);
-                                                                    }}
-                                                                    className="pl-9 h-9"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <ScrollArea
-                                                            className="h-64"
-                                                            onScrollCapture={(e) => {
-                                                                const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-                                                                if (scrollHeight - scrollTop <= clientHeight + 10) {
-                                                                    loadMoreCustomers();
-                                                                }
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="customerSearch" className="text-sm font-semibold">1. Search and Select Travelers</Label>
+                                                    <div className="relative">
+                                                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                        <Input
+                                                            id="customerSearch"
+                                                            placeholder="Search travelers by name, email, or phone..."
+                                                            value={customerSearch}
+                                                            onChange={(e) => {
+                                                                setCustomerSearch(e.target.value);
+                                                                searchCustomers(e.target.value);
                                                             }}
-                                                        >
-                                                            <div className="p-2 space-y-1">
-                                                                {customers.length > 0 ? (
-                                                                    customers.map((c) => (
-                                                                        <div
-                                                                            key={c.id}
-                                                                            className="flex items-center space-x-3 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                                                                            onClick={() => handleCustomerSelect(c)}
-                                                                        >
-                                                                            <Checkbox
-                                                                                checked={formData.customers.some((x) => x.id === c.id)}
-                                                                                onCheckedChange={() => handleCustomerSelect(c)}
-                                                                            />
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
-                                                                                <p className="text-xs text-muted-foreground truncate">{c.email} • {c.phone}</p>
-                                                                            </div>
+                                                            className="pl-10 h-10 border-input bg-background"
+                                                        />
+                                                    </div>
+                                                    {errors.customers && <p className="text-xs text-destructive mt-1 font-medium">{errors.customers}</p>}
+                                                </div>
+
+                                                <ScrollArea
+                                                    className="h-60 border rounded-xl bg-card p-3"
+                                                    onScrollCapture={(e) => {
+                                                        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                                                        if (scrollHeight - scrollTop <= clientHeight + 10) {
+                                                            loadMoreCustomers();
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="space-y-1">
+                                                        {customers.length > 0 ? (
+                                                            customers.map((c) => {
+                                                                const isChecked = formData.customers.some((x) => x.id === c.id);
+                                                                return (
+                                                                    <div
+                                                                        key={c.id}
+                                                                        className={`flex items-center space-x-3 p-2.5 rounded-lg hover:bg-accent cursor-pointer transition-colors ${isChecked ? 'bg-accent/40' : ''}`}
+                                                                        onClick={() => handleCustomerSelect(c)}
+                                                                    >
+                                                                        <Checkbox
+                                                                            checked={isChecked}
+                                                                            onCheckedChange={() => handleCustomerSelect(c)}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        />
+                                                                        <Avatar className="h-9 w-9">
+                                                                            <AvatarImage src={c.profilePhoto} alt={`${c.firstName} ${c.lastName}`} />
+                                                                            <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
+                                                                                {c.firstName[0]}{c.lastName?.[0] || ''}
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
+                                                                            {(c.email || c.phone) ? (
+                                                                                <p className="text-xs text-muted-foreground truncate">
+                                                                                    {c.email}
+                                                                                    {c.email && c.phone ? " • " : ""}
+                                                                                    {c.phone}
+                                                                                </p>
+                                                                            ) : null}
                                                                         </div>
-                                                                    ))
-                                                                ) : (
-                                                                    <div className="text-center py-6 text-sm text-muted-foreground">
-                                                                        {loadingCustomers ? "Loading customers..." : "No customers found"}
                                                                     </div>
-                                                                )}
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <div className="text-center py-8 text-sm text-muted-foreground">
+                                                                {loadingCustomers ? "Loading customers..." : "No customers found"}
                                                             </div>
-                                                        </ScrollArea>
-                                                    </PopoverContent>
-                                                </Popover>
-                                                {errors.customers && <p className="text-xs text-destructive mt-1 font-medium">{errors.customers}</p>}
+                                                        )}
+                                                    </div>
+                                                </ScrollArea>
                                             </div>
 
                                             {formData.customers.length > 0 && (
@@ -924,9 +1079,23 @@ export function CreateBookingDialog({
                                                             const selection = formData.customerSelections[c.id] || { tierId: formData.packageTierId, ageCategory: 'adult' };
                                                             return (
                                                                 <div key={c.id} className="flex items-center justify-between p-3 bg-card border rounded-xl hover:shadow-xs transition-shadow">
-                                                                    <div className="flex-1 min-w-0 pr-4">
-                                                                        <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
-                                                                        <p className="text-xs text-muted-foreground truncate">{c.email}</p>
+                                                                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                                                        <Avatar className="h-8 w-8">
+                                                                            <AvatarImage src={c.profilePhoto} alt={`${c.firstName} ${c.lastName}`} />
+                                                                            <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                                                                                {c.firstName[0]}{c.lastName?.[0] || ''}
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
+                                                                            {(c.email || c.phone) ? (
+                                                                                <p className="text-xs text-muted-foreground truncate">
+                                                                                    {c.email}
+                                                                                    {c.email && c.phone ? " • " : ""}
+                                                                                    {c.phone}
+                                                                                </p>
+                                                                            ) : null}
+                                                                        </div>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
                                                                         {!formData.isCommonTier && selectedPackage?.packageTiers && (
@@ -1010,36 +1179,216 @@ export function CreateBookingDialog({
 
                                     {/* STEP 3: PAYMENTS & NOTES */}
                                     {step === 3 && (
-                                        <div className="space-y-5">
-                                            <div className="p-4 bg-primary/5 rounded-xl border border-primary/15 flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-sm font-semibold text-foreground">Total Booking Cost</h4>
-                                                    <p className="text-[11px] text-muted-foreground">Calculated based on selected traveler tiers and age categories</p>
+                                        <div className="space-y-6">
+                                            {/* Summary & Breakdown Card */}
+                                            <div className="rounded-xl border border-primary/10 bg-primary/[0.02] overflow-hidden">
+                                                <div className="p-4 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
+                                                    <div>
+                                                        <h4 className="text-sm font-semibold text-foreground">Total Booking Cost</h4>
+                                                        <p className="text-[11px] text-muted-foreground">Calculated based on selected traveler tiers and age categories</p>
+                                                    </div>
+                                                    <div className="text-2xl font-extrabold text-primary">
+                                                        {BookingService.formatCurrency(formData.totalAmount)}
+                                                    </div>
                                                 </div>
-                                                <div className="text-2xl font-extrabold text-primary">
-                                                    {BookingService.formatCurrency(formData.totalAmount)}
-                                                </div>
+
+                                                {/* Pricing Breakdown inside the same card */}
+                                                {selectedPackage && formData.customers.length > 0 && (
+                                                    <div className="p-4 bg-card space-y-3">
+                                                        <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Traveler Price Details</h5>
+                                                        <div className="space-y-2 divide-y divide-muted/30">
+                                                            {formData.customers.map((c) => {
+                                                                const selection = formData.customerSelections[c.id] || { tierId: formData.packageTierId, ageCategory: 'adult' };
+                                                                const effectiveTierId = formData.isCommonTier ? formData.packageTierId : selection.tierId;
+                                                                const ageCategory = selection.ageCategory || 'adult';
+                                                                const tier = selectedPackage.packageTiers?.find((t) => t.id === effectiveTierId);
+
+                                                                let cost = 0;
+                                                                if (tier) {
+                                                                    const totalAdultCost = Number(tier.totalAdultCost || 0);
+                                                                    if (ageCategory === 'adult') {
+                                                                        cost = totalAdultCost;
+                                                                    } else if (ageCategory === 'child') {
+                                                                        cost = tier.childCostType === 'percentage'
+                                                                            ? totalAdultCost * (Number(tier.childCostValue || 0) / 100)
+                                                                            : Number(tier.childCostValue || 0);
+                                                                    } else if (ageCategory === 'infant') {
+                                                                        cost = tier.infantCostType === 'percentage'
+                                                                            ? totalAdultCost * (Number(tier.infantCostValue || 0) / 100)
+                                                                            : Number(tier.infantCostValue || 0);
+                                                                    }
+                                                                }
+
+                                                                return (
+                                                                    <div key={c.id} className="flex justify-between items-center text-xs py-2 first:pt-0">
+                                                                        <div className="space-y-0.5">
+                                                                            <p className="font-semibold text-foreground">{c.firstName} {c.lastName}</p>
+                                                                            <p className="text-[10px] text-muted-foreground uppercase">{ageCategory} • {tier?.name || 'No tier'}</p>
+                                                                        </div>
+                                                                        <span className="font-semibold text-foreground">{BookingService.formatCurrency(cost)}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="advanceAmount" className="text-sm font-semibold">Advance Payment Made</Label>
-                                                <Input
-                                                    id="advanceAmount"
-                                                    type="number"
-                                                    min="0"
-                                                    max={formData.totalAmount}
-                                                    value={formData.advanceAmount || ""}
-                                                    onChange={(e) =>
-                                                        setFormData((prev) => ({
-                                                            ...prev,
-                                                            advanceAmount: Number.parseInt(e.target.value) || 0,
-                                                        }))
-                                                    }
-                                                    placeholder="Enter amount paid..."
-                                                    className="h-10"
+                                            {/* Select Payment Structure */}
+                                            <div className="space-y-3">
+                                                <Label className="text-sm font-semibold">Select Payment Structure</Label>
+                                                {paymentStructure.length > 0 ? (
+                                                    <div className="space-y-2.5">
+                                                        {paymentStructure.map((milestone, idx) => {
+                                                            const milestonePercent = Number(milestone.amount || 0);
+                                                            const cumulativePercent = paymentStructure
+                                                                .slice(0, idx + 1)
+                                                                .reduce((sum, m) => sum + Number(m.amount || 0), 0);
+                                                            const calculatedCost = Math.round((formData.totalAmount * cumulativePercent) / 100);
+                                                            const isSelected = formData.paymentStructureId === milestone.id;
+
+                                                            return (
+                                                                <div
+                                                                    key={milestone.id}
+                                                                    className={`p-3.5 border rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-between hover:border-primary/50 hover:shadow-xs ${
+                                                                        isSelected && !formData.isPaymentOverridden
+                                                                            ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                                                            : "bg-card border-border"
+                                                                    }`}
+                                                                    onClick={() => {
+                                                                        if (!formData.isPaymentOverridden) {
+                                                                            setFormData((prev) => ({
+                                                                                ...prev,
+                                                                                paymentStructureId: milestone.id || "",
+                                                                                advanceAmount: calculatedCost,
+                                                                            }));
+                                                                            if (errors.paymentOverrideReason) {
+                                                                                setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <div className="space-y-1">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${isSelected && !formData.isPaymentOverridden ? "border-primary text-primary" : "border-muted-foreground/30"}`}>
+                                                                                {isSelected && !formData.isPaymentOverridden && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                                                                            </span>
+                                                                            <p className="text-sm font-bold text-foreground">
+                                                                                {milestone.name || "Payment Option"}
+                                                                            </p>
+                                                                            <Badge variant="secondary" className="text-[10px] font-semibold py-0 px-1.5">
+                                                                                {idx > 0 ? `${milestonePercent}% (Total: ${cumulativePercent}%)` : `${milestonePercent}%`}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        {milestone.description && (
+                                                                            <p className="text-xs text-muted-foreground line-clamp-1 ml-5.5">{milestone.description}</p>
+                                                                        )}
+                                                                        {milestone.dueDate && (
+                                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase ml-5.5">
+                                                                                Due: {milestone.dueDate.replace(/_/g, " ")}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="font-bold text-base text-primary mr-1">
+                                                                        {BookingService.formatCurrency(calculatedCost)}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-muted-foreground italic bg-muted/20 p-3 rounded-xl border border-dashed text-center">
+                                                        No payment structure milestones defined for this package. Turn on override to enter custom advance payment.
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Override Options */}
+                                            <div className="flex items-center justify-between border rounded-xl p-4 bg-muted/10">
+                                                <div className="space-y-0.5">
+                                                    <Label htmlFor="override-payment" className="text-sm font-semibold cursor-pointer">Override Payment Amount</Label>
+                                                    <p className="text-xs text-muted-foreground">Allows entering a custom advance payment and override reason.</p>
+                                                </div>
+                                                <Switch
+                                                    id="override-payment"
+                                                    checked={formData.isPaymentOverridden}
+                                                    onCheckedChange={(checked) => {
+                                                        setFormData((prev) => {
+                                                            let newAdvanceAmount = prev.advanceAmount;
+                                                            if (!checked && prev.paymentStructureId && paymentStructure.length > 0) {
+                                                                const milestoneIdx = paymentStructure.findIndex(m => m.id === prev.paymentStructureId);
+                                                                if (milestoneIdx !== -1) {
+                                                                    const cumulativePercent = paymentStructure
+                                                                        .slice(0, milestoneIdx + 1)
+                                                                        .reduce((sum, m) => sum + Number(m.amount || 0), 0);
+                                                                    newAdvanceAmount = Math.round((prev.totalAmount * cumulativePercent) / 100);
+                                                                }
+                                                            }
+                                                            return {
+                                                                ...prev,
+                                                                isPaymentOverridden: checked,
+                                                                advanceAmount: checked ? prev.advanceAmount : newAdvanceAmount,
+                                                                paymentOverrideReason: checked ? prev.paymentOverrideReason : "",
+                                                            };
+                                                        });
+                                                        if (!checked && errors.paymentOverrideReason) {
+                                                            setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
+                                                        }
+                                                    }}
                                                 />
                                             </div>
 
+                                            {formData.isPaymentOverridden && (
+                                                <div className="grid sm:grid-cols-2 gap-4 p-4 border border-amber-500/20 bg-amber-500/5 rounded-xl animate-in fade-in duration-200">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="customAdvanceAmount" className="text-xs font-bold text-muted-foreground">Custom Advance Amount *</Label>
+                                                        <Input
+                                                            id="customAdvanceAmount"
+                                                            type="number"
+                                                            min="0"
+                                                            max={formData.totalAmount}
+                                                            value={formData.advanceAmount || ""}
+                                                            onChange={(e) => {
+                                                                setFormData((prev) => ({
+                                                                    ...prev,
+                                                                    advanceAmount: Number.parseInt(e.target.value) || 0,
+                                                                }));
+                                                                setError(null);
+                                                            }}
+                                                            placeholder="Enter custom amount..."
+                                                            className="h-10 bg-background border-amber-500/20 focus-visible:ring-amber-500"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="paymentOverrideReason" className="text-xs font-bold text-muted-foreground">Reason for Override *</Label>
+                                                        <Input
+                                                            id="paymentOverrideReason"
+                                                            value={formData.paymentOverrideReason}
+                                                            onChange={(e) => {
+                                                                setFormData((prev) => ({
+                                                                    ...prev,
+                                                                    paymentOverrideReason: e.target.value,
+                                                                }));
+                                                                setError(null);
+                                                                if (errors.paymentOverrideReason) {
+                                                                    setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
+                                                                }
+                                                            }}
+                                                            placeholder="Why is this custom amount used?"
+                                                            className="h-10 bg-background border-amber-500/20 focus-visible:ring-amber-500"
+                                                            required
+                                                        />
+                                                        {errors.paymentOverrideReason && (
+                                                            <p className="text-xs text-destructive font-medium">
+                                                                {errors.paymentOverrideReason}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Rest of the payment functionality */}
                                             {formData.advanceAmount > 0 && (
                                                 <Card className="border border-muted/80 bg-muted/10 shadow-none">
                                                     <CardContent className="p-4 space-y-4">
@@ -1121,24 +1470,15 @@ export function CreateBookingDialog({
 
                                                         <div className="space-y-2">
                                                             <Label className="text-xs font-bold text-muted-foreground">Upload Receipt / Screenshot</Label>
-                                                            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-muted-foreground/20 rounded-xl cursor-pointer hover:bg-muted/40 hover:border-primary/50 transition-all bg-background">
-                                                                <div className="text-center p-3">
-                                                                    <Upload className="w-6 h-6 mx-auto mb-1 text-muted-foreground/80" />
-                                                                    <p className="text-xs font-medium text-muted-foreground">
-                                                                        {formData.paymentScreenshot ? (
-                                                                            <span className="text-primary font-semibold truncate max-w-[200px] inline-block">{formData.paymentScreenshot.name}</span>
-                                                                        ) : (
-                                                                            "Drop image or pdf (Max 5MB)"
-                                                                        )}
-                                                                    </p>
-                                                                </div>
-                                                                <input
-                                                                    type="file"
-                                                                    className="hidden"
-                                                                    accept="image/*,.pdf"
-                                                                    onChange={handleFileUpload}
-                                                                />
-                                                            </label>
+                                                            <FileUploader
+                                                                value={formData.paymentScreenshot ? [formData.paymentScreenshot] : []}
+                                                                onChange={handleFileUpload}
+                                                                onRemoveNew={() => {
+                                                                    setFormData((prev) => ({ ...prev, paymentScreenshot: null }));
+                                                                }}
+                                                                accept="image/*,application/pdf"
+                                                                maxFiles={1}
+                                                            />
                                                         </div>
                                                     </CardContent>
                                                 </Card>

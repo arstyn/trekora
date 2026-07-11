@@ -20,6 +20,7 @@ import { BookingPayment } from './booking-payment.entity';
 import { BookingDocument } from './booking-document.entity';
 import { Workflow } from './workflow/workflow.entity';
 import { BookingCustomer } from './booking-customer.entity';
+import { PaymentMilestone } from './package-related/payment-milestones.entity';
 
 export enum BookingStatus {
   PENDING = 'pending',
@@ -94,6 +95,19 @@ export class Booking {
 
   @Column({ type: 'jsonb', nullable: true, name: 'additional_details' })
   additionalDetails: Record<string, any>;
+
+  @Column({ type: 'uuid', nullable: true, name: 'payment_structure_id' })
+  paymentStructureId: string;
+
+  @ManyToOne(() => PaymentMilestone, { nullable: true })
+  @JoinColumn({ name: 'payment_structure_id' })
+  paymentStructure: PaymentMilestone;
+
+  @Column({ name: 'is_payment_overridden', default: false })
+  isPaymentOverridden: boolean;
+
+  @Column({ type: 'text', nullable: true, name: 'payment_override_reason' })
+  paymentOverrideReason: string;
 
   @OneToMany(() => BookingCustomer, (bc) => bc.booking, {
     cascade: true,

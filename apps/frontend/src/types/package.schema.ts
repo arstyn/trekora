@@ -35,10 +35,12 @@ export interface ICancellationPolicy {
 }
 
 export interface IPaymentStructure {
+    id?: string;
     name?: string;
     amount?: number;
     description?: string;
     dueDate?: string;
+    order?: number;
 }
 
 export interface IPackages {
@@ -102,6 +104,7 @@ export const paymentMilestoneSchema = z.object({
     amount: z.number().min(0).optional(),
     description: z.string().optional(),
     dueDate: z.string().optional(),
+    order: z.number().min(1).optional(),
 });
 
 export const cancellationTierSchema = z.object({

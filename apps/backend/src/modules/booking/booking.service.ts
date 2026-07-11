@@ -120,6 +120,9 @@ export class BookingService {
         status: BookingStatus.PENDING,
         specialRequests: createBookingDto.specialRequests,
         additionalDetails: createBookingDto.additionalDetails,
+        paymentStructureId: createBookingDto.paymentStructureId,
+        isPaymentOverridden: createBookingDto.isPaymentOverridden || false,
+        paymentOverrideReason: createBookingDto.paymentOverrideReason,
         createdById: userId,
         organizationId,
       });

@@ -438,6 +438,13 @@ export function PackageForm({
                 });
             }
 
+            if (updateData.paymentStructure) {
+                updateData.paymentStructure = updateData.paymentStructure.map((milestone, idx) => ({
+                    ...milestone,
+                    order: idx + 1,
+                }));
+            }
+
             // Determine which keys to include in the save
             let keysToInclude: Set<string> | undefined;
             if (packageId && !isExplicitPublish) {

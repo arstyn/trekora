@@ -3,6 +3,7 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CancellationTier } from 'src/database/entity/package-related/cancellation-tiers.entity';
@@ -323,7 +324,12 @@ export class PackageService {
         'thumbnail',
         'status',
       ],
-      relations: ['packageTiers', 'transportationOptions']
+      relations: ['packageTiers', 'transportationOptions', 'paymentStructure'],
+      order: {
+        paymentStructure: {
+          order: 'ASC',
+        },
+      },
     });
 
     return res;
@@ -347,6 +353,11 @@ export class PackageService {
         'documentRequirements',
         'preTripChecklist',
       ],
+      order: {
+        paymentStructure: {
+          order: 'ASC',
+        },
+      },
     });
     if (!pkg) throw new NotFoundException('Package not found');
 
@@ -774,17 +785,39 @@ export class PackageService {
       }
 
       if (paymentStructure !== undefined) {
-        await queryRunner.manager.delete(PaymentMilestone, { packageId: id });
         const paymentStructureData = JSON.parse(
           paymentStructure,
         ) as PaymentMilestone[];
 
-        for (const milestone of paymentStructureData) {
-          const entity = this.paymentMilestoneRepository.create({
-            ...milestone,
-            packageId: id,
-          });
-          await queryRunner.manager.save(entity);
+        const existingMilestones = await queryRunner.manager.find(PaymentMilestone, { where: { packageId: id } });
+        const existingMilestonesMap = new Map(existingMilestones.map(m => [m.id, m]));
+        const incomingIds = new Set<string>();
+
+        for (const milestoneData of paymentStructureData) {
+          if (milestoneData.id && existingMilestonesMap.has(milestoneData.id)) {
+            const existing = existingMilestonesMap.get(milestoneData.id)!;
+            const updated = queryRunner.manager.merge(PaymentMilestone, existing, milestoneData);
+            await queryRunner.manager.save(PaymentMilestone, updated);
+            incomingIds.add(milestoneData.id);
+          } else {
+            const { id: _, ...cleanedMilestone } = milestoneData;
+            const entity = this.paymentMilestoneRepository.create({
+              ...cleanedMilestone,
+              packageId: id,
+            });
+            const saved = await queryRunner.manager.save(PaymentMilestone, entity);
+            incomingIds.add(saved.id);
+          }
+        }
+
+        for (const existing of existingMilestones) {
+          if (!incomingIds.has(existing.id)) {
+            const count = await queryRunner.manager.count('Booking', { where: { paymentStructureId: existing.id } });
+            if (count > 0) {
+              throw new BadRequestException(`Cannot delete payment milestone '${existing.name}' because it is already referenced by active bookings.`);
+            }
+            await queryRunner.manager.delete(PaymentMilestone, { id: existing.id });
+          }
         }
       }
 
@@ -835,14 +868,37 @@ export class PackageService {
       }
 
       if (packageTiers !== undefined) {
-        await queryRunner.manager.delete(PackageTier, { packageId: id });
         const packageTiersData = JSON.parse(packageTiers) as any[];
-        for (const tier of packageTiersData) {
-          const entity = this.packageTierRepository.create({
-            ...tier,
-            packageId: id,
-          });
-          await queryRunner.manager.save(entity);
+
+        const existingTiers = await queryRunner.manager.find(PackageTier, { where: { packageId: id } });
+        const existingTiersMap = new Map(existingTiers.map(t => [t.id, t]));
+        const incomingIds = new Set<string>();
+
+        for (const tierData of packageTiersData) {
+          if (tierData.id && existingTiersMap.has(tierData.id)) {
+            const existing = existingTiersMap.get(tierData.id)!;
+            const updated = queryRunner.manager.merge(PackageTier, existing, tierData);
+            await queryRunner.manager.save(PackageTier, updated);
+            incomingIds.add(tierData.id);
+          } else {
+            const { id: _, ...cleanedTier } = tierData;
+            const entity = this.packageTierRepository.create({
+              ...cleanedTier,
+              packageId: id,
+            });
+            const saved = await queryRunner.manager.save(PackageTier, entity) as unknown as PackageTier;
+            incomingIds.add(saved.id);
+          }
+        }
+
+        for (const existing of existingTiers) {
+          if (!incomingIds.has(existing.id)) {
+            const count = await queryRunner.manager.count('Booking', { where: { packageTierId: existing.id } });
+            if (count > 0) {
+              throw new BadRequestException(`Cannot delete package tier '${existing.name}' because it is already referenced by active bookings.`);
+            }
+            await queryRunner.manager.delete(PackageTier, { id: existing.id });
+          }
         }
       }
 
@@ -938,6 +994,7 @@ export class PackageService {
 
     const paymentStructure = await this.paymentMilestoneRepository.find({
       where: { packageId: id },
+      order: { order: 'ASC' },
     });
 
     if (paymentStructure.length === 0) {
