@@ -234,6 +234,15 @@ export default function TeamHierarchyPage() {
         return null;
     };
 
+    const chunkChildren = (children: HierarchyNode[]): HierarchyNode[][] => {
+        const rows: HierarchyNode[][] = [];
+        const chunkSize = 2;
+        for (let i = 0; i < children.length; i += chunkSize) {
+            rows.push(children.slice(i, i + chunkSize));
+        }
+        return rows;
+    };
+
     const handleSelectEmployee = (empId: string) => {
         const path = findPathToNode(hierarchy, empId);
         if (path) {
@@ -484,29 +493,53 @@ export default function TeamHierarchyPage() {
                         {/* Vertical line from parent */}
                         <div className="w-0.5 h-10 bg-gradient-to-b from-primary/50 to-primary/20" />
 
-                        <div className="flex gap-12 relative px-10">
-                            {node.children.map((child, idx) => {
-                                const isFirst = idx === 0;
-                                const isLast = idx === node.children.length - 1;
-                                const isOnly = node.children.length === 1;
+                        <div className="flex flex-col items-center gap-0">
+                            {chunkChildren(node.children).map((rowChildren, rowIndex, allRows) => {
+                                const isLastRow = rowIndex === allRows.length - 1;
+                                const isFirstRow = rowIndex === 0;
 
                                 return (
-                                    <div
-                                        key={child.employee.id}
-                                        className="relative flex flex-col items-center"
-                                    >
-                                        {!isOnly && (
+                                    <div key={rowIndex} className="relative flex flex-col items-center">
+                                        {!isFirstRow && (
                                             <div
-                                                className={`absolute top-0 h-0.5 bg-primary/20 ${isFirst
-                                                    ? "left-1/2 right-0"
-                                                    : isLast
-                                                        ? "left-0 right-1/2"
-                                                        : "left-0 right-0"
-                                                    }`}
+                                                className={`h-10 ${
+                                                    isLastRow
+                                                        ? "w-0.5 bg-primary/20 relative z-10"
+                                                        : ""
+                                                }`}
                                             />
                                         )}
-                                        <div className="w-0.5 h-10 bg-primary/20 relative z-10" />
-                                        {renderNode(child)}
+
+                                        <div className="flex gap-12 relative px-10">
+                                            {rowChildren.map((child, idx) => {
+                                                const isFirst = idx === 0;
+                                                const isLast = idx === rowChildren.length - 1;
+                                                const isOnly = rowChildren.length === 1;
+
+                                                return (
+                                                    <div
+                                                        key={child.employee.id}
+                                                        className="relative flex flex-col items-center"
+                                                    >
+                                                        {!isOnly && (
+                                                            <div
+                                                                className={`absolute top-0 h-0.5 bg-primary/20 ${isFirst
+                                                                    ? "left-1/2 right-[-24px]"
+                                                                    : isLast
+                                                                        ? "left-[-24px] right-1/2"
+                                                                        : "left-[-24px] right-[-24px]"
+                                                                    }`}
+                                                            />
+                                                        )}
+                                                        <div className="w-0.5 h-10 bg-primary/20 relative z-10" />
+                                                        {renderNode(child)}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {!isLastRow && (
+                                            <div className="absolute top-0 bottom-0 w-0.5 bg-primary/20 left-1/2 -translate-x-1/2 z-0" />
+                                        )}
                                     </div>
                                 );
                             })}
