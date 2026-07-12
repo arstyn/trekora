@@ -126,6 +126,15 @@ export class BookingController {
     );
   }
 
+  @Get('customer/:customerId')
+  @RequirePermission('booking', 'read')
+  findByCustomerId(
+    @Param('customerId') customerId: string,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.bookingService.findByCustomerId(customerId, req.user.organizationId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.bookingService.findOne(id);

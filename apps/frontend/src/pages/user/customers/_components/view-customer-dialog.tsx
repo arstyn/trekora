@@ -12,6 +12,7 @@ import type { ICustomer } from "@/types/customer.type";
 import { format } from "date-fns";
 import { Eye } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 type ViewCustomerDialogProps = {
     open: boolean;
@@ -26,6 +27,7 @@ export function ViewCustomerDialog({
     customer,
     onEdit,
 }: ViewCustomerDialogProps) {
+    const navigate = useNavigate();
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [imageModalOpen, setImageModalOpen] = useState(false);
     const [imageModalTitle, setImageModalTitle] =
@@ -429,6 +431,15 @@ export function ViewCustomerDialog({
                 <div className="pt-4 pr-4 flex justify-end gap-2 border-t">
                     <Button
                         variant="outline"
+                        onClick={() => {
+                            onOpenChange(false);
+                            navigate(`/customers/${customer.id}`);
+                        }}
+                    >
+                        View More
+                    </Button>
+                    <Button
+                        variant="secondary"
                         onClick={() => onOpenChange(false)}
                     >
                         Close

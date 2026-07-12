@@ -375,6 +375,48 @@ export class BookingService {
     }));
   }
 
+  async findByCustomerId(
+    customerId: string,
+    organizationId: string,
+  ): Promise<BookingSummaryDto[]> {
+    const bookings = await this.bookingRepository.find({
+      where: [
+        { customerId, organizationId },
+        { bookingCustomers: { customerId }, organizationId },
+      ],
+      relations: ['customer', 'package', 'batch', 'bookingCustomers', 'createdBy'],
+      order: { createdAt: 'DESC' },
+    });
+
+    // Deduplicate bookings in case a customer is both the primary and a bookingCustomer passenger
+    const uniqueBookings = Array.from(
+      new Map(bookings.map((b) => [b.id, b])).values()
+    );
+
+    return uniqueBookings.map((booking) => ({
+      id: booking.id,
+      bookingNumber: booking.bookingNumber,
+      customerName:
+        booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
+      customerEmail: booking.customer.email || '',
+      packageName: booking.package.name,
+      batchStartDate: booking.batch.startDate,
+      numberOfCustomers: booking.numberOfCustomers,
+      totalAmount: booking.totalAmount,
+      advancePaid: booking.advancePaid,
+      balanceAmount: booking.balanceAmount,
+      status: booking.status,
+      createdAt: booking.createdAt,
+      createdBy: booking.createdBy
+        ? {
+            id: booking.createdBy.id,
+            name: booking.createdBy.name,
+            email: booking.createdBy.email,
+          }
+        : null,
+    }));
+  }
+
   async findByManagerTeam(
     organizationId: string,
     teamUserIds: string[],

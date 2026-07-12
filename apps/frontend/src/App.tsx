@@ -31,6 +31,7 @@ import EditBookingPage from "./pages/user/bookings/edit-booking.page";
 import BookingDetailsPage from "./pages/user/bookings/view-booking.page";
 import { BranchPage } from "./pages/user/branches/branches.page";
 import CustomerManagement from "./pages/user/customers/customers.page";
+import ViewCustomerPage from "./pages/user/customers/view-customer.page";
 import { EmployeesPage } from "./pages/user/employees/employees.page";
 import TeamHierarchyPage from "./pages/user/employees/team-hierarchy.page";
 import ImportPage from "./pages/user/import/import.page";
@@ -72,6 +73,7 @@ function AuthenticatedApp() {
                     />
                     <Route path="/packages/:id" element={<ViewPackagePage />} />
                     <Route path="/customers" element={<CustomerManagement />} />
+                    <Route path="/customers/:id" element={<ViewCustomerPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route
                         path="/permission-sets"
