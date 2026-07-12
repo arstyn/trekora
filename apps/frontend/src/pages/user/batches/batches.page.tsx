@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosInstance from "@/lib/axios";
 import type { IBatches, IBatchStats } from "@/types/batches.types";
 import { AlertTriangle, Calendar, Plus, TrendingUp, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { toast } from "sonner";
 import { BatchList } from "./_components/batch-list";
@@ -67,11 +67,11 @@ export default function BatchesPage() {
 
 		if (tabId === "calendar") return 1;
 
-		const count = tabId === "active" 
-			? activeCount 
-			: tabId === "upcoming" 
-			? upcomingCount 
-			: completedCount;
+		const count = tabId === "active"
+			? activeCount
+			: tabId === "upcoming"
+				? upcomingCount
+				: completedCount;
 
 		if (count > 0) return 0;
 		return 2; // put empty ones last (after calendar)
@@ -297,26 +297,26 @@ export default function BatchesPage() {
 					<div className="lg:col-span-3">
 						<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
 							<TabsList className="flex">
-								<TabsTrigger 
-									value="active" 
+								<TabsTrigger
+									value="active"
 									style={{ order: getTabPriority("active") }}
 								>
 									Active Batches {dashboardStats && dashboardStats.activeBatches > 0 ? `(${dashboardStats.activeBatches})` : ""}
 								</TabsTrigger>
-								<TabsTrigger 
-									value="upcoming" 
+								<TabsTrigger
+									value="upcoming"
 									style={{ order: getTabPriority("upcoming") }}
 								>
 									Upcoming Batches {dashboardStats && dashboardStats.upcomingBatches > 0 ? `(${dashboardStats.upcomingBatches})` : ""}
 								</TabsTrigger>
-								<TabsTrigger 
-									value="completed" 
+								<TabsTrigger
+									value="completed"
 									style={{ order: getTabPriority("completed") }}
 								>
 									Completed Batches {dashboardStats && dashboardStats.completedBatches > 0 ? `(${dashboardStats.completedBatches})` : ""}
 								</TabsTrigger>
-								<TabsTrigger 
-									value="calendar" 
+								<TabsTrigger
+									value="calendar"
 									style={{ order: getTabPriority("calendar") }}
 								>
 									Calendar View
