@@ -21,6 +21,8 @@ export default function BatchesPage() {
 	const [dashboardStats, setDashboardStats] = useState<IBatchStats>();
 	const [isLoading, setIsLoading] = useState(true);
 	const [refreshKey, setRefreshKey] = useState(0);
+	const [activeTab, setActiveTab] = useState<string>("active");
+	const [hasSetDefaultTab, setHasSetDefaultTab] = useState(false);
 
 	const handleRefresh = () => {
 		setRefreshKey((prev) => prev + 1);
@@ -50,6 +52,49 @@ export default function BatchesPage() {
 
 		getBatches();
 	}, [refreshKey]);
+
+	const getTabPriority = (tabId: string) => {
+		if (!dashboardStats) return 0;
+		const activeCount = dashboardStats.activeBatches ?? 0;
+		const upcomingCount = dashboardStats.upcomingBatches ?? 0;
+		const completedCount = dashboardStats.completedBatches ?? 0;
+
+		// If all lists are empty, keep original order
+		if (activeCount === 0 && upcomingCount === 0 && completedCount === 0) {
+			if (tabId === "calendar") return 1;
+			return 0;
+		}
+
+		if (tabId === "calendar") return 1;
+
+		const count = tabId === "active"
+			? activeCount
+			: tabId === "upcoming"
+				? upcomingCount
+				: completedCount;
+
+		if (count > 0) return 0;
+		return 2; // put empty ones last (after calendar)
+	};
+
+	useEffect(() => {
+		if (dashboardStats && !hasSetDefaultTab) {
+			const activeCount = dashboardStats.activeBatches ?? 0;
+			const upcomingCount = dashboardStats.upcomingBatches ?? 0;
+			const completedCount = dashboardStats.completedBatches ?? 0;
+
+			if (activeCount > 0) {
+				setActiveTab("active");
+			} else if (upcomingCount > 0) {
+				setActiveTab("upcoming");
+			} else if (completedCount > 0) {
+				setActiveTab("completed");
+			} else {
+				setActiveTab("active");
+			}
+			setHasSetDefaultTab(true);
+		}
+	}, [dashboardStats, hasSetDefaultTab]);
 
 	return (
 		<div className="container mx-auto p-6">
@@ -250,16 +295,32 @@ export default function BatchesPage() {
 
 					{/* Main Content */}
 					<div className="lg:col-span-3">
-						<Tabs defaultValue="active" className="space-y-4">
-							<TabsList>
-								<TabsTrigger value="active">Active Batches {(dashboardStats && dashboardStats.activeBatches) ? `(${dashboardStats.activeBatches})` : ""}</TabsTrigger>
-								<TabsTrigger value="upcoming">
-									Upcoming Batches {(dashboardStats && dashboardStats.upcomingBatches) ? `(${dashboardStats.upcomingBatches})` : ""}
+						<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+							<TabsList className="flex">
+								<TabsTrigger
+									value="active"
+									style={{ order: getTabPriority("active") }}
+								>
+									Active Batches {dashboardStats && dashboardStats.activeBatches > 0 ? `(${dashboardStats.activeBatches})` : ""}
 								</TabsTrigger>
-								<TabsTrigger value="completed">
-									Completed Batches {(dashboardStats && dashboardStats.completedBatches) ? `(${dashboardStats.completedBatches})` : ""}
+								<TabsTrigger
+									value="upcoming"
+									style={{ order: getTabPriority("upcoming") }}
+								>
+									Upcoming Batches {dashboardStats && dashboardStats.upcomingBatches > 0 ? `(${dashboardStats.upcomingBatches})` : ""}
 								</TabsTrigger>
-								<TabsTrigger value="calendar">Calendar View</TabsTrigger>
+								<TabsTrigger
+									value="completed"
+									style={{ order: getTabPriority("completed") }}
+								>
+									Completed Batches {dashboardStats && dashboardStats.completedBatches > 0 ? `(${dashboardStats.completedBatches})` : ""}
+								</TabsTrigger>
+								<TabsTrigger
+									value="calendar"
+									style={{ order: getTabPriority("calendar") }}
+								>
+									Calendar View
+								</TabsTrigger>
 							</TabsList>
 
 							<TabsContent value="active">
