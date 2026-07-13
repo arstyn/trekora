@@ -53,6 +53,11 @@ export class BookingService {
         return response.data;
     }
 
+    static async getBookingsByCustomer(customerId: string): Promise<any[]> {
+        const response = await axiosInstance.get(`${this.baseUrl}/customer/${customerId}`);
+        return response.data;
+    }
+
     static async getBookingLogs(id: string): Promise<IBookingLog[]> {
         const response = await axiosInstance.get(`${this.baseUrl}/${id}/logs`);
         return response.data;

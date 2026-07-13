@@ -1,9 +1,16 @@
+import type { IPackages } from "../package.schema";
+
 export type ILeadStatus = "new" | "contacted" | "qualified" | "lost" | "converted";
 
 export interface ILead {
 	id: string;
 	name: string;
+	leadType: "individual" | "company";
 	company?: string;
+	companyWebsite?: string;
+	companyIndustry?: string;
+	contactDesignation?: string;
+	companySize?: string;
 	email?: string;
 	phone?: string;
 	status: ILeadStatus;
@@ -12,13 +19,16 @@ export interface ILead {
 	notes?: string;
 	preferredPackageId?: string;
 	consideredPackageIds?: string[];
+	isCustomPackage?: boolean;
+	customPackageName?: string;
+	customPackageDestination?: string;
+	customPackageDays?: number;
+	customPackageNights?: number;
+	customPackagePrice?: number;
+	customPackageDescription?: string;
+	budget?: number;
 	numberOfPassengers: number;
-	preferredPackage?: {
-		id: string;
-		name: string;
-		destination: string;
-		price: number;
-	};
+	preferredPackage?: IPackages;
 	createdBy?: {
 		id: string;
 		name?: string;

@@ -500,6 +500,10 @@ export default function TeamHierarchyPage() {
 
                                 return (
                                     <div key={rowIndex} className="relative flex flex-col items-center">
+                                        {!isLastRow && (
+                                            <div className="absolute top-0 bottom-0 w-0.5 bg-primary/20 left-1/2 -translate-x-1/2 z-0" />
+                                        )}
+
                                         {!isFirstRow && (
                                             <div
                                                 className={`h-10 ${
@@ -510,7 +514,7 @@ export default function TeamHierarchyPage() {
                                             />
                                         )}
 
-                                        <div className="flex gap-12 relative px-10">
+                                        <div className="flex gap-12 relative px-10 z-10">
                                             {rowChildren.map((child, idx) => {
                                                 const isFirst = idx === 0;
                                                 const isLast = idx === rowChildren.length - 1;
@@ -537,9 +541,6 @@ export default function TeamHierarchyPage() {
                                                 );
                                             })}
                                         </div>
-                                        {!isLastRow && (
-                                            <div className="absolute top-0 bottom-0 w-0.5 bg-primary/20 left-1/2 -translate-x-1/2 z-0" />
-                                        )}
                                     </div>
                                 );
                             })}
