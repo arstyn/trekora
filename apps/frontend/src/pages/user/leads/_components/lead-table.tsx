@@ -1,6 +1,7 @@
 import DataTableFooter from "@/components/data-table-footer";
 import NAText from "@/components/na-text";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -27,8 +28,9 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { MoreHorizontal, Users } from "lucide-react";
+import { MoreHorizontal, Users, Building, User } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { LeadStatusBadge } from "./lead-status-badge";
 
 interface LeadTableProps {
@@ -45,12 +47,45 @@ export function LeadTable({ leads, isLoading, onStatusChange, onLeadClick }: Lea
 		{
 			accessorKey: "name",
 			header: "Name",
-			cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
-		},
-		{
-			accessorKey: "company",
-			header: "Company",
-			cell: ({ row }) => row.original.company || <NAText />,
+			cell: ({ row }) => {
+				const name = row.original.name;
+				const company = row.original.company;
+				const leadId = row.original.id;
+				const isCompany = row.original.leadType === "company" || (row.original.leadType !== "individual" && !!row.original.company);
+				return (
+					<div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+						{isCompany ? (
+							<Building className="h-4 w-4 text-purple-500 mr-0.5 shrink-0" />
+						) : (
+							<User className="h-4 w-4 text-blue-500 mr-0.5 shrink-0" />
+						)}
+						{name ? (
+							<Link
+								to={`/leads/${leadId}`}
+								className="font-medium text-primary hover:underline"
+							>
+								{name}
+							</Link>
+						) : null}
+						{company ? (
+							name ? (
+								<Badge variant="outline" className="text-xs bg-muted/50 font-normal">
+									{company}
+								</Badge>
+							) : (
+								<Link
+									to={`/leads/${leadId}`}
+									className="hover:underline"
+								>
+									<Badge variant="outline" className="text-xs bg-muted/50 font-normal text-primary border-primary/30">
+										{company}
+									</Badge>
+								</Link>
+							)
+						) : null}
+					</div>
+				);
+			},
 		},
 		{
 			accessorKey: "email",

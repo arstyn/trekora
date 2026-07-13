@@ -28,7 +28,7 @@ export class LeadService {
       where: {
         organizationId,
       },
-      relations: ['createdBy', 'preferredPackage'],
+      relations: ['createdBy', 'preferredPackage', 'preferredPackage.packageTiers'],
       select: {
         createdBy: {
           id: true,
@@ -51,7 +51,7 @@ export class LeadService {
         organizationId,
         createdById: In(teamUserIds),
       },
-      relations: ['createdBy', 'preferredPackage'],
+      relations: ['createdBy', 'preferredPackage', 'preferredPackage.packageTiers'],
       select: {
         createdBy: {
           id: true,
@@ -66,7 +66,7 @@ export class LeadService {
   async findOne(id: string): Promise<Lead | null> {
     return this.leadRepository.findOne({
       where: { id },
-      relations: ['preferredPackage', 'createdBy'],
+      relations: ['preferredPackage', 'preferredPackage.packageTiers', 'createdBy'],
       select: {
         createdBy: {
           id: true,

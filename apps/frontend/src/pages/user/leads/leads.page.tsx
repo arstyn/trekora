@@ -27,6 +27,9 @@ export function Leads() {
     const [statusFilter, setStatusFilter] = useState<ILeadStatus | "all">(
         "all"
     );
+    const [typeFilter, setTypeFilter] = useState<"all" | "individual" | "company">(
+        "all"
+    );
     const [selectedLead, setSelectedLead] = useState<ILead | null>(null);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isCreatingLead, setIsCreatingLead] = useState(false);
@@ -74,17 +77,23 @@ export function Leads() {
 
     const handleSearch = (query: string) => {
         setSearchQuery(query);
-        filterLeads(query, statusFilter);
+        filterLeads(query, statusFilter, typeFilter);
     };
 
     const handleStatusFilter = (status: ILeadStatus | "all") => {
         setStatusFilter(status);
-        filterLeads(searchQuery, status);
+        filterLeads(searchQuery, status, typeFilter);
+    };
+
+    const handleTypeFilter = (type: "all" | "individual" | "company") => {
+        setTypeFilter(type);
+        filterLeads(searchQuery, statusFilter, type);
     };
 
     const filterLeads = (
         query: string,
         status: ILeadStatus | "all",
+        type: "all" | "individual" | "company" = typeFilter,
         leadsToFilter: ILead[] | undefined = leads
     ) => {
         let filtered = leadsToFilter; // Use the passed leads instead of state
@@ -100,6 +109,13 @@ export function Leads() {
 
         if (status !== "all" && filtered) {
             filtered = filtered.filter((lead) => lead.status === status);
+        }
+
+        if (type !== "all" && filtered) {
+            filtered = filtered.filter((lead) => {
+                const isCompany = lead.leadType === "company" || (lead.leadType !== "individual" && !!lead.company);
+                return type === "company" ? isCompany : !isCompany;
+            });
         }
 
         setFilteredLeads(filtered);
@@ -122,7 +138,7 @@ export function Leads() {
                             : lead
                     );
                 setLeads(updatedLeads);
-                filterLeads(searchQuery, statusFilter, updatedLeads);
+                filterLeads(searchQuery, statusFilter, typeFilter, updatedLeads);
                 if (newStatus === "converted") {
                     setOpenCustomerCreateModal(true);
                 }
@@ -165,7 +181,7 @@ export function Leads() {
         setLeads(updatedLeads);
 
         // ✅ Update filtered leads
-        filterLeads(searchQuery, statusFilter, updatedLeads);
+        filterLeads(searchQuery, statusFilter, typeFilter, updatedLeads);
 
         // ✅ Fix: Update selectedLead if this is the one being viewed
         if (selectedLead?.id === leadData.id) {
@@ -202,6 +218,8 @@ export function Leads() {
                                 onSearch={handleSearch}
                                 onStatusFilter={handleStatusFilter}
                                 currentStatus={statusFilter}
+                                onTypeFilter={handleTypeFilter}
+                                currentType={typeFilter}
                                 view={view}
                             />
                         </div>
