@@ -9,6 +9,7 @@ import type {
     BookingStatus,
     IBookingLog,
     IPackage,
+    ICustomer,
 } from "@/types/booking.types";
 import type { IBatches } from "@/types/batches.types";
 
@@ -159,16 +160,7 @@ export class BookingService {
         offset?: number;
         search?: string;
     }): Promise<{
-        customers: Array<{
-            id: string;
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone: string;
-            dateOfBirth: string;
-            gender: string;
-            address: string;
-        }>;
+        customers: ICustomer[];
         total: number;
         hasMore: boolean;
     }> {
@@ -197,16 +189,7 @@ export class BookingService {
             offset?: number;
         },
     ): Promise<{
-        data: Array<{
-            id: string;
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone: string;
-            dateOfBirth: string;
-            gender: string;
-            address: string;
-        }>;
+        data: ICustomer[];
         total: number;
         hasMore: boolean;
     }> {
@@ -223,6 +206,11 @@ export class BookingService {
         const response = await axiosInstance.get(
             `/customers?${queryParams.toString()}`,
         );
+        return response.data;
+    }
+
+    static async getCustomerById(id: string): Promise<ICustomer> {
+        const response = await axiosInstance.get(`/customers/${id}`);
         return response.data;
     }
 
