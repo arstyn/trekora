@@ -53,7 +53,7 @@ export interface ICustomer {
     updatedAt?: string;
 }
 
-import type { PackageTier, IPaymentStructure } from "./package.schema";
+import type { PackageTier, IPaymentStructure, PackageLocation } from "./package.schema";
 
 export interface IPackage {
     id: string;
@@ -65,6 +65,7 @@ export interface IPackage {
     packageTiers?: PackageTier[];
     transportation?: any[];
     paymentStructure?: IPaymentStructure[];
+    packageLocation?: PackageLocation;
 }
 
 export interface IBatch {

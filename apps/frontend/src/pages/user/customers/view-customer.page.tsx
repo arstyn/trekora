@@ -94,6 +94,13 @@ export default function ViewCustomerPage() {
         }
     }, [id, fetchCustomerData, fetchBookingsData]);
 
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("edit") === "true") {
+            setIsEditing(true);
+        }
+    }, []);
+
     const handleSave = (updatedCustomer: ICustomer) => {
         setCustomer(updatedCustomer);
         setIsEditing(false);

@@ -324,7 +324,7 @@ export class PackageService {
         'thumbnail',
         'status',
       ],
-      relations: ['packageTiers', 'transportationOptions', 'paymentStructure'],
+      relations: ['packageTiers', 'transportationOptions', 'paymentStructure', 'packageLocation'],
       order: {
         paymentStructure: {
           order: 'ASC',

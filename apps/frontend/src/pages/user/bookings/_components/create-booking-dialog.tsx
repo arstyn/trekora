@@ -101,6 +101,7 @@ export function CreateBookingDialog({
         total: 0,
     });
     const [loadingCustomers, setLoadingCustomers] = useState(false);
+    const [passportOverrides, setPassportOverrides] = useState<Record<string, boolean>>({});
 
     const [formData, setFormData] = useState<ICreateBookingFormData>({
         packageId: "",
@@ -127,6 +128,46 @@ export function CreateBookingDialog({
     const paymentStructure = selectedPackage?.paymentStructure || [];
     const selectedBatch = availableBatches.find((b) => b.id === formData.batchId);
 
+    const checkPassportStatus = (customer: ICustomer) => {
+        if (!selectedPackage || selectedPackage.packageLocation?.type !== 'international') {
+            return { hasWarning: false, isMissingDetails: false, isExpirySoon: false };
+        }
+        
+        const isMissingDetails = !customer.passportNumber?.trim() || !customer.passportExpiryDate;
+        
+        let isExpirySoon = false;
+        if (!isMissingDetails && customer.passportExpiryDate && selectedBatch?.startDate) {
+            const batchDate = new Date(selectedBatch.startDate);
+            const expiryDate = new Date(customer.passportExpiryDate);
+            const sixMonthsAfterBatch = new Date(batchDate);
+            sixMonthsAfterBatch.setMonth(sixMonthsAfterBatch.getMonth() + 6);
+            isExpirySoon = expiryDate < sixMonthsAfterBatch;
+        }
+        
+        return {
+            hasWarning: isMissingDetails || isExpirySoon,
+            isMissingDetails,
+            isExpirySoon,
+        };
+    };
+    const syncCustomerDetails = async (customerId: string) => {
+        try {
+            const response = await BookingService.getCustomerById(customerId);
+            if (response) {
+                setFormData(prev => {
+                    const newCustomers = prev.customers.map(c => c.id === customerId ? response : c);
+                    return {
+                        ...prev,
+                        customers: newCustomers
+                    };
+                });
+                toast.success("Traveler details synced successfully");
+            }
+        } catch (error) {
+            console.error("Failed to sync customer details:", error);
+            toast.error("Failed to sync traveler details");
+        }
+    };
     // Form validation per step
     const validateStep = (currentStep: number) => {
         const newErrors: Record<string, string> = {};
@@ -139,6 +180,14 @@ export function CreateBookingDialog({
         if (currentStep === 2) {
             if (formData.customers.length === 0) {
                 newErrors.customers = "Please select at least one customer";
+            } else if (selectedPackage?.packageLocation?.type === 'international') {
+                const pendingWarnings = formData.customers.some(c => {
+                    const status = checkPassportStatus(c);
+                    return status.hasWarning && !passportOverrides[c.id];
+                });
+                if (pendingWarnings) {
+                    newErrors.passport = "Please resolve or override all traveler passport warnings before proceeding.";
+                }
             }
         }
 
@@ -647,6 +696,7 @@ export function CreateBookingDialog({
             total: 0,
         });
         setLoadingCustomers(false);
+        setPassportOverrides({});
         setError(null);
         setErrors({});
         setPackageSearch("");
@@ -965,6 +1015,12 @@ export function CreateBookingDialog({
                                                         />
                                                     </div>
                                                     {errors.customers && <p className="text-xs text-destructive mt-1 font-medium">{errors.customers}</p>}
+                                                    {errors.passport && (
+                                                        <Alert variant="destructive" className="mt-2 py-2">
+                                                            <AlertCircle className="h-4 w-4" />
+                                                            <AlertDescription>{errors.passport}</AlertDescription>
+                                                        </Alert>
+                                                    )}
                                                 </div>
 
                                                 <ScrollArea
@@ -1078,32 +1134,70 @@ export function CreateBookingDialog({
                                                         {formData.customers.map((c, index) => {
                                                             const selection = formData.customerSelections[c.id] || { tierId: formData.packageTierId, ageCategory: 'adult' };
                                                             return (
-                                                                <div key={c.id} className="flex items-center justify-between p-3 bg-card border rounded-xl hover:shadow-xs transition-shadow">
-                                                                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                                                                        <Avatar className="h-8 w-8">
-                                                                            <AvatarImage src={c.profilePhoto} alt={`${c.firstName} ${c.lastName}`} />
-                                                                            <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                                                                                {c.firstName[0]}{c.lastName?.[0] || ''}
-                                                                            </AvatarFallback>
-                                                                        </Avatar>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
-                                                                            {(c.email || c.phone) ? (
-                                                                                <p className="text-xs text-muted-foreground truncate">
-                                                                                    {c.email}
-                                                                                    {c.email && c.phone ? " • " : ""}
-                                                                                    {c.phone}
-                                                                                </p>
-                                                                            ) : null}
+                                                                <div key={c.id} className="flex flex-col p-3 bg-card border rounded-xl hover:shadow-xs transition-shadow gap-3">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                                                            <Avatar className="h-8 w-8">
+                                                                                <AvatarImage src={c.profilePhoto} alt={`${c.firstName} ${c.lastName}`} />
+                                                                                <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                                                                                    {c.firstName[0]}{c.lastName?.[0] || ''}
+                                                                                </AvatarFallback>
+                                                                            </Avatar>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
+                                                                                {(c.email || c.phone) ? (
+                                                                                    <p className="text-xs text-muted-foreground truncate">
+                                                                                        {c.email}
+                                                                                        {c.email && c.phone ? " • " : ""}
+                                                                                        {c.phone}
+                                                                                    </p>
+                                                                                ) : null}
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        {!formData.isCommonTier && selectedPackage?.packageTiers && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            {!formData.isCommonTier && selectedPackage?.packageTiers && (
+                                                                                <Select
+                                                                                    value={selection.tierId}
+                                                                                    onValueChange={(val) => {
+                                                                                        setFormData(prev => {
+                                                                                            const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, tierId: val } };
+                                                                                            return {
+                                                                                                ...prev,
+                                                                                                customerSelections: newSelections,
+                                                                                                totalAmount: calculateTotalAmount(prev.packageId, prev.packageTierId, prev.isCommonTier, newSelections, prev.customers)
+                                                                                            }
+                                                                                        });
+                                                                                    }}
+                                                                                >
+                                                                                    <SelectTrigger className="w-40 h-9 text-xs bg-background">
+                                                                                        <SelectValue placeholder="Tier" />
+                                                                                    </SelectTrigger>
+                                                                                    <SelectContent>
+                                                                                        {selectedPackage.packageTiers.map(tier => {
+                                                                                            const totalAdultCost = Number(tier.totalAdultCost || 0);
+
+                                                                                            const childCost = tier.childCostType === 'percentage'
+                                                                                                ? totalAdultCost * (Number(tier.childCostValue || 0) / 100)
+                                                                                                : Number(tier.childCostValue || 0);
+
+                                                                                            const infantCost = tier.infantCostType === 'percentage'
+                                                                                                ? totalAdultCost * (Number(tier.infantCostValue || 0) / 100)
+                                                                                                : Number(tier.infantCostValue || 0);
+
+                                                                                            return (
+                                                                                                <SelectItem key={tier.id} value={tier.id!}>
+                                                                                                    {tier.name} — A: {BookingService.formatCurrency(totalAdultCost)} | C: {BookingService.formatCurrency(childCost)} | I: {BookingService.formatCurrency(infantCost)}
+                                                                                                </SelectItem>
+                                                                                            );
+                                                                                        })}
+                                                                                    </SelectContent>
+                                                                                </Select>
+                                                                            )}
                                                                             <Select
-                                                                                value={selection.tierId}
-                                                                                onValueChange={(val) => {
+                                                                                value={selection.ageCategory}
+                                                                                onValueChange={(val: 'adult' | 'child' | 'infant') => {
                                                                                     setFormData(prev => {
-                                                                                        const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, tierId: val } };
+                                                                                        const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, ageCategory: val } };
                                                                                         return {
                                                                                             ...prev,
                                                                                             customerSelections: newSelections,
@@ -1112,62 +1206,85 @@ export function CreateBookingDialog({
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <SelectTrigger className="w-40 h-9 text-xs bg-background">
-                                                                                    <SelectValue placeholder="Tier" />
+                                                                                <SelectTrigger className="w-24 h-9 text-xs bg-background">
+                                                                                    <SelectValue placeholder="Age" />
                                                                                 </SelectTrigger>
                                                                                 <SelectContent>
-                                                                                    {selectedPackage.packageTiers.map(tier => {
-                                                                                        const totalAdultCost = Number(tier.totalAdultCost || 0);
-
-                                                                                        const childCost = tier.childCostType === 'percentage'
-                                                                                            ? totalAdultCost * (Number(tier.childCostValue || 0) / 100)
-                                                                                            : Number(tier.childCostValue || 0);
-
-                                                                                        const infantCost = tier.infantCostType === 'percentage'
-                                                                                            ? totalAdultCost * (Number(tier.infantCostValue || 0) / 100)
-                                                                                            : Number(tier.infantCostValue || 0);
-
-                                                                                        return (
-                                                                                            <SelectItem key={tier.id} value={tier.id!}>
-                                                                                                {tier.name} — A: {BookingService.formatCurrency(totalAdultCost)} | C: {BookingService.formatCurrency(childCost)} | I: {BookingService.formatCurrency(infantCost)}
-                                                                                            </SelectItem>
-                                                                                        );
-                                                                                    })}
+                                                                                    <SelectItem value="adult">Adult</SelectItem>
+                                                                                    <SelectItem value="child">Child</SelectItem>
+                                                                                    <SelectItem value="infant">Infant</SelectItem>
                                                                                 </SelectContent>
                                                                             </Select>
-                                                                        )}
-                                                                        <Select
-                                                                            value={selection.ageCategory}
-                                                                            onValueChange={(val: 'adult' | 'child' | 'infant') => {
-                                                                                setFormData(prev => {
-                                                                                    const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, ageCategory: val } };
-                                                                                    return {
-                                                                                        ...prev,
-                                                                                        customerSelections: newSelections,
-                                                                                        totalAmount: calculateTotalAmount(prev.packageId, prev.packageTierId, prev.isCommonTier, newSelections, prev.customers)
-                                                                                    }
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            <SelectTrigger className="w-24 h-9 text-xs bg-background">
-                                                                                <SelectValue placeholder="Age" />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent>
-                                                                                <SelectItem value="adult">Adult</SelectItem>
-                                                                                <SelectItem value="child">Child</SelectItem>
-                                                                                <SelectItem value="infant">Infant</SelectItem>
-                                                                            </SelectContent>
-                                                                        </Select>
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                                            onClick={() => removeCustomer(index)}
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                                                onClick={() => removeCustomer(index)}
+                                                                            >
+                                                                                <X className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
                                                                     </div>
+                                                                    {selectedPackage?.packageLocation?.type === 'international' && (() => {
+                                                                        const status = checkPassportStatus(c);
+                                                                        if (!status.hasWarning) return null;
+                                                                        
+                                                                        const isOverridden = !!passportOverrides[c.id];
+                                                                        
+                                                                        return (
+                                                                            <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
+                                                                                <div className="flex items-start gap-2">
+                                                                                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                                                    <div className="flex-1">
+                                                                                        {status.isMissingDetails ? (
+                                                                                            <p className="font-medium">Missing passport details (passport number/expiry date not updated in customer profile).</p>
+                                                                                        ) : (
+                                                                                            <p className="font-medium">
+                                                                                                Passport expires within 6 months of batch start date (Expires: {c.passportExpiryDate ? new Date(c.passportExpiryDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}).
+                                                                                            </p>
+                                                                                        )}
+                                                                                        <div className="mt-2 flex items-center gap-3">
+                                                                                            <a
+                                                                                                href={`/customers/${c.id}?edit=true`}
+                                                                                                target="_blank"
+                                                                                                rel="noopener noreferrer"
+                                                                                                className="inline-flex items-center gap-1 font-bold text-primary hover:underline hover:text-primary/80 transition-colors"
+                                                                                            >
+                                                                                                Edit Customer Profile ↗
+                                                                                            </a>
+                                                                                            <span className="text-muted-foreground/30">•</span>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => syncCustomerDetails(c.id)}
+                                                                                                className="inline-flex items-center gap-1 font-bold text-primary hover:underline hover:text-primary/80 transition-colors cursor-pointer"
+                                                                                            >
+                                                                                                Sync Details ↻
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10">
+                                                                                    <Checkbox
+                                                                                        id={`override-passport-${c.id}`}
+                                                                                        checked={isOverridden}
+                                                                                        onCheckedChange={(checked) => {
+                                                                                            setPassportOverrides(prev => ({
+                                                                                                ...prev,
+                                                                                                [c.id]: !!checked
+                                                                                            }));
+                                                                                            if (errors.passport) {
+                                                                                                setErrors(prev => ({ ...prev, passport: "" }));
+                                                                                            }
+                                                                                        }}
+                                                                                    />
+                                                                                    <Label htmlFor={`override-passport-${c.id}`} className="text-[11px] font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
+                                                                                        Acknowledge and override this warning
+                                                                                    </Label>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             );
                                                         })}
