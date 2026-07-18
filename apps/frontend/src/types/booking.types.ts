@@ -62,6 +62,7 @@ export interface IPackage {
     duration?: string;
     description?: string;
     thumbnail?: string;
+    packageSetup?: "normal" | "advanced";
     packageTiers?: PackageTier[];
     transportation?: any[];
     paymentStructure?: IPaymentStructure[];

@@ -28,6 +28,7 @@ import type { PackageFormData } from "@/types/package.schema";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
+import { getFileUrl } from "@/lib/utils";
 
 interface StepBasicInfoProps {
     form: UseFormReturn<PackageFormData>;
@@ -58,7 +59,7 @@ export function StepBasicInfo({
         }
     }, [selectedThumbnail]);
 
-    const thumbnailSrc = localPreview || thumbnailFile;
+    const thumbnailSrc = localPreview || (thumbnailFile ? (thumbnailFile.startsWith("blob:") || thumbnailFile.startsWith("data:") ? thumbnailFile : getFileUrl(thumbnailFile)) : undefined);
 
     const [newItem, setNewItem] = useState<{
         type: "countries" | "states" | "cities";

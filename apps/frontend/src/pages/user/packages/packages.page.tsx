@@ -1,7 +1,6 @@
 import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
     Card,
     CardContent,
@@ -9,23 +8,26 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import axiosInstance from "@/lib/axios";
 import type { IPackages } from "@/types/package.schema";
 import {
     Calendar,
-    IndianRupee,
     MapPin,
     Package,
     Plus,
-    Users,
+    Users
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { PackageCreateModal } from "./_components/package-create-modal";
 
 export default function Packages() {
+    const navigate = useNavigate();
     const [packages, setPackages] = useState<IPackages[]>([]);
     const [error, setError] = useState<string>();
     const [isLoading, setIsLoading] = useState(true);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     useEffect(() => {
         const getPackages = async () => {
@@ -62,7 +64,7 @@ export default function Packages() {
             {/* Main Content */}
             <main className="px-4 sm:px-6 lg:px-6 py-6">
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <Card>
                         <CardContent className="px-6">
                             <div className="flex items-center">
@@ -140,52 +142,25 @@ export default function Packages() {
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardContent className="px-6">
-                            <div className="flex items-center">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <IndianRupee className="w-6 h-6 text-primary" />
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium">
-                                        Avg. Price
-                                    </p>
-                                    {isLoading ? (
-                                        <Skeleton className="h-8 w-16 mt-1" />
-                                    ) : (
-                                        <p className="text-2xl font-bold">
-                                            ₹
-                                            {packages.length > 0 ? Math.round(
-                                                packages.reduce(
-                                                    (sum, pkg) =>
-                                                        sum +
-                                                        (pkg.basePrice ?? 0),
-                                                    0,
-                                                ) / packages.length,
-                                            ) : 0}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+
 
                     <PermissionGuard resource="package" action="create">
-                        <NavLink to="/packages/create">
-                            <div className="flex items-center bg-card hover:bg-secondary cursor-pointer rounded-xl border px-6 h-full">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <Plus className="w-6 h-6 text-primary" />
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium">
-                                        Create
-                                    </p>
-                                    <p className="text-2xl font-bold">
-                                        Package
-                                    </p>
-                                </div>
+                        <div
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="flex items-center bg-card hover:bg-secondary cursor-pointer rounded-xl border px-6 h-full"
+                        >
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                                <Plus className="w-6 h-6 text-primary" />
                             </div>
-                        </NavLink>
+                            <div className="ml-4">
+                                <p className="text-sm font-medium">
+                                    Create
+                                </p>
+                                <p className="text-2xl font-bold">
+                                    Package
+                                </p>
+                            </div>
+                        </div>
                     </PermissionGuard>
                 </div>
 
@@ -230,15 +205,14 @@ export default function Packages() {
                                 to attract customers.
                             </p>
                             <PermissionGuard resource="package" action="create">
-                                <NavLink to="/packages/create">
-                                    <Button
-                                        size="lg"
-                                        className="gap-2 cursor-pointer"
-                                    >
-                                        <Plus className="h-5 w-5" />
-                                        Create Your First Package
-                                    </Button>
-                                </NavLink>
+                                <Button
+                                    size="lg"
+                                    className="gap-2 cursor-pointer"
+                                    onClick={() => setIsCreateModalOpen(true)}
+                                >
+                                    <Plus className="h-5 w-5" />
+                                    Create Your First Package
+                                </Button>
                             </PermissionGuard>
                         </div>
                     </div>
@@ -261,10 +235,10 @@ export default function Packages() {
                                     />
                                     <Badge
                                         className={`absolute top-2 right-2 ${pkg.status === "published"
-                                                ? "bg-green-500 hover:bg-green-600"
-                                                : pkg.status === "edited"
-                                                    ? "bg-amber-500 hover:bg-amber-600"
-                                                    : "bg-yellow-500 hover:bg-yellow-600"
+                                            ? "bg-green-500 hover:bg-green-600"
+                                            : pkg.status === "edited"
+                                                ? "bg-amber-500 hover:bg-amber-600"
+                                                : "bg-yellow-500 hover:bg-yellow-600"
                                             }`}
                                     >
                                         {pkg.status}
@@ -330,6 +304,14 @@ export default function Packages() {
                     </div>
                 )}
             </main>
+            <PackageCreateModal
+                open={isCreateModalOpen}
+                onOpenChange={setIsCreateModalOpen}
+                onSelect={(type) => {
+                    setIsCreateModalOpen(false);
+                    navigate(`/packages/create?type=${type}`);
+                }}
+            />
         </div>
     );
 }

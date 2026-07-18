@@ -43,8 +43,6 @@ export class Package {
   @Column({ type: 'int', nullable: true })
   nights: number;
 
-  @Column('decimal', { precision: 10, scale: 2, nullable: true })
-  basePrice: number;
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   groundTransportationCost: number;
@@ -87,6 +85,14 @@ export class Package {
     nullable: true,
   })
   status: string;
+
+  @Column({
+    type: 'enum',
+    enum: ['normal', 'advanced'],
+    default: 'advanced',
+    nullable: true,
+  })
+  packageSetup: 'normal' | 'advanced';
 
   @Column({ type: 'jsonb', nullable: true })
   draftContent: any;

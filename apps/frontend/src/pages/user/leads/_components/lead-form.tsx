@@ -768,9 +768,7 @@ export function LeadForm({
 																							</p>
 																							<p className="text-xs text-muted-foreground">
 																								₹
-																								{
-																									pkg.basePrice
-																								}
+																								{pkg.packageTiers?.[0]?.adultCost}
 																							</p>
 																						</div>
 																						{field.value ===
@@ -940,9 +938,7 @@ export function LeadForm({
 																							</p>
 																							<p className="text-xs text-muted-foreground">
 																								₹
-																								{
-																									pkg.basePrice
-																								}
+																								{pkg.packageTiers?.[0]?.adultCost}
 																							</p>
 																						</div>
 																					</div>

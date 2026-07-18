@@ -504,14 +504,6 @@ export class BookingService {
       package: {
         id: booking.package.id,
         name: booking.package.name,
-        basePrice: (() => {
-          let price = Number(booking.package.basePrice || 0);
-          if (booking.package.packageTiers && booking.package.packageTiers.length > 0) {
-            const prices = booking.package.packageTiers.map(t => Number(t.adultCost || 0)).filter(p => p > 0);
-            if (prices.length > 0) price = Math.min(...prices);
-          }
-          return price;
-        })(),
         destination: booking.package.destination,
         days: booking.package.days,
         nights: booking.package.nights,
@@ -911,12 +903,14 @@ export class BookingService {
       
       booking.numberOfCustomers = booking.bookingCustomers.length;
 
-      // Recalculate amounts
       const packageEntity = await this.packageRepository.findOne({
         where: { id: booking.packageId },
+        relations: ['packageTiers'],
       });
       if (packageEntity) {
-        booking.totalAmount = packageEntity.basePrice * booking.numberOfCustomers;
+        const tier = packageEntity.packageTiers?.find(t => t.id === booking.packageTierId) || packageEntity.packageTiers?.[0];
+        const adultPrice = tier ? Number(tier.adultCost || 0) : 0;
+        booking.totalAmount = adultPrice * booking.numberOfCustomers;
         booking.balanceAmount = booking.totalAmount - booking.advancePaid;
       }
 
