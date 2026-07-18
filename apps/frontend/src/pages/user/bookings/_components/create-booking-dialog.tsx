@@ -45,7 +45,10 @@ import {
     Package as PackageIcon,
     Plus,
     Search,
-    X
+    X,
+    User,
+    PersonStanding,
+    Baby
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -132,9 +135,9 @@ export function CreateBookingDialog({
         if (!selectedPackage || selectedPackage.packageLocation?.type !== 'international') {
             return { hasWarning: false, isMissingDetails: false, isExpirySoon: false };
         }
-        
+
         const isMissingDetails = !customer.passportNumber?.trim() || !customer.passportExpiryDate;
-        
+
         let isExpirySoon = false;
         if (!isMissingDetails && customer.passportExpiryDate && selectedBatch?.startDate) {
             const batchDate = new Date(selectedBatch.startDate);
@@ -143,7 +146,7 @@ export function CreateBookingDialog({
             sixMonthsAfterBatch.setMonth(sixMonthsAfterBatch.getMonth() + 6);
             isExpirySoon = expiryDate < sixMonthsAfterBatch;
         }
-        
+
         return {
             hasWarning: isMissingDetails || isExpirySoon,
             isMissingDetails,
@@ -405,19 +408,19 @@ export function CreateBookingDialog({
             if (pkg.packageTiers && effectiveTierId) {
                 const tier = pkg.packageTiers.find((t) => t.id === effectiveTierId);
                 if (tier) {
-                    const totalAdultCost = Number(tier.totalAdultCost || 0);
+                    const adultCost = Number(tier.adultCost || 0);
 
                     if (ageCategory === 'adult') {
-                        total += totalAdultCost;
+                        total += adultCost;
                     } else if (ageCategory === 'child') {
                         if (tier.childCostType === 'percentage') {
-                            total += totalAdultCost * (Number(tier.childCostValue || 0) / 100);
+                            total += adultCost * (Number(tier.childCostValue || 0) / 100);
                         } else {
                             total += Number(tier.childCostValue || 0);
                         }
                     } else if (ageCategory === 'infant') {
                         if (tier.infantCostType === 'percentage') {
-                            total += totalAdultCost * (Number(tier.infantCostValue || 0) / 100);
+                            total += adultCost * (Number(tier.infantCostValue || 0) / 100);
                         } else {
                             total += Number(tier.infantCostValue || 0);
                         }
@@ -775,281 +778,400 @@ export function CreateBookingDialog({
                             )}
 
                             <div className="responsive-scroll flex-1 overflow-y-auto px-6 py-4 max-lg:h-auto max-lg:overflow-visible">
-                                    {/* STEP 1: PACKAGE & BATCH SELECTION */}
-                                    {step === 1 && (
-                                        <div className="space-y-6">
-                                            {!formData.packageId ? (
-                                                <div className="space-y-4">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="packageSearch" className="text-sm font-semibold">1. Search and Select Tour Package</Label>
-                                                        <div className="relative">
-                                                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                            <Input
-                                                                id="packageSearch"
-                                                                placeholder="Search by package name, destination, or description..."
-                                                                value={packageSearch}
-                                                                onChange={(e) => {
-                                                                    setPackageSearch(e.target.value);
-                                                                    setPackagePage(1);
-                                                                }}
-                                                                className="pl-10 h-10 border-input bg-background"
-                                                            />
-                                                        </div>
-                                                        {errors.packageId && (
-                                                            <p className="text-xs text-destructive font-medium">
-                                                                {errors.packageId}
-                                                            </p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Packages list */}
-                                                    {paginatedPackages.length > 0 ? (
-                                                        <div className="space-y-2.5 max-h-[48vh] overflow-y-auto pr-1">
-                                                            {paginatedPackages.map((pkg) => {
-                                                                const isSelected = formData.packageId === pkg.id;
-                                                                const thumbnailSrc = pkg.thumbnail || "/placeholder.svg";
-                                                                return (
-                                                                    <div
-                                                                        key={pkg.id}
-                                                                        className={`p-3 border rounded-xl cursor-pointer transition-all duration-200 flex gap-4 items-center hover:border-primary/50 hover:shadow-xs ${isSelected
-                                                                            ? "border-primary bg-primary/5 ring-1 ring-primary"
-                                                                            : "bg-card border-border"
-                                                                            }`}
-                                                                        onClick={() => handlePackageSelect(pkg)}
-                                                                    >
-                                                                        {/* Package Thumbnail Image */}
-                                                                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
-                                                                            {pkg.thumbnail ? (
-                                                                                <img
-                                                                                    src={thumbnailSrc}
-                                                                                    alt={pkg.name}
-                                                                                    className="w-full h-full object-cover"
-                                                                                    onError={(e) => {
-                                                                                        (e.target as HTMLImageElement).src = "/placeholder.svg";
-                                                                                    }}
-                                                                                />
-                                                                            ) : (
-                                                                                <PackageIcon className="h-6 w-6 text-muted-foreground/60" />
-                                                                            )}
-                                                                        </div>
-                                                                        {/* Package Details */}
-                                                                        <div className="flex-1 min-w-0 pr-4">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="font-bold text-sm text-foreground truncate">
-                                                                                    {pkg.name}
-                                                                                </span>
-                                                                                {pkg.destination && (
-                                                                                    <Badge variant="outline" className="text-[10px] font-medium py-0 px-1.5 capitalize">
-                                                                                        {pkg.destination}
-                                                                                    </Badge>
-                                                                                )}
-                                                                            </div>
-                                                                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                                                                                {pkg.description || 'No description available'}
-                                                                            </p>
-                                                                        </div>
-                                                                        {/* Selected Indicator */}
-                                                                        {isSelected && (
-                                                                            <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0 mr-2">
-                                                                                <Check className="h-3 w-3 text-primary-foreground" />
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
-
-                                                            {/* Pagination Controls */}
-                                                            {totalPackagePages > 1 && (
-                                                                <div className="flex justify-between items-center mt-2">
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => setPackagePage((p) => Math.max(p - 1, 1))}
-                                                                        disabled={currentPackagePage === 1}
-                                                                    >
-                                                                        Previous
-                                                                    </Button>
-                                                                    <span className="text-sm text-muted-foreground">Page {currentPackagePage} of {totalPackagePages}</span>
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => setPackagePage((p) => Math.min(p + 1, totalPackagePages))}
-                                                                        disabled={currentPackagePage === totalPackagePages}
-                                                                    >
-                                                                        Next
-                                                                    </Button>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-xl bg-muted/20 text-center">
-                                                            <PackageIcon className="h-8 w-8 text-muted-foreground/60 mb-2" />
-                                                            <p className="text-sm font-semibold text-muted-foreground">No tour packages found</p>
-                                                            <p className="text-xs text-muted-foreground/80 mt-1">
-                                                                {packageSearch ? `No packages matched "${packageSearch}".` : "No packages available."}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-5">
-                                                    <div className="flex items-center justify-between border-b pb-2">
-                                                        <h4 className="text-sm font-semibold text-foreground">1. Selected Tour Package</h4>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                setFormData((prev) => ({ ...prev, packageId: "", batchId: "" }));
-                                                            }}
-                                                            className="text-xs h-8 border-dashed hover:border-destructive hover:text-destructive"
-                                                        >
-                                                            <ArrowLeft className="h-3.5 w-3.5 mr-1" />
-                                                            Change Package
-                                                        </Button>
-                                                    </div>
-
-                                                    <Card className="border border-muted/80 bg-muted/10 shadow-none">
-                                                        <CardContent className="p-4 flex gap-4 items-center text-xs">
-                                                            <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
-                                                                {selectedPackage?.thumbnail ? (
-                                                                    <img
-                                                                        src={selectedPackage.thumbnail}
-                                                                        alt={selectedPackage.name}
-                                                                        className="w-full h-full object-cover"
-                                                                        onError={(e) => {
-                                                                            (e.target as HTMLImageElement).src = "/placeholder.svg";
-                                                                        }}
-                                                                    />
-                                                                ) : (
-                                                                    <PackageIcon className="h-6 w-6 text-muted-foreground/60" />
-                                                                )}
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <p className="font-bold text-sm text-foreground">{selectedPackage?.name}</p>
-                                                                {selectedPackage?.destination && (
-                                                                    <p className="text-xs text-muted-foreground font-medium">Destination: {selectedPackage.destination}</p>
-                                                                )}
-                                                                {selectedPackage?.duration && (
-                                                                    <p className="text-xs text-muted-foreground font-medium">Duration: {selectedPackage.duration} Days</p>
-                                                                )}
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-
-                                                    <div className="space-y-4 pt-2">
-                                                        <Label className="text-sm font-semibold">2. Select Travel Batch</Label>
-                                                        {availableBatches.length > 0 ? (
-                                                            <div className="grid gap-3 grid-cols-1">
-                                                                {availableBatches.map((batch) => {
-                                                                    const availableSeats = batch.totalSeats - batch.bookedSeats;
-                                                                    const isSelected = formData.batchId === batch.id;
-                                                                    return (
-                                                                        <div
-                                                                            key={batch.id}
-                                                                            className={`relative p-4 border rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-between hover:border-primary/50 hover:shadow-xs ${isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "bg-card border-border"}`}
-                                                                            onClick={() => {
-                                                                                setFormData(prev => ({ ...prev, batchId: batch.id }));
-                                                                                setError(null);
-                                                                                if (errors.batchId) setErrors(prev => ({ ...prev, batchId: "" }));
-                                                                            }}
-                                                                        >
-                                                                            <div className="flex items-center gap-3">
-                                                                                <Calendar className="h-4.5 w-4.5 text-primary flex-shrink-0" />
-                                                                                <div className="space-y-0.5">
-                                                                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Travel Dates</p>
-                                                                                    <p className="text-sm font-bold text-foreground">
-                                                                                        {new Date(batch.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                                                        <span className="text-xs font-semibold text-muted-foreground mx-1.5">to</span>
-                                                                                        {new Date(batch.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                                                    </p>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div className="flex items-center gap-4">
-                                                                                <div className="text-right">
-                                                                                    <p className="text-[10px] font-medium text-muted-foreground">Seats Available</p>
-                                                                                    <Badge variant={availableSeats > 5 ? "secondary" : "destructive"} className="text-[10px] font-bold mt-0.5">
-                                                                                        {availableSeats} left
-                                                                                    </Badge>
-                                                                                </div>
-                                                                                {isSelected && (
-                                                                                    <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                                                                                        <Check className="h-3 w-3 text-primary-foreground" />
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-xl bg-muted/20 text-center">
-                                                                <Calendar className="h-8 w-8 text-muted-foreground/60 mb-2" />
-                                                                <p className="text-sm font-semibold text-muted-foreground">No active batches available</p>
-                                                                <p className="text-xs text-muted-foreground/80 mt-1">Please select another tour package.</p>
-                                                            </div>
-                                                        )}
-                                                        {errors.batchId && <p className="text-xs text-destructive mt-1 font-medium">{errors.batchId}</p>}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* STEP 2: TRAVELERS & PRICING SELECTION */}
-                                    {step === 2 && (
-                                        <div className="space-y-6">
+                                {/* STEP 1: PACKAGE & BATCH SELECTION */}
+                                {step === 1 && (
+                                    <div className="space-y-6">
+                                        {!formData.packageId ? (
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="customerSearch" className="text-sm font-semibold">1. Search and Select Travelers</Label>
+                                                    <Label htmlFor="packageSearch" className="text-sm font-semibold">1. Search and Select Tour Package</Label>
                                                     <div className="relative">
                                                         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                                         <Input
-                                                            id="customerSearch"
-                                                            placeholder="Search travelers by name, email, or phone..."
-                                                            value={customerSearch}
+                                                            id="packageSearch"
+                                                            placeholder="Search by package name, destination, or description..."
+                                                            value={packageSearch}
                                                             onChange={(e) => {
-                                                                setCustomerSearch(e.target.value);
-                                                                searchCustomers(e.target.value);
+                                                                setPackageSearch(e.target.value);
+                                                                setPackagePage(1);
                                                             }}
                                                             className="pl-10 h-10 border-input bg-background"
                                                         />
                                                     </div>
-                                                    {errors.customers && <p className="text-xs text-destructive mt-1 font-medium">{errors.customers}</p>}
-                                                    {errors.passport && (
-                                                        <Alert variant="destructive" className="mt-2 py-2">
-                                                            <AlertCircle className="h-4 w-4" />
-                                                            <AlertDescription>{errors.passport}</AlertDescription>
-                                                        </Alert>
+                                                    {errors.packageId && (
+                                                        <p className="text-xs text-destructive font-medium">
+                                                            {errors.packageId}
+                                                        </p>
                                                     )}
                                                 </div>
 
-                                                <ScrollArea
-                                                    className="h-60 border rounded-xl bg-card p-3"
-                                                    onScrollCapture={(e) => {
-                                                        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-                                                        if (scrollHeight - scrollTop <= clientHeight + 10) {
-                                                            loadMoreCustomers();
-                                                        }
-                                                    }}
-                                                >
-                                                    <div className="space-y-1">
-                                                        {customers.length > 0 ? (
-                                                            customers.map((c) => {
-                                                                const isChecked = formData.customers.some((x) => x.id === c.id);
+                                                {/* Packages list */}
+                                                {paginatedPackages.length > 0 ? (
+                                                    <div className="space-y-2.5 max-h-[48vh] overflow-y-auto pr-1">
+                                                        {paginatedPackages.map((pkg) => {
+                                                            const isSelected = formData.packageId === pkg.id;
+                                                            const thumbnailSrc = pkg.thumbnail || "/placeholder.svg";
+                                                            return (
+                                                                <div
+                                                                    key={pkg.id}
+                                                                    className={`p-3 border rounded-xl cursor-pointer transition-all duration-200 flex gap-4 items-center hover:border-primary/50 hover:shadow-xs ${isSelected
+                                                                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                                                        : "bg-card border-border"
+                                                                        }`}
+                                                                    onClick={() => handlePackageSelect(pkg)}
+                                                                >
+                                                                    {/* Package Thumbnail Image */}
+                                                                    <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
+                                                                        {pkg.thumbnail ? (
+                                                                            <img
+                                                                                src={thumbnailSrc}
+                                                                                alt={pkg.name}
+                                                                                className="w-full h-full object-cover"
+                                                                                onError={(e) => {
+                                                                                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                                                                                }}
+                                                                            />
+                                                                        ) : (
+                                                                            <PackageIcon className="h-6 w-6 text-muted-foreground/60" />
+                                                                        )}
+                                                                    </div>
+                                                                    {/* Package Details */}
+                                                                    <div className="flex-1 min-w-0 pr-4">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="font-bold text-sm text-foreground truncate">
+                                                                                {pkg.name}
+                                                                            </span>
+                                                                            {pkg.destination && (
+                                                                                <Badge variant="outline" className="text-[10px] font-medium py-0 px-1.5 capitalize">
+                                                                                    {pkg.destination}
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                                                            {pkg.description || 'No description available'}
+                                                                        </p>
+                                                                    </div>
+                                                                    {/* Selected Indicator */}
+                                                                    {isSelected && (
+                                                                        <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0 mr-2">
+                                                                            <Check className="h-3 w-3 text-primary-foreground" />
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+
+                                                        {/* Pagination Controls */}
+                                                        {totalPackagePages > 1 && (
+                                                            <div className="flex justify-between items-center mt-2">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => setPackagePage((p) => Math.max(p - 1, 1))}
+                                                                    disabled={currentPackagePage === 1}
+                                                                >
+                                                                    Previous
+                                                                </Button>
+                                                                <span className="text-sm text-muted-foreground">Page {currentPackagePage} of {totalPackagePages}</span>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => setPackagePage((p) => Math.min(p + 1, totalPackagePages))}
+                                                                    disabled={currentPackagePage === totalPackagePages}
+                                                                >
+                                                                    Next
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-xl bg-muted/20 text-center">
+                                                        <PackageIcon className="h-8 w-8 text-muted-foreground/60 mb-2" />
+                                                        <p className="text-sm font-semibold text-muted-foreground">No tour packages found</p>
+                                                        <p className="text-xs text-muted-foreground/80 mt-1">
+                                                            {packageSearch ? `No packages matched "${packageSearch}".` : "No packages available."}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-5">
+                                                <div className="flex items-center justify-between border-b pb-2">
+                                                    <h4 className="text-sm font-semibold text-foreground">1. Selected Tour Package</h4>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setFormData((prev) => ({ ...prev, packageId: "", batchId: "" }));
+                                                        }}
+                                                        className="text-xs h-8 border-dashed hover:border-destructive hover:text-destructive"
+                                                    >
+                                                        <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+                                                        Change Package
+                                                    </Button>
+                                                </div>
+
+                                                <Card className="border border-muted/80 bg-muted/10 shadow-none">
+                                                    <CardContent className="p-4 flex gap-4 items-center text-xs">
+                                                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
+                                                            {selectedPackage?.thumbnail ? (
+                                                                <img
+                                                                    src={selectedPackage.thumbnail}
+                                                                    alt={selectedPackage.name}
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <PackageIcon className="h-6 w-6 text-muted-foreground/60" />
+                                                            )}
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <p className="font-bold text-sm text-foreground">{selectedPackage?.name}</p>
+                                                            {selectedPackage?.destination && (
+                                                                <p className="text-xs text-muted-foreground font-medium">Destination: {selectedPackage.destination}</p>
+                                                            )}
+                                                            {selectedPackage?.duration && (
+                                                                <p className="text-xs text-muted-foreground font-medium">Duration: {selectedPackage.duration} Days</p>
+                                                            )}
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                <div className="space-y-4 pt-2">
+                                                    <Label className="text-sm font-semibold">2. Select Travel Batch</Label>
+                                                    {availableBatches.length > 0 ? (
+                                                        <div className="grid gap-3 grid-cols-1">
+                                                            {availableBatches.map((batch) => {
+                                                                const availableSeats = batch.totalSeats - batch.bookedSeats;
+                                                                const isSelected = formData.batchId === batch.id;
                                                                 return (
                                                                     <div
-                                                                        key={c.id}
-                                                                        className={`flex items-center space-x-3 p-2.5 rounded-lg hover:bg-accent cursor-pointer transition-colors ${isChecked ? 'bg-accent/40' : ''}`}
-                                                                        onClick={() => handleCustomerSelect(c)}
+                                                                        key={batch.id}
+                                                                        className={`relative p-4 border rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-between hover:border-primary/50 hover:shadow-xs ${isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "bg-card border-border"}`}
+                                                                        onClick={() => {
+                                                                            setFormData(prev => ({ ...prev, batchId: batch.id }));
+                                                                            setError(null);
+                                                                            if (errors.batchId) setErrors(prev => ({ ...prev, batchId: "" }));
+                                                                        }}
                                                                     >
-                                                                        <Checkbox
-                                                                            checked={isChecked}
-                                                                            onCheckedChange={() => handleCustomerSelect(c)}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                        />
-                                                                        <Avatar className="h-9 w-9">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Calendar className="h-4.5 w-4.5 text-primary flex-shrink-0" />
+                                                                            <div className="space-y-0.5">
+                                                                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Travel Dates</p>
+                                                                                <p className="text-sm font-bold text-foreground">
+                                                                                    {new Date(batch.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                                                    <span className="text-xs font-semibold text-muted-foreground mx-1.5">to</span>
+                                                                                    {new Date(batch.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className="text-right">
+                                                                                <p className="text-[10px] font-medium text-muted-foreground">Seats Available</p>
+                                                                                <Badge variant={availableSeats > 5 ? "secondary" : "destructive"} className="text-[10px] font-bold mt-0.5">
+                                                                                    {availableSeats} left
+                                                                                </Badge>
+                                                                            </div>
+                                                                            {isSelected && (
+                                                                                <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                                                                                    <Check className="h-3 w-3 text-primary-foreground" />
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-xl bg-muted/20 text-center">
+                                                            <Calendar className="h-8 w-8 text-muted-foreground/60 mb-2" />
+                                                            <p className="text-sm font-semibold text-muted-foreground">No active batches available</p>
+                                                            <p className="text-xs text-muted-foreground/80 mt-1">Please select another tour package.</p>
+                                                        </div>
+                                                    )}
+                                                    {errors.batchId && <p className="text-xs text-destructive mt-1 font-medium">{errors.batchId}</p>}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* STEP 2: TRAVELERS & PRICING SELECTION */}
+                                {step === 2 && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="customerSearch" className="text-sm font-semibold">1. Search and Select Travelers</Label>
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                    <Input
+                                                        id="customerSearch"
+                                                        placeholder="Search travelers by name, email, or phone..."
+                                                        value={customerSearch}
+                                                        onChange={(e) => {
+                                                            setCustomerSearch(e.target.value);
+                                                            searchCustomers(e.target.value);
+                                                        }}
+                                                        className="pl-10 h-10 border-input bg-background"
+                                                    />
+                                                </div>
+                                                {errors.customers && <p className="text-xs text-destructive mt-1 font-medium">{errors.customers}</p>}
+                                                {errors.passport && (
+                                                    <Alert variant="destructive" className="mt-2 py-2">
+                                                        <AlertCircle className="h-4 w-4" />
+                                                        <AlertDescription>{errors.passport}</AlertDescription>
+                                                    </Alert>
+                                                )}
+                                            </div>
+
+                                            <ScrollArea
+                                                className="h-60 border rounded-xl bg-card p-3"
+                                                onScrollCapture={(e) => {
+                                                    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                                                    if (scrollHeight - scrollTop <= clientHeight + 10) {
+                                                        loadMoreCustomers();
+                                                    }
+                                                }}
+                                            >
+                                                <div className="space-y-1">
+                                                    {customers.length > 0 ? (
+                                                        customers.map((c) => {
+                                                            const isChecked = formData.customers.some((x) => x.id === c.id);
+                                                            return (
+                                                                <div
+                                                                    key={c.id}
+                                                                    className={`flex items-center space-x-3 p-2.5 rounded-lg hover:bg-accent cursor-pointer transition-colors ${isChecked ? 'bg-accent/40' : ''}`}
+                                                                    onClick={() => handleCustomerSelect(c)}
+                                                                >
+                                                                    <Checkbox
+                                                                        checked={isChecked}
+                                                                        onCheckedChange={() => handleCustomerSelect(c)}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    />
+                                                                    <Avatar className="h-9 w-9">
+                                                                        <AvatarImage src={c.profilePhoto} alt={`${c.firstName} ${c.lastName}`} />
+                                                                        <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
+                                                                            {c.firstName[0]}{c.lastName?.[0] || ''}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
+                                                                        {(c.email || c.phone) ? (
+                                                                            <p className="text-xs text-muted-foreground truncate">
+                                                                                {c.email}
+                                                                                {c.email && c.phone ? " • " : ""}
+                                                                                {c.phone}
+                                                                            </p>
+                                                                        ) : null}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <div className="text-center py-8 text-sm text-muted-foreground">
+                                                            {loadingCustomers ? "Loading customers..." : "No customers found"}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </ScrollArea>
+                                        </div>
+
+                                        {formData.customers.length > 0 && (
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between border-b pb-2">
+                                                    <h4 className="text-sm font-semibold text-foreground">2. Traveler Pricing & Configurations</h4>
+                                                    {selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 1 && (
+                                                        <div className="flex items-center gap-2 bg-muted/40 px-3 py-1.5 rounded-lg border">
+                                                            <Label htmlFor="common-tier-mode" className="text-xs font-semibold cursor-pointer text-muted-foreground">Use same tier for all</Label>
+                                                            <Switch
+                                                                id="common-tier-mode"
+                                                                checked={formData.isCommonTier}
+                                                                onCheckedChange={(checked) => {
+                                                                    setFormData(prev => ({
+                                                                        ...prev,
+                                                                        isCommonTier: checked,
+                                                                        totalAmount: calculateTotalAmount(prev.packageId, prev.packageTierId, checked, prev.customerSelections, prev.customers)
+                                                                    }));
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {formData.isCommonTier && selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0 && (
+                                                    <div className="p-4 bg-muted/30 border rounded-xl space-y-2">
+                                                        <Label className="text-xs font-bold text-muted-foreground">Package Price Tier</Label>
+                                                        {selectedPackage.packageTiers.length === 1 ? (
+                                                            (() => {
+                                                                const tier = selectedPackage.packageTiers[0];
+                                                                const adultCost = Number(tier.adultCost || 0);
+                                                                const childCost = tier.childCostType === 'percentage'
+                                                                    ? adultCost * (Number(tier.childCostValue || 0) / 100)
+                                                                    : Number(tier.childCostValue || 0);
+                                                                const infantCost = tier.infantCostType === 'percentage'
+                                                                    ? adultCost * (Number(tier.infantCostValue || 0) / 100)
+                                                                    : Number(tier.infantCostValue || 0);
+                                                                return (
+                                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3.5 bg-background border rounded-xl gap-3">
+                                                                        <span className="font-semibold text-sm text-foreground">{tier.name}</span>
+                                                                        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                                                                            <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-500" /> {BookingService.formatCurrency(adultCost)}</span>
+                                                                            <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-slate-500" /> {BookingService.formatCurrency(childCost)}</span>
+                                                                            <span className="flex items-center gap-1.5"><Baby className="w-4 h-4 text-slate-500" /> {BookingService.formatCurrency(infantCost)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()
+                                                        ) : (
+                                                            <Select
+                                                                value={formData.packageTierId}
+                                                                onValueChange={handleTierSelect}
+                                                            >
+                                                                <SelectTrigger className="h-10 bg-background">
+                                                                    <SelectValue placeholder="Select common tier" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {selectedPackage.packageTiers.map(tier => {
+                                                                        const adultCost = Number(tier.adultCost || 0);
+
+                                                                        const childCost = tier.childCostType === 'percentage'
+                                                                            ? adultCost * (Number(tier.childCostValue || 0) / 100)
+                                                                            : Number(tier.childCostValue || 0);
+
+                                                                        const infantCost = tier.infantCostType === 'percentage'
+                                                                            ? adultCost * (Number(tier.infantCostValue || 0) / 100)
+                                                                            : Number(tier.infantCostValue || 0);
+
+                                                                        return (
+                                                                            <SelectItem key={tier.id} value={tier.id!}>
+                                                                                <span className="flex items-center gap-3">
+                                                                                    <span className="font-semibold">{tier.name}</span>
+                                                                                    <span className="text-muted-foreground">|</span>
+                                                                                    <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> {BookingService.formatCurrency(adultCost)}</span>
+                                                                                    <span className="flex items-center gap-1"><PersonStanding className="w-3.5 h-3.5" /> {BookingService.formatCurrency(childCost)}</span>
+                                                                                    <span className="flex items-center gap-1"><Baby className="w-3.5 h-3.5" /> {BookingService.formatCurrency(infantCost)}</span>
+                                                                                </span>
+                                                                            </SelectItem>
+                                                                        );
+                                                                    })}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <div className="space-y-3">
+                                                    {formData.customers.map((c, index) => {
+                                                        const selection = formData.customerSelections[c.id] || { tierId: formData.packageTierId, ageCategory: 'adult' };
+                                                        return (
+                                                            <div key={c.id} className="flex flex-col p-3 bg-card border rounded-xl hover:shadow-xs transition-shadow gap-3">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                                                        <Avatar className="h-8 w-8">
                                                                             <AvatarImage src={c.profilePhoto} alt={`${c.firstName} ${c.lastName}`} />
-                                                                            <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
+                                                                            <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
                                                                                 {c.firstName[0]}{c.lastName?.[0] || ''}
                                                                             </AvatarFallback>
                                                                         </Avatar>
@@ -1064,140 +1186,13 @@ export function CreateBookingDialog({
                                                                             ) : null}
                                                                         </div>
                                                                     </div>
-                                                                );
-                                                            })
-                                                        ) : (
-                                                            <div className="text-center py-8 text-sm text-muted-foreground">
-                                                                {loadingCustomers ? "Loading customers..." : "No customers found"}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </ScrollArea>
-                                            </div>
-
-                                            {formData.customers.length > 0 && (
-                                                <div className="space-y-4">
-                                                    <div className="flex items-center justify-between border-b pb-2">
-                                                        <h4 className="text-sm font-semibold text-foreground">2. Traveler Pricing & Configurations</h4>
-                                                        {selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0 && (
-                                                            <div className="flex items-center gap-2 bg-muted/40 px-3 py-1.5 rounded-lg border">
-                                                                <Label htmlFor="common-tier-mode" className="text-xs font-semibold cursor-pointer text-muted-foreground">Use same tier for all</Label>
-                                                                <Switch
-                                                                    id="common-tier-mode"
-                                                                    checked={formData.isCommonTier}
-                                                                    onCheckedChange={(checked) => {
-                                                                        setFormData(prev => ({
-                                                                            ...prev,
-                                                                            isCommonTier: checked,
-                                                                            totalAmount: calculateTotalAmount(prev.packageId, prev.packageTierId, checked, prev.customerSelections, prev.customers)
-                                                                        }));
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {formData.isCommonTier && selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0 && (
-                                                        <div className="p-4 bg-muted/30 border rounded-xl space-y-2">
-                                                            <Label className="text-xs font-bold text-muted-foreground">Common Package Tier</Label>
-                                                            <Select
-                                                                value={formData.packageTierId}
-                                                                onValueChange={handleTierSelect}
-                                                            >
-                                                                <SelectTrigger className="h-10 bg-background">
-                                                                    <SelectValue placeholder="Select common tier" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {selectedPackage.packageTiers.map(tier => {
-                                                                        const totalAdultCost = Number(tier.totalAdultCost || 0);
-
-                                                                        const childCost = tier.childCostType === 'percentage'
-                                                                            ? totalAdultCost * (Number(tier.childCostValue || 0) / 100)
-                                                                            : Number(tier.childCostValue || 0);
-
-                                                                        const infantCost = tier.infantCostType === 'percentage'
-                                                                            ? totalAdultCost * (Number(tier.infantCostValue || 0) / 100)
-                                                                            : Number(tier.infantCostValue || 0);
-
-                                                                        return (
-                                                                            <SelectItem key={tier.id} value={tier.id!}>
-                                                                                {tier.name} — A: {BookingService.formatCurrency(totalAdultCost)} | C: {BookingService.formatCurrency(childCost)} | I: {BookingService.formatCurrency(infantCost)}
-                                                                            </SelectItem>
-                                                                        );
-                                                                    })}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-1">
-                                                        {formData.customers.map((c, index) => {
-                                                            const selection = formData.customerSelections[c.id] || { tierId: formData.packageTierId, ageCategory: 'adult' };
-                                                            return (
-                                                                <div key={c.id} className="flex flex-col p-3 bg-card border rounded-xl hover:shadow-xs transition-shadow gap-3">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                                                                            <Avatar className="h-8 w-8">
-                                                                                <AvatarImage src={c.profilePhoto} alt={`${c.firstName} ${c.lastName}`} />
-                                                                                <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                                                                                    {c.firstName[0]}{c.lastName?.[0] || ''}
-                                                                                </AvatarFallback>
-                                                                            </Avatar>
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
-                                                                                {(c.email || c.phone) ? (
-                                                                                    <p className="text-xs text-muted-foreground truncate">
-                                                                                        {c.email}
-                                                                                        {c.email && c.phone ? " • " : ""}
-                                                                                        {c.phone}
-                                                                                    </p>
-                                                                                ) : null}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            {!formData.isCommonTier && selectedPackage?.packageTiers && (
-                                                                                <Select
-                                                                                    value={selection.tierId}
-                                                                                    onValueChange={(val) => {
-                                                                                        setFormData(prev => {
-                                                                                            const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, tierId: val } };
-                                                                                            return {
-                                                                                                ...prev,
-                                                                                                customerSelections: newSelections,
-                                                                                                totalAmount: calculateTotalAmount(prev.packageId, prev.packageTierId, prev.isCommonTier, newSelections, prev.customers)
-                                                                                            }
-                                                                                        });
-                                                                                    }}
-                                                                                >
-                                                                                    <SelectTrigger className="w-40 h-9 text-xs bg-background">
-                                                                                        <SelectValue placeholder="Tier" />
-                                                                                    </SelectTrigger>
-                                                                                    <SelectContent>
-                                                                                        {selectedPackage.packageTiers.map(tier => {
-                                                                                            const totalAdultCost = Number(tier.totalAdultCost || 0);
-
-                                                                                            const childCost = tier.childCostType === 'percentage'
-                                                                                                ? totalAdultCost * (Number(tier.childCostValue || 0) / 100)
-                                                                                                : Number(tier.childCostValue || 0);
-
-                                                                                            const infantCost = tier.infantCostType === 'percentage'
-                                                                                                ? totalAdultCost * (Number(tier.infantCostValue || 0) / 100)
-                                                                                                : Number(tier.infantCostValue || 0);
-
-                                                                                            return (
-                                                                                                <SelectItem key={tier.id} value={tier.id!}>
-                                                                                                    {tier.name} — A: {BookingService.formatCurrency(totalAdultCost)} | C: {BookingService.formatCurrency(childCost)} | I: {BookingService.formatCurrency(infantCost)}
-                                                                                                </SelectItem>
-                                                                                            );
-                                                                                        })}
-                                                                                    </SelectContent>
-                                                                                </Select>
-                                                                            )}
+                                                                    <div className="flex items-center gap-2">
+                                                                        {!formData.isCommonTier && selectedPackage?.packageTiers && (
                                                                             <Select
-                                                                                value={selection.ageCategory}
-                                                                                onValueChange={(val: 'adult' | 'child' | 'infant') => {
+                                                                                value={selection.tierId}
+                                                                                onValueChange={(val) => {
                                                                                     setFormData(prev => {
-                                                                                        const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, ageCategory: val } };
+                                                                                        const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, tierId: val } };
                                                                                         return {
                                                                                             ...prev,
                                                                                             customerSelections: newSelections,
@@ -1206,420 +1201,454 @@ export function CreateBookingDialog({
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <SelectTrigger className="w-24 h-9 text-xs bg-background">
-                                                                                    <SelectValue placeholder="Age" />
+                                                                                <SelectTrigger className="w-40 h-9 text-xs bg-background">
+                                                                                    <SelectValue placeholder="Tier" />
                                                                                 </SelectTrigger>
                                                                                 <SelectContent>
-                                                                                    <SelectItem value="adult">Adult</SelectItem>
-                                                                                    <SelectItem value="child">Child</SelectItem>
-                                                                                    <SelectItem value="infant">Infant</SelectItem>
+                                                                                    {selectedPackage.packageTiers.map(tier => {
+                                                                                        const adultCost = Number(tier.adultCost || 0);
+
+                                                                                        const childCost = tier.childCostType === 'percentage'
+                                                                                            ? adultCost * (Number(tier.childCostValue || 0) / 100)
+                                                                                            : Number(tier.childCostValue || 0);
+
+                                                                                        const infantCost = tier.infantCostType === 'percentage'
+                                                                                            ? adultCost * (Number(tier.infantCostValue || 0) / 100)
+                                                                                            : Number(tier.infantCostValue || 0);
+
+                                                                                        return (
+                                                                                            <SelectItem key={tier.id} value={tier.id!}>
+                                                                                                <span className="flex items-center gap-2">
+                                                                                                    <span className="font-semibold">{tier.name}</span>
+                                                                                                    <span className="text-muted-foreground">|</span>
+                                                                                                    <span className="flex items-center gap-0.5"><User className="w-3 h-3 text-slate-500" /> {BookingService.formatCurrency(adultCost)}</span>
+                                                                                                    <span className="flex items-center gap-0.5"><PersonStanding className="w-3 h-3 text-slate-500" /> {BookingService.formatCurrency(childCost)}</span>
+                                                                                                    <span className="flex items-center gap-0.5"><Baby className="w-3 h-3 text-slate-500" /> {BookingService.formatCurrency(infantCost)}</span>
+                                                                                                </span>
+                                                                                            </SelectItem>
+                                                                                        );
+                                                                                    })}
                                                                                 </SelectContent>
                                                                             </Select>
-                                                                            <Button
-                                                                                type="button"
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                                                onClick={() => removeCustomer(index)}
-                                                                            >
-                                                                                <X className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </div>
+                                                                        )}
+                                                                        <Select
+                                                                            value={selection.ageCategory}
+                                                                            onValueChange={(val: 'adult' | 'child' | 'infant') => {
+                                                                                setFormData(prev => {
+                                                                                    const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, ageCategory: val } };
+                                                                                    return {
+                                                                                        ...prev,
+                                                                                        customerSelections: newSelections,
+                                                                                        totalAmount: calculateTotalAmount(prev.packageId, prev.packageTierId, prev.isCommonTier, newSelections, prev.customers)
+                                                                                    }
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            <SelectTrigger className="w-24 h-9 text-xs bg-background">
+                                                                                <SelectValue placeholder="Age" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="adult">Adult</SelectItem>
+                                                                                <SelectItem value="child">Child</SelectItem>
+                                                                                <SelectItem value="infant">Infant</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                                            onClick={() => removeCustomer(index)}
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
                                                                     </div>
-                                                                    {selectedPackage?.packageLocation?.type === 'international' && (() => {
-                                                                        const status = checkPassportStatus(c);
-                                                                        if (!status.hasWarning) return null;
-                                                                        
-                                                                        const isOverridden = !!passportOverrides[c.id];
-                                                                        
-                                                                        return (
-                                                                            <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
-                                                                                <div className="flex items-start gap-2">
-                                                                                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                                                                                    <div className="flex-1">
-                                                                                        {status.isMissingDetails ? (
-                                                                                            <p className="font-medium">Missing passport details (passport number/expiry date not updated in customer profile).</p>
-                                                                                        ) : (
-                                                                                            <p className="font-medium">
-                                                                                                Passport expires within 6 months of batch start date (Expires: {c.passportExpiryDate ? new Date(c.passportExpiryDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}).
-                                                                                            </p>
-                                                                                        )}
-                                                                                        <div className="mt-2 flex items-center gap-3">
-                                                                                            <a
-                                                                                                href={`/customers/${c.id}?edit=true`}
-                                                                                                target="_blank"
-                                                                                                rel="noopener noreferrer"
-                                                                                                className="inline-flex items-center gap-1 font-bold text-primary hover:underline hover:text-primary/80 transition-colors"
-                                                                                            >
-                                                                                                Edit Customer Profile ↗
-                                                                                            </a>
-                                                                                            <span className="text-muted-foreground/30">•</span>
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                onClick={() => syncCustomerDetails(c.id)}
-                                                                                                className="inline-flex items-center gap-1 font-bold text-primary hover:underline hover:text-primary/80 transition-colors cursor-pointer"
-                                                                                            >
-                                                                                                Sync Details ↻
-                                                                                            </button>
-                                                                                        </div>
+                                                                </div>
+                                                                {selectedPackage?.packageLocation?.type === 'international' && (() => {
+                                                                    const status = checkPassportStatus(c);
+                                                                    if (!status.hasWarning) return null;
+
+                                                                    const isOverridden = !!passportOverrides[c.id];
+
+                                                                    return (
+                                                                        <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
+                                                                            <div className="flex items-start gap-2">
+                                                                                <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                                                <div className="flex-1">
+                                                                                    {status.isMissingDetails ? (
+                                                                                        <p className="font-medium">Missing passport details (passport number/expiry date not updated in customer profile).</p>
+                                                                                    ) : (
+                                                                                        <p className="font-medium">
+                                                                                            Passport expires within 6 months of batch start date (Expires: {c.passportExpiryDate ? new Date(c.passportExpiryDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}).
+                                                                                        </p>
+                                                                                    )}
+                                                                                    <div className="mt-2 flex items-center gap-3">
+                                                                                        <a
+                                                                                            href={`/customers/${c.id}?edit=true`}
+                                                                                            target="_blank"
+                                                                                            rel="noopener noreferrer"
+                                                                                            className="inline-flex items-center gap-1 font-bold text-primary hover:underline hover:text-primary/80 transition-colors"
+                                                                                        >
+                                                                                            Edit Customer Profile ↗
+                                                                                        </a>
+                                                                                        <span className="text-muted-foreground/30">•</span>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => syncCustomerDetails(c.id)}
+                                                                                            className="inline-flex items-center gap-1 font-bold text-primary hover:underline hover:text-primary/80 transition-colors cursor-pointer"
+                                                                                        >
+                                                                                            Sync Details ↻
+                                                                                        </button>
                                                                                     </div>
                                                                                 </div>
-                                                                                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10">
-                                                                                    <Checkbox
-                                                                                        id={`override-passport-${c.id}`}
-                                                                                        checked={isOverridden}
-                                                                                        onCheckedChange={(checked) => {
-                                                                                            setPassportOverrides(prev => ({
-                                                                                                ...prev,
-                                                                                                [c.id]: !!checked
-                                                                                            }));
-                                                                                            if (errors.passport) {
-                                                                                                setErrors(prev => ({ ...prev, passport: "" }));
-                                                                                            }
-                                                                                        }}
-                                                                                    />
-                                                                                    <Label htmlFor={`override-passport-${c.id}`} className="text-[11px] font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
-                                                                                        Acknowledge and override this warning
-                                                                                    </Label>
-                                                                                </div>
                                                                             </div>
-                                                                        );
-                                                                    })()}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* STEP 3: PAYMENTS & NOTES */}
-                                    {step === 3 && (
-                                        <div className="space-y-6">
-                                            {/* Summary & Breakdown Card */}
-                                            <div className="rounded-xl border border-primary/10 bg-primary/[0.02] overflow-hidden">
-                                                <div className="p-4 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold text-foreground">Total Booking Cost</h4>
-                                                        <p className="text-[11px] text-muted-foreground">Calculated based on selected traveler tiers and age categories</p>
-                                                    </div>
-                                                    <div className="text-2xl font-extrabold text-primary">
-                                                        {BookingService.formatCurrency(formData.totalAmount)}
-                                                    </div>
-                                                </div>
-
-                                                {/* Pricing Breakdown inside the same card */}
-                                                {selectedPackage && formData.customers.length > 0 && (
-                                                    <div className="p-4 bg-card space-y-3">
-                                                        <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Traveler Price Details</h5>
-                                                        <div className="space-y-2 divide-y divide-muted/30">
-                                                            {formData.customers.map((c) => {
-                                                                const selection = formData.customerSelections[c.id] || { tierId: formData.packageTierId, ageCategory: 'adult' };
-                                                                const effectiveTierId = formData.isCommonTier ? formData.packageTierId : selection.tierId;
-                                                                const ageCategory = selection.ageCategory || 'adult';
-                                                                const tier = selectedPackage.packageTiers?.find((t) => t.id === effectiveTierId);
-
-                                                                let cost = 0;
-                                                                if (tier) {
-                                                                    const totalAdultCost = Number(tier.totalAdultCost || 0);
-                                                                    if (ageCategory === 'adult') {
-                                                                        cost = totalAdultCost;
-                                                                    } else if (ageCategory === 'child') {
-                                                                        cost = tier.childCostType === 'percentage'
-                                                                            ? totalAdultCost * (Number(tier.childCostValue || 0) / 100)
-                                                                            : Number(tier.childCostValue || 0);
-                                                                    } else if (ageCategory === 'infant') {
-                                                                        cost = tier.infantCostType === 'percentage'
-                                                                            ? totalAdultCost * (Number(tier.infantCostValue || 0) / 100)
-                                                                            : Number(tier.infantCostValue || 0);
-                                                                    }
-                                                                }
-
-                                                                return (
-                                                                    <div key={c.id} className="flex justify-between items-center text-xs py-2 first:pt-0">
-                                                                        <div className="space-y-0.5">
-                                                                            <p className="font-semibold text-foreground">{c.firstName} {c.lastName}</p>
-                                                                            <p className="text-[10px] text-muted-foreground uppercase">{ageCategory} • {tier?.name || 'No tier'}</p>
+                                                                            <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10">
+                                                                                <Checkbox
+                                                                                    id={`override-passport-${c.id}`}
+                                                                                    checked={isOverridden}
+                                                                                    onCheckedChange={(checked) => {
+                                                                                        setPassportOverrides(prev => ({
+                                                                                            ...prev,
+                                                                                            [c.id]: !!checked
+                                                                                        }));
+                                                                                        if (errors.passport) {
+                                                                                            setErrors(prev => ({ ...prev, passport: "" }));
+                                                                                        }
+                                                                                    }}
+                                                                                />
+                                                                                <Label htmlFor={`override-passport-${c.id}`} className="text-[11px] font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
+                                                                                    Acknowledge and override this warning
+                                                                                </Label>
+                                                                            </div>
                                                                         </div>
-                                                                        <span className="font-semibold text-foreground">{BookingService.formatCurrency(cost)}</span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* STEP 3: PAYMENTS & NOTES */}
+                                {step === 3 && (
+                                    <div className="space-y-6">
+                                        {/* Summary & Breakdown Card */}
+                                        <div className="rounded-xl border border-primary/10 bg-primary/[0.02] overflow-hidden">
+                                            <div className="p-4 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-foreground">Total Booking Cost</h4>
+                                                    <p className="text-[11px] text-muted-foreground">Calculated based on selected traveler tiers and age categories</p>
+                                                </div>
+                                                <div className="text-2xl font-extrabold text-primary">
+                                                    {BookingService.formatCurrency(formData.totalAmount)}
+                                                </div>
                                             </div>
 
-                                            {/* Select Payment Structure */}
-                                            <div className="space-y-3">
-                                                <Label className="text-sm font-semibold">Select Payment Structure</Label>
-                                                {paymentStructure.length > 0 ? (
-                                                    <div className="space-y-2.5">
-                                                        {paymentStructure.map((milestone, idx) => {
-                                                            const milestonePercent = Number(milestone.amount || 0);
-                                                            const cumulativePercent = paymentStructure
-                                                                .slice(0, idx + 1)
-                                                                .reduce((sum, m) => sum + Number(m.amount || 0), 0);
-                                                            const calculatedCost = Math.round((formData.totalAmount * cumulativePercent) / 100);
-                                                            const isSelected = formData.paymentStructureId === milestone.id;
+                                            {/* Pricing Breakdown inside the same card */}
+                                            {selectedPackage && formData.customers.length > 0 && (
+                                                <div className="p-4 bg-card space-y-3">
+                                                    <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Traveler Price Details</h5>
+                                                    <div className="space-y-2 divide-y divide-muted/30">
+                                                        {formData.customers.map((c) => {
+                                                            const selection = formData.customerSelections[c.id] || { tierId: formData.packageTierId, ageCategory: 'adult' };
+                                                            const effectiveTierId = formData.isCommonTier ? formData.packageTierId : selection.tierId;
+                                                            const ageCategory = selection.ageCategory || 'adult';
+                                                            const tier = selectedPackage.packageTiers?.find((t) => t.id === effectiveTierId);
 
-                                                            return (
-                                                                <div
-                                                                    key={milestone.id}
-                                                                    className={`p-3.5 border rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-between hover:border-primary/50 hover:shadow-xs ${
-                                                                        isSelected && !formData.isPaymentOverridden
-                                                                            ? "border-primary bg-primary/5 ring-1 ring-primary"
-                                                                            : "bg-card border-border"
-                                                                    }`}
-                                                                    onClick={() => {
-                                                                        if (!formData.isPaymentOverridden) {
-                                                                            setFormData((prev) => ({
-                                                                                ...prev,
-                                                                                paymentStructureId: milestone.id || "",
-                                                                                advanceAmount: calculatedCost,
-                                                                            }));
-                                                                            if (errors.paymentOverrideReason) {
-                                                                                setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
-                                                                            }
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <div className="space-y-1">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${isSelected && !formData.isPaymentOverridden ? "border-primary text-primary" : "border-muted-foreground/30"}`}>
-                                                                                {isSelected && !formData.isPaymentOverridden && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                                                                            </span>
-                                                                            <p className="text-sm font-bold text-foreground">
-                                                                                {milestone.name || "Payment Option"}
-                                                                            </p>
-                                                                            <Badge variant="secondary" className="text-[10px] font-semibold py-0 px-1.5">
-                                                                                {idx > 0 ? `${milestonePercent}% (Total: ${cumulativePercent}%)` : `${milestonePercent}%`}
-                                                                            </Badge>
-                                                                        </div>
-                                                                        {milestone.description && (
-                                                                            <p className="text-xs text-muted-foreground line-clamp-1 ml-5.5">{milestone.description}</p>
-                                                                        )}
-                                                                        {milestone.dueDate && (
-                                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase ml-5.5">
-                                                                                Due: {milestone.dueDate.replace(/_/g, " ")}
-                                                                            </p>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="font-bold text-base text-primary mr-1">
-                                                                        {BookingService.formatCurrency(calculatedCost)}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-xs text-muted-foreground italic bg-muted/20 p-3 rounded-xl border border-dashed text-center">
-                                                        No payment structure milestones defined for this package. Turn on override to enter custom advance payment.
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* Override Options */}
-                                            <div className="flex items-center justify-between border rounded-xl p-4 bg-muted/10">
-                                                <div className="space-y-0.5">
-                                                    <Label htmlFor="override-payment" className="text-sm font-semibold cursor-pointer">Override Payment Amount</Label>
-                                                    <p className="text-xs text-muted-foreground">Allows entering a custom advance payment and override reason.</p>
-                                                </div>
-                                                <Switch
-                                                    id="override-payment"
-                                                    checked={formData.isPaymentOverridden}
-                                                    onCheckedChange={(checked) => {
-                                                        setFormData((prev) => {
-                                                            let newAdvanceAmount = prev.advanceAmount;
-                                                            if (!checked && prev.paymentStructureId && paymentStructure.length > 0) {
-                                                                const milestoneIdx = paymentStructure.findIndex(m => m.id === prev.paymentStructureId);
-                                                                if (milestoneIdx !== -1) {
-                                                                    const cumulativePercent = paymentStructure
-                                                                        .slice(0, milestoneIdx + 1)
-                                                                        .reduce((sum, m) => sum + Number(m.amount || 0), 0);
-                                                                    newAdvanceAmount = Math.round((prev.totalAmount * cumulativePercent) / 100);
+                                                            let cost = 0;
+                                                            if (tier) {
+                                                                const adultCost = Number(tier.adultCost || 0);
+                                                                if (ageCategory === 'adult') {
+                                                                    cost = adultCost;
+                                                                } else if (ageCategory === 'child') {
+                                                                    cost = tier.childCostType === 'percentage'
+                                                                        ? adultCost * (Number(tier.childCostValue || 0) / 100)
+                                                                        : Number(tier.childCostValue || 0);
+                                                                } else if (ageCategory === 'infant') {
+                                                                    cost = tier.infantCostType === 'percentage'
+                                                                        ? adultCost * (Number(tier.infantCostValue || 0) / 100)
+                                                                        : Number(tier.infantCostValue || 0);
                                                                 }
                                                             }
-                                                            return {
-                                                                ...prev,
-                                                                isPaymentOverridden: checked,
-                                                                advanceAmount: checked ? prev.advanceAmount : newAdvanceAmount,
-                                                                paymentOverrideReason: checked ? prev.paymentOverrideReason : "",
-                                                            };
-                                                        });
-                                                        if (!checked && errors.paymentOverrideReason) {
-                                                            setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
-                                                        }
-                                                    }}
-                                                />
-                                            </div>
 
-                                            {formData.isPaymentOverridden && (
-                                                <div className="grid sm:grid-cols-2 gap-4 p-4 border border-amber-500/20 bg-amber-500/5 rounded-xl animate-in fade-in duration-200">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="customAdvanceAmount" className="text-xs font-bold text-muted-foreground">Custom Advance Amount *</Label>
-                                                        <Input
-                                                            id="customAdvanceAmount"
-                                                            type="number"
-                                                            min="0"
-                                                            max={formData.totalAmount}
-                                                            value={formData.advanceAmount || ""}
-                                                            onChange={(e) => {
-                                                                setFormData((prev) => ({
-                                                                    ...prev,
-                                                                    advanceAmount: Number.parseInt(e.target.value) || 0,
-                                                                }));
-                                                                setError(null);
-                                                            }}
-                                                            placeholder="Enter custom amount..."
-                                                            className="h-10 bg-background border-amber-500/20 focus-visible:ring-amber-500"
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="paymentOverrideReason" className="text-xs font-bold text-muted-foreground">Reason for Override *</Label>
-                                                        <Input
-                                                            id="paymentOverrideReason"
-                                                            value={formData.paymentOverrideReason}
-                                                            onChange={(e) => {
-                                                                setFormData((prev) => ({
-                                                                    ...prev,
-                                                                    paymentOverrideReason: e.target.value,
-                                                                }));
-                                                                setError(null);
-                                                                if (errors.paymentOverrideReason) {
-                                                                    setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
-                                                                }
-                                                            }}
-                                                            placeholder="Why is this custom amount used?"
-                                                            className="h-10 bg-background border-amber-500/20 focus-visible:ring-amber-500"
-                                                            required
-                                                        />
-                                                        {errors.paymentOverrideReason && (
-                                                            <p className="text-xs text-destructive font-medium">
-                                                                {errors.paymentOverrideReason}
-                                                            </p>
-                                                        )}
+                                                            return (
+                                                                <div key={c.id} className="flex justify-between items-center text-xs py-2 first:pt-0">
+                                                                    <div className="space-y-0.5">
+                                                                        <p className="font-semibold text-foreground">{c.firstName} {c.lastName}</p>
+                                                                        <p className="text-[10px] text-muted-foreground uppercase">{ageCategory} • {tier?.name || 'No tier'}</p>
+                                                                    </div>
+                                                                    <span className="font-semibold text-foreground">{BookingService.formatCurrency(cost)}</span>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             )}
+                                        </div>
 
-                                            {/* Rest of the payment functionality */}
-                                            {formData.advanceAmount > 0 && (
-                                                <Card className="border border-muted/80 bg-muted/10 shadow-none">
-                                                    <CardContent className="p-4 space-y-4">
-                                                        <div className="grid sm:grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor="paymentMethod" className="text-xs font-bold text-muted-foreground">Payment Method *</Label>
-                                                                <Select
-                                                                    value={formData.paymentMethod}
-                                                                    onValueChange={(value) =>
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            paymentMethod: value as PaymentMethod,
-                                                                        }))
-                                                                    }
-                                                                >
-                                                                    <SelectTrigger className="h-10 bg-background">
-                                                                        <SelectValue placeholder="Select method" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                                                                        <SelectItem value="credit_card">Credit Card</SelectItem>
-                                                                        <SelectItem value="debit_card">Debit Card</SelectItem>
-                                                                        <SelectItem value="cash">Cash</SelectItem>
-                                                                        <SelectItem value="upi">UPI</SelectItem>
-                                                                        <SelectItem value="other">Other</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                {errors.paymentMethod && <p className="text-xs text-destructive font-medium">{errors.paymentMethod}</p>}
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor="paymentReference" className="text-xs font-bold text-muted-foreground">Payment Reference</Label>
-                                                                <Input
-                                                                    id="paymentReference"
-                                                                    value={formData.paymentReference}
-                                                                    onChange={(e) =>
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            paymentReference: e.target.value,
-                                                                        }))
-                                                                    }
-                                                                    placeholder="Check #, transfer notes, etc."
-                                                                    className="h-10 bg-background"
-                                                                />
-                                                            </div>
-                                                        </div>
+                                        {/* Select Payment Structure */}
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-semibold">Select Payment Structure</Label>
+                                            {paymentStructure.length > 0 ? (
+                                                <div className="space-y-2.5">
+                                                    {paymentStructure.map((milestone, idx) => {
+                                                        const milestonePercent = Number(milestone.amount || 0);
+                                                        const cumulativePercent = paymentStructure
+                                                            .slice(0, idx + 1)
+                                                            .reduce((sum, m) => sum + Number(m.amount || 0), 0);
+                                                        const calculatedCost = Math.round((formData.totalAmount * cumulativePercent) / 100);
+                                                        const isSelected = formData.paymentStructureId === milestone.id;
 
-                                                        <div className="grid sm:grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor="transactionId" className="text-xs font-bold text-muted-foreground">Transaction ID / UTR</Label>
-                                                                <Input
-                                                                    id="transactionId"
-                                                                    value={formData.transactionId}
-                                                                    onChange={(e) =>
+                                                        return (
+                                                            <div
+                                                                key={milestone.id}
+                                                                className={`p-3.5 border rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-between hover:border-primary/50 hover:shadow-xs ${isSelected && !formData.isPaymentOverridden
+                                                                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                                                        : "bg-card border-border"
+                                                                    }`}
+                                                                onClick={() => {
+                                                                    if (!formData.isPaymentOverridden) {
                                                                         setFormData((prev) => ({
                                                                             ...prev,
-                                                                            transactionId: e.target.value,
-                                                                        }))
+                                                                            paymentStructureId: milestone.id || "",
+                                                                            advanceAmount: calculatedCost,
+                                                                        }));
+                                                                        if (errors.paymentOverrideReason) {
+                                                                            setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
+                                                                        }
                                                                     }
-                                                                    placeholder="UTR number, transaction reference"
-                                                                    className="h-10 bg-background"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor="paymentDate" className="text-xs font-bold text-muted-foreground">Payment Date</Label>
-                                                                <Input
-                                                                    id="paymentDate"
-                                                                    type="date"
-                                                                    value={formData.paymentDate}
-                                                                    onChange={(e) =>
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            paymentDate: e.target.value,
-                                                                        }))
-                                                                    }
-                                                                    className="h-10 bg-background"
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold text-muted-foreground">Upload Receipt / Screenshot</Label>
-                                                            <FileUploader
-                                                                value={formData.paymentScreenshot ? [formData.paymentScreenshot] : []}
-                                                                onChange={handleFileUpload}
-                                                                onRemoveNew={() => {
-                                                                    setFormData((prev) => ({ ...prev, paymentScreenshot: null }));
                                                                 }}
-                                                                accept="image/*,application/pdf"
-                                                                maxFiles={1}
+                                                            >
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${isSelected && !formData.isPaymentOverridden ? "border-primary text-primary" : "border-muted-foreground/30"}`}>
+                                                                            {isSelected && !formData.isPaymentOverridden && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                                                                        </span>
+                                                                        <p className="text-sm font-bold text-foreground">
+                                                                            {milestone.dueDate?.replace(/_/g, " ") || "Payment Option"}
+                                                                        </p>
+                                                                        <Badge variant="secondary" className="text-[10px] font-semibold py-0 px-1.5">
+                                                                            {idx > 0 ? `${milestonePercent}% (Total: ${cumulativePercent}%)` : `${milestonePercent}%`}
+                                                                        </Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="font-bold text-base text-primary mr-1">
+                                                                    {BookingService.formatCurrency(calculatedCost)}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-muted-foreground italic bg-muted/20 p-3 rounded-xl border border-dashed text-center">
+                                                    No payment structure milestones defined for this package. Turn on override to enter custom advance payment.
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Override Options */}
+                                        <div className="flex items-center justify-between border rounded-xl p-4 bg-muted/10">
+                                            <div className="space-y-0.5">
+                                                <Label htmlFor="override-payment" className="text-sm font-semibold cursor-pointer">Override Payment Amount</Label>
+                                                <p className="text-xs text-muted-foreground">Allows entering a custom advance payment and override reason.</p>
+                                            </div>
+                                            <Switch
+                                                id="override-payment"
+                                                checked={formData.isPaymentOverridden}
+                                                onCheckedChange={(checked) => {
+                                                    setFormData((prev) => {
+                                                        let newAdvanceAmount = prev.advanceAmount;
+                                                        if (!checked && prev.paymentStructureId && paymentStructure.length > 0) {
+                                                            const milestoneIdx = paymentStructure.findIndex(m => m.id === prev.paymentStructureId);
+                                                            if (milestoneIdx !== -1) {
+                                                                const cumulativePercent = paymentStructure
+                                                                    .slice(0, milestoneIdx + 1)
+                                                                    .reduce((sum, m) => sum + Number(m.amount || 0), 0);
+                                                                newAdvanceAmount = Math.round((prev.totalAmount * cumulativePercent) / 100);
+                                                            }
+                                                        }
+                                                        return {
+                                                            ...prev,
+                                                            isPaymentOverridden: checked,
+                                                            advanceAmount: checked ? prev.advanceAmount : newAdvanceAmount,
+                                                            paymentOverrideReason: checked ? prev.paymentOverrideReason : "",
+                                                        };
+                                                    });
+                                                    if (!checked && errors.paymentOverrideReason) {
+                                                        setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+
+                                        {formData.isPaymentOverridden && (
+                                            <div className="grid sm:grid-cols-2 gap-4 p-4 border border-amber-500/20 bg-amber-500/5 rounded-xl animate-in fade-in duration-200">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="customAdvanceAmount" className="text-xs font-bold text-muted-foreground">Custom Advance Amount *</Label>
+                                                    <Input
+                                                        id="customAdvanceAmount"
+                                                        type="number"
+                                                        min="0"
+                                                        max={formData.totalAmount}
+                                                        value={formData.advanceAmount || ""}
+                                                        onChange={(e) => {
+                                                            setFormData((prev) => ({
+                                                                ...prev,
+                                                                advanceAmount: Number.parseInt(e.target.value) || 0,
+                                                            }));
+                                                            setError(null);
+                                                        }}
+                                                        placeholder="Enter custom amount..."
+                                                        className="h-10 bg-background border-amber-500/20 focus-visible:ring-amber-500"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="paymentOverrideReason" className="text-xs font-bold text-muted-foreground">Reason for Override *</Label>
+                                                    <Input
+                                                        id="paymentOverrideReason"
+                                                        value={formData.paymentOverrideReason}
+                                                        onChange={(e) => {
+                                                            setFormData((prev) => ({
+                                                                ...prev,
+                                                                paymentOverrideReason: e.target.value,
+                                                            }));
+                                                            setError(null);
+                                                            if (errors.paymentOverrideReason) {
+                                                                setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
+                                                            }
+                                                        }}
+                                                        placeholder="Why is this custom amount used?"
+                                                        className="h-10 bg-background border-amber-500/20 focus-visible:ring-amber-500"
+                                                        required
+                                                    />
+                                                    {errors.paymentOverrideReason && (
+                                                        <p className="text-xs text-destructive font-medium">
+                                                            {errors.paymentOverrideReason}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Rest of the payment functionality */}
+                                        {formData.advanceAmount > 0 && (
+                                            <Card className="border border-muted/80 bg-muted/10 shadow-none">
+                                                <CardContent className="p-4 space-y-4">
+                                                    <div className="grid sm:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="paymentMethod" className="text-xs font-bold text-muted-foreground">Payment Method *</Label>
+                                                            <Select
+                                                                value={formData.paymentMethod}
+                                                                onValueChange={(value) =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        paymentMethod: value as PaymentMethod,
+                                                                    }))
+                                                                }
+                                                            >
+                                                                <SelectTrigger className="h-10 bg-background">
+                                                                    <SelectValue placeholder="Select method" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                                                                    <SelectItem value="credit_card">Credit Card</SelectItem>
+                                                                    <SelectItem value="debit_card">Debit Card</SelectItem>
+                                                                    <SelectItem value="cash">Cash</SelectItem>
+                                                                    <SelectItem value="upi">UPI</SelectItem>
+                                                                    <SelectItem value="other">Other</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                            {errors.paymentMethod && <p className="text-xs text-destructive font-medium">{errors.paymentMethod}</p>}
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="paymentReference" className="text-xs font-bold text-muted-foreground">Payment Reference</Label>
+                                                            <Input
+                                                                id="paymentReference"
+                                                                value={formData.paymentReference}
+                                                                onChange={(e) =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        paymentReference: e.target.value,
+                                                                    }))
+                                                                }
+                                                                placeholder="Check #, transfer notes, etc."
+                                                                className="h-10 bg-background"
                                                             />
                                                         </div>
-                                                    </CardContent>
-                                                </Card>
-                                            )}
+                                                    </div>
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="specialRequests" className="text-sm font-semibold">Special Requests / Notes</Label>
-                                                <Textarea
-                                                    id="specialRequests"
-                                                    value={formData.specialRequests}
-                                                    onChange={(e) =>
-                                                        setFormData((prev) => ({
-                                                            ...prev,
-                                                            specialRequests: e.target.value,
-                                                        }))
-                                                    }
-                                                    placeholder="Enter any medical requests, room preferences, food preferences, etc."
-                                                    rows={3}
-                                                    className="resize-none"
-                                                />
-                                            </div>
+                                                    <div className="grid sm:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="transactionId" className="text-xs font-bold text-muted-foreground">Transaction ID / UTR</Label>
+                                                            <Input
+                                                                id="transactionId"
+                                                                value={formData.transactionId}
+                                                                onChange={(e) =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        transactionId: e.target.value,
+                                                                    }))
+                                                                }
+                                                                placeholder="UTR number, transaction reference"
+                                                                className="h-10 bg-background"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="paymentDate" className="text-xs font-bold text-muted-foreground">Payment Date</Label>
+                                                            <Input
+                                                                id="paymentDate"
+                                                                type="date"
+                                                                value={formData.paymentDate}
+                                                                onChange={(e) =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        paymentDate: e.target.value,
+                                                                    }))
+                                                                }
+                                                                className="h-10 bg-background"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold text-muted-foreground">Upload Receipt / Screenshot</Label>
+                                                        <FileUploader
+                                                            value={formData.paymentScreenshot ? [formData.paymentScreenshot] : []}
+                                                            onChange={handleFileUpload}
+                                                            onRemoveNew={() => {
+                                                                setFormData((prev) => ({ ...prev, paymentScreenshot: null }));
+                                                            }}
+                                                            accept="image/*,application/pdf"
+                                                            maxFiles={1}
+                                                        />
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="specialRequests" className="text-sm font-semibold">Special Requests / Notes</Label>
+                                            <Textarea
+                                                id="specialRequests"
+                                                value={formData.specialRequests}
+                                                onChange={(e) =>
+                                                    setFormData((prev) => ({
+                                                        ...prev,
+                                                        specialRequests: e.target.value,
+                                                    }))
+                                                }
+                                                placeholder="Enter any medical requests, room preferences, food preferences, etc."
+                                                rows={3}
+                                                className="resize-none"
+                                            />
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Navigation Footer */}
                             <div className="px-6 py-4 border-t bg-card flex items-center justify-between flex-shrink-0">

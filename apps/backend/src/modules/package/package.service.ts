@@ -97,7 +97,6 @@ export class PackageService {
         destination: rest.destination === '' ? undefined : rest.destination,
         days: rest.days,
         nights: rest.nights,
-        basePrice: rest.basePrice,
         description: rest.description === '' ? undefined : rest.description,
         thumbnail: undefined,
         organizationId: user.organizationId,
@@ -318,7 +317,6 @@ export class PackageService {
         'destination',
         'days',
         'nights',
-        'basePrice',
         'description',
         'maxGuests',
         'thumbnail',
@@ -619,7 +617,6 @@ export class PackageService {
         destination: rest.destination === '' ? undefined : rest.destination,
         days: rest.days,
         nights: rest.nights,
-        basePrice: rest.basePrice,
         description: rest.description === '' ? undefined : rest.description,
         thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail,
       };
@@ -958,38 +955,66 @@ export class PackageService {
     if (!packageData.nights || packageData.nights < 0) {
       errors.push('Nights count is required');
     }
-    if (!packageData.description || packageData.description.trim() === '') {
-      errors.push('Description is required');
-    }
-    // Price could be calculated now, so we don't strictly validate packageData.price here
-    // Wait, it is basePrice now. Let's validate basePrice if needed or rely on packageTiers.
     if (!packageData.maxGuests || packageData.maxGuests <= 0) {
       errors.push('Valid maximum guests count is required');
     }
-    if (!packageData.category) {
-      errors.push('Category is required');
-    }
 
-    // Check related entities
-    const inclusions = await this.inclusionRepository.find({
-      where: { packageId: id },
-    });
-    if (inclusions.length === 0) {
-      errors.push('At least one inclusion is required');
-    }
+    const isNormal = packageData.packageSetup === 'normal';
 
-    const exclusions = await this.exclusionRepository.find({
-      where: { packageId: id },
-    });
-    if (exclusions.length === 0) {
-      errors.push('At least one exclusion is required');
-    }
+    if (!isNormal) {
+      if (!packageData.description || packageData.description.trim() === '') {
+        errors.push('Description is required');
+      }
+      if (!packageData.category) {
+        errors.push('Category is required');
+      }
 
-    const itinerary = await this.itineraryDayRepository.find({
-      where: { packageId: id },
-    });
-    if (itinerary.length === 0) {
-      errors.push('At least one itinerary day is required');
+      // Check related entities
+      const inclusions = await this.inclusionRepository.find({
+        where: { packageId: id },
+      });
+      if (inclusions.length === 0) {
+        errors.push('At least one inclusion is required');
+      }
+
+      const exclusions = await this.exclusionRepository.find({
+        where: { packageId: id },
+      });
+      if (exclusions.length === 0) {
+        errors.push('At least one exclusion is required');
+      }
+
+      const itinerary = await this.itineraryDayRepository.find({
+        where: { packageId: id },
+      });
+      if (itinerary.length === 0) {
+        errors.push('At least one itinerary day is required');
+      }
+
+      const documentRequirements = await this.documentRequirementRepository.find({
+        where: { packageId: id },
+      });
+      if (documentRequirements.length === 0) {
+        errors.push('Document requirements are required');
+      }
+
+      const transportation = await this.transportationOptionRepository.find({
+        where: { packageId: id },
+      });
+      if (transportation.length === 0) {
+        errors.push('Transportation details are required');
+      }
+
+      const mealsBreakdown = await this.mealsBreakdownRepository.findOne({
+        where: { packageId: id },
+      });
+      if (!mealsBreakdown) {
+        errors.push('Meals breakdown is required');
+      }
+    } else {
+      if (!packageData.packageTiers || packageData.packageTiers.length === 0) {
+        errors.push('At least one package tier is required');
+      }
     }
 
     const paymentStructure = await this.paymentMilestoneRepository.find({
@@ -1005,12 +1030,17 @@ export class PackageService {
         0,
       );
 
-      const firstTierAdultCost = packageData.packageTiers?.[0]?.adultCost;
-      
-      if (firstTierAdultCost !== undefined && totalAmount !== firstTierAdultCost) {
-        errors.push(
-          `Payment structure must total exactly the first tier adult cost. Current total: ${totalAmount}, Target: ${firstTierAdultCost}`,
-        );
+      if (isNormal) {
+        if (totalAmount !== 100) {
+          errors.push(`Payment structure percentages must total exactly 100%. Current total: ${totalAmount}%`);
+        }
+      } else {
+        const firstTierAdultCost = packageData.packageTiers?.[0]?.adultCost;
+        if (firstTierAdultCost !== undefined && totalAmount !== firstTierAdultCost) {
+          errors.push(
+            `Payment structure must total exactly the first tier adult cost. Current total: ${totalAmount}, Target: ${firstTierAdultCost}`,
+          );
+        }
       }
     }
 
@@ -1021,32 +1051,13 @@ export class PackageService {
       errors.push('Cancellation structure is required');
     }
 
-    const cancellationPolicy = await this.cancellationPolicyRepository.find({
-      where: { packageId: id },
-    });
-    if (cancellationPolicy.length === 0) {
-      errors.push('Cancellation policy is required');
-    }
-
-    const documentRequirements = await this.documentRequirementRepository.find({
-      where: { packageId: id },
-    });
-    if (documentRequirements.length === 0) {
-      errors.push('Document requirements are required');
-    }
-
-    const transportation = await this.transportationOptionRepository.find({
-      where: { packageId: id },
-    });
-    if (transportation.length === 0) {
-      errors.push('Transportation details are required');
-    }
-
-    const mealsBreakdown = await this.mealsBreakdownRepository.findOne({
-      where: { packageId: id },
-    });
-    if (!mealsBreakdown) {
-      errors.push('Meals breakdown is required');
+    if (!isNormal) {
+      const cancellationPolicy = await this.cancellationPolicyRepository.find({
+        where: { packageId: id },
+      });
+      if (cancellationPolicy.length === 0) {
+        errors.push('Cancellation policy is required');
+      }
     }
 
     const packageLocation = await this.packageLocationRepository.findOne({

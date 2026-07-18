@@ -431,7 +431,7 @@ export default function BatchDetailsPage() {
                                             <div key={tier.id || tier.name} className="flex justify-between items-center bg-muted/30 p-2 rounded-md border">
                                                 <p className="font-medium text-sm">{tier.name}</p>
                                                 <div className="text-right">
-                                                    <p className="text-sm">Adult: {BookingService.formatCurrency(Number(tier.totalAdultCost) || (Number(batch?.package?.basePrice || 0) + Number(tier.adultCost || 0)))}</p>
+                                                    <p className="text-sm">Adult: {BookingService.formatCurrency(Number(tier.adultCost) || 0)}</p>
                                                     <p className="text-sm">Child: {tier.childCostType === 'percentage' ? `${tier.childCostValue}%` : BookingService.formatCurrency(Number(tier.childCostValue || 0))}</p>
                                                     <p className="text-sm">Infant: {tier.infantCostType === 'percentage' ? `${tier.infantCostValue}%` : BookingService.formatCurrency(Number(tier.infantCostValue || 0))}</p>
                                                 </div>
@@ -441,7 +441,9 @@ export default function BatchDetailsPage() {
                                 </div>
                             ) : (
                                 <p className="text-sm font-medium">
-                                    {batch && BookingService.formatCurrency(Number((batch.package as any)?.basePrice || 0))}
+                                     {batch && BookingService.formatCurrency(
+                                         Number(batch.package?.packageTiers?.[0]?.adultCost) || 0
+                                     )}
                                 </p>
                             )}
                         </div>

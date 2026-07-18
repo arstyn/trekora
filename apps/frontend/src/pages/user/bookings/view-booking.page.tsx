@@ -576,7 +576,7 @@ export default function BookingDetailsPage() {
                                                 <div key={tier.id || tier.name} className="flex justify-between items-center bg-muted/30 p-2 rounded border text-xs">
                                                     <p className="font-semibold">{tier.name}</p>
                                                     <div className="text-right text-[10px] text-muted-foreground space-y-0.5">
-                                                        <p>Adult: {BookingService.formatCurrency(Number(tier.totalAdultCost) + Number(tier.adultCost || 0))}</p>
+                                                        <p>Adult: {BookingService.formatCurrency(Number(tier.adultCost || 0))}</p>
                                                         <p>Child: {tier.childCostType === 'percentage' ? `${tier.childCostValue}%` : BookingService.formatCurrency(Number(tier.childCostValue || 0))}</p>
                                                         <p>Infant: {tier.infantCostType === 'percentage' ? `${tier.infantCostValue}%` : BookingService.formatCurrency(Number(tier.infantCostValue || 0))}</p>
                                                     </div>

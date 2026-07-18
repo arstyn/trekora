@@ -85,6 +85,13 @@ export function ViewLeadDialog({
     const [customPackageDescription, setCustomPackageDescription] = useState<string>("");
     const [budget, setBudget] = useState<number | "">("");
 
+    const getPkgPrice = (pkg: IPackages) => {
+        if (!pkg) return 0;
+        const tier = pkg.packageTiers?.[0];
+        if (!tier) return 0;
+        return Number(tier.adultCost) || 0;
+    };
+
     const navigate = useNavigate();
 
     // Fetch packages if lead is qualified or converted
@@ -533,7 +540,7 @@ export function ViewLeadDialog({
                                                                                                      >
                                                                                                          <div className="flex-1 min-w-0">
                                                                                                              <p className="text-sm font-medium truncate">{pkg.name}</p>
-                                                                                                             <p className="text-xs text-muted-foreground">₹{pkg.basePrice}</p>
+                                                                                                             <p className="text-xs text-muted-foreground">₹{getPkgPrice(pkg)}</p>
                                                                                                          </div>
                                                                                                          {preferredPackageId === pkg.id && (
                                                                                                              <Check className="h-4 w-4 text-primary" />
@@ -616,7 +623,7 @@ export function ViewLeadDialog({
                                                                                                          <Checkbox checked={isSelected} onCheckedChange={() => {}} />
                                                                                                          <div className="flex-1 min-w-0">
                                                                                                              <p className="text-sm font-medium truncate">{pkg.name}</p>
-                                                                                                             <p className="text-xs text-muted-foreground">₹{pkg.basePrice}</p>
+                                                                                                             <p className="text-xs text-muted-foreground">₹{getPkgPrice(pkg)}</p>
                                                                                                          </div>
                                                                                                      </div>
                                                                                                  );
@@ -654,13 +661,13 @@ export function ViewLeadDialog({
                                                                          <span className="text-lg font-bold flex items-center gap-1">
                                                                              <IndianRupee className="h-4 w-4" />
                                                                              {(
-                                                                                 Number(packages.find((p) => p.id === preferredPackageId)?.basePrice || 0) * numberOfPassengers
+                                                                                 getPkgPrice(packages.find((p) => p.id === preferredPackageId)!) * numberOfPassengers
                                                                              ).toLocaleString()}
                                                                          </span>
                                                                      </div>
                                                                      <p className="text-xs text-muted-foreground mt-1">
                                                                          Based on {numberOfPassengers} {numberOfPassengers === 1 ? "passenger" : "passengers"} × ₹
-                                                                         {packages.find((p) => p.id === preferredPackageId)?.basePrice || 0}
+                                                                         {getPkgPrice(packages.find((p) => p.id === preferredPackageId)!)}
                                                                      </p>
                                                                  </div>
                                                              )}

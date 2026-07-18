@@ -211,7 +211,6 @@ export class BookingResponseDto {
   package: {
     id: string;
     name: string;
-    basePrice: number;
     destination: string;
     days: number;
     nights: number;

@@ -36,7 +36,6 @@ const defaultValues: PackageFormData = {
     destination: "",
     days: 0,
     nights: 0,
-    basePrice: 0,
     description: "",
     maxGuests: 0,
     category: "adventure",
@@ -101,7 +100,6 @@ const SECTION_KEYS: Record<string, string[]> = {
         "destination",
         "days",
         "nights",
-        "basePrice",
         "description",
         "maxGuests",
         "category",
@@ -163,8 +161,7 @@ export function PackageForm({
         (backendData: Partial<IPackages>) => {
             const transformed: any = { ...backendData };
 
-            if (backendData.basePrice !== undefined)
-                transformed.basePrice = Number(backendData.basePrice) || 0;
+
             if (backendData.days !== undefined)
                 transformed.days = Number(backendData.days) || 0;
             if (backendData.nights !== undefined)
@@ -406,35 +403,6 @@ export function PackageForm({
             // For new packages, default to draft
             if (!updateData.status && !packageId) {
                 updateData.status = "draft";
-            }
-
-            // Calculate basePrice from current form state
-            const currentItinerary = updateData.itinerary || [];
-            const itineraryCost = currentItinerary.reduce((sum, day) => {
-                let dayCost = 0;
-                if (day.activitiesCostType === "per_day") {
-                    dayCost += Number(day.activitiesTotalCost) || 0;
-                } else if (day.activitiesCostType === "per_activity") {
-                    dayCost += (day.activities || []).reduce((s, act) => s + (Number((act as any).cost) || 0), 0);
-                }
-                dayCost += Number(day.accommodationCost) || 0;
-                return sum + dayCost;
-            }, 0);
-            const mealsCost = Number(updateData.mealsBreakdown?.mealsCost) || 0;
-            const addCostsSum = (updateData.additionalCosts || []).reduce((sum, cost) => sum + (Number(cost.cost) || 0), 0);
-            const groundTransportCost = Number(updateData.groundTransportationCost) || 0;
-            updateData.basePrice = itineraryCost + mealsCost + addCostsSum + groundTransportCost;
-
-            if (updateData.packageTiers) {
-                updateData.packageTiers = updateData.packageTiers.map(tier => {
-                    const transport = updateData.transportation?.find(t => t.id === tier.transportationId);
-                    const transportCost = Number(transport?.cost) || 0;
-                    const markup = Number(tier.adultCost) || 0;
-                    return {
-                        ...tier,
-                        totalAdultCost: updateData.basePrice! + transportCost + markup
-                    };
-                });
             }
 
             if (updateData.paymentStructure) {

@@ -369,7 +369,7 @@ export default function LeadDetailsPage() {
                                                         </p>
                                                         <div className="space-y-1">
                                                             {lead.preferredPackage.packageTiers.map((tier) => {
-                                                                const adultCost = Number(tier.totalAdultCost) || (Number(lead.preferredPackage?.basePrice || 0) + Number(tier.adultCost || 0));
+                                                                 const adultCost = Number(tier.adultCost || 0);
                                                                 return (
                                                                     <div key={tier.id || tier.name} className="flex justify-between items-center text-xs py-1 px-2 rounded-md bg-secondary/50 border border-border/40">
                                                                         <span className="font-medium text-muted-foreground">{tier.name}</span>

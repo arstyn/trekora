@@ -202,7 +202,6 @@ export class BatchesService {
           id: true,
           name: true,
           description: true,
-          basePrice: true,
           destination: true,
           packageTiers: true,
           transportationOptions: true,
