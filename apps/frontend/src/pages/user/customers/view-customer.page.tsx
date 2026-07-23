@@ -2,14 +2,6 @@ import { ImageGallery } from "@/components/image-gallery";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-    Breadcrumb,
-    BreadcrumbItem,
-    BreadcrumbLink,
-    BreadcrumbList,
-    BreadcrumbPage,
-    BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,19 +16,19 @@ import {
     AlertCircle,
     ArrowLeft,
     Calendar,
+    ClipboardList,
+    DollarSign,
     Edit,
     Eye,
     FileText,
     HeartPulse,
+    Loader2,
     Mail,
     MapPin,
     Phone,
     ShieldAlert,
     User,
-    Users,
-    Loader2,
-    ClipboardList,
-    DollarSign
+    Users
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
@@ -129,6 +121,30 @@ export default function ViewCustomerPage() {
         ) : (
             <span className="text-muted-foreground italic">N/A</span>
         );
+    };
+
+    const formatAddress = (cust: ICustomer | null) => {
+        if (!cust) return displayVal(null);
+        if (!cust.address && !cust.district && !cust.state && !cust.pinCode) {
+            return displayVal(null);
+        }
+        const isIndia = !cust.country || cust.country === "India";
+        if (isIndia) {
+            const parts = [
+                cust.address,
+                cust.district,
+                cust.state,
+                cust.pinCode ? `PIN: ${cust.pinCode}` : "",
+            ].filter(Boolean);
+            return parts.join(", ");
+        } else {
+            const parts = [
+                cust.address,
+                cust.country,
+                cust.pinCode ? `Zip Code: ${cust.pinCode}` : "",
+            ].filter(Boolean);
+            return parts.join(", ");
+        }
     };
 
     const getStatusBadge = (status: string) => {
@@ -235,27 +251,6 @@ export default function ViewCustomerPage() {
                     </Button>
                 </div>
             </div>
-
-            {/* Breadcrumb section */}
-            <Breadcrumb>
-                <BreadcrumbList>
-                    <BreadcrumbItem>
-                        <BreadcrumbLink asChild>
-                            <NavLink
-                                to="/customers"
-                                className="hover:text-primary transition-colors"
-                            >
-                                Customers
-                            </NavLink>
-                        </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                        <BreadcrumbPage>{fullName}</BreadcrumbPage>
-                    </BreadcrumbItem>
-                </BreadcrumbList>
-            </Breadcrumb>
-
             {/* Main content grid: 3-column equal layout with zero empty horizontal space */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Column 1: Customer Overview */}
@@ -315,7 +310,7 @@ export default function ViewCustomerPage() {
                                     <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
                                     <div>
                                         <p className="text-xs text-muted-foreground">Address</p>
-                                        <p className="font-semibold text-sm leading-snug">{displayVal(customer.address)}</p>
+                                        <p className="font-semibold text-sm leading-snug">{formatAddress(customer)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -566,73 +561,73 @@ export default function ViewCustomerPage() {
 
                     <div className="p-0">
                         <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Booking Number</TableHead>
-                                <TableHead>Package</TableHead>
-                                <TableHead>Batch Start</TableHead>
-                                <TableHead>Passengers</TableHead>
-                                <TableHead>Payments</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {bookingsLoading ? (
-                                Array.from({ length: 3 }).map((_, index) => (
-                                    <TableRow key={`booking-skeleton-${index}`}>
-                                        {Array.from({ length: 7 }).map((_, i) => (
-                                            <TableCell key={`cell-skeleton-${index}-${i}`} className="py-4">
-                                                <Skeleton className="h-5 w-full" />
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                ))
-                            ) : bookings.length > 0 ? (
-                                bookings.map((booking) => (
-                                    <TableRow key={booking.id} className="cursor-pointer hover:bg-muted/50">
-                                        <TableCell className="font-medium">
-                                            {BookingService.formatBookingNumber(booking.bookingNumber)}
-                                        </TableCell>
-                                        <TableCell>{booking.packageName}</TableCell>
-                                        <TableCell>
-                                            {new Date(booking.batchStartDate).toLocaleDateString()}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-1">
-                                                <Users className="w-3 h-3 text-muted-foreground" />
-                                                {booking.numberOfCustomers}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-1 text-sm font-medium">
-                                                    {BookingService.formatCurrency(booking.advancePaid)}
-                                                    /
-                                                    {BookingService.formatCurrency(booking.totalAmount)}
-                                                </div>
-                                                {getPaymentStatus(booking.advancePaid, booking.totalAmount)}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>{getStatusBadge(booking.status)}</TableCell>
-                                        <TableCell className="text-right">
-                                            <NavLink to={`/bookings/${booking.id}`}>
-                                                <Button size="sm" variant="outline">
-                                                    <Eye className="w-4 h-4 mr-2" />
-                                                    View Details
-                                                </Button>
-                                            </NavLink>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
-                                        No bookings found for this customer
-                                    </TableCell>
+                                    <TableHead>Booking Number</TableHead>
+                                    <TableHead>Package</TableHead>
+                                    <TableHead>Batch Start</TableHead>
+                                    <TableHead>Passengers</TableHead>
+                                    <TableHead>Payments</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
+                            </TableHeader>
+                            <TableBody>
+                                {bookingsLoading ? (
+                                    Array.from({ length: 3 }).map((_, index) => (
+                                        <TableRow key={`booking-skeleton-${index}`}>
+                                            {Array.from({ length: 7 }).map((_, i) => (
+                                                <TableCell key={`cell-skeleton-${index}-${i}`} className="py-4">
+                                                    <Skeleton className="h-5 w-full" />
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    ))
+                                ) : bookings.length > 0 ? (
+                                    bookings.map((booking) => (
+                                        <TableRow key={booking.id} className="cursor-pointer hover:bg-muted/50">
+                                            <TableCell className="font-medium">
+                                                {BookingService.formatBookingNumber(booking.bookingNumber)}
+                                            </TableCell>
+                                            <TableCell>{booking.packageName}</TableCell>
+                                            <TableCell>
+                                                {new Date(booking.batchStartDate).toLocaleDateString()}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1">
+                                                    <Users className="w-3 h-3 text-muted-foreground" />
+                                                    {booking.numberOfCustomers}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-1 text-sm font-medium">
+                                                        {BookingService.formatCurrency(booking.advancePaid)}
+                                                        /
+                                                        {BookingService.formatCurrency(booking.totalAmount)}
+                                                    </div>
+                                                    {getPaymentStatus(booking.advancePaid, booking.totalAmount)}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                                            <TableCell className="text-right">
+                                                <NavLink to={`/bookings/${booking.id}`}>
+                                                    <Button size="sm" variant="outline">
+                                                        <Eye className="w-4 h-4 mr-2" />
+                                                        View Details
+                                                    </Button>
+                                                </NavLink>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                                            No bookings found for this customer
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
                         </Table>
                     </div>
                 </CardContent>
