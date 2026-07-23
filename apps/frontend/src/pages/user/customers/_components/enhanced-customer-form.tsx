@@ -27,10 +27,13 @@ import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
 import type { ICustomer, IRelative } from "@/types/customer.type";
 import { format } from "date-fns";
+import { getAllStates, getDistricts } from "india-state-district";
 import {
     ArrowLeft,
     ArrowRight,
     CalendarIcon,
+    Check,
+    ChevronDown,
     ChevronRight,
     Image as ImageIcon,
     Loader2,
@@ -39,6 +42,96 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { countries } from "./countries";
+
+function SearchableSelect({
+    options,
+    value,
+    onChange,
+    placeholder,
+    searchPlaceholder = "Search...",
+    disabled = false,
+}: {
+    options: { value: string; label: string }[];
+    value: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+    searchPlaceholder?: string;
+    disabled?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const filteredOptions = options.filter((option) =>
+        option.label.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const selectedOption = options.find((opt) => opt.value === value);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen} modal={true}>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    disabled={disabled}
+                    className="w-full justify-between h-9 text-left font-normal border bg-background hover:bg-accent hover:text-accent-foreground text-sm"
+                >
+                    <span className="truncate">
+                        {selectedOption ? selectedOption.label : placeholder}
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent
+                className="p-0 border shadow-md bg-popover text-popover-foreground rounded-md overflow-hidden"
+                style={{ width: 'var(--radix-popover-trigger-width)' }}
+                align="start"
+            >
+                <div className="flex flex-col h-[200px]">
+                    <div className="p-2 border-b">
+                        <Input
+                            placeholder={searchPlaceholder}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-8 text-xs"
+                        />
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-1 max-h-[160px]">
+                        {filteredOptions.length === 0 ? (
+                            <div className="py-6 text-center text-xs text-muted-foreground">
+                                No options found.
+                            </div>
+                        ) : (
+                            filteredOptions.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(option.value);
+                                        setOpen(false);
+                                        setSearchQuery("");
+                                    }}
+                                    className={`w-full text-left px-2 py-1.5 text-xs rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground flex items-center justify-between cursor-pointer ${value === option.value
+                                        ? "bg-accent font-medium text-accent-foreground"
+                                        : "text-foreground"
+                                        }`}
+                                >
+                                    <span className="truncate">{option.label}</span>
+                                    {value === option.value && (
+                                        <Check className="h-3.5 w-3.5 text-primary" />
+                                    )}
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
 
 interface EnhancedCustomerFormProps {
     customer?: ICustomer;
@@ -51,17 +144,21 @@ export default function EnhancedCustomerForm({
     onSave,
     onCancel,
 }: EnhancedCustomerFormProps) {
-    const [formData, setFormData] = useState<ICustomer>(
-        customer || {
+    const [formData, setFormData] = useState<ICustomer>(() => {
+        const defaults = {
             firstName: "",
             lastName: "",
             middleName: "",
             dateOfBirth: "",
-            gender: "male",
+            gender: "male" as const,
             email: "",
             phone: "",
             alternativePhone: "",
             address: "",
+            district: "",
+            state: "Kerala",
+            pinCode: "",
+            country: "India",
             emergencyContactName: "",
             emergencyContactPhone: "",
             emergencyContactRelation: "",
@@ -79,8 +176,9 @@ export default function EnhancedCustomerForm({
             medicalConditions: "",
             specialRequests: "",
             notes: "",
-        },
-    );
+        };
+        return customer ? { ...defaults, ...customer } : defaults;
+    });
 
     const [relatives, setRelatives] = useState<IRelative[]>(
         formData.relatives || [],
@@ -101,6 +199,19 @@ export default function EnhancedCustomerForm({
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState(1);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const stateOptions = getAllStates().map((s) => ({
+        value: s.name,
+        label: s.name,
+    }));
+
+    const selectedStateObj = getAllStates().find((s) => s.name === formData.state);
+    const districtOptions = selectedStateObj
+        ? getDistricts(selectedStateObj.code).map((d) => ({
+            value: d,
+            label: d,
+        }))
+        : [];
 
 
     const parseLocalYYYYMMDD = (dateStr: string | undefined): Date | undefined => {
@@ -132,6 +243,40 @@ export default function EnhancedCustomerForm({
             }
         }
 
+        if (currentStep === 2) {
+            const isIndia = (formData.country || "India") === "India";
+
+            if (isIndia) {
+                const hasAddressInfo = !!(
+                    formData.address?.trim() ||
+                    formData.state ||
+                    formData.district ||
+                    formData.pinCode
+                );
+
+                if (hasAddressInfo) {
+                    if (!formData.state) {
+                        newErrors.state = "State is required";
+                    }
+                    if (formData.pinCode && formData.pinCode.length !== 6) {
+                        newErrors.pinCode = "PIN Code must be 6 digits";
+                    }
+                }
+            } else {
+                const hasAddressInfo = !!(
+                    formData.address?.trim() ||
+                    formData.pinCode ||
+                    formData.country?.trim()
+                );
+
+                if (hasAddressInfo) {
+                    if (!formData.country || !formData.country.trim()) {
+                        newErrors.country = "Country is required";
+                    }
+                }
+            }
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -159,6 +304,32 @@ export default function EnhancedCustomerForm({
 
     const handleSelectChange = (name: string, value: string) => {
         setFormData({ ...formData, [name]: value });
+    };
+
+    const handleStateChange = (value: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            state: value,
+            district: "",
+        }));
+    };
+
+    const handleCountryChange = (value: string) => {
+        if (value === "India") {
+            setFormData((prev) => ({
+                ...prev,
+                country: value,
+                state: "Kerala",
+                district: "",
+            }));
+        } else {
+            setFormData((prev) => ({
+                ...prev,
+                country: value,
+                state: "",
+                district: "",
+            }));
+        }
     };
 
     const handleFileUploaderChange = (field: string, newFiles: File[], maxFiles: number) => {
@@ -621,20 +792,110 @@ export default function EnhancedCustomerForm({
                                                     className="h-9"
                                                 />
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="address" className="text-sm font-medium">
-                                                    Physical Address
-                                                </Label>
-                                                <Textarea
-                                                    id="address"
-                                                    name="address"
-                                                    value={formData.address}
-                                                    onChange={handleChange}
-                                                    rows={3}
-                                                    className="resize-none"
-                                                />
-                                            </div>
+                                            <div className="space-y-4">
+                                                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Address Details</Label>
 
+                                                <div className="space-y-4">
+                                                    {/* Row 1: Country & State/Zip */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label className="text-sm font-medium">Country *</Label>
+                                                            <SearchableSelect
+                                                                options={countries}
+                                                                value={formData.country || "India"}
+                                                                onChange={handleCountryChange}
+                                                                placeholder="Select Country"
+                                                                searchPlaceholder="Search Country..."
+                                                            />
+                                                            {errors.country && (
+                                                                <p className="text-[11px] text-destructive font-medium">{errors.country}</p>
+                                                            )}
+                                                        </div>
+
+                                                        {(formData.country || "India") === "India" ? (
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">State {formData.address || formData.district || formData.pinCode ? "*" : ""}</Label>
+                                                                <SearchableSelect
+                                                                    options={stateOptions}
+                                                                    value={formData.state || ""}
+                                                                    onChange={handleStateChange}
+                                                                    placeholder="Select State"
+                                                                    searchPlaceholder="Search State..."
+                                                                />
+                                                                {errors.state && (
+                                                                    <p className="text-[11px] text-destructive font-medium">{errors.state}</p>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="pinCode" className="text-sm font-medium">Zip Code</Label>
+                                                                <Input
+                                                                    id="pinCode"
+                                                                    name="pinCode"
+                                                                    type="text"
+                                                                    value={formData.pinCode || ""}
+                                                                    onChange={handleChange}
+                                                                    placeholder="Zip / Postal Code"
+                                                                    className="h-9 text-sm"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Row 2: District & PIN Code (India Only) */}
+                                                    {(formData.country || "India") === "India" && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">District</Label>
+                                                                <SearchableSelect
+                                                                    options={districtOptions}
+                                                                    value={formData.district || ""}
+                                                                    onChange={(val) => handleSelectChange("district", val)}
+                                                                    placeholder={formData.state ? "Select District" : "Select State First"}
+                                                                    searchPlaceholder="Search District..."
+                                                                    disabled={!formData.state}
+                                                                />
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="pinCode" className="text-sm font-medium">PIN Code</Label>
+                                                                <Input
+                                                                    id="pinCode"
+                                                                    name="pinCode"
+                                                                    type="text"
+                                                                    maxLength={6}
+                                                                    value={formData.pinCode || ""}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value.replace(/\D/g, ""); // Allow digits only
+                                                                        setFormData({ ...formData, pinCode: val });
+                                                                    }}
+                                                                    placeholder="6-digit PIN"
+                                                                    className="h-9 text-sm"
+                                                                />
+                                                                {errors.pinCode && (
+                                                                    <p className="text-[11px] text-destructive font-medium">{errors.pinCode}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Row 3: Address */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="address" className="text-sm font-medium">
+                                                            Address
+                                                        </Label>
+                                                        <Textarea
+                                                            id="address"
+                                                            name="address"
+                                                            value={formData.address || ""}
+                                                            onChange={handleChange}
+                                                            placeholder="Address, Area, Building, Apartment, etc."
+                                                            rows={3}
+                                                            className="resize-none text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <div className="pt-4 border-t">
                                                 <h4 className="font-semibold text-base mb-3 text-foreground">
                                                     Emergency Contact

@@ -72,6 +72,29 @@ export function ViewCustomerDialog({
         setImageModalOpen(true);
     };
 
+    const formattedAddress = (() => {
+        if (!customer.address && !customer.district && !customer.state && !customer.pinCode) {
+            return display(null);
+        }
+        const isIndia = !customer.country || customer.country === "India";
+        if (isIndia) {
+            const parts = [
+                customer.address,
+                customer.district,
+                customer.state,
+                customer.pinCode ? `PIN: ${customer.pinCode}` : "",
+            ].filter(Boolean);
+            return parts.join(", ");
+        } else {
+            const parts = [
+                customer.address,
+                customer.country,
+                customer.pinCode ? `Zip Code: ${customer.pinCode}` : "",
+            ].filter(Boolean);
+            return parts.join(", ");
+        }
+    })();
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-hidden">
@@ -172,7 +195,7 @@ export function ViewCustomerDialog({
                                 />
                                 <Detail
                                     label="Address"
-                                    value={display(customer.address)}
+                                    value={formattedAddress}
                                 />
                             </div>
                         </div>

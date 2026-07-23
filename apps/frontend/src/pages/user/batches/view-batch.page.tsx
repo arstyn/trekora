@@ -28,6 +28,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosInstance from "@/lib/axios";
 import BookingService from "@/services/booking.service";
 import type { IBatches, IBatchLog } from "@/types/batches.types";
@@ -48,6 +49,11 @@ import {
     Trash2,
     Users,
     XCircle,
+    LayoutGrid,
+    LayoutList,
+    GitMerge,
+    CheckCircle2,
+    Circle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
@@ -63,6 +69,7 @@ export default function BatchDetailsPage() {
     const [selectedBooking, setSelectedBooking] = useState<IBooking | null>(
         null,
     );
+    const [viewMode, setViewMode] = useState<"detailed" | "table" | "workflow">("table");
     const [selectedCoordinator, setSelectedCoordinator] =
         useState<IEmployee | null>(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -521,255 +528,499 @@ export default function BatchDetailsPage() {
 
             {/* Bookings */}
             <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
                     <CardTitle className="flex items-center gap-2">
                         <ClipboardList className="w-5 h-5 text-primary" />
                         Bookings & Workflow Progress ({activeBookings.length})
                     </CardTitle>
+                    <Tabs
+                        value={viewMode}
+                        onValueChange={(v) => setViewMode(v as any)}
+                        className="w-full sm:w-auto"
+                    >
+                        <TabsList className="grid grid-cols-3 w-full sm:w-auto">
+                            <TabsTrigger value="table" className="flex items-center gap-1.5">
+                                <LayoutList className="w-3.5 h-3.5" />
+                                <span>Table</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="detailed" className="flex items-center gap-1.5">
+                                <LayoutGrid className="w-3.5 h-3.5" />
+                                <span>Detailed</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="workflow" className="flex items-center gap-1.5">
+                                <GitMerge className="w-3.5 h-3.5" />
+                                <span>Workflow</span>
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-6">
-                        {activeBookings.map((booking) => {
-                            const completedSteps =
-                                booking.currentWorkflow?.steps?.filter(
-                                    (s) => s.status === "completed",
-                                ).length || 0;
-                            const totalSteps =
-                                booking.currentWorkflow?.steps?.length || 0;
-                            const progress =
-                                totalSteps > 0
-                                    ? Math.round(
-                                        (completedSteps / totalSteps) * 100,
-                                    )
-                                    : 0;
-
-                            return (
-                                <div
-                                    key={booking.id}
-                                    className="border rounded-xl overflow-hidden hover:border-primary/50 transition-colors cursor-pointer"
-                                    onClick={() => setSelectedBooking(booking)}
-                                >
-                                    <div className="bg-muted/30 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b">
-                                        <div className="flex items-center gap-4">
-                                            <div className="bg-primary/10 text-primary w-36 h-12 rounded-lg flex items-center justify-center font-bold text-lg">
-                                                #{booking.bookingNumber}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-lg">
-                                                    {
-                                                        booking.primaryCustomer
-                                                            ?.firstName
-                                                    }{" "}
-                                                    {
-                                                        booking.primaryCustomer
-                                                            ?.lastName
-                                                    }
-                                                </h3>
-                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                    <Mail className="w-3 h-3" />
-                                                    {
-                                                        booking.primaryCustomer
-                                                            ?.email
-                                                    }
-                                                    <Phone className="w-3 h-3 ml-2" />
-                                                    {
-                                                        booking.primaryCustomer
-                                                            ?.phone
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-3">
-                                            <Badge
-                                                variant="outline"
-                                                className="capitalize"
-                                            >
-                                                {booking.status}
-                                            </Badge>
-                                            <div className="flex flex-col items-end gap-1 min-w-[120px]">
-                                                <div className="flex justify-between w-full text-xs font-medium">
-                                                    <span>Workflow</span>
-                                                    <span>
-                                                        {completedSteps}/
-                                                        {totalSteps} Steps
-                                                    </span>
-                                                </div>
-                                                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-primary transition-all duration-500"
-                                                        style={{
-                                                            width: `${progress}%`,
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedBooking(booking);
-                                                }}
-                                            >
-                                                Details
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleCancelBooking(
-                                                        booking.id,
-                                                    );
-                                                }}
-                                            >
-                                                <XCircle className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteBooking(
-                                                        booking.id,
-                                                    );
-                                                }}
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                        {(() => {
-                                            const travelers = booking.customers?.filter((c) => c.id !== booking.primaryCustomer?.id) || [];
-                                            return (
-                                                <div className="space-y-3">
-                                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                        <Users className="w-3 h-3" />
-                                                        Additional Travelers ({travelers.length})
-                                                    </div>
-                                                    {travelers.length > 0 ? (
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                            {travelers.map((c) => (
-                                                                <div
-                                                                    key={c.id}
-                                                                    className="flex items-center gap-2 p-2 rounded-lg bg-background border text-sm"
-                                                                >
-                                                                    <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
-                                                                        {c.firstName[0]}
-                                                                        {c?.lastName?.[0] ?? ""}
-                                                                    </div>
-                                                                    <span className="truncate">
-                                                                        {c.firstName}{" "}
-                                                                        {c?.lastName?.[0] ?? ""}
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-xs text-muted-foreground italic">No additional travelers</p>
-                                                    )}
-                                                </div>
-                                            );
-                                        })()}
-
-                                        {/* Payment Status */}
-                                        <div className="space-y-3 border-t pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6 border-muted">
-                                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                <DollarSign className="w-3 h-3 text-primary" />
-                                                Payment Status
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-muted-foreground">Total:</span>
-                                                    <span className="font-semibold text-foreground">
-                                                        {BookingService.formatCurrency(booking.totalAmount)}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-muted-foreground">Paid:</span>
-                                                    <span className="font-semibold text-emerald-600">
-                                                        {BookingService.formatCurrency(booking.advancePaid)}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-muted-foreground">Remaining:</span>
-                                                    <span className={`font-semibold ${booking.balanceAmount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                                        {BookingService.formatCurrency(booking.balanceAmount)}
-                                                    </span>
-                                                </div>
-                                                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mt-1">
-                                                    <div
-                                                        className={`h-full transition-all duration-500 ${booking.balanceAmount === 0 ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                                                        style={{
-                                                            width: `${booking.totalAmount > 0 ? Math.min(100, Math.round((booking.advancePaid / booking.totalAmount) * 100)) : 0}%`,
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Workflow Tasks Preview */}
-                                        <div className="space-y-3 border-t pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6 border-muted">
-                                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                <ClipboardList className="w-3 h-3" />
-                                                Workflow Status
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {booking.currentWorkflow?.steps
-                                                    ?.slice(0, 5)
-                                                    .map(
-                                                        (
-                                                            step: IWorkflowStep,
-                                                        ) => (
-                                                            <Badge
-                                                                key={step.id}
-                                                                variant={
-                                                                    step.status ===
-                                                                        "completed"
-                                                                        ? "default"
-                                                                        : "secondary"
-                                                                }
-                                                                className="text-[10px] flex items-center gap-1"
-                                                            >
-                                                                {step.status ===
-                                                                    "completed" ? (
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                                                                ) : (
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
-                                                                )}
-                                                                {step.label}
-                                                            </Badge>
-                                                        ),
-                                                    )}
-                                                {totalSteps > 5 && (
-                                                    <span className="text-[10px] text-muted-foreground flex items-center px-2">
-                                                        +{totalSteps - 5}{" "}
-                                                        more...
-                                                    </span>
-                                                )}
-                                                {totalSteps === 0 && (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        No workflow assigned
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    {activeBookings.length === 0 && (
+                    {activeBookings.length === 0 ? (
                         <div className="text-center py-12 border-2 border-dashed rounded-xl border-muted">
                             <Users className="w-12 h-12 text-muted/50 mx-auto mb-3" />
                             <p className="text-muted-foreground">
                                 No active bookings found
                             </p>
                         </div>
+                    ) : (
+                        <>
+                            {viewMode === "detailed" && (
+                                <div className="space-y-6">
+                                    {activeBookings.map((booking) => {
+                                        const completedSteps =
+                                            booking.currentWorkflow?.steps?.filter(
+                                                (s) => s.status === "completed",
+                                            ).length || 0;
+                                        const totalSteps =
+                                            booking.currentWorkflow?.steps?.length || 0;
+                                        const progress =
+                                            totalSteps > 0
+                                                ? Math.round(
+                                                    (completedSteps / totalSteps) * 100,
+                                                )
+                                                : 0;
+
+                                        return (
+                                            <div
+                                                key={booking.id}
+                                                className="border rounded-xl overflow-hidden hover:border-primary/50 transition-colors cursor-pointer"
+                                                onClick={() => setSelectedBooking(booking)}
+                                            >
+                                                <div className="bg-muted/30 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="bg-primary/10 text-primary w-36 h-12 rounded-lg flex items-center justify-center font-bold text-lg">
+                                                            #{booking.bookingNumber}
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-bold text-lg">
+                                                                {
+                                                                    booking.primaryCustomer
+                                                                        ?.firstName
+                                                                }{" "}
+                                                                {
+                                                                    booking.primaryCustomer
+                                                                        ?.lastName
+                                                                }
+                                                            </h3>
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                <Mail className="w-3 h-3" />
+                                                                {
+                                                                    booking.primaryCustomer
+                                                                        ?.email
+                                                                }
+                                                                <Phone className="w-3 h-3 ml-2" />
+                                                                {
+                                                                    booking.primaryCustomer
+                                                                        ?.phone
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-3">
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="capitalize"
+                                                        >
+                                                            {booking.status}
+                                                        </Badge>
+                                                        <div className="flex flex-col items-end gap-1 min-w-[120px]">
+                                                            <div className="flex justify-between w-full text-xs font-medium">
+                                                                <span>Workflow</span>
+                                                                <span>
+                                                                    {completedSteps}/
+                                                                    {totalSteps} Steps
+                                                                </span>
+                                                            </div>
+                                                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full bg-primary transition-all duration-500"
+                                                                    style={{
+                                                                        width: `${progress}%`,
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedBooking(booking);
+                                                            }}
+                                                        >
+                                                            Details
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleCancelBooking(
+                                                                    booking.id,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <XCircle className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteBooking(
+                                                                    booking.id,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                                    {(() => {
+                                                        const travelers = booking.customers?.filter((c) => c.id !== booking.primaryCustomer?.id) || [];
+                                                        return (
+                                                            <div className="space-y-3">
+                                                                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                                    <Users className="w-3 h-3" />
+                                                                    Additional Travelers ({travelers.length})
+                                                                </div>
+                                                                {travelers.length > 0 ? (
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                        {travelers.map((c) => (
+                                                                            <div
+                                                                                key={c.id}
+                                                                                className="flex items-center gap-2 p-2 rounded-lg bg-background border text-sm"
+                                                                            >
+                                                                                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
+                                                                                    {c.firstName[0]}
+                                                                                    {c?.lastName?.[0] ?? ""}
+                                                                                </div>
+                                                                                <span className="truncate">
+                                                                                    {c.firstName}{" "}
+                                                                                    {c?.lastName?.[0] ?? ""}
+                                                                                </span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-xs text-muted-foreground italic">No additional travelers</p>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+
+                                                    {/* Payment Status */}
+                                                    <div className="space-y-3 border-t pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6 border-muted">
+                                                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                            <DollarSign className="w-3 h-3 text-primary" />
+                                                            Payment Status
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between items-center text-sm">
+                                                                <span className="text-muted-foreground">Total:</span>
+                                                                <span className="font-semibold text-foreground">
+                                                                    {BookingService.formatCurrency(booking.totalAmount)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center text-sm">
+                                                                <span className="text-muted-foreground">Paid:</span>
+                                                                <span className="font-semibold text-emerald-600">
+                                                                    {BookingService.formatCurrency(booking.advancePaid)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center text-sm">
+                                                                <span className="text-muted-foreground">Remaining:</span>
+                                                                <span className={`font-semibold ${booking.balanceAmount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                                                    {BookingService.formatCurrency(booking.balanceAmount)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+                                                                <div
+                                                                    className={`h-full transition-all duration-500 ${booking.balanceAmount === 0 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                                                    style={{
+                                                                        width: `${booking.totalAmount > 0 ? Math.min(100, Math.round((booking.advancePaid / booking.totalAmount) * 100)) : 0}%`,
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Workflow Tasks Preview */}
+                                                    <div className="space-y-3 border-t pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6 border-muted">
+                                                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                            <ClipboardList className="w-3 h-3" />
+                                                            Workflow Status
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {booking.currentWorkflow?.steps
+                                                                ?.slice(0, 5)
+                                                                .map(
+                                                                    (
+                                                                        step: IWorkflowStep,
+                                                                    ) => (
+                                                                        <Badge
+                                                                            key={step.id}
+                                                                            variant={
+                                                                                step.status ===
+                                                                                    "completed"
+                                                                                    ? "default"
+                                                                                    : "secondary"
+                                                                            }
+                                                                            className="text-[10px] flex items-center gap-1"
+                                                                        >
+                                                                            {step.status ===
+                                                                                "completed" ? (
+                                                                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                                                                            ) : (
+                                                                                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                                                                            )}
+                                                                            {step.label}
+                                                                        </Badge>
+                                                                    ),
+                                                                )}
+                                                            {totalSteps > 5 && (
+                                                                <span className="text-[10px] text-muted-foreground flex items-center px-2">
+                                                                    +{totalSteps - 5}{" "}
+                                                                    more...
+                                                                </span>
+                                                            )}
+                                                            {totalSteps === 0 && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    No workflow assigned
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {viewMode === "table" && (
+                                <div className="border rounded-xl overflow-x-auto bg-background">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Booking #</TableHead>
+                                                <TableHead>Customer</TableHead>
+                                                <TableHead className="text-center">Travelers</TableHead>
+                                                <TableHead className="text-right">Total</TableHead>
+                                                <TableHead className="text-right">Paid</TableHead>
+                                                <TableHead className="text-right">Balance</TableHead>
+                                                <TableHead>Workflow Progress</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {activeBookings.map((booking) => {
+                                                const completedSteps =
+                                                    booking.currentWorkflow?.steps?.filter(
+                                                        (s) => s.status === "completed",
+                                                    ).length || 0;
+                                                const totalSteps =
+                                                    booking.currentWorkflow?.steps?.length || 0;
+                                                const progress =
+                                                    totalSteps > 0
+                                                        ? Math.round(
+                                                            (completedSteps / totalSteps) * 100,
+                                                        )
+                                                        : 0;
+                                                const travelers =
+                                                    booking.customers?.filter(
+                                                        (c) => c.id !== booking.primaryCustomer?.id,
+                                                    ) || [];
+
+                                                return (
+                                                    <TableRow
+                                                        key={booking.id}
+                                                        className="hover:bg-muted/50 cursor-pointer"
+                                                        onClick={() => setSelectedBooking(booking)}
+                                                    >
+                                                        <TableCell className="font-bold text-primary">
+                                                            #{booking.bookingNumber}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="font-semibold text-sm">
+                                                                {booking.primaryCustomer?.firstName}{" "}
+                                                                {booking.primaryCustomer?.lastName}
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                                                <span>{booking.primaryCustomer?.email}</span>
+                                                                {booking.primaryCustomer?.phone && (
+                                                                    <>
+                                                                        <span className="hidden sm:inline">•</span>
+                                                                        <span>{booking.primaryCustomer?.phone}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Badge variant="secondary" className="font-medium text-[11px]">
+                                                                {travelers.length} {travelers.length === 1 ? 'traveler' : 'travelers'}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-medium text-xs">
+                                                            {BookingService.formatCurrency(booking.totalAmount)}
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-emerald-600 font-semibold text-xs">
+                                                            {BookingService.formatCurrency(booking.advancePaid)}
+                                                        </TableCell>
+                                                        <TableCell className={`text-right font-semibold text-xs ${booking.balanceAmount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                                            {BookingService.formatCurrency(booking.balanceAmount)}
+                                                        </TableCell>
+                                                        <TableCell className="min-w-[150px] max-w-[200px]">
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="flex justify-between text-[10px] font-semibold">
+                                                                    <span>{completedSteps}/{totalSteps} Steps</span>
+                                                                    <span>{progress}%</span>
+                                                                </div>
+                                                                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className="h-full bg-primary transition-all duration-500"
+                                                                        style={{ width: `${progress}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                                            <div className="flex justify-end gap-1">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => setSelectedBooking(booking)}
+                                                                >
+                                                                    Details
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-8 w-8"
+                                                                    onClick={() => handleCancelBooking(booking.id)}
+                                                                >
+                                                                    <XCircle className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
+                                                                    onClick={() => handleDeleteBooking(booking.id)}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+
+                            {viewMode === "workflow" && (
+                                <div className="space-y-4">
+                                    {activeBookings.map((booking) => {
+                                        const steps = booking.currentWorkflow?.steps || [];
+                                        const completedSteps = steps.filter((s) => s.status === "completed").length;
+                                        const totalSteps = steps.length;
+                                        const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+                                        return (
+                                            <div
+                                                key={booking.id}
+                                                className="border rounded-xl p-4 hover:border-primary/50 transition-all bg-card/50 hover:bg-card cursor-pointer"
+                                                onClick={() => setSelectedBooking(booking)}
+                                            >
+                                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                                    <div className="flex items-center gap-4 min-w-[240px]">
+                                                        <div className="bg-primary/10 text-primary w-24 h-10 rounded-lg flex items-center justify-center font-bold text-sm shrink-0">
+                                                            #{booking.bookingNumber}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <h4 className="font-bold text-base truncate">
+                                                                {booking.primaryCustomer?.firstName} {booking.primaryCustomer?.lastName}
+                                                            </h4>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-[10px] bg-muted px-2 py-0.5 rounded font-semibold text-muted-foreground uppercase">
+                                                                    {booking.status}
+                                                                </span>
+                                                                <span className="text-[10px] font-bold text-primary">
+                                                                    {completedSteps}/{totalSteps} Steps ({progress}%)
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex-1 overflow-x-auto py-2 scrollbar-thin">
+                                                        <div className="flex items-center gap-2 min-w-max">
+                                                            {steps.map((step, idx) => {
+                                                                const isCompleted = step.status === "completed";
+                                                                const isSkipped = step.status === "skipped";
+                                                                const isActive = step.status === "pending" && (idx === 0 || steps[idx - 1].status === "completed");
+
+                                                                return (
+                                                                    <div key={step.id} className="flex items-center">
+                                                                        {idx > 0 && (
+                                                                            <div className={`h-[2px] w-6 shrink-0 ${
+                                                                                steps[idx - 1].status === "completed" ? "bg-primary" : "bg-muted"
+                                                                            }`} />
+                                                                        )}
+                                                                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs min-w-[140px] max-w-[180px] bg-background shadow-sm transition-all ${
+                                                                            isActive 
+                                                                                ? "border-primary ring-1 ring-primary/30 animate-pulse" 
+                                                                                : isCompleted 
+                                                                                    ? "border-primary/20 bg-primary/5" 
+                                                                                    : "border-muted"
+                                                                        }`}>
+                                                                            <div className="shrink-0">
+                                                                                {isCompleted ? (
+                                                                                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                                                                                ) : isSkipped ? (
+                                                                                    <XCircle className="w-4 h-4 text-muted-foreground" />
+                                                                                ) : (
+                                                                                    <Circle className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="min-w-0 flex-1">
+                                                                                <p className={`font-semibold truncate text-[11px] ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                                                                    {step.label}
+                                                                                </p>
+                                                                                <p className="text-[9px] text-muted-foreground capitalize">
+                                                                                    {step.status}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {steps.length === 0 && (
+                                                                <span className="text-xs text-muted-foreground italic">No workflow steps assigned</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setSelectedBooking(booking)}
+                                                        >
+                                                            Update Flow
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
                     )}
                 </CardContent>
             </Card>
