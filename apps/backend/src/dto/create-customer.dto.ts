@@ -72,6 +72,22 @@ export class CreateCustomerDto {
   @IsString({ message: 'Address must be a valid text' })
   address?: string;
 
+  @IsOptional()
+  @IsString({ message: 'District must be a valid text' })
+  district?: string;
+
+  @IsOptional()
+  @IsString({ message: 'State must be a valid text' })
+  state?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Pin code must be a valid text' })
+  pinCode?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Country must be a valid text' })
+  country?: string;
+
   // Emergency Contact
   @IsOptional()
   @IsString({ message: 'Emergency contact name must be a valid text' })

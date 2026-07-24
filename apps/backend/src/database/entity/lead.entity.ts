@@ -19,6 +19,9 @@ export class Lead {
   @Column({ name: 'name' })
   name: string;
 
+  @Column({ default: 'individual', name: 'lead_type' })
+  leadType: 'individual' | 'company';
+
   @Column({ nullable: true, name: 'email' })
   email: string;
 
@@ -27,6 +30,18 @@ export class Lead {
 
   @Column({ nullable: true, name: 'company' })
   company: string;
+
+  @Column({ nullable: true, name: 'company_website' })
+  companyWebsite: string;
+
+  @Column({ nullable: true, name: 'company_industry' })
+  companyIndustry: string;
+
+  @Column({ nullable: true, name: 'contact_designation' })
+  contactDesignation: string;
+
+  @Column({ nullable: true, name: 'company_size' })
+  companySize: string;
 
   @Column({ type: 'uuid', name: 'created_by_id', nullable: true })
   createdById: string;
@@ -62,6 +77,36 @@ export class Lead {
 
   @Column({ type: 'json', nullable: true, name: 'considered_package_ids' })
   consideredPackageIds: string[];
+
+  @Column({ default: false, name: 'is_custom_package' })
+  isCustomPackage: boolean;
+
+  @Column({ nullable: true, name: 'custom_package_name' })
+  customPackageName: string;
+
+  @Column({ nullable: true, name: 'custom_package_destination' })
+  customPackageDestination: string;
+
+  @Column({ nullable: true, name: 'custom_package_days', type: 'integer' })
+  customPackageDays: number;
+
+  @Column({ nullable: true, name: 'custom_package_nights', type: 'integer' })
+  customPackageNights: number;
+
+  @Column({ nullable: true, name: 'custom_package_price', type: 'decimal', transformer: {
+    to: (value: number) => value,
+    from: (value: string) => value ? parseFloat(value) : null
+  } })
+  customPackagePrice: number;
+
+  @Column({ nullable: true, name: 'custom_package_description', type: 'text' })
+  customPackageDescription: string;
+
+  @Column({ nullable: true, name: 'budget', type: 'decimal', transformer: {
+    to: (value: number) => value,
+    from: (value: string) => value ? parseFloat(value) : null
+  } })
+  budget: number;
 
   // Number of passengers
   @Column({ name: 'number_of_passengers', default: 1 })

@@ -1,3 +1,4 @@
+import { FileUploader } from "@/components/file-uploader";
 import StatusBadge from "@/components/status-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -8,9 +9,9 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogFooter,
 	DialogHeader,
-	DialogTitle,
-	DialogFooter
+	DialogTitle
 } from "@/components/ui/dialog";
 import {
 	Form,
@@ -38,8 +39,8 @@ import type { IEmployee } from "@/types/employee.types";
 import type { PermissionSet } from "@/types/permission.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronDown, History, Image as ImageIcon, Upload, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Briefcase, CalendarIcon, ChevronDown, ChevronRight, FileText, History, Mail, ShieldAlert, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -118,26 +119,44 @@ export function EmployeeModal({
 
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
-	const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+	const [profilePhotoRemoved, setProfilePhotoRemoved] = useState(false);
 	const [verificationDocFile, setVerificationDocFile] = useState<File | null>(null);
-	const [verificationDocPreview, setVerificationDocPreview] = useState<string | null>(null);
-
-	const profilePhotoRef = useRef<HTMLInputElement>(null);
-	const verificationDocRef = useRef<HTMLInputElement>(null);
+	const [verificationDocRemoved, setVerificationDocRemoved] = useState(false);
 
 	const [allPermissionSets, setAllPermissionSets] = useState<PermissionSet[]>([]);
 	const [selectedPermissionSetIds, setSelectedPermissionSetIds] = useState<string[]>([]);
 	const [loadingPermissionSets, setLoadingPermissionSets] = useState(false);
 	const [searchPermissionQuery, setSearchPermissionQuery] = useState("");
+	const [searchManagerQuery, setSearchManagerQuery] = useState("");
+	const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
 
 	// View mode state
 	const [logs, setLogs] = useState<IActivityLog[]>([]);
 	const [loadingLogs, setLoadingLogs] = useState(false);
 	const [showAllLogs, setShowAllLogs] = useState(false);
 
+	const [step, setStep] = useState(1);
+
+	const validateStep = async (currentStep: number) => {
+		if (currentStep === 1) {
+			return await form.trigger(["name", "email", "gender", "maritalStatus", "dateOfBirth", "nationality", "customNationality", "phone", "address"]);
+		}
+		if (currentStep === 2) {
+			return await form.trigger(["designation", "specialization", "experience", "customExperience", "joinDate"]);
+		}
+		if (currentStep === 3) {
+			return await form.trigger(["status", "managerId"]);
+		}
+		return true;
+	};
+
 	const filteredPermissionSets = allPermissionSets.filter(set =>
 		set.name.toLowerCase().includes(searchPermissionQuery.toLowerCase())
 	);
+
+	const filteredManagers = employees
+		.filter(emp => emp.id !== employee?.id)
+		.filter(emp => emp.name.toLowerCase().includes(searchManagerQuery.toLowerCase()));
 
 	const getDepartmentIds = (emp: IEmployee) => emp.employeeDepartments?.map((ud) => ud.department.id) ?? [];
 
@@ -155,6 +174,11 @@ export function EmployeeModal({
 
 	useEffect(() => {
 		if (open) {
+			setStep(1);
+			setSearchManagerQuery("");
+			setManagerPopoverOpen(false);
+			setProfilePhotoRemoved(false);
+			setVerificationDocRemoved(false);
 			if ((mode === "edit" || mode === "view") && employee) {
 				form.reset({
 					name: employee.name,
@@ -197,9 +221,11 @@ export function EmployeeModal({
 			}
 		} else {
 			setProfilePhotoFile(null);
-			setProfilePhotoPreview(null);
 			setVerificationDocFile(null);
-			setVerificationDocPreview(null);
+			setSearchManagerQuery("");
+			setManagerPopoverOpen(false);
+			setProfilePhotoRemoved(false);
+			setVerificationDocRemoved(false);
 		}
 	}, [open, mode, employee]);
 
@@ -255,7 +281,7 @@ export function EmployeeModal({
 				formDataToSubmit.append(`departments[${index}]`, dept);
 			});
 		}
-		if (data.status) formDataToSubmit.append("status", data.status);
+		if (mode !== "add" && data.status) formDataToSubmit.append("status", data.status);
 		formDataToSubmit.append("joinDate", format(data.joinDate, "yyyy-MM-dd"));
 		if (data.address) formDataToSubmit.append("address", data.address);
 		if (data.phone) formDataToSubmit.append("phone", data.phone);
@@ -316,20 +342,7 @@ export function EmployeeModal({
 		}
 	};
 
-	const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) { setProfilePhotoFile(file); setProfilePhotoPreview(URL.createObjectURL(file)); }
-	};
-	const handleVerificationDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) {
-			setVerificationDocFile(file);
-			if (file.type.startsWith("image/")) setVerificationDocPreview(URL.createObjectURL(file));
-			else setVerificationDocPreview(null);
-		}
-	};
-	const removeProfilePhoto = () => { setProfilePhotoFile(null); setProfilePhotoPreview(null); if (profilePhotoRef.current) profilePhotoRef.current.value = ""; };
-	const removeVerificationDoc = () => { setVerificationDocFile(null); setVerificationDocPreview(null); if (verificationDocRef.current) verificationDocRef.current.value = ""; };
+
 
 	const formattedDate = employee?.joinDate ? format(new Date(employee.joinDate), "PPP") : "";
 	const formattedDOB = employee?.dateOfBirth ? format(new Date(employee.dateOfBirth), "PPP") : "";
@@ -337,18 +350,53 @@ export function EmployeeModal({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className={isViewMode ? "sm:max-w-[700px] max-h-[90vh] flex flex-col" : "sm:max-w-[600px]"}>
-				<DialogHeader className={isViewMode ? "flex-shrink-0" : ""}>
-					<DialogTitle className="flex items-center justify-between">
-						{mode === "add" ? "Add New Employee" : mode === "edit" ? "Edit Employee" : "Employee Details"}
-					</DialogTitle>
-					{mode === "edit" && <DialogDescription>Update employee information.</DialogDescription>}
-				</DialogHeader>
+			<DialogContent className={isViewMode ? "sm:max-w-[800px] max-h-[90vh] flex flex-col" : "sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background shadow-2xl rounded-xl border"}>
+				{isViewMode ? (
+					<DialogHeader className="flex-shrink-0 px-6 pt-6">
+						<DialogTitle className="flex items-center justify-between text-xl font-bold text-foreground">
+							Employee Details
+						</DialogTitle>
+					</DialogHeader>
+				) : (
+					<div className="px-6 py-4 border-b bg-card">
+						<div>
+							<DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
+								{mode === "add" ? "Add New Employee" : "Edit Employee"}
+							</DialogTitle>
+							<DialogDescription className="text-xs text-muted-foreground mt-0.5">
+								Follow the steps to configure employee details, profile, and credentials.
+							</DialogDescription>
+						</div>
+
+						{/* Stepper Steps */}
+						<div className="flex items-center gap-2 justify-center pr-8 mt-5">
+							<div className="flex items-center gap-1.5">
+								<span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${step >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>1</span>
+								<span className={`text-xs font-medium ${step === 1 ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>Personal</span>
+							</div>
+							<ChevronRight className="h-3 w-3 text-muted-foreground" />
+							<div className="flex items-center gap-1.5">
+								<span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${step >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>2</span>
+								<span className={`text-xs font-medium ${step === 2 ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>Profile</span>
+							</div>
+							<ChevronRight className="h-3 w-3 text-muted-foreground" />
+							<div className="flex items-center gap-1.5">
+								<span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${step >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>3</span>
+								<span className={`text-xs font-medium ${step === 3 ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>Access</span>
+							</div>
+							<ChevronRight className="h-3 w-3 text-muted-foreground" />
+							<div className="flex items-center gap-1.5">
+								<span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${step >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>4</span>
+								<span className={`text-xs font-medium ${step === 4 ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>Documents</span>
+							</div>
+						</div>
+					</div>
+				)}
 
 				{isViewMode && employee ? (
 					<>
 						<ScrollArea className="flex-1 min-h-0">
-							<div className="space-y-8 pr-4">
+							<div className="space-y-8 pr-4 px-6 py-4">
 								<div className="flex items-center border-b pb-4">
 									<Avatar className="h-16 w-16">
 										<AvatarImage src={employee.profilePhoto || "/placeholder.svg"} alt={employee.name} className="object-cover w-full h-full" />
@@ -448,7 +496,7 @@ export function EmployeeModal({
 								</div>
 							</div>
 						</ScrollArea>
-						<div className="pt-4 flex flex-wrap justify-end gap-2 border-t flex-shrink-0">
+						<div className="pt-4 flex flex-wrap justify-end gap-2 border-t flex-shrink-0 px-6 pb-6">
 							{employee.isArchived ? (
 								onUnarchive && <Button variant="outline" className="text-blue-600" onClick={() => onUnarchive(employee)}>Unarchive</Button>
 							) : (
@@ -477,203 +525,326 @@ export function EmployeeModal({
 					</>
 				) : (
 					<Form {...form}>
-						<form onSubmit={form.handleSubmit(onSubmit)} className="" autoComplete="off">
-							<div className="space-y-4 overflow-auto h-[70vh] pr-5 py-5">
-								<FormField control={form.control} name="name" render={({ field }) => (
-									<FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
-								)} />
-								<FormField control={form.control} name="email" render={({ field }) => (
-									<FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="john.doe@company.com" {...field} /></FormControl><FormMessage /></FormItem>
-								)} />
-
-								<div className="space-y-3">
-									<Label className="text-sm font-medium">Profile Photo</Label>
-									<div className="flex items-start gap-4">
-										<div className="flex-shrink-0">
-											<div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden bg-gray-50 flex items-center justify-center">
-												{profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" className="w-full h-full object-cover" /> : employee?.profilePhoto ? <img src={employee.profilePhoto} alt="Profile preview" className="w-full h-full object-cover" /> : (
-													<div className="text-center"><ImageIcon className="h-8 w-8 text-gray-400 mx-auto mb-1" /><span className="text-xs text-gray-500">No image</span></div>
-												)}
-											</div>
-										</div>
-										<div className="flex-1 space-y-2">
-											<input ref={profilePhotoRef} type="file" accept="image/*" onChange={handleProfilePhotoChange} className="hidden" />
-											<Button type="button" variant="outline" onClick={() => profilePhotoRef.current?.click()} className="flex items-center gap-2" size="sm"><Upload className="h-4 w-4" />Upload Photo</Button>
-											{profilePhotoFile && (
-												<div className="flex items-center gap-2"><span className="text-sm text-gray-600">{profilePhotoFile.name}</span><Button type="button" variant="ghost" size="sm" onClick={removeProfilePhoto}><X className="h-4 w-4" /></Button></div>
-											)}
-										</div>
-									</div>
-								</div>
-
-								<div className="space-y-3">
-									<Label className="text-sm font-medium">Verification Document</Label>
-									<FormField control={form.control} name="verificationDocumentType" render={({ field }) => (
-										<FormItem>
-											<Select onValueChange={field.onChange} defaultValue={field.value}>
-												<FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Select document type" /></SelectTrigger></FormControl>
-												<SelectContent>
-													<SelectItem value="passport">Passport</SelectItem>
-													<SelectItem value="driving_license">Driving License</SelectItem>
-													<SelectItem value="aadhaar">Aadhaar Card</SelectItem>
-													<SelectItem value="voter_id">Voter ID</SelectItem>
-													<SelectItem value="pan_card">PAN Card</SelectItem>
-													<SelectItem value="other">Other</SelectItem>
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)} />
-									<div className="flex items-start gap-4">
-										<div className="flex-shrink-0">
-											<div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden bg-gray-50 flex items-center justify-center">
-												{verificationDocPreview ? <img src={verificationDocPreview} alt="Document preview" className="w-full h-full object-cover" /> : employee?.verificationDocument ? <img src={employee.verificationDocument} alt="Document preview" className="w-full h-full object-cover" /> : (
-													<div className="text-center"><ImageIcon className="h-8 w-8 text-gray-400 mx-auto mb-1" /><span className="text-xs text-gray-500">No file</span></div>
-												)}
-											</div>
-										</div>
-										<div className="flex-1 space-y-2">
-											<input ref={verificationDocRef} type="file" accept="image/*,.pdf" onChange={handleVerificationDocChange} className="hidden" />
-											<Button type="button" variant="outline" onClick={() => verificationDocRef.current?.click()} className="flex items-center gap-2" size="sm"><Upload className="h-4 w-4" />Upload Document</Button>
-											{verificationDocFile && (
-												<div className="flex items-center gap-2"><span className="text-sm text-gray-600">{verificationDocFile.name}</span><Button type="button" variant="ghost" size="sm" onClick={removeVerificationDoc}><X className="h-4 w-4" /></Button></div>
-											)}
-										</div>
-									</div>
-								</div>
-
-								<div className="space-y-2">
-									<Label>Permission Sets</Label>
-									{loadingPermissionSets ? <div className="text-sm text-muted-foreground">Loading permission sets...</div> : (
-										<Popover>
-											<PopoverTrigger asChild>
-												<Button variant="outline" role="combobox" className={`w-full justify-between font-normal ${selectedPermissionSetIds.length === 0 ? "text-muted-foreground" : ""}`}>
-													{selectedPermissionSetIds.length > 0 ? `${selectedPermissionSetIds.length} selected` : "Select permission sets"}
-													<ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-												</Button>
-											</PopoverTrigger>
-											<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-												<div className="p-2 border-b">
-													<Input placeholder="Search permission sets..." value={searchPermissionQuery} onChange={(e) => setSearchPermissionQuery(e.target.value)} className="h-8" />
+						<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden min-h-0" autoComplete="off">
+							<div className="flex-1 overflow-y-auto px-8 py-6">
+								<div className="space-y-6 max-w-[620px] mx-auto pb-6">
+									{/* STEP 1: Personal & Contact */}
+									{step === 1 && (
+										<div className="space-y-6">
+											<div>
+												<h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+													<User className="h-4.5 w-4.5 text-primary" />
+													Personal Details
+												</h3>
+												{/* Profile Photo centered */}
+												<div className="flex flex-col items-center justify-center pb-6">
+													<Label className="text-xs font-semibold mb-2">Profile Photo</Label>
+													<FileUploader
+														value={
+															profilePhotoFile
+																? [profilePhotoFile]
+																: (employee?.profilePhoto && !profilePhotoRemoved ? [employee.profilePhoto] : [])
+														}
+														onChange={(files) => {
+															if (files.length > 0) {
+																setProfilePhotoFile(files[0]);
+																setProfilePhotoRemoved(false);
+															}
+														}}
+														onRemoveNew={() => {
+															setProfilePhotoFile(null);
+														}}
+														onRemoveExisting={() => {
+															setProfilePhotoRemoved(true);
+														}}
+														maxFiles={1}
+														isCircular={true}
+														accept="image/*"
+													/>
 												</div>
-												<div className="flex flex-col space-y-2 p-2 max-h-60 overflow-y-auto">
-													{filteredPermissionSets.length === 0 ? <div className="text-sm text-center text-muted-foreground py-4">No results found.</div> : (
-														filteredPermissionSets.map((set) => (
-															<div key={set.id} className="flex items-center space-x-2">
-																<Checkbox id={`permission-set-create-${set.id}`} checked={selectedPermissionSetIds.includes(set.id)} onCheckedChange={(checked) => handlePermissionSetToggle(set.id, checked as boolean)} />
-																<label htmlFor={`permission-set-create-${set.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1">{set.name}</label>
-															</div>
-														))
+												<div className="space-y-4">
+													<FormField control={form.control} name="name" render={({ field }) => (
+														<FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+													)} />
+													<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+														<FormField control={form.control} name="gender" render={({ field }) => (
+															<FormItem><FormLabel>Gender</FormLabel><FormControl>
+																<Select onValueChange={field.onChange} defaultValue={field.value}>
+																	<FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Select gender" /></SelectTrigger></FormControl>
+																	<SelectContent><SelectItem value="male">Male</SelectItem><SelectItem value="female">Female</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent>
+																</Select>
+															</FormControl><FormMessage /></FormItem>
+														)} />
+														<FormField control={form.control} name="maritalStatus" render={({ field }) => (
+															<FormItem><FormLabel>Marital Status</FormLabel><FormControl>
+																<Select onValueChange={field.onChange} defaultValue={field.value}>
+																	<FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+																	<SelectContent><SelectItem value="single">Single</SelectItem><SelectItem value="married">Married</SelectItem></SelectContent>
+																</Select>
+															</FormControl><FormMessage /></FormItem>
+														)} />
+													</div>
+													<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+														<FormField control={form.control} name="dateOfBirth" render={({ field }) => (
+															<FormItem className="flex flex-col"><FormLabel>Date of Birth</FormLabel><Popover modal={false}><PopoverTrigger asChild><FormControl><Button type="button" variant={"outline"} className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}>
+																{field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+																<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+															</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+																	<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
+																</PopoverContent></Popover><FormMessage /></FormItem>
+														)} />
+														<FormField control={form.control} name="nationality" render={({ field }) => (
+															<FormItem><FormLabel>Nationality</FormLabel><FormControl>
+																<Select onValueChange={field.onChange} defaultValue={field.value}>
+																	<FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Select nationality" /></SelectTrigger></FormControl>
+																	<SelectContent><SelectItem value="India">India</SelectItem><SelectItem value="USA">USA</SelectItem><SelectItem value="UK">UK</SelectItem><SelectItem value="Canada">Canada</SelectItem><SelectItem value="Australia">Australia</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
+																</Select>
+															</FormControl><FormMessage /></FormItem>
+														)} />
+													</div>
+													{form.watch("nationality") === "Other" && (
+														<FormField control={form.control} name="customNationality" render={({ field }) => (
+															<FormItem><FormLabel>Custom Nationality</FormLabel><FormControl><Input placeholder="Enter custom nationality" {...field} /></FormControl><FormMessage /></FormItem>
+														)} />
 													)}
 												</div>
-											</PopoverContent>
-										</Popover>
+											</div>
+
+											<div className="border-t border-border/60 my-6" />
+
+											<div>
+												<h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+													<Mail className="h-4.5 w-4.5 text-primary" />
+													Contact Information
+												</h3>
+												<div className="space-y-4">
+													<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+														<FormField control={form.control} name="email" render={({ field }) => (
+															<FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="john.doe@company.com" {...field} /></FormControl><FormMessage /></FormItem>
+														)} />
+														<FormField control={form.control} name="phone" render={({ field }) => (
+															<FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="+1234567890" {...field} /></FormControl><FormMessage /></FormItem>
+														)} />
+													</div>
+													<FormField control={form.control} name="address" render={({ field }) => (
+														<FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Main St" {...field} /></FormControl><FormMessage /></FormItem>
+													)} />
+												</div>
+											</div>
+										</div>
 									)}
-									<div className="text-sm text-muted-foreground">{selectedPermissionSetIds.length} permission set(s) selected</div>
+
+									{/* STEP 2: Professional Profile */}
+									{step === 2 && (
+										<div className="space-y-6">
+											<div>
+												<h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+													<Briefcase className="h-4.5 w-4.5 text-primary" />
+													Role & Work Details
+												</h3>
+												<div className="space-y-4">
+													<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+														<FormField control={form.control} name="designation" render={({ field }) => (
+															<FormItem><FormLabel>Designation</FormLabel><FormControl><Input placeholder="E.g. Group Coordinator" {...field} /></FormControl><FormMessage /></FormItem>
+														)} />
+														<FormField control={form.control} name="specialization" render={({ field }) => (
+															<FormItem><FormLabel>Specialization</FormLabel><FormControl><Input placeholder="Specialization" {...field} /></FormControl><FormMessage /></FormItem>
+														)} />
+													</div>
+													<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+														<FormField control={form.control} name="experience" render={({ field }) => (
+															<FormItem><FormLabel>Experience</FormLabel><FormControl>
+																<Select onValueChange={field.onChange} defaultValue={field.value}>
+																	<FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Select experience" /></SelectTrigger></FormControl>
+																	<SelectContent><SelectItem value="Fresher">Fresher</SelectItem><SelectItem value="1-3 years">1-3 years</SelectItem><SelectItem value="3-5 years">3-5 years</SelectItem><SelectItem value="5+ years">5+ years</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
+																</Select>
+															</FormControl><FormMessage /></FormItem>
+														)} />
+														<FormField control={form.control} name="joinDate" render={({ field }) => (
+															<FormItem className="flex flex-col"><FormLabel>Join Date</FormLabel><Popover modal={false}><PopoverTrigger asChild><FormControl><Button type="button" variant={"outline"} className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}>
+																{field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+																<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+															</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+																	<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
+																</PopoverContent></Popover><FormMessage /></FormItem>
+														)} />
+													</div>
+													{form.watch("experience") === "Other" && (
+														<FormField control={form.control} name="customExperience" render={({ field }) => (
+															<FormItem><FormLabel>Custom Experience</FormLabel><FormControl><Input placeholder="Enter custom experience" {...field} /></FormControl><FormMessage /></FormItem>
+														)} />
+													)}
+													<FormField control={form.control} name="additional_info" render={({ field }) => (
+														<FormItem><FormLabel>Additional Info</FormLabel><FormControl><Input placeholder="Additional Information" {...field} /></FormControl><FormMessage /></FormItem>
+													)} />
+												</div>
+											</div>
+										</div>
+									)}
+
+									{/* STEP 3: Access & Documents */}
+									{step === 3 && (
+										<div className="space-y-6">
+											<div>
+												<h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+													<ShieldAlert className="h-4.5 w-4.5 text-primary" />
+													Access & Authorization
+												</h3>
+												<div className="space-y-4">
+													<div className="space-y-2">
+														<Label>Permission Sets</Label>
+														{loadingPermissionSets ? <div className="text-sm text-muted-foreground">Loading permission sets...</div> : (
+															<Popover>
+																<PopoverTrigger asChild>
+																	<Button type="button" variant="outline" role="combobox" className={`w-full justify-between font-normal ${selectedPermissionSetIds.length === 0 ? "text-muted-foreground" : ""}`}>
+																		{selectedPermissionSetIds.length > 0 ? `${selectedPermissionSetIds.length} selected` : "Select permission sets"}
+																		<ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+																	</Button>
+																</PopoverTrigger>
+																<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+																	<div className="p-2 border-b">
+																		<Input placeholder="Search permission sets..." value={searchPermissionQuery} onChange={(e) => setSearchPermissionQuery(e.target.value)} className="h-8" />
+																	</div>
+																	<div className="flex flex-col space-y-2 p-2 max-h-60 overflow-y-auto">
+																		{filteredPermissionSets.length === 0 ? <div className="text-sm text-center text-muted-foreground py-4">No results found.</div> : (
+																			filteredPermissionSets.map((set) => (
+																				<div key={set.id} className="flex items-center space-x-2">
+																					<Checkbox id={`permission-set-create-${set.id}`} checked={selectedPermissionSetIds.includes(set.id)} onCheckedChange={(checked) => handlePermissionSetToggle(set.id, checked as boolean)} />
+																					<label htmlFor={`permission-set-create-${set.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1">{set.name}</label>
+																				</div>
+																			))
+																		)}
+																	</div>
+																</PopoverContent>
+															</Popover>
+														)}
+														<div className="text-xs text-muted-foreground">{selectedPermissionSetIds.length} permission set(s) selected</div>
+													</div>
+
+													<FormField control={form.control} name="managerId" render={({ field }) => (
+														<FormItem className="flex flex-col space-y-2">
+															<FormLabel className="leading-none pt-1">Manager</FormLabel>
+															<Popover open={managerPopoverOpen} onOpenChange={setManagerPopoverOpen}>
+																<PopoverTrigger asChild>
+																	<FormControl>
+																		<Button type="button" variant="outline" role="combobox" className={`w-full justify-between font-normal ${!field.value ? "text-muted-foreground" : ""}`}>
+																			{field.value ? (employees.find(emp => emp.id === field.value)?.name || "Select manager") : "Select manager (optional)"}
+																			<ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+																		</Button>
+																	</FormControl>
+																</PopoverTrigger>
+																<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+																	<div className="p-2 border-b">
+																		<Input placeholder="Search managers..." value={searchManagerQuery} onChange={(e) => setSearchManagerQuery(e.target.value)} className="h-8" />
+																	</div>
+																	<div className="flex flex-col space-y-1 p-2 max-h-60 overflow-y-auto">
+																		<button type="button" className="text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer font-normal" onClick={() => { field.onChange(""); setManagerPopoverOpen(false); }}>
+																			No Manager
+																		</button>
+																		{filteredManagers.length === 0 ? (
+																			<div className="text-sm text-center text-muted-foreground py-4">No results found.</div>
+																		) : (
+																			filteredManagers.map((emp) => (
+																				<button key={emp.id} type="button" className={`text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer font-normal ${field.value === emp.id ? "bg-accent text-accent-foreground font-semibold" : ""}`} onClick={() => { field.onChange(emp.id); setManagerPopoverOpen(false); }}>
+																					{emp.name}
+																				</button>
+																			))
+																		)}
+																	</div>
+																</PopoverContent>
+															</Popover>
+															<FormMessage />
+														</FormItem>
+													)} />
+
+													{mode !== "add" && (
+														<FormField control={form.control} name="status" render={({ field }) => (
+															<FormItem className="space-y-3"><FormLabel>Status</FormLabel><FormControl>
+																<RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+																	<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="inactive" /></FormControl><FormLabel className="font-normal text-xs cursor-pointer">Inactive</FormLabel></FormItem>
+																	<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="suspended" /></FormControl><FormLabel className="font-normal text-xs cursor-pointer">Suspended</FormLabel></FormItem>
+																	<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="terminated" /></FormControl><FormLabel className="font-normal text-xs cursor-pointer">Terminated</FormLabel></FormItem>
+																</RadioGroup>
+															</FormControl><FormMessage /></FormItem>
+														)} />
+													)}
+												</div>
+											</div>
+										</div>
+									)}
+
+									{/* STEP 4: Identification */}
+									{step === 4 && (
+										<div className="space-y-6">
+											<div>
+												<h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+													<FileText className="h-4.5 w-4.5 text-primary" />
+													Identification Documents
+												</h3>
+												<div className="space-y-4">
+													<FormField control={form.control} name="verificationDocumentType" render={({ field }) => (
+														<FormItem>
+															<FormLabel>Verification Document Type</FormLabel>
+															<Select onValueChange={field.onChange} defaultValue={field.value}>
+																<FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Select document type" /></SelectTrigger></FormControl>
+																<SelectContent>
+																	<SelectItem value="passport">Passport</SelectItem>
+																	<SelectItem value="driving_license">Driving License</SelectItem>
+																	<SelectItem value="aadhaar">Aadhaar Card</SelectItem>
+																	<SelectItem value="voter_id">Voter ID</SelectItem>
+																	<SelectItem value="pan_card">PAN Card</SelectItem>
+																	<SelectItem value="other">Other</SelectItem>
+																</SelectContent>
+															</Select>
+															<FormMessage />
+														</FormItem>
+													)} />
+
+													<div className="space-y-2 pt-2">
+														<Label className="text-xs font-semibold">Upload Identification File</Label>
+														<FileUploader
+															value={
+																verificationDocFile
+																	? [verificationDocFile]
+																	: (employee?.verificationDocument && !verificationDocRemoved ? [employee.verificationDocument] : [])
+															}
+															onChange={(files) => {
+																if (files.length > 0) {
+																	setVerificationDocFile(files[0]);
+																	setVerificationDocRemoved(false);
+																}
+															}}
+															onRemoveNew={() => {
+																setVerificationDocFile(null);
+															}}
+															onRemoveExisting={() => {
+																setVerificationDocRemoved(true);
+															}}
+															maxFiles={1}
+															accept="image/*,.pdf"
+														/>
+													</div>
+												</div>
+											</div>
+										</div>
+									)}
 								</div>
-
-								<FormField control={form.control} name="status" render={({ field }) => (
-									<FormItem className="space-y-3"><FormLabel>Status</FormLabel><FormControl>
-										<RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
-											<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="inactive" /></FormControl><FormLabel className="font-normal">In Active</FormLabel></FormItem>
-											<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="suspended" /></FormControl><FormLabel className="font-normal">Suspended</FormLabel></FormItem>
-											<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="terminated" /></FormControl><FormLabel className="font-normal">Terminated</FormLabel></FormItem>
-										</RadioGroup>
-									</FormControl><FormMessage /></FormItem>
-								)} />
-
-								<FormField control={form.control} name="managerId" render={({ field }) => (
-									<FormItem>
-										<FormLabel>Manager</FormLabel>
-										<FormControl>
-											<Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} defaultValue={field.value || "none"}>
-												<FormControl><SelectTrigger><SelectValue placeholder="Select manager (optional)" /></SelectTrigger></FormControl>
-												<SelectContent>
-													<SelectItem value="none">No Manager</SelectItem>
-													{employees.filter(emp => emp.id !== employee?.id).map(emp => (
-														<SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)} />
-
-								<FormField control={form.control} name="joinDate" render={({ field }) => (
-									<FormItem className="flex flex-col"><FormLabel>Join Date</FormLabel><Popover modal={false}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}>
-										{field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-										<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-									</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-											<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
-										</PopoverContent></Popover><FormMessage /></FormItem>
-								)} />
-
-								<FormField control={form.control} name="address" render={({ field }) => (
-									<FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Main St" {...field} /></FormControl><FormMessage /></FormItem>
-								)} />
-								<FormField control={form.control} name="phone" render={({ field }) => (
-									<FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="+1234567890" {...field} /></FormControl><FormMessage /></FormItem>
-								)} />
-								<FormField control={form.control} name="dateOfBirth" render={({ field }) => (
-									<FormItem className="flex flex-col"><FormLabel>Date of Birth</FormLabel><Popover modal={false}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}>
-										{field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-										<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-									</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-											<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
-										</PopoverContent></Popover><FormMessage /></FormItem>
-								)} />
-								<FormField control={form.control} name="gender" render={({ field }) => (
-									<FormItem><FormLabel>Gender</FormLabel><FormControl>
-										<Select onValueChange={field.onChange} defaultValue={field.value}>
-											<FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Select gender" /></SelectTrigger></FormControl>
-											<SelectContent><SelectItem value="male">Male</SelectItem><SelectItem value="female">Female</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent>
-										</Select>
-									</FormControl><FormMessage /></FormItem>
-								)} />
-
-								<FormField control={form.control} name="nationality" render={({ field }) => (
-									<FormItem><FormLabel>Nationality</FormLabel><FormControl>
-										<Select onValueChange={field.onChange} defaultValue={field.value}>
-											<FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Select nationality" /></SelectTrigger></FormControl>
-											<SelectContent><SelectItem value="India">India</SelectItem><SelectItem value="USA">USA</SelectItem><SelectItem value="UK">UK</SelectItem><SelectItem value="Canada">Canada</SelectItem><SelectItem value="Australia">Australia</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
-										</Select>
-									</FormControl><FormMessage /></FormItem>
-								)} />
-								{form.watch("nationality") === "Other" && (
-									<FormField control={form.control} name="customNationality" render={({ field }) => (
-										<FormItem><FormLabel>Custom Nationality</FormLabel><FormControl><Input placeholder="Enter custom nationality" {...field} /></FormControl><FormMessage /></FormItem>
-									)} />
-								)}
-
-								<FormField control={form.control} name="experience" render={({ field }) => (
-									<FormItem><FormLabel>Experience</FormLabel><FormControl>
-										<Select onValueChange={field.onChange} defaultValue={field.value}>
-											<FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Select experience" /></SelectTrigger></FormControl>
-											<SelectContent><SelectItem value="Fresher">Fresher</SelectItem><SelectItem value="1-3 years">1-3 years</SelectItem><SelectItem value="3-5 years">3-5 years</SelectItem><SelectItem value="5+ years">5+ years</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
-										</Select>
-									</FormControl><FormMessage /></FormItem>
-								)} />
-								{form.watch("experience") === "Other" && (
-									<FormField control={form.control} name="customExperience" render={({ field }) => (
-										<FormItem><FormLabel>Custom Experience</FormLabel><FormControl><Input placeholder="Enter custom experience" {...field} /></FormControl><FormMessage /></FormItem>
-									)} />
-								)}
-
-								<FormField control={form.control} name="designation" render={({ field }) => (
-									<FormItem><FormLabel>Designation</FormLabel><FormControl><Input placeholder="E.g. Group Coodinator" {...field} /></FormControl><FormMessage /></FormItem>
-								)} />
-								<FormField control={form.control} name="specialization" render={({ field }) => (
-									<FormItem><FormLabel>Specialization</FormLabel><FormControl><Input placeholder="Specialization" {...field} /></FormControl><FormMessage /></FormItem>
-								)} />
-								<FormField control={form.control} name="additional_info" render={({ field }) => (
-									<FormItem><FormLabel>Additional Info</FormLabel><FormControl><Input placeholder="Additional Information" {...field} /></FormControl><FormMessage /></FormItem>
-								)} />
 							</div>
-
-							<DialogFooter className="pt-4 mt-2 border-t">
-								<Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
-								<Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : mode === "add" ? "Create Employee" : "Save Changes"}</Button>
+							<DialogFooter className="px-6 py-4 border-t bg-card gap-2">
+								<Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
+								<div className="flex items-center gap-2">
+									{step > 1 && (
+										<Button type="button" variant="outline" onClick={() => setStep((prev) => prev - 1)} disabled={isSubmitting}>Back</Button>
+									)}
+									{step < 4 ? (
+										<Button key="btn-next" type="button" onClick={async () => {
+											const isValid = await validateStep(step);
+											if (isValid) setStep((prev) => prev + 1);
+										}}>Next</Button>
+									) : (
+										<Button key="btn-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : mode === "add" ? "Create Employee" : "Save Changes"}</Button>
+									)}
+								</div>
 							</DialogFooter>
 						</form>
 					</Form>

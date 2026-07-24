@@ -3,6 +3,7 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CancellationTier } from 'src/database/entity/package-related/cancellation-tiers.entity';
@@ -96,7 +97,6 @@ export class PackageService {
         destination: rest.destination === '' ? undefined : rest.destination,
         days: rest.days,
         nights: rest.nights,
-        basePrice: rest.basePrice,
         description: rest.description === '' ? undefined : rest.description,
         thumbnail: undefined,
         organizationId: user.organizationId,
@@ -317,12 +317,17 @@ export class PackageService {
         'destination',
         'days',
         'nights',
-        'basePrice',
         'description',
         'maxGuests',
         'thumbnail',
         'status',
       ],
+      relations: ['packageTiers', 'transportationOptions', 'paymentStructure', 'packageLocation'],
+      order: {
+        paymentStructure: {
+          order: 'ASC',
+        },
+      },
     });
 
     return res;
@@ -346,6 +351,11 @@ export class PackageService {
         'documentRequirements',
         'preTripChecklist',
       ],
+      order: {
+        paymentStructure: {
+          order: 'ASC',
+        },
+      },
     });
     if (!pkg) throw new NotFoundException('Package not found');
 
@@ -607,7 +617,6 @@ export class PackageService {
         destination: rest.destination === '' ? undefined : rest.destination,
         days: rest.days,
         nights: rest.nights,
-        basePrice: rest.basePrice,
         description: rest.description === '' ? undefined : rest.description,
         thumbnail: rest.thumbnail === '' ? undefined : rest.thumbnail,
       };
@@ -773,17 +782,39 @@ export class PackageService {
       }
 
       if (paymentStructure !== undefined) {
-        await queryRunner.manager.delete(PaymentMilestone, { packageId: id });
         const paymentStructureData = JSON.parse(
           paymentStructure,
         ) as PaymentMilestone[];
 
-        for (const milestone of paymentStructureData) {
-          const entity = this.paymentMilestoneRepository.create({
-            ...milestone,
-            packageId: id,
-          });
-          await queryRunner.manager.save(entity);
+        const existingMilestones = await queryRunner.manager.find(PaymentMilestone, { where: { packageId: id } });
+        const existingMilestonesMap = new Map(existingMilestones.map(m => [m.id, m]));
+        const incomingIds = new Set<string>();
+
+        for (const milestoneData of paymentStructureData) {
+          if (milestoneData.id && existingMilestonesMap.has(milestoneData.id)) {
+            const existing = existingMilestonesMap.get(milestoneData.id)!;
+            const updated = queryRunner.manager.merge(PaymentMilestone, existing, milestoneData);
+            await queryRunner.manager.save(PaymentMilestone, updated);
+            incomingIds.add(milestoneData.id);
+          } else {
+            const { id: _, ...cleanedMilestone } = milestoneData;
+            const entity = this.paymentMilestoneRepository.create({
+              ...cleanedMilestone,
+              packageId: id,
+            });
+            const saved = await queryRunner.manager.save(PaymentMilestone, entity);
+            incomingIds.add(saved.id);
+          }
+        }
+
+        for (const existing of existingMilestones) {
+          if (!incomingIds.has(existing.id)) {
+            const count = await queryRunner.manager.count('Booking', { where: { paymentStructureId: existing.id } });
+            if (count > 0) {
+              throw new BadRequestException(`Cannot delete payment milestone '${existing.name}' because it is already referenced by active bookings.`);
+            }
+            await queryRunner.manager.delete(PaymentMilestone, { id: existing.id });
+          }
         }
       }
 
@@ -834,14 +865,37 @@ export class PackageService {
       }
 
       if (packageTiers !== undefined) {
-        await queryRunner.manager.delete(PackageTier, { packageId: id });
         const packageTiersData = JSON.parse(packageTiers) as any[];
-        for (const tier of packageTiersData) {
-          const entity = this.packageTierRepository.create({
-            ...tier,
-            packageId: id,
-          });
-          await queryRunner.manager.save(entity);
+
+        const existingTiers = await queryRunner.manager.find(PackageTier, { where: { packageId: id } });
+        const existingTiersMap = new Map(existingTiers.map(t => [t.id, t]));
+        const incomingIds = new Set<string>();
+
+        for (const tierData of packageTiersData) {
+          if (tierData.id && existingTiersMap.has(tierData.id)) {
+            const existing = existingTiersMap.get(tierData.id)!;
+            const updated = queryRunner.manager.merge(PackageTier, existing, tierData);
+            await queryRunner.manager.save(PackageTier, updated);
+            incomingIds.add(tierData.id);
+          } else {
+            const { id: _, ...cleanedTier } = tierData;
+            const entity = this.packageTierRepository.create({
+              ...cleanedTier,
+              packageId: id,
+            });
+            const saved = await queryRunner.manager.save(PackageTier, entity) as unknown as PackageTier;
+            incomingIds.add(saved.id);
+          }
+        }
+
+        for (const existing of existingTiers) {
+          if (!incomingIds.has(existing.id)) {
+            const count = await queryRunner.manager.count('Booking', { where: { packageTierId: existing.id } });
+            if (count > 0) {
+              throw new BadRequestException(`Cannot delete package tier '${existing.name}' because it is already referenced by active bookings.`);
+            }
+            await queryRunner.manager.delete(PackageTier, { id: existing.id });
+          }
         }
       }
 
@@ -901,42 +955,71 @@ export class PackageService {
     if (!packageData.nights || packageData.nights < 0) {
       errors.push('Nights count is required');
     }
-    if (!packageData.description || packageData.description.trim() === '') {
-      errors.push('Description is required');
-    }
-    // Price could be calculated now, so we don't strictly validate packageData.price here
-    // Wait, it is basePrice now. Let's validate basePrice if needed or rely on packageTiers.
     if (!packageData.maxGuests || packageData.maxGuests <= 0) {
       errors.push('Valid maximum guests count is required');
     }
-    if (!packageData.category) {
-      errors.push('Category is required');
-    }
 
-    // Check related entities
-    const inclusions = await this.inclusionRepository.find({
-      where: { packageId: id },
-    });
-    if (inclusions.length === 0) {
-      errors.push('At least one inclusion is required');
-    }
+    const isNormal = packageData.packageSetup === 'normal';
 
-    const exclusions = await this.exclusionRepository.find({
-      where: { packageId: id },
-    });
-    if (exclusions.length === 0) {
-      errors.push('At least one exclusion is required');
-    }
+    if (!isNormal) {
+      if (!packageData.description || packageData.description.trim() === '') {
+        errors.push('Description is required');
+      }
+      if (!packageData.category) {
+        errors.push('Category is required');
+      }
 
-    const itinerary = await this.itineraryDayRepository.find({
-      where: { packageId: id },
-    });
-    if (itinerary.length === 0) {
-      errors.push('At least one itinerary day is required');
+      // Check related entities
+      const inclusions = await this.inclusionRepository.find({
+        where: { packageId: id },
+      });
+      if (inclusions.length === 0) {
+        errors.push('At least one inclusion is required');
+      }
+
+      const exclusions = await this.exclusionRepository.find({
+        where: { packageId: id },
+      });
+      if (exclusions.length === 0) {
+        errors.push('At least one exclusion is required');
+      }
+
+      const itinerary = await this.itineraryDayRepository.find({
+        where: { packageId: id },
+      });
+      if (itinerary.length === 0) {
+        errors.push('At least one itinerary day is required');
+      }
+
+      const documentRequirements = await this.documentRequirementRepository.find({
+        where: { packageId: id },
+      });
+      if (documentRequirements.length === 0) {
+        errors.push('Document requirements are required');
+      }
+
+      const transportation = await this.transportationOptionRepository.find({
+        where: { packageId: id },
+      });
+      if (transportation.length === 0) {
+        errors.push('Transportation details are required');
+      }
+
+      const mealsBreakdown = await this.mealsBreakdownRepository.findOne({
+        where: { packageId: id },
+      });
+      if (!mealsBreakdown) {
+        errors.push('Meals breakdown is required');
+      }
+    } else {
+      if (!packageData.packageTiers || packageData.packageTiers.length === 0) {
+        errors.push('At least one package tier is required');
+      }
     }
 
     const paymentStructure = await this.paymentMilestoneRepository.find({
       where: { packageId: id },
+      order: { order: 'ASC' },
     });
 
     if (paymentStructure.length === 0) {
@@ -947,12 +1030,17 @@ export class PackageService {
         0,
       );
 
-      const firstTierAdultCost = packageData.packageTiers?.[0]?.adultCost;
-      
-      if (firstTierAdultCost !== undefined && totalAmount !== firstTierAdultCost) {
-        errors.push(
-          `Payment structure must total exactly the first tier adult cost. Current total: ${totalAmount}, Target: ${firstTierAdultCost}`,
-        );
+      if (isNormal) {
+        if (totalAmount !== 100) {
+          errors.push(`Payment structure percentages must total exactly 100%. Current total: ${totalAmount}%`);
+        }
+      } else {
+        const firstTierAdultCost = packageData.packageTiers?.[0]?.adultCost;
+        if (firstTierAdultCost !== undefined && totalAmount !== firstTierAdultCost) {
+          errors.push(
+            `Payment structure must total exactly the first tier adult cost. Current total: ${totalAmount}, Target: ${firstTierAdultCost}`,
+          );
+        }
       }
     }
 
@@ -963,32 +1051,13 @@ export class PackageService {
       errors.push('Cancellation structure is required');
     }
 
-    const cancellationPolicy = await this.cancellationPolicyRepository.find({
-      where: { packageId: id },
-    });
-    if (cancellationPolicy.length === 0) {
-      errors.push('Cancellation policy is required');
-    }
-
-    const documentRequirements = await this.documentRequirementRepository.find({
-      where: { packageId: id },
-    });
-    if (documentRequirements.length === 0) {
-      errors.push('Document requirements are required');
-    }
-
-    const transportation = await this.transportationOptionRepository.find({
-      where: { packageId: id },
-    });
-    if (transportation.length === 0) {
-      errors.push('Transportation details are required');
-    }
-
-    const mealsBreakdown = await this.mealsBreakdownRepository.findOne({
-      where: { packageId: id },
-    });
-    if (!mealsBreakdown) {
-      errors.push('Meals breakdown is required');
+    if (!isNormal) {
+      const cancellationPolicy = await this.cancellationPolicyRepository.find({
+        where: { packageId: id },
+      });
+      if (cancellationPolicy.length === 0) {
+        errors.push('Cancellation policy is required');
+      }
     }
 
     const packageLocation = await this.packageLocationRepository.findOne({

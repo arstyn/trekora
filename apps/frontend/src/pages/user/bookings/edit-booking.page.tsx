@@ -257,10 +257,6 @@ export default function EditBookingPage() {
 							<div className="space-y-2">
 								<Label>Package</Label>
 								<Input value={booking.package.name} disabled />
-								<p className="text-sm text-muted-foreground mt-1">
-									{BookingService.formatCurrency(booking.package.price)}{" "}
-									per person
-								</p>
 							</div>
 							<div className="space-y-2">
 								<Label>Batch Dates</Label>

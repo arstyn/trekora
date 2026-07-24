@@ -66,6 +66,18 @@ export class Customer {
   @Column({ name: 'address', nullable: true })
   address?: string;
 
+  @Column({ name: 'district', nullable: true })
+  district?: string;
+
+  @Column({ name: 'state', nullable: true })
+  state?: string;
+
+  @Column({ name: 'pin_code', nullable: true })
+  pinCode?: string;
+
+  @Column({ name: 'country', nullable: true })
+  country?: string;
+
   // Emergency Contact
   @Column({ nullable: true, name: 'emergency_contact_name' })
   emergencyContactName?: string;

@@ -22,12 +22,13 @@ export interface IBookingPayment {
     status?: PaymentStatus;
     notes?: string;
     filePath?: string;
+    receiptFilePath?: string;
 }
 
 export interface ICustomer {
     id: string;
     firstName: string;
-    lastName: string;
+    lastName?: string;
     middleName?: string;
     email: string;
     phone: string;
@@ -52,13 +53,20 @@ export interface ICustomer {
     updatedAt?: string;
 }
 
+import type { PackageTier, IPaymentStructure, PackageLocation } from "./package.schema";
+
 export interface IPackage {
     id: string;
     name: string;
-    price: number;
     destination?: string;
     duration?: string;
     description?: string;
+    thumbnail?: string;
+    packageSetup?: "normal" | "advanced";
+    packageTiers?: PackageTier[];
+    transportation?: any[];
+    paymentStructure?: IPaymentStructure[];
+    packageLocation?: PackageLocation;
 }
 
 export interface IBatch {
@@ -116,11 +124,21 @@ export interface IBookingListItem {
 export interface ICreateBookingRequest {
     customerId: string;
     packageId: string;
+    packageTierId?: string;
     batchId: string;
     customerIds: string[];
     totalAmount: number;
     specialRequests?: string;
     initialPayment?: Omit<IBookingPayment, "id" | "status">;
+    isCommonTier?: boolean;
+    customerSelections?: {
+        customerId: string;
+        tierId: string;
+        ageCategory: 'adult' | 'child' | 'infant';
+    }[];
+    paymentStructureId?: string;
+    isPaymentOverridden?: boolean;
+    paymentOverrideReason?: string;
 }
 
 // For updating bookings

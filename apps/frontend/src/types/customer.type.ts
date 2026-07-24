@@ -19,6 +19,10 @@ export interface ICustomer {
 	phone?: string;
 	alternativePhone?: string;
 	address?: string;
+	district?: string;
+	state?: string;
+	pinCode?: string;
+	country?: string;
 
 	// Emergency Contact
 	emergencyContactName?: string;

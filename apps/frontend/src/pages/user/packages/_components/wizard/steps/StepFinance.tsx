@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
-import { Plus, Save, Trash2, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
@@ -279,70 +279,84 @@ export function StepFinance({
                                             <Trash2 className="w-4 h-4 text-red-500" />
                                         </Button>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name={`packageTiers.${index}.name`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Tier Name (e.g. Standard, Premium)</FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`packageTiers.${index}.transportationId`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Transportation Option</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value || "none"}>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name={`packageTiers.${index}.name`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Tier Name (e.g. Standard, Premium)</FormLabel>
                                                         <FormControl>
-                                                            <SelectTrigger><SelectValue placeholder="Select transportation" /></SelectTrigger>
+                                                            <Input {...field} />
                                                         </FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="none">None</SelectItem>
-                                                            {transportations.map((t) => (
-                                                                t.id ? <SelectItem key={t.id} value={t.id}>{t.title || 'Unnamed'} (₹{t.cost || 0})</SelectItem> : null
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`packageTiers.${index}.adultCost`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Tier Additional Cost (₹)</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="number"
-                                                            min="0"
-                                                            {...field}
-                                                            value={field.value ?? ""}
-                                                            onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                                                        />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name={`packageTiers.${index}.adultCost`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Adult Price (₹)</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                {...field}
+                                                                value={field.value ?? ""}
+                                                                onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
+                                                            />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                        <div>
+                                            <FormField
+                                                control={form.control}
+                                                name={`packageTiers.${index}.transportationId`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Transportation Option</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value || "none"}>
+                                                            <FormControl>
+                                                                <SelectTrigger><SelectValue placeholder="Select transportation" /></SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="none">None</SelectItem>
+                                                                {transportations.map((t) => (
+                                                                    t.id ? <SelectItem key={t.id} value={t.id}>{t.title || 'Unnamed'} (₹{t.cost || 0})</SelectItem> : null
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
                                     </div>
 
                                     {(() => {
                                         const tier = form.watch(`packageTiers.${index}`);
                                         const selectedTransport = transportations.find((t) => t.id === tier?.transportationId);
                                         const transportCost = Number(selectedTransport?.cost) || 0;
-                                        const tierAddCost = Number(tier?.adultCost) || 0;
-                                        const totalCost = calculatedBaseCost + transportCost + tierAddCost;
+                                        const finalPrice = Number(tier?.adultCost) || 0;
+                                        const margin = finalPrice - (calculatedBaseCost + transportCost);
 
                                         return (
-                                            <div className="mt-4 p-3 bg-primary/5 rounded-md flex justify-between items-center border border-primary/20">
-                                                <span className="font-medium text-sm">Total Package Cost (Per Adult):</span>
-                                                <span className="font-bold text-lg text-primary">₹{totalCost}</span>
+                                            <div className="mt-4 p-3 bg-primary/5 rounded-md border border-primary/20 space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-medium text-sm">Calculated Operator Margin:</span>
+                                                    <span className={`font-bold text-lg ${margin >= 0 ? "text-green-600" : "text-destructive"}`}>
+                                                        ₹{margin}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground border-t pt-2 flex flex-col md:flex-row md:justify-between gap-1">
+                                                     <span>Calculation Breakdown:</span>
+                                                     <span className="font-mono">
+                                                         ₹{finalPrice} (Adult Price) - [₹{calculatedBaseCost} (Base Total) + ₹{transportCost} (Transport)] = ₹{margin}
+                                                     </span>
+                                                </div>
                                             </div>
                                         );
                                     })()}
@@ -492,8 +506,11 @@ export function StepFinance({
                             className="border rounded-lg p-4 space-y-3"
                         >
                             <div className="flex justify-between items-center">
-                                <h4 className="font-medium">
-                                    Milestone {index + 1}
+                                <h4 className="font-medium flex items-center gap-2">
+                                    <span>Milestone {index + 1}</span>
+                                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-muted-foreground font-normal">
+                                        Order: {index + 1}
+                                    </Badge>
                                 </h4>
                                 <Button
                                     type="button"
@@ -572,10 +589,7 @@ export function StepFinance({
                                                 {percentage > 0 && tiers.length > 0 && (
                                                     <div className="text-xs text-muted-foreground mt-1 space-y-1">
                                                         {tiers.map((tier, i) => {
-                                                            const selectedTransport = transportations.find((t) => t.id === tier?.transportationId);
-                                                            const transportCost = Number(selectedTransport?.cost) || 0;
-                                                            const tierAddCost = Number(tier?.adultCost) || 0;
-                                                            const totalCost = calculatedBaseCost + transportCost + tierAddCost;
+                                                            const totalCost = Number(tier?.adultCost) || 0;
                                                             return (
                                                                 <div key={i}>{tier.name || `Tier ${i + 1}`}: ₹{(totalCost * (percentage / 100)).toFixed(2)}</div>
                                                             );
@@ -705,10 +719,7 @@ export function StepFinance({
                                                 {percentage > 0 && tiers.length > 0 && (
                                                     <div className="text-xs text-muted-foreground mt-1 space-y-1">
                                                         {tiers.map((tier, i) => {
-                                                            const selectedTransport = transportations.find((t) => t.id === tier?.transportationId);
-                                                            const transportCost = Number(selectedTransport?.cost) || 0;
-                                                            const tierAddCost = Number(tier?.adultCost) || 0;
-                                                            const totalCost = calculatedBaseCost + transportCost + tierAddCost;
+                                                            const totalCost = Number(tier?.adultCost) || 0;
                                                             return (
                                                                 <div key={i}>{tier.name || `Tier ${i + 1}`}: ₹{(totalCost * (percentage / 100)).toFixed(2)}</div>
                                                             );

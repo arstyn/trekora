@@ -14,10 +14,13 @@ import { Batch } from './batch.entity';
 import { Customer } from './customer.entity';
 import { Organization } from './organization.entity';
 import { Package } from './package-related/package.entity';
+import { PackageTier } from './package-related/package-tiers.entity';
 import { User } from './user.entity';
 import { BookingPayment } from './booking-payment.entity';
 import { BookingDocument } from './booking-document.entity';
 import { Workflow } from './workflow/workflow.entity';
+import { BookingCustomer } from './booking-customer.entity';
+import { PaymentMilestone } from './package-related/payment-milestones.entity';
 
 export enum BookingStatus {
   PENDING = 'pending',
@@ -48,6 +51,13 @@ export class Booking {
   @ManyToOne(() => Package, { eager: true })
   @JoinColumn({ name: 'package_id' })
   package: Package;
+
+  @Column({ type: 'uuid', name: 'package_tier_id', nullable: true })
+  packageTierId: string;
+
+  @ManyToOne(() => PackageTier, { nullable: true })
+  @JoinColumn({ name: 'package_tier_id' })
+  packageTier: PackageTier;
 
   @Column({ type: 'uuid', name: 'batch_id' })
   batchId: string;
@@ -86,13 +96,24 @@ export class Booking {
   @Column({ type: 'jsonb', nullable: true, name: 'additional_details' })
   additionalDetails: Record<string, any>;
 
-  @ManyToMany(() => Customer, { cascade: true, eager: true })
-  @JoinTable({
-    name: 'booking_customers',
-    joinColumn: { name: 'bookingId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'customerId', referencedColumnName: 'id' },
+  @Column({ type: 'uuid', nullable: true, name: 'payment_structure_id' })
+  paymentStructureId: string;
+
+  @ManyToOne(() => PaymentMilestone, { nullable: true })
+  @JoinColumn({ name: 'payment_structure_id' })
+  paymentStructure: PaymentMilestone;
+
+  @Column({ name: 'is_payment_overridden', default: false })
+  isPaymentOverridden: boolean;
+
+  @Column({ type: 'text', nullable: true, name: 'payment_override_reason' })
+  paymentOverrideReason: string;
+
+  @OneToMany(() => BookingCustomer, (bc) => bc.booking, {
+    cascade: true,
+    eager: true,
   })
-  customers: Customer[];
+  bookingCustomers: BookingCustomer[];
 
   @OneToMany(() => BookingPayment, (payment) => payment.booking, {
     cascade: true,

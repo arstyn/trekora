@@ -28,6 +28,7 @@ import {
 import { format } from "date-fns";
 import BookingService from "@/services/booking.service";
 import { InvoiceService } from "@/services/invoice.service";
+import { useAuth } from "@/context/authContext";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import type { IBatches } from "@/types/batches.types";
@@ -47,6 +48,7 @@ export function BookingModal({
 }: BookingModalProps) {
     if (!booking) return null;
 
+    const { user } = useAuth();
     const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
     const [isMoving, setIsMoving] = useState(false);
     const [selectedBatchId, setSelectedBatchId] = useState<string>("");
@@ -268,28 +270,16 @@ export function BookingModal({
                                             {booking.package.name}
                                         </p>
                                     </div>
-                                    <div className="flex justify-between">
+                                    {booking.package.duration && (
                                         <div>
                                             <p className="text-xs font-medium text-muted-foreground uppercase">
-                                                Rate
+                                                Duration
                                             </p>
-                                            <p className="font-medium text-sm">
-                                                {BookingService.formatCurrency(
-                                                    booking.package.price,
-                                                )}
+                                            <p className="font-semibold text-sm">
+                                                {booking.package.duration}
                                             </p>
                                         </div>
-                                        {booking.package.duration && (
-                                            <div className="text-right">
-                                                <p className="text-xs font-medium text-muted-foreground uppercase">
-                                                    Duration
-                                                </p>
-                                                <p className="font-medium text-sm">
-                                                    {booking.package.duration}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    )}
                                     {booking.package.destination && (
                                         <div>
                                             <p className="text-xs font-medium text-muted-foreground uppercase">
@@ -370,6 +360,8 @@ export function BookingModal({
                                         onClick={() =>
                                             InvoiceService.generateAndDownloadInvoice(
                                                 booking,
+                                                user?.organization?.name,
+                                                user?.organization?.domain,
                                             )
                                         }
                                         disabled={

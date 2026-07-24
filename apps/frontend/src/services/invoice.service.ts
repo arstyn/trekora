@@ -5,6 +5,8 @@ export interface InvoiceData {
     invoiceNumber: string;
     invoiceDate: string;
     dueDate?: string;
+    organizationName?: string;
+    organizationDomain?: string;
 }
 
 export class InvoiceService {
@@ -248,9 +250,8 @@ export class InvoiceService {
           <!-- Invoice Header -->
           <div class="invoice-header">
             <div class="company-info">
-              <h1>Trekora</h1>
-              <p>Travel Management Platform</p>
-              <p>Your trusted travel partner</p>
+              <h1>${invoiceData.organizationName || "Travel Agency"}</h1>
+              ${invoiceData.organizationDomain ? `<p>${invoiceData.organizationDomain}</p>` : `<p>Travel Management Partner</p>`}
             </div>
             <div class="invoice-details">
               <h2>INVOICE</h2>
@@ -307,8 +308,8 @@ export class InvoiceService {
                   }</small>
                 </td>
                 <td>${booking.customers.length}</td>
-                <td class="amount">$${booking.package.price.toLocaleString()}</td>
-                <td class="amount">$${booking.totalAmount.toLocaleString()}</td>
+                 <td class="amount">₹${(booking.totalAmount / (booking.customers.length || 1)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                 <td class="amount">₹${booking.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             </tbody>
           </table>
@@ -317,25 +318,25 @@ export class InvoiceService {
           <div class="totals-section">
             <div class="total-row">
               <span>Subtotal:</span>
-              <span>$${booking.totalAmount.toLocaleString()}</span>
+              <span>₹${booking.totalAmount.toLocaleString()}</span>
             </div>
             <div class="total-row">
               <span>Tax:</span>
-              <span>$0.00</span>
+              <span>₹0.00</span>
             </div>
             <div class="total-row final">
               <span>Total:</span>
-              <span>$${booking.totalAmount.toLocaleString()}</span>
+              <span>₹${booking.totalAmount.toLocaleString()}</span>
             </div>
             <div class="total-row">
               <span>Amount Paid:</span>
-              <span style="color: #059669;">$${totalPaid.toLocaleString()}</span>
+              <span style="color: #059669;">₹${totalPaid.toLocaleString()}</span>
             </div>
             <div class="total-row">
               <span>Balance Due:</span>
               <span style="color: ${
                   booking.balanceAmount > 0 ? "#dc2626" : "#059669"
-              };">$${booking.balanceAmount.toLocaleString()}</span>
+              };">₹${booking.balanceAmount.toLocaleString()}</span>
             </div>
           </div>
 
@@ -369,7 +370,7 @@ export class InvoiceService {
                       .replace("_", " ")
                       .toUpperCase()}</td>
                   <td>${payment.paymentReference || "N/A"}</td>
-                  <td class="amount">$${payment.amount.toLocaleString()}</td>
+                  <td class="amount">₹${payment.amount.toLocaleString()}</td>
                   <td><span class="status-badge status-completed">${
                       payment.status
                   }</span></td>
@@ -386,7 +387,7 @@ export class InvoiceService {
 
           <!-- Footer -->
           <div class="footer">
-            <p>Thank you for choosing Trekora for your travel needs!</p>
+            <p>Thank you for choosing us for your travel needs!</p>
             <p>This is a computer-generated invoice and does not require a signature.</p>
           </div>
         </div>
@@ -396,7 +397,7 @@ export class InvoiceService {
     }
 
     // Generate and download invoice
-    static async generateAndDownloadInvoice(booking: IBooking): Promise<void> {
+    static async generateAndDownloadInvoice(booking: IBooking, organizationName?: string, organizationDomain?: string): Promise<void> {
         if (!this.hasCompletedPayments(booking)) {
             throw new Error("No completed payments found for this booking");
         }
@@ -405,6 +406,8 @@ export class InvoiceService {
             booking,
             invoiceNumber: this.generateInvoiceNumber(booking),
             invoiceDate: new Date().toISOString(),
+            organizationName,
+            organizationDomain,
         };
 
         const htmlContent = this.generateInvoiceHTML(invoiceData);
@@ -433,7 +436,7 @@ export class InvoiceService {
     }
 
     // Alternative method using HTML5 download (saves as HTML file)
-    static downloadInvoiceAsHTML(booking: IBooking): void {
+    static downloadInvoiceAsHTML(booking: IBooking, organizationName?: string, organizationDomain?: string): void {
         if (!this.hasCompletedPayments(booking)) {
             throw new Error("No completed payments found for this booking");
         }
@@ -442,6 +445,8 @@ export class InvoiceService {
             booking,
             invoiceNumber: this.generateInvoiceNumber(booking),
             invoiceDate: new Date().toISOString(),
+            organizationName,
+            organizationDomain,
         };
 
         const htmlContent = this.generateInvoiceHTML(invoiceData);

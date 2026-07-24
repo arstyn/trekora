@@ -13,6 +13,8 @@ interface LeadFilterProps {
 	onSearch: (query: string) => void;
 	onStatusFilter: (status: ILeadStatus | "all") => void;
 	currentStatus: ILeadStatus | "all";
+	onTypeFilter: (type: "all" | "individual" | "company") => void;
+	currentType: "all" | "individual" | "company";
 	view: "table" | "kanban";
 }
 
@@ -20,6 +22,8 @@ export function LeadFilter({
 	onSearch,
 	onStatusFilter,
 	currentStatus,
+	onTypeFilter,
+	currentType,
 	view,
 }: LeadFilterProps) {
 	return (
@@ -33,6 +37,23 @@ export function LeadFilter({
 					onChange={(e) => onSearch(e.target.value)}
 				/>
 			</div>
+
+			<Select
+				value={currentType}
+				onValueChange={(value) =>
+					onTypeFilter(value as "all" | "individual" | "company")
+				}
+			>
+				<SelectTrigger className="w-full md:w-40">
+					<SelectValue placeholder="Filter by type" />
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem value="all">All Types</SelectItem>
+					<SelectItem value="individual">Individual</SelectItem>
+					<SelectItem value="company">Company</SelectItem>
+				</SelectContent>
+			</Select>
+
 			{view === "table" && (
 				<Select
 					defaultValue={currentStatus}

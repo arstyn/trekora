@@ -96,7 +96,7 @@ export default function PaymentsPage() {
 	};
 
 	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
+		return new Intl.NumberFormat("en-IN", {
 			style: "currency",
 			currency: "INR",
 		}).format(amount);
@@ -368,7 +368,7 @@ export default function PaymentsPage() {
 									<div className="flex-1">
 										<div className="flex items-center gap-2 mb-2">
 											<h3 className="font-semibold">
-												{payment.id} -{" "}
+												{payment.paymentNumber} -{" "}
 												{payment.booking.customer.name}
 											</h3>
 											{getStatusBadge(payment.status)}

@@ -6,11 +6,11 @@ export interface IPackages {
   destination?: string;
   days?: number;
   nights?: number;
-  basePrice?: number;
   description?: string;
   maxGuests?: number;
   category?: 'documents' | 'booking' | 'preparation' | 'communication';
   status?: 'draft' | 'published';
+  packageSetup?: 'normal' | 'advanced';
   thumbnail?: string;
   createdById: string;
   organizationId: string;
@@ -123,7 +123,6 @@ export const packageFormSchema = z.object({
   destination: z.string().optional(),
   days: z.preprocess((val) => (val ? Number(val) : undefined), z.number().optional()),
   nights: z.preprocess((val) => (val ? Number(val) : undefined), z.number().optional()),
-  basePrice: z.preprocess((val) => (val ? Number(val) : undefined), z.number().optional()),
   description: z.string().optional(),
   maxGuests: z.number().optional(),
   category: z
@@ -137,6 +136,7 @@ export const packageFormSchema = z.object({
     ])
     .optional(),
   status: z.enum(['draft', 'published']).optional(),
+  packageSetup: z.enum(['normal', 'advanced']).optional(),
   thumbnail: z.string().optional(),
   inclusions: z.string().optional(),
   exclusions: z.string().optional(),

@@ -24,7 +24,6 @@ export interface ICancellationStructure {
     id: string;
     timeframe?: string;
     amount?: number;
-    description?: string;
     packageId?: string;
 }
 
@@ -35,10 +34,10 @@ export interface ICancellationPolicy {
 }
 
 export interface IPaymentStructure {
-    name?: string;
+    id?: string;
     amount?: number;
-    description?: string;
     dueDate?: string;
+    order?: number;
 }
 
 export interface IPackages {
@@ -47,7 +46,6 @@ export interface IPackages {
     destination?: string;
     days?: number;
     nights?: number;
-    basePrice?: number;
     description?: string;
     maxGuests?: number;
     category?:
@@ -58,6 +56,7 @@ export interface IPackages {
     | "luxury"
     | "budget";
     status?: "draft" | "published" | "edited" | "archived";
+    packageSetup?: "normal" | "advanced";
     draftContent?: any;
     thumbnail?: string;
     cancellationPolicy?: ICancellationPolicy[];
@@ -86,6 +85,7 @@ export interface AdditionalCost {
 }
 
 export interface PackageTier {
+    id?: string;
     name?: string;
     adultCost?: number;
     childCostType?: "flat" | "percentage";
@@ -100,6 +100,7 @@ export const paymentMilestoneSchema = z.object({
     amount: z.number().min(0).optional(),
     description: z.string().optional(),
     dueDate: z.string().optional(),
+    order: z.number().min(1).optional(),
 });
 
 export const cancellationTierSchema = z.object({
@@ -176,6 +177,7 @@ export const additionalCostSchema = z.object({
 });
 
 export const packageTierSchema = z.object({
+    id: z.string().optional(),
     name: z.string().optional(),
     adultCost: z.number().min(0).optional(),
     childCostType: z.enum(["flat", "percentage"]).optional(),
@@ -191,7 +193,6 @@ export const packageFormSchema = z
         destination: z.string().optional(),
         days: z.number().optional(),
         nights: z.number().optional(),
-        basePrice: z.number().optional(),
         description: z.string().optional(),
         maxGuests: z.number().optional(),
         category: z
@@ -205,6 +206,7 @@ export const packageFormSchema = z
             ])
             .optional(),
         status: z.enum(["draft", "published", "edited", "archived"]).optional(),
+        packageSetup: z.enum(["normal", "advanced"]).optional(),
         thumbnail: z.file().optional(),
         inclusions: z.array(z.string()).optional(),
         exclusions: z.array(z.string()).optional(),

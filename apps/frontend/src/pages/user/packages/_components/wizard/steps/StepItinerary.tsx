@@ -1,3 +1,4 @@
+import { FileUploader } from "@/components/file-uploader";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -19,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
-import { Plus, Save, Trash, Trash2, Upload } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useFieldArray, type UseFormReturn } from "react-hook-form";
 
@@ -28,12 +29,8 @@ interface StepItineraryProps {
     onNext: () => void;
     onBack: () => void;
     isLoading?: boolean;
-    itineraryPreviewUrls: Record<number, string[]>;
-    handleDayImageUpload: (
-        dayIndex: number,
-        e: React.ChangeEvent<HTMLInputElement>,
-    ) => void;
-    removeDayImage: (dayIndex: number, imageIndex: number) => void;
+    existingItineraryImages: Record<number, string[]>;
+    setExistingItineraryImages: React.Dispatch<React.SetStateAction<Record<number, string[]>>>;
 }
 
 export function StepItinerary({
@@ -41,9 +38,8 @@ export function StepItinerary({
     onNext,
     onBack,
     isLoading,
-    itineraryPreviewUrls,
-    handleDayImageUpload,
-    removeDayImage,
+    existingItineraryImages,
+    setExistingItineraryImages,
 }: StepItineraryProps) {
     const {
         fields: itineraryFields,
@@ -144,75 +140,32 @@ export function StepItinerary({
 
                             <div className="space-y-2">
                                 <Label>Day Images</Label>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {(itineraryPreviewUrls[dayIndex] || []).map(
-                                        (url, imageIndex) => (
-                                            <div className="relative group overflow-hidden rounded-lg aspect-video border bg-secondary/20">
-                                                <img
-                                                    src={url}
-                                                    alt={`Day ${dayIndex + 1} - ${imageIndex + 1}`}
-                                                    className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
-                                                    onError={(e) => {
-                                                        (
-                                                            e.target as HTMLImageElement
-                                                        ).src =
-                                                            "/placeholder.svg";
-                                                    }}
-                                                />
-                                                <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0"
-                                                        onClick={() =>
-                                                            removeDayImage(
-                                                                dayIndex,
-                                                                imageIndex,
-                                                            )
-                                                        }
-                                                    >
-                                                        <Trash className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                                {/* Optional: Add spinner if you want logic to track real loading state, 
-                                                        but for local previews it's instant. For existing images, 
-                                                        showing a background color/blur is usually enough. */}
-                                            </div>
-                                        ),
-                                    )}
-                                    <label
-                                        htmlFor={`day-${dayIndex}-image`}
-                                        className="cursor-pointer border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center min-h-[100px] hover:bg-gray-900 transition-colors"
-                                        onDragOver={(e) => e.preventDefault()}
-                                        onDrop={(e) => {
-                                            e.preventDefault();
-                                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                                const fakeEvent = {
-                                                    target: { files: e.dataTransfer.files }
-                                                } as unknown as React.ChangeEvent<HTMLInputElement>;
-                                                handleDayImageUpload(dayIndex, fakeEvent);
-                                            }
-                                        }}
-                                    >
-                                        <Upload className="w-6 h-6 text-muted-foreground mb-2" />
-                                        <span className="text-sm font-medium">Add Images</span>
-                                        <span className="text-xs text-muted-foreground mt-1">or drag and drop</span>
-                                        <Input
-                                            id={`day-${dayIndex}-image`}
-                                            type="file"
-                                            accept="image/*"
-                                            multiple
-                                            className="hidden"
-                                            onChange={(e) =>
-                                                handleDayImageUpload(
-                                                    dayIndex,
-                                                    e,
-                                                )
-                                            }
-                                        />
-                                    </label>
-                                </div>
+                                <FileUploader
+                                    value={[
+                                        ...(existingItineraryImages[dayIndex] || []),
+                                        ...(form.watch(`itinerary.${dayIndex}.images`) || []),
+                                    ]}
+                                    onChange={(newFiles) => {
+                                        const current = form.getValues(`itinerary.${dayIndex}.images`) || [];
+                                        form.setValue(`itinerary.${dayIndex}.images`, [...current, ...newFiles]);
+                                    }}
+                                    onRemoveNew={(idx) => {
+                                        const current = form.getValues(`itinerary.${dayIndex}.images`) || [];
+                                        form.setValue(
+                                            `itinerary.${dayIndex}.images`,
+                                            current.filter((_, i) => i !== idx)
+                                        );
+                                    }}
+                                    onRemoveExisting={(idx) => {
+                                        const existing = existingItineraryImages[dayIndex] || [];
+                                        setExistingItineraryImages((prev) => ({
+                                            ...prev,
+                                            [dayIndex]: existing.filter((_, i) => i !== idx),
+                                        }));
+                                    }}
+                                    maxFiles={10}
+                                    accept="image/*"
+                                />
                             </div>
 
                             <FormField

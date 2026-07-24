@@ -8,6 +8,8 @@ import type {
     IBookingPayment,
     BookingStatus,
     IBookingLog,
+    IPackage,
+    ICustomer,
 } from "@/types/booking.types";
 import type { IBatches } from "@/types/batches.types";
 
@@ -49,6 +51,11 @@ export class BookingService {
 
     static async getBookingById(id: string): Promise<IBooking> {
         const response = await axiosInstance.get(`${this.baseUrl}/${id}`);
+        return response.data;
+    }
+
+    static async getBookingsByCustomer(customerId: string): Promise<any[]> {
+        const response = await axiosInstance.get(`${this.baseUrl}/customer/${customerId}`);
         return response.data;
     }
 
@@ -143,9 +150,7 @@ export class BookingService {
         return response.data;
     }
 
-    static async getPackages(): Promise<
-        Array<{ id: string; name: string; price: number }>
-    > {
+    static async getPackages(): Promise<IPackage[]> {
         const response = await axiosInstance.get("/packages?status=published");
         return response.data;
     }
@@ -155,16 +160,7 @@ export class BookingService {
         offset?: number;
         search?: string;
     }): Promise<{
-        customers: Array<{
-            id: string;
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone: string;
-            dateOfBirth: string;
-            gender: string;
-            address: string;
-        }>;
+        customers: ICustomer[];
         total: number;
         hasMore: boolean;
     }> {
@@ -193,16 +189,7 @@ export class BookingService {
             offset?: number;
         },
     ): Promise<{
-        data: Array<{
-            id: string;
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone: string;
-            dateOfBirth: string;
-            gender: string;
-            address: string;
-        }>;
+        data: ICustomer[];
         total: number;
         hasMore: boolean;
     }> {
@@ -219,6 +206,11 @@ export class BookingService {
         const response = await axiosInstance.get(
             `/customers?${queryParams.toString()}`,
         );
+        return response.data;
+    }
+
+    static async getCustomerById(id: string): Promise<ICustomer> {
+        const response = await axiosInstance.get(`/customers/${id}`);
         return response.data;
     }
 

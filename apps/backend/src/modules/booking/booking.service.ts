@@ -26,6 +26,7 @@ import {
 import { DataSource, In, Repository } from 'typeorm';
 import { WorkflowType } from '../../database/entity/workflow/workflow.entity';
 import { WorkflowService } from '../workflow/workflow.service';
+import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 
 @Injectable()
 export class BookingService {
@@ -110,6 +111,7 @@ export class BookingService {
         bookingNumber,
         customerId: createBookingDto.customerId,
         packageId: createBookingDto.packageId,
+        packageTierId: createBookingDto.packageTierId,
         batchId: createBookingDto.batchId,
         numberOfCustomers: createBookingDto.customerIds.length,
         totalAmount: createBookingDto.totalAmount,
@@ -118,6 +120,9 @@ export class BookingService {
         status: BookingStatus.PENDING,
         specialRequests: createBookingDto.specialRequests,
         additionalDetails: createBookingDto.additionalDetails,
+        paymentStructureId: createBookingDto.paymentStructureId,
+        isPaymentOverridden: createBookingDto.isPaymentOverridden || false,
+        paymentOverrideReason: createBookingDto.paymentOverrideReason,
         createdById: userId,
         organizationId,
       });
@@ -143,9 +148,28 @@ export class BookingService {
         throw new BadRequestException('One or more customers not found');
       }
 
-      // Associate customers with the booking
-      savedBooking.customers = customers;
-      await queryRunner.manager.save(savedBooking);
+      // Associate customers with the booking using BookingCustomer
+      const bookingCustomers = customers.map(customer => {
+        let tierId = createBookingDto.packageTierId;
+        let ageCategory: 'adult' | 'child' | 'infant' = 'adult';
+
+        if (createBookingDto.customerSelections) {
+          const selection = createBookingDto.customerSelections.find(s => s.customerId === customer.id);
+          if (selection) {
+            tierId = selection.tierId || tierId;
+            ageCategory = selection.ageCategory || 'adult';
+          }
+        }
+
+        return queryRunner.manager.create(BookingCustomer, {
+          bookingId: savedBooking.id,
+          customerId: customer.id,
+          packageTierId: tierId,
+          ageCategory,
+        });
+      });
+
+      await queryRunner.manager.save(BookingCustomer, bookingCustomers);
 
       // Create workflow for the booking
       const workflow = await this.workflowService.createWorkflow(
@@ -351,6 +375,48 @@ export class BookingService {
     }));
   }
 
+  async findByCustomerId(
+    customerId: string,
+    organizationId: string,
+  ): Promise<BookingSummaryDto[]> {
+    const bookings = await this.bookingRepository.find({
+      where: [
+        { customerId, organizationId },
+        { bookingCustomers: { customerId }, organizationId },
+      ],
+      relations: ['customer', 'package', 'batch', 'bookingCustomers', 'createdBy'],
+      order: { createdAt: 'DESC' },
+    });
+
+    // Deduplicate bookings in case a customer is both the primary and a bookingCustomer passenger
+    const uniqueBookings = Array.from(
+      new Map(bookings.map((b) => [b.id, b])).values()
+    );
+
+    return uniqueBookings.map((booking) => ({
+      id: booking.id,
+      bookingNumber: booking.bookingNumber,
+      customerName:
+        booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
+      customerEmail: booking.customer.email || '',
+      packageName: booking.package.name,
+      batchStartDate: booking.batch.startDate,
+      numberOfCustomers: booking.numberOfCustomers,
+      totalAmount: booking.totalAmount,
+      advancePaid: booking.advancePaid,
+      balanceAmount: booking.balanceAmount,
+      status: booking.status,
+      createdAt: booking.createdAt,
+      createdBy: booking.createdBy
+        ? {
+            id: booking.createdBy.id,
+            name: booking.createdBy.name,
+            email: booking.createdBy.email,
+          }
+        : null,
+    }));
+  }
+
   async findByManagerTeam(
     organizationId: string,
     teamUserIds: string[],
@@ -409,8 +475,9 @@ export class BookingService {
       where: { id },
       relations: [
         'customer',
-        'customers',
+        'bookingCustomers',
         'package',
+        'package.packageTiers',
         'batch',
         'payments',
         'documents',
@@ -437,7 +504,6 @@ export class BookingService {
       package: {
         id: booking.package.id,
         name: booking.package.name,
-        basePrice: booking.package.basePrice,
         destination: booking.package.destination,
         days: booking.package.days,
         nights: booking.package.nights,
@@ -455,26 +521,29 @@ export class BookingService {
       balanceAmount: booking.balanceAmount,
       status: booking.status,
       specialRequests: booking.specialRequests,
-      customers: booking.customers.map(
-        (customer): BookingCustomerResponseDto => ({
-          id: customer.id,
-          firstName: customer.firstName,
-          lastName: customer.lastName,
-          middleName: customer.middleName,
-          email: customer.email,
-          phone: customer.phone,
-          alternativePhone: customer.alternativePhone,
-          dateOfBirth: customer.dateOfBirth,
-          gender: customer.gender,
-          address: customer.address,
-          emergencyContactName: customer.emergencyContactName,
-          emergencyContactPhone: customer.emergencyContactPhone,
-          emergencyContactRelation: customer.emergencyContactRelation,
-          specialRequests: customer.specialRequests,
-          medicalConditions: customer.medicalConditions,
-          dietaryRestrictions: customer.dietaryRestrictions,
-        }),
-      ),
+      customers: booking.bookingCustomers ? booking.bookingCustomers.map(
+        (bc): BookingCustomerResponseDto => {
+          const customer = bc.customer;
+          return {
+            id: customer.id,
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            middleName: customer.middleName,
+            email: customer.email,
+            phone: customer.phone,
+            alternativePhone: customer.alternativePhone,
+            dateOfBirth: customer.dateOfBirth,
+            gender: customer.gender,
+            address: customer.address,
+            emergencyContactName: customer.emergencyContactName,
+            emergencyContactPhone: customer.emergencyContactPhone,
+            emergencyContactRelation: customer.emergencyContactRelation,
+            specialRequests: customer.specialRequests,
+            medicalConditions: customer.medicalConditions,
+            dietaryRestrictions: customer.dietaryRestrictions,
+          };
+        },
+      ) : [],
       payments: booking.payments.map((payment) => ({
         id: payment.id,
         amount: payment.amount,
@@ -482,6 +551,9 @@ export class BookingService {
         status: payment.status,
         paymentDate: payment.paymentDate,
         paymentReference: payment.paymentReference,
+        transactionId: payment.transactionId,
+        notes: payment.notes,
+        receiptFilePath: payment.receiptFilePath,
       })),
       currentWorkflowId: booking.currentWorkflowId,
       currentWorkflow: booking.currentWorkflow,
@@ -496,7 +568,7 @@ export class BookingService {
   ): Promise<BookingResponseDto> {
     const booking = await this.bookingRepository.findOne({
       where: { id },
-      relations: ['customers', 'batch'],
+      relations: ['bookingCustomers', 'batch'],
     });
 
     if (!booking) {
@@ -522,11 +594,24 @@ export class BookingService {
         // Update customer associations
         const bookingToUpdate = await queryRunner.manager.findOne(Booking, {
           where: { id },
-          relations: ['customers'],
+          relations: ['bookingCustomers'],
         });
 
         if (bookingToUpdate) {
-          bookingToUpdate.customers = customers;
+          // Remove old booking customers
+          await queryRunner.manager.delete(BookingCustomer, { bookingId: id });
+          
+          // Create new booking customers
+          const newBookingCustomers = customers.map(c => 
+            queryRunner.manager.create(BookingCustomer, {
+              bookingId: id,
+              customerId: c.id,
+              ageCategory: 'adult' 
+            })
+          );
+          
+          await queryRunner.manager.save(BookingCustomer, newBookingCustomers);
+          
           bookingToUpdate.numberOfCustomers = customers.length;
           await queryRunner.manager.save(bookingToUpdate);
         }
@@ -787,19 +872,19 @@ export class BookingService {
   ): Promise<BookingResponseDto> {
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
-      relations: ['customers', 'batch'],
+      relations: ['bookingCustomers', 'batch'],
     });
 
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
 
-    const customerIndex = booking.customers.findIndex((c) => c.id === customerId);
+    const customerIndex = booking.bookingCustomers.findIndex((bc) => bc.customer.id === customerId);
     if (customerIndex === -1) {
       throw new NotFoundException('Customer not found in this booking');
     }
 
-    if (booking.customers.length === 1) {
+    if (booking.bookingCustomers.length === 1) {
       return this.cancelBooking(bookingId, userId);
     }
 
@@ -810,18 +895,22 @@ export class BookingService {
     try {
       const previousData = {
         numberOfCustomers: booking.numberOfCustomers,
-        customerIds: booking.customers.map((c) => c.id),
+        customerIds: booking.bookingCustomers.map((bc) => bc.customer.id),
       };
 
-      booking.customers.splice(customerIndex, 1);
-      booking.numberOfCustomers = booking.customers.length;
+      const removedBookingCustomer = booking.bookingCustomers.splice(customerIndex, 1)[0];
+      await queryRunner.manager.delete(BookingCustomer, removedBookingCustomer.id);
+      
+      booking.numberOfCustomers = booking.bookingCustomers.length;
 
-      // Recalculate amounts
       const packageEntity = await this.packageRepository.findOne({
         where: { id: booking.packageId },
+        relations: ['packageTiers'],
       });
       if (packageEntity) {
-        booking.totalAmount = packageEntity.basePrice * booking.numberOfCustomers;
+        const tier = packageEntity.packageTiers?.find(t => t.id === booking.packageTierId) || packageEntity.packageTiers?.[0];
+        const adultPrice = tier ? Number(tier.adultCost || 0) : 0;
+        booking.totalAmount = adultPrice * booking.numberOfCustomers;
         booking.balanceAmount = booking.totalAmount - booking.advancePaid;
       }
 

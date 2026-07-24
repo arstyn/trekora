@@ -139,12 +139,12 @@ export default function GroupManagement({
 
 	const getGroupMemberNames = (memberIds: string[]) => {
 		return memberIds
-			.map(
-				(id) =>
-					customers.find((c) => c.id === id)?.firstName +
-						" " +
-						customers.find((c) => c.id === id)?.lastName || "Unknown"
-			)
+			.map((id) => {
+				const customer = customers.find((c) => c.id === id);
+				return customer
+					? [customer.firstName, customer.middleName, customer.lastName].filter(Boolean).join(" ")
+					: "Unknown";
+			})
 			.join(", ");
 	};
 
@@ -301,9 +301,7 @@ export default function GroupManagement({
 														}`}
 														className="flex-1"
 													>
-														{customer.firstName +
-															" " +
-															customer.lastName}
+														{[customer.firstName, customer.middleName, customer.lastName].filter(Boolean).join(" ")}
 													</Label>
 												</div>
 											))}

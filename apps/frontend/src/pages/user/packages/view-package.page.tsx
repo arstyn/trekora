@@ -9,7 +9,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import axiosInstance from "@/lib/axios";
-import type { IPackages } from "@/types/package.schema";
+import type { IPackages, IPaymentStructure, PackageTier } from "@/types/package.schema";
 import {
     Calendar,
     CheckCircle,
@@ -215,27 +215,7 @@ export default function ViewPackagePage() {
     }, [id]);
 
     const getTierTotalCost = (tier: any) => {
-        const itineraryCost = itinerary?.reduce((sum, day: any) => {
-            let dayCost = 0;
-            if (day.activitiesCostType === "per_day") {
-                dayCost += Number(day.activitiesTotalCost) || 0;
-            } else if (day.activitiesCostType === "per_activity") {
-                dayCost += (day.activities || []).reduce((s: number, act: any) => s + (Number(act.cost) || 0), 0);
-            }
-            dayCost += Number(day.accommodationCost) || 0;
-            return sum + dayCost;
-        }, 0) || 0;
-
-        const mealsCost = Number((logistics as any)?.mealsBreakdown?.mealsCost) || 0;
-        const additionalCostsSum = paymentsAndCancellation?.additionalCosts?.reduce((sum: number, cost: any) => sum + (Number(cost.cost) || 0), 0) || 0;
-        const groundCost = Number((basicData as any)?.groundTransportationCost) || 0;
-        
-        const baseCost = itineraryCost + mealsCost + additionalCostsSum + groundCost;
-        
-        const transport = logistics?.transportation?.find(t => t.id === tier.transportationId);
-        const transportCost = Number(transport?.cost) || 0;
-        
-        return baseCost + transportCost + (Number(tier.adultCost) || 0);
+        return Number(tier.adultCost) || 0;
     };
 
     if (loadingBasic || !basicData) {
@@ -368,102 +348,73 @@ export default function ViewPackagePage() {
                         </Card>
 
                         {/* Detailed Itinerary */}
-                        {loadingItinerary ? (
-                            <ItinerarySkeleton />
-                        ) : (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Detailed Itinerary</CardTitle>
-                                    <CardDescription>
-                                        {itinerary?.length ?? 0} days of amazing
-                                        experiences
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    {itinerary && itinerary.length > 0 ? (
-                                        itinerary.map((day, index) => (
-                                            <div
-                                                key={index}
-                                                className="border rounded-lg p-6"
-                                            >
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <div className="w-10 h-10 bg-primary shrink-0 text-primary-foreground rounded-full flex items-center justify-center font-bold">
-                                                        {day?.day || index + 1}
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-xl font-semibold">
-                                                            {day?.title ||
-                                                                `Day ${index + 1}`}
-                                                        </h3>
-                                                        <p>
-                                                            {day?.description ||
-                                                                "No description available"}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Day Images */}
-                                                {day?.images &&
-                                                    day.images.length > 0 && (
-                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-                                                            {day.images.map(
-                                                                (
-                                                                    image,
-                                                                    imageIndex,
-                                                                ) => (
-                                                                    <OptimizedImage
-                                                                        key={
-                                                                            imageIndex
-                                                                        }
-                                                                        src={(() => {
-                                                                            if (
-                                                                                image
-                                                                            ) {
-                                                                                return image;
-                                                                            }
-                                                                            return undefined;
-                                                                        })()}
-                                                                        alt={`Day ${day?.day ||
-                                                                            index +
-                                                                            1
-                                                                            } - Image ${imageIndex +
-                                                                            1
-                                                                            }`}
-                                                                        className="rounded-lg object-cover h-48 w-full"
-                                                                        containerClassName="h-48 rounded-lg"
-                                                                    />
-                                                                ),
-                                                            )}
+                        {basicData?.packageSetup !== "normal" && (
+                            loadingItinerary ? (
+                                <ItinerarySkeleton />
+                            ) : (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Detailed Itinerary</CardTitle>
+                                        <CardDescription>
+                                            {itinerary?.length ?? 0} days of amazing
+                                            experiences
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        {itinerary && itinerary.length > 0 ? (
+                                            itinerary.map((day, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="border rounded-lg p-6"
+                                                >
+                                                    <div className="flex items-center gap-3 mb-4">
+                                                        <div className="w-10 h-10 bg-primary shrink-0 text-primary-foreground rounded-full flex items-center justify-center font-bold">
+                                                            {day?.day || index + 1}
                                                         </div>
-                                                    )}
+                                                        <div>
+                                                            <h3 className="text-xl font-semibold">
+                                                                {day?.title ||
+                                                                    `Day ${index + 1}`}
+                                                            </h3>
+                                                            <p>
+                                                                {day?.description ||
+                                                                    "No description available"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div>
-                                                        <h4 className="font-semibold mb-2">
-                                                            Activities
-                                                        </h4>
-                                                        <ul className="space-y-1">
-                                                            {day?.activities &&
-                                                                day.activities
-                                                                    .length > 0 ? (
-                                                                day.activities.map(
+                                                    {/* Day Images */}
+                                                    {day?.images &&
+                                                        day.images.length > 0 && (
+                                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                                                                {day.images.map(
                                                                     (
-                                                                        activity,
-                                                                        actIndex,
+                                                                        image,
+                                                                        imageIndex,
                                                                     ) => (
-                                                                        <li
+                                                                        <OptimizedImage
                                                                             key={
-                                                                                actIndex
+                                                                                imageIndex
                                                                             }
-                                                                            className="flex items-start gap-2"
-                                                                        >
-                                                                            <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                                                                            <span>
-                                                                                {activity?.name ||
-                                                                                    "Activity not specified"}
-                                                                            </span>
-                                                                        </li>
+                                                                            src={(() => {
+                                                                                if (
+                                                                                    image
+                                                                                ) {
+                                                                                    return image;
+                                                                                }
+                                                                                return undefined;
+                                                                            })()}
+                                                                            alt={`Day ${day?.day ||
+                                                                                index +
+                                                                                1
+                                                                                } - Image ${imageIndex +
+                                                                                1
+                                                                                }`}
+                                                                            className="rounded-lg object-cover h-48 w-full"
+                                                                            containerClassName="h-48 rounded-lg"
+                                                                        />
                                                                     ),
+<<<<<<< HEAD
                                                                 )
                                                             ) : (
                                                                 <li className="text-muted-foreground text-sm">
@@ -486,31 +437,94 @@ export default function ViewPackagePage() {
                                                                 <span className="text-right">
                                                                     {formatDayMeals(day?.meals)}
                                                                 </span>
+=======
+                                                                )}
+>>>>>>> dev
                                                             </div>
-                                                            <div className="flex justify-between">
-                                                                <span>
-                                                                    Accommodation:
-                                                                </span>
-                                                                <span>
-                                                                    {day?.accommodation ||
-                                                                        "Not specified"}
-                                                                </span>
+                                                        )}
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <div>
+                                                            <h4 className="font-semibold mb-2">
+                                                                Activities
+                                                            </h4>
+                                                            <ul className="space-y-1">
+                                                                {day?.activities &&
+                                                                    day.activities
+                                                                        .length > 0 ? (
+                                                                    day.activities.map(
+                                                                        (
+                                                                            activity,
+                                                                            actIndex,
+                                                                        ) => (
+                                                                            <li
+                                                                                key={
+                                                                                    actIndex
+                                                                                }
+                                                                                className="flex items-start gap-2"
+                                                                            >
+                                                                                <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
+                                                                                <span>
+                                                                                    {activity?.name ||
+                                                                                        "Activity not specified"}
+                                                                                </span>
+                                                                            </li>
+                                                                        ),
+                                                                    )
+                                                                ) : (
+                                                                    <li className="text-muted-foreground text-sm">
+                                                                        No
+                                                                        activities
+                                                                        planned yet
+                                                                    </li>
+                                                                )}
+                                                            </ul>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-semibold mb-2">
+                                                                Details
+                                                            </h4>
+                                                            <div className="space-y-2 text-sm">
+                                                                <div className="flex justify-between">
+                                                                    <span>
+                                                                        Meals:
+                                                                    </span>
+                                                                    <span>
+                                                                        {day?.meals &&
+                                                                            day.meals
+                                                                                .length >
+                                                                            0
+                                                                            ? day.meals.join(
+                                                                                ", ",
+                                                                            )
+                                                                            : "None"}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span>
+                                                                        Accommodation:
+                                                                    </span>
+                                                                    <span>
+                                                                        {day?.accommodation ||
+                                                                            "Not specified"}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-8 text-muted-foreground">
+                                                <p>
+                                                    No itinerary has been created
+                                                    yet.
+                                                </p>
                                             </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-8 text-muted-foreground">
-                                            <p>
-                                                No itinerary has been created
-                                                yet.
-                                            </p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )
                         )}
 
                         {/* Payment & Cancellation Structure */}
@@ -530,15 +544,20 @@ export default function ViewPackagePage() {
                                             {paymentsAndCancellation?.packageTiers &&
                                                 paymentsAndCancellation.packageTiers.length > 0 ? (
                                                 paymentsAndCancellation.packageTiers.map(
-                                                    (tier: any, index: number) => {
-                                                        const totalAdultCost = getTierTotalCost(tier);
-                                                        const childCost = tier.childCostType === "flat"
-                                                            ? Number(tier.childCostValue) || 0
-                                                            : (totalAdultCost * Number(tier.childCostValue || 0)) / 100;
+                                                    (tier: PackageTier, index: number) => {
+                                                        const isNormal = basicData?.packageSetup === "normal";
+                                                        const totalAdultCost = tier.adultCost ?? 0;
+                                                        const childCost = isNormal
+                                                            ? (Number(tier.childCostValue) || 0)
+                                                            : (tier.childCostType === "flat"
+                                                                ? Number(tier.childCostValue) || 0
+                                                                : (totalAdultCost * Number(tier.childCostValue || 0)) / 100);
 
-                                                        const infantCost = tier.infantCostType === "flat"
-                                                            ? Number(tier.infantCostValue) || 0
-                                                            : (totalAdultCost * Number(tier.infantCostValue || 0)) / 100;
+                                                        const infantCost = isNormal
+                                                            ? (Number(tier.infantCostValue) || 0)
+                                                            : (tier.infantCostType === "flat"
+                                                                ? Number(tier.infantCostValue) || 0
+                                                                : (totalAdultCost * Number(tier.infantCostValue || 0)) / 100);
 
                                                         return (
                                                             <div
@@ -593,7 +612,7 @@ export default function ViewPackagePage() {
 
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Payment Milestones</CardTitle>
+                                        <CardTitle>Payment Structure</CardTitle>
                                         <CardDescription>
                                             How and when to pay for this package
                                         </CardDescription>
@@ -604,31 +623,30 @@ export default function ViewPackagePage() {
                                                 paymentsAndCancellation
                                                     .paymentStructure.length > 0 ? (
                                                 paymentsAndCancellation.paymentStructure.map(
-                                                    (milestone: any, index) => (
+                                                    (milestone: IPaymentStructure, index) => (
                                                         <div
                                                             key={index}
                                                             className="flex flex-col gap-3 p-4 border rounded-lg bg-card"
                                                         >
                                                             <div className="flex items-start justify-between">
                                                                 <div>
-                                                                    <h4 className="font-semibold text-lg">
-                                                                        {milestone?.name || "Payment Milestone"}
+                                                                    <h4 className="font-semibold text-lg capitalize ">
+                                                                        {milestone?.dueDate?.replace(/_/g, " ") || "Not specified"}
                                                                     </h4>
-                                                                    <p className="text-sm text-muted-foreground mt-1">
-                                                                        {milestone?.description || "No description"}
-                                                                    </p>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <div className="text-2xl font-bold text-primary">
                                                                         {milestone?.amount || 0}%
                                                                     </div>
-                                                                    <div className="text-sm font-medium capitalize text-muted-foreground mt-1">
-                                                                        {milestone?.dueDate?.replace("_", " ") || "Not specified"}
-                                                                    </div>
+                                                                    {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length === 1 && (
+                                                                        <div className="text-sm font-semibold text-emerald-600 mt-1">
+                                                                            ₹{Math.round(getTierTotalCost(paymentsAndCancellation.packageTiers[0]) * (milestone?.amount || 0) / 100).toLocaleString("en-IN")}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
-                                                            
-                                                            {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 0 && (
+
+                                                            {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 1 && (
                                                                 <div className="bg-secondary/20 rounded-md p-3 mt-1">
                                                                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Estimated Amount per Tier</div>
                                                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -683,14 +701,18 @@ export default function ViewPackagePage() {
                                                             <div className="flex items-start justify-between">
                                                                 <div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="font-semibold text-lg">{tier?.timeframe || "Not specified"}</span>
+                                                                        <span className="font-semibold text-lg capitalize">{tier?.timeframe?.replace(/_/g, " ") || "Not specified"}</span>
                                                                         <Badge variant="destructive" className="ml-2">{tier?.amount || 0}% fee</Badge>
+                                                                        {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length === 1 && (
+                                                                            <span className="text-sm font-semibold text-destructive ml-1">
+                                                                                (₹{Math.round(getTierTotalCost(paymentsAndCancellation.packageTiers[0]) * (tier?.amount || 0) / 100).toLocaleString("en-IN")})
+                                                                            </span>
+                                                                        )}
                                                                     </div>
-                                                                    <p className="text-sm text-muted-foreground mt-1">{tier?.description || "No description"}</p>
                                                                 </div>
                                                             </div>
-                                                            
-                                                            {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 0 && (
+
+                                                            {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 1 && (
                                                                 <div className="bg-secondary/20 rounded-md p-3 mt-1">
                                                                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Cancellation Fee per Tier</div>
                                                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -768,270 +790,276 @@ export default function ViewPackagePage() {
                         )}
 
                         {/* Requirements & Checklist */}
-                        {loadingRequirements ? (
-                            <RequirementsSkeleton />
-                        ) : (
-                            <div className="space-y-8">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>
-                                            Document Requirements
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Required documents for all travelers
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <h4 className="font-semibold mb-3 text-blue-600">
-                                                    All Travelers
-                                                </h4>
-                                                <div className="space-y-3">
-                                                    {(() => {
-                                                        const allDocs = requirements?.documentRequirements?.filter((doc: any) => doc?.applicableFor === "all") || [];
-                                                        if (allDocs.length > 0) {
-                                                            return allDocs.map((doc: any, index: number) => (
-                                                                <div key={index} className="p-3 border rounded-lg">
-                                                                    <div className="flex items-center gap-2 mb-1">
-                                                                        <h5 className="font-medium">
-                                                                            {doc?.name || "Document"}
-                                                                        </h5>
-                                                                        {doc?.mandatory && (
-                                                                            <Badge variant="destructive" className="text-xs">
-                                                                                Required
-                                                                            </Badge>
-                                                                        )}
+                        {basicData?.packageSetup !== "normal" && (
+                            loadingRequirements ? (
+                                <RequirementsSkeleton />
+                            ) : (
+                                <div className="space-y-8">
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>
+                                                Document Requirements
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Required documents for all travelers
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div>
+                                                    <h4 className="font-semibold mb-3 text-blue-600">
+                                                        All Travelers
+                                                    </h4>
+                                                    <div className="space-y-3">
+                                                        {(() => {
+                                                            const allDocs = requirements?.documentRequirements?.filter((doc: any) => doc?.applicableFor === "all") || [];
+                                                            if (allDocs.length > 0) {
+                                                                return allDocs.map((doc: any, index: number) => (
+                                                                    <div key={index} className="p-3 border rounded-lg">
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <h5 className="font-medium">
+                                                                                {doc?.name || "Document"}
+                                                                            </h5>
+                                                                            {doc?.mandatory && (
+                                                                                <Badge variant="destructive" className="text-xs">
+                                                                                    Required
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-sm ">
+                                                                            {doc?.description || "No description available"}
+                                                                        </p>
                                                                     </div>
-                                                                    <p className="text-sm ">
-                                                                        {doc?.description || "No description available"}
-                                                                    </p>
+                                                                ));
+                                                            }
+                                                            return (
+                                                                <div className="text-muted-foreground text-sm">
+                                                                    No document added
                                                                 </div>
-                                                            ));
-                                                        }
-                                                        return (
-                                                            <div className="text-muted-foreground text-sm">
-                                                                No document added
-                                                            </div>
-                                                        );
-                                                    })()}
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold mb-3 text-green-600">
+                                                        Children Only
+                                                    </h4>
+                                                    <div className="space-y-3">
+                                                        {(() => {
+                                                            const childDocs = requirements?.documentRequirements?.filter((doc: any) => doc?.applicableFor === "children") || [];
+                                                            if (childDocs.length > 0) {
+                                                                return childDocs.map((doc: any, index: number) => (
+                                                                    <div key={index} className="p-3 border rounded-lg">
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <h5 className="font-medium">
+                                                                                {doc?.name || "Document"}
+                                                                            </h5>
+                                                                            {doc?.mandatory && (
+                                                                                <Badge variant="destructive" className="text-xs">
+                                                                                    Required
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-sm ">
+                                                                            {doc?.description || "No description available"}
+                                                                        </p>
+                                                                    </div>
+                                                                ));
+                                                            }
+                                                            return (
+                                                                <div className="text-muted-foreground text-sm">
+                                                                    No document added
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <h4 className="font-semibold mb-3 text-green-600">
-                                                    Children Only
-                                                </h4>
-                                                <div className="space-y-3">
-                                                    {(() => {
-                                                        const childDocs = requirements?.documentRequirements?.filter((doc: any) => doc?.applicableFor === "children") || [];
-                                                        if (childDocs.length > 0) {
-                                                            return childDocs.map((doc: any, index: number) => (
-                                                                <div key={index} className="p-3 border rounded-lg">
-                                                                    <div className="flex items-center gap-2 mb-1">
-                                                                        <h5 className="font-medium">
-                                                                            {doc?.name || "Document"}
-                                                                        </h5>
-                                                                        {doc?.mandatory && (
-                                                                            <Badge variant="destructive" className="text-xs">
-                                                                                Required
-                                                                            </Badge>
-                                                                        )}
-                                                                    </div>
-                                                                    <p className="text-sm ">
-                                                                        {doc?.description || "No description available"}
-                                                                    </p>
-                                                                </div>
-                                                            ));
-                                                        }
-                                                        return (
-                                                            <div className="text-muted-foreground text-sm">
-                                                                No document added
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            )
                         )}
 
                         {/* Meals Breakdown */}
-                        {loadingLogistics ? (
-                            <div className="h-40 w-full animate-pulse bg-muted rounded-lg" />
-                        ) : (
-                            <Card>
-                                <CardHeader>
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <CardTitle>Meals Included</CardTitle>
-                                            <CardDescription>
-                                                What's included in each meal
-                                            </CardDescription>
+                        {basicData?.packageSetup !== "normal" && (
+                            loadingLogistics ? (
+                                <div className="h-40 w-full animate-pulse bg-muted rounded-lg" />
+                            ) : (
+                                <Card>
+                                    <CardHeader>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <CardTitle>Meals Included</CardTitle>
+                                                <CardDescription>
+                                                    What's included in each meal
+                                                </CardDescription>
+                                            </div>
+                                            {Number((logistics as any)?.mealsBreakdown?.mealsCost) > 0 && (
+                                                <div className="text-right">
+                                                    <span className="text-sm text-muted-foreground block">Total Meals Cost</span>
+                                                    <span className="font-bold text-primary text-lg">₹{(logistics as any).mealsBreakdown.mealsCost}</span>
+                                                </div>
+                                            )}
                                         </div>
-                                        {Number((logistics as any)?.mealsBreakdown?.mealsCost) > 0 && (
-                                            <div className="text-right">
-                                                <span className="text-sm text-muted-foreground block">Total Meals Cost</span>
-                                                <span className="font-bold text-primary text-lg">₹{(logistics as any).mealsBreakdown.mealsCost}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        {logistics?.mealsBreakdown &&
-                                            Object.keys(logistics.mealsBreakdown)
-                                                .length > 0 ? (
-                                            Object.entries(
-                                                logistics.mealsBreakdown,
-                                            ).map(([mealType, items]) => (
-                                                <React.Fragment key={mealType}>
-                                                    {[
-                                                        "breakfast",
-                                                        "lunch",
-                                                        "dinner",
-                                                    ].includes(
-                                                        mealType?.toLowerCase(),
-                                                    ) && (
-                                                            <div>
-                                                                <h4 className="font-semibold mb-3 capitalize text-primary">
-                                                                    {mealType}
-                                                                </h4>
-                                                                <ul className="space-y-2">
-                                                                    {(items as any) &&
-                                                                        (items as any)
-                                                                            ?.length >
-                                                                        0 ? (
-                                                                        (
-                                                                            items as any
-                                                                        )?.map(
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {logistics?.mealsBreakdown &&
+                                                Object.keys(logistics.mealsBreakdown)
+                                                    .length > 0 ? (
+                                                Object.entries(
+                                                    logistics.mealsBreakdown,
+                                                ).map(([mealType, items]) => (
+                                                    <React.Fragment key={mealType}>
+                                                        {[
+                                                            "breakfast",
+                                                            "lunch",
+                                                            "dinner",
+                                                        ].includes(
+                                                            mealType?.toLowerCase(),
+                                                        ) && (
+                                                                <div>
+                                                                    <h4 className="font-semibold mb-3 capitalize text-primary">
+                                                                        {mealType}
+                                                                    </h4>
+                                                                    <ul className="space-y-2">
+                                                                        {(items as any) &&
+                                                                            (items as any)
+                                                                                ?.length >
+                                                                            0 ? (
                                                                             (
-                                                                                item: any,
-                                                                                index: number,
-                                                                            ) => (
-                                                                                <li
-                                                                                    key={
-                                                                                        index
-                                                                                    }
-                                                                                    className="flex items-start gap-2"
-                                                                                >
-                                                                                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                                                                                    <span className=" text-sm">
-                                                                                        {item ||
-                                                                                            "Item not specified"}
-                                                                                    </span>
-                                                                                </li>
-                                                                            ),
-                                                                        )
-                                                                    ) : (
-                                                                        <li className="text-muted-foreground text-sm">
-                                                                            No items
-                                                                            specified
-                                                                        </li>
-                                                                    )}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-                                                </React.Fragment>
-                                            ))
-                                        ) : (
-                                            <div className="col-span-3 text-center py-8 text-muted-foreground">
-                                                <p>
-                                                    No meal breakdown has been
-                                                    provided yet.
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                                                                items as any
+                                                                            )?.map(
+                                                                                (
+                                                                                    item: any,
+                                                                                    index: number,
+                                                                                ) => (
+                                                                                    <li
+                                                                                        key={
+                                                                                            index
+                                                                                        }
+                                                                                        className="flex items-start gap-2"
+                                                                                    >
+                                                                                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
+                                                                                        <span className=" text-sm">
+                                                                                            {item ||
+                                                                                                "Item not specified"}
+                                                                                        </span>
+                                                                                    </li>
+                                                                                ),
+                                                                            )
+                                                                        ) : (
+                                                                            <li className="text-muted-foreground text-sm">
+                                                                                No items
+                                                                                specified
+                                                                            </li>
+                                                                        )}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                    </React.Fragment>
+                                                ))
+                                            ) : (
+                                                <div className="col-span-3 text-center py-8 text-muted-foreground">
+                                                    <p>
+                                                        No meal breakdown has been
+                                                        provided yet.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )
                         )}
 
                         {/* Transportation */}
-                        {loadingLogistics ? (
-                            <div className="h-60 w-full animate-pulse bg-muted rounded-lg" />
-                        ) : (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Transportation</CardTitle>
-                                    <CardDescription>
-                                        How you'll get there and around
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-4">
-                                        {(basicData as any)?.groundTransportationCost > 0 && (
-                                            <div className="flex justify-between items-center p-4 bg-secondary/10 rounded-lg border border-primary/20">
-                                                <span className="font-medium">Ground Transportation Cost</span>
-                                                <span className="font-bold text-primary">₹{(basicData as any)?.groundTransportationCost}</span>
-                                            </div>
-                                        )}
-                                        {logistics?.transportation && logistics.transportation.length > 0 ? (
-                                            <div className="grid grid-cols-1 gap-4">
-                                                {logistics.transportation.map((transport: any, index: number) => (
-                                                    <div key={index} className="p-4 border rounded-lg">
-                                                        <div className="flex justify-between items-center mb-4">
-                                                            <h4 className="font-semibold text-lg">
-                                                                {transport?.title || "Transportation Option"}
-                                                            </h4>
-                                                            <div className="text-right">
-                                                                <span className="text-sm text-muted-foreground block">Option Cost</span>
-                                                                <span className="font-bold text-primary">₹{transport?.cost || 0}</span>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {transport?.segments && transport.segments.length > 0 ? (
-                                                            <div className="space-y-3 mt-2">
-                                                                <h5 className="text-sm font-medium text-muted-foreground">Journey Segments</h5>
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                                                    {transport.segments.map((seg: any, sIdx: number) => (
-                                                                        <div key={sIdx} className="bg-secondary/5 border p-3 rounded-md text-sm relative">
-                                                                            <div className="flex justify-between items-center border-b border-primary/10 pb-2 mb-2">
-                                                                                <span className="font-semibold capitalize flex items-center gap-1.5">
-                                                                                    {seg.mode === 'flight' && '✈️ '}
-                                                                                    {seg.mode === 'train' && '🚆 '}
-                                                                                    {seg.mode === 'bus' && '🚌 '}
-                                                                                    {seg.mode}
-                                                                                </span>
-                                                                                {seg.mode === 'train' && seg.coachType && seg.coachType !== 'none' && (
-                                                                                    <Badge variant="secondary" className="text-[10px] h-5">{seg.coachType}</Badge>
-                                                                                )}
-                                                                            </div>
-                                                                            <div className="flex justify-between items-center">
-                                                                                <div className="flex flex-col">
-                                                                                    <span className="font-medium text-foreground">{seg.from || 'Origin'}</span>
-                                                                                    <span className="text-xs text-muted-foreground">{seg.departureTime || '-'}</span>
-                                                                                </div>
-                                                                                <div className="flex flex-col items-center justify-center px-2 opacity-50">
-                                                                                    <span className="text-[10px]">{seg.number || 'No/ID'}</span>
-                                                                                    <span className="text-xs">→</span>
-                                                                                </div>
-                                                                                <div className="flex flex-col text-right">
-                                                                                    <span className="font-medium text-foreground">{seg.to || 'Dest'}</span>
-                                                                                    <span className="text-xs text-muted-foreground">{seg.arrivalTime || '-'}</span>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
+                        {basicData?.packageSetup !== "normal" && (
+                            loadingLogistics ? (
+                                <div className="h-60 w-full animate-pulse bg-muted rounded-lg" />
+                            ) : (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Transportation</CardTitle>
+                                        <CardDescription>
+                                            How you'll get there and around
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-4">
+                                            {(basicData as any)?.groundTransportationCost > 0 && (
+                                                <div className="flex justify-between items-center p-4 bg-secondary/10 rounded-lg border border-primary/20">
+                                                    <span className="font-medium">Ground Transportation Cost</span>
+                                                    <span className="font-bold text-primary">₹{(basicData as any)?.groundTransportationCost}</span>
+                                                </div>
+                                            )}
+                                            {logistics?.transportation && logistics.transportation.length > 0 ? (
+                                                <div className="grid grid-cols-1 gap-4">
+                                                    {logistics.transportation.map((transport: any, index: number) => (
+                                                        <div key={index} className="p-4 border rounded-lg">
+                                                            <div className="flex justify-between items-center mb-4">
+                                                                <h4 className="font-semibold text-lg">
+                                                                    {transport?.title || "Transportation Option"}
+                                                                </h4>
+                                                                <div className="text-right">
+                                                                    <span className="text-sm text-muted-foreground block">Option Cost</span>
+                                                                    <span className="font-bold text-primary">₹{transport?.cost || 0}</span>
                                                                 </div>
                                                             </div>
-                                                        ) : (
-                                                            <div className="text-sm text-muted-foreground bg-secondary/5 p-3 rounded-md mt-2">
-                                                                {transport?.details || "No details provided"}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
-                                                <p>No transportation options have been provided yet.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
+
+                                                            {transport?.segments && transport.segments.length > 0 ? (
+                                                                <div className="space-y-3 mt-2">
+                                                                    <h5 className="text-sm font-medium text-muted-foreground">Journey Segments</h5>
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                                                        {transport.segments.map((seg: any, sIdx: number) => (
+                                                                            <div key={sIdx} className="bg-secondary/5 border p-3 rounded-md text-sm relative">
+                                                                                <div className="flex justify-between items-center border-b border-primary/10 pb-2 mb-2">
+                                                                                    <span className="font-semibold capitalize flex items-center gap-1.5">
+                                                                                        {seg.mode === 'flight' && '✈️ '}
+                                                                                        {seg.mode === 'train' && '🚆 '}
+                                                                                        {seg.mode === 'bus' && '🚌 '}
+                                                                                        {seg.mode}
+                                                                                    </span>
+                                                                                    {seg.mode === 'train' && seg.coachType && seg.coachType !== 'none' && (
+                                                                                        <Badge variant="secondary" className="text-[10px] h-5">{seg.coachType}</Badge>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="flex justify-between items-center">
+                                                                                    <div className="flex flex-col">
+                                                                                        <span className="font-medium text-foreground">{seg.from || 'Origin'}</span>
+                                                                                        <span className="text-xs text-muted-foreground">{seg.departureTime || '-'}</span>
+                                                                                    </div>
+                                                                                    <div className="flex flex-col items-center justify-center px-2 opacity-50">
+                                                                                        <span className="text-[10px]">{seg.number || 'No/ID'}</span>
+                                                                                        <span className="text-xs">→</span>
+                                                                                    </div>
+                                                                                    <div className="flex flex-col text-right">
+                                                                                        <span className="font-medium text-foreground">{seg.to || 'Dest'}</span>
+                                                                                        <span className="text-xs text-muted-foreground">{seg.arrivalTime || '-'}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-sm text-muted-foreground bg-secondary/5 p-3 rounded-md mt-2">
+                                                                    {transport?.details || "No details provided"}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                                                    <p>No transportation options have been provided yet.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )
                         )}
                     </div>
 
@@ -1066,146 +1094,152 @@ export default function ViewPackagePage() {
                                             "Not specified"}
                                     </span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm ">Category:</span>
-                                    <span className="text-sm font-medium capitalize">
-                                        {basicData.category || "Not set"}
-                                    </span>
-                                </div>
+                                {basicData?.packageSetup !== "normal" && (
+                                    <div className="flex justify-between">
+                                        <span className="text-sm ">Category:</span>
+                                        <span className="text-sm font-medium capitalize">
+                                            {basicData.category || "Not set"}
+                                        </span>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
                         {/* Inclusions & Exclusions */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>What's Included</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {loadingDetails ? (
-                                    <div className="flex justify-center p-4">
-                                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <h4 className="font-semibold text-primary mb-2">
-                                                Included
-                                            </h4>
-                                            <div className="space-y-1">
-                                                {details?.inclusions &&
-                                                    details.inclusions.length > 0 ? (
-                                                    details.inclusions.map(
-                                                        (item: any, index: number) => (
-                                                            <div
-                                                                key={index}
-                                                                className="flex items-center gap-2"
-                                                            >
-                                                                <CheckCircle className="w-4 h-4 text-primary shrink-0" />
-                                                                <span className="text-sm">
-                                                                    {typeof item ===
-                                                                        "string"
-                                                                        ? item
-                                                                        : item?.item ||
-                                                                        "Inclusion not specified"}
-                                                                </span>
-                                                            </div>
-                                                        ),
-                                                    )
-                                                ) : (
-                                                    <div className="text-muted-foreground text-sm">
-                                                        No inclusions specified yet.
-                                                    </div>
-                                                )}
-                                            </div>
+                        {basicData?.packageSetup !== "normal" && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>What's Included</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {loadingDetails ? (
+                                        <div className="flex justify-center p-4">
+                                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                                         </div>
-                                        <div>
-                                            <h4 className="font-semibold text-destructive mb-2">
-                                                Not Included
-                                            </h4>
-                                            <div className="space-y-1">
-                                                {details?.exclusions &&
-                                                    details.exclusions.length > 0 ? (
-                                                    details.exclusions.map(
-                                                        (item: any, index: number) => (
-                                                            <div
-                                                                key={index}
-                                                                className="flex items-center gap-2"
-                                                            >
-                                                                <XCircle className="w-4 h-4 text-destructive shrink-0" />
-                                                                <span className="text-sm">
-                                                                    {typeof item ===
-                                                                        "string"
-                                                                        ? item
-                                                                        : item?.item ||
-                                                                        "Exclusion not specified"}
-                                                                </span>
-                                                            </div>
-                                                        ),
-                                                    )
-                                                ) : (
-                                                    <div className="text-muted-foreground text-sm">
-                                                        No exclusions specified yet.
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Pre-trip Checklist</CardTitle>
-                                <CardDescription>
-                                    Tasks to complete before departure
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-5">
-                                    {requirements?.preTripChecklist &&
-                                        requirements.preTripChecklist.length > 0 ? (
-                                        requirements.preTripChecklist.map(
-                                            (item, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="p-4 border rounded-lg bg-secondary/5"
-                                                >
-                                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                                        <h5 className="font-semibold text-sm leading-tight">
-                                                            {item.task}
-                                                        </h5>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="text-[10px] uppercase font-bold px-1.5 h-4"
-                                                        >
-                                                            {item.type}
-                                                        </Badge>
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                                                        {item.description ||
-                                                            "No description"}
-                                                    </p>
-                                                    <div className="flex items-center justify-between mt-auto">
-                                                        <Badge className="text-[10px] capitalize h-5">
-                                                            {item.category}
-                                                        </Badge>
-                                                        <span className="text-[10px] text-muted-foreground font-medium">
-                                                            Due:{" "}
-                                                            {item.dueDate ||
-                                                                "N/A"}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ),
-                                        )
                                     ) : (
-                                        <div className="col-span-full py-4 text-center text-muted-foreground text-sm">
-                                            No checklist items defined.
-                                        </div>
+                                        <>
+                                            <div>
+                                                <h4 className="font-semibold text-primary mb-2">
+                                                    Included
+                                                </h4>
+                                                <div className="space-y-1">
+                                                    {details?.inclusions &&
+                                                        details.inclusions.length > 0 ? (
+                                                        details.inclusions.map(
+                                                            (item: any, index: number) => (
+                                                                <div
+                                                                    key={index}
+                                                                    className="flex items-center gap-2"
+                                                                >
+                                                                    <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+                                                                    <span className="text-sm">
+                                                                        {typeof item ===
+                                                                            "string"
+                                                                            ? item
+                                                                            : item?.item ||
+                                                                            "Inclusion not specified"}
+                                                                    </span>
+                                                                </div>
+                                                            ),
+                                                        )
+                                                    ) : (
+                                                        <div className="text-muted-foreground text-sm">
+                                                            No inclusions specified yet.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold text-destructive mb-2">
+                                                    Not Included
+                                                </h4>
+                                                <div className="space-y-1">
+                                                    {details?.exclusions &&
+                                                        details.exclusions.length > 0 ? (
+                                                        details.exclusions.map(
+                                                            (item: any, index: number) => (
+                                                                <div
+                                                                    key={index}
+                                                                    className="flex items-center gap-2"
+                                                                >
+                                                                    <XCircle className="w-4 h-4 text-destructive shrink-0" />
+                                                                    <span className="text-sm">
+                                                                        {typeof item ===
+                                                                            "string"
+                                                                            ? item
+                                                                            : item?.item ||
+                                                                            "Exclusion not specified"}
+                                                                    </span>
+                                                                </div>
+                                                            ),
+                                                        )
+                                                    ) : (
+                                                        <div className="text-muted-foreground text-sm">
+                                                            No exclusions specified yet.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {basicData?.packageSetup !== "normal" && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Pre-trip Checklist</CardTitle>
+                                    <CardDescription>
+                                        Tasks to complete before departure
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-5">
+                                        {requirements?.preTripChecklist &&
+                                            requirements.preTripChecklist.length > 0 ? (
+                                            requirements.preTripChecklist.map(
+                                                (item, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="p-4 border rounded-lg bg-secondary/5"
+                                                    >
+                                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                                            <h5 className="font-semibold text-sm leading-tight">
+                                                                {item.task}
+                                                            </h5>
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-[10px] uppercase font-bold px-1.5 h-4"
+                                                            >
+                                                                {item.type}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                                                            {item.description ||
+                                                                "No description"}
+                                                        </p>
+                                                        <div className="flex items-center justify-between mt-auto">
+                                                            <Badge className="text-[10px] capitalize h-5">
+                                                                {item.category}
+                                                            </Badge>
+                                                            <span className="text-[10px] text-muted-foreground font-medium">
+                                                                Due:{" "}
+                                                                {item.dueDate ||
+                                                                    "N/A"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ),
+                                            )
+                                        ) : (
+                                            <div className="col-span-full py-4 text-center text-muted-foreground text-sm">
+                                                No checklist items defined.
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 </div>
             </main>

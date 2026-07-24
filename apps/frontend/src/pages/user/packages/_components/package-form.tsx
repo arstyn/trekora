@@ -13,8 +13,7 @@ import {
     Package as PackageIcon,
     Rocket,
 } from "lucide-react";
-import type React from "react";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -37,7 +36,6 @@ const defaultValues: PackageFormData = {
     destination: "",
     days: 0,
     nights: 0,
-    basePrice: 0,
     description: "",
     maxGuests: 0,
     category: "adventure",
@@ -102,7 +100,6 @@ const SECTION_KEYS: Record<string, string[]> = {
         "destination",
         "days",
         "nights",
-        "basePrice",
         "description",
         "maxGuests",
         "category",
@@ -146,9 +143,6 @@ export function PackageForm({
         initialPackageId,
     );
     const [thumbnailFile, setThumbnailFile] = useState<string>();
-    const [itineraryPreviewUrls, setItineraryPreviewUrls] = useState<
-        Record<number, string[]>
-    >({});
     const [existingItineraryImages, setExistingItineraryImages] = useState<
         Record<number, string[]>
     >({});
@@ -167,8 +161,7 @@ export function PackageForm({
         (backendData: Partial<IPackages>) => {
             const transformed: any = { ...backendData };
 
-            if (backendData.basePrice !== undefined)
-                transformed.basePrice = Number(backendData.basePrice) || 0;
+
             if (backendData.days !== undefined)
                 transformed.days = Number(backendData.days) || 0;
             if (backendData.nights !== undefined)
@@ -197,11 +190,6 @@ export function PackageForm({
                             setExistingItineraryImages((prev) => ({
                                 ...prev,
                                 [index]: images,
-                            }));
-                            const urls = images;
-                            setItineraryPreviewUrls((prev) => ({
-                                ...prev,
-                                [index]: urls,
                             }));
                         }
                         return { ...rest, images: [] };
@@ -299,7 +287,7 @@ export function PackageForm({
                         }
                         if (res.data.id) setPackageId(res.data.id);
                     }
-                    
+
                     setLoadedSections((prev) => new Set(prev).add(section));
 
                     setPackageData(
@@ -415,6 +403,13 @@ export function PackageForm({
             // For new packages, default to draft
             if (!updateData.status && !packageId) {
                 updateData.status = "draft";
+            }
+
+            if (updateData.paymentStructure) {
+                updateData.paymentStructure = updateData.paymentStructure.map((milestone, idx) => ({
+                    ...milestone,
+                    order: idx + 1,
+                }));
             }
 
             // Determine which keys to include in the save
@@ -585,55 +580,7 @@ export function PackageForm({
         }
     };
 
-    const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (ev) =>
-                setThumbnailFile(ev.target?.result as string);
-            reader.readAsDataURL(file);
-            form.setValue("thumbnail", file);
-        }
-    };
 
-    const handleDayImageUpload = (
-        dayIndex: number,
-        e: React.ChangeEvent<HTMLInputElement>,
-    ) => {
-        const files = Array.from(e.target.files || []);
-        const urls = files.map((f) => URL.createObjectURL(f));
-        setItineraryPreviewUrls((prev) => ({
-            ...prev,
-            [dayIndex]: [...(prev[dayIndex] || []), ...urls],
-        }));
-        const current = form.getValues(`itinerary.${dayIndex}.images`) || [];
-        form.setValue(`itinerary.${dayIndex}.images`, [...current, ...files]);
-    };
-
-    const removeDayImage = (dayIndex: number, imageIndex: number) => {
-        const existing = existingItineraryImages[dayIndex] || [];
-        const isExisting = imageIndex < existing.length;
-        if (isExisting) {
-            setExistingItineraryImages((prev) => ({
-                ...prev,
-                [dayIndex]: existing.filter((_, i) => i !== imageIndex),
-            }));
-        } else {
-            const formImages =
-                form.getValues(`itinerary.${dayIndex}.images`) || [];
-            const newIndex = imageIndex - existing.length;
-            form.setValue(
-                `itinerary.${dayIndex}.images`,
-                formImages.filter((_, i) => i !== newIndex),
-            );
-        }
-        setItineraryPreviewUrls((prev) => ({
-            ...prev,
-            [dayIndex]: (prev[dayIndex] || []).filter(
-                (_, i) => i !== imageIndex,
-            ),
-        }));
-    };
 
     if (isLoading) {
         return (
@@ -703,7 +650,7 @@ export function PackageForm({
                         <StepBasicInfo
                             form={form}
                             thumbnailFile={thumbnailFile}
-                            handleThumbnailUpload={handleThumbnailUpload}
+                            setThumbnailFile={setThumbnailFile}
                             onNext={handleNext}
                             isLoading={isSaving}
                         />
@@ -711,9 +658,8 @@ export function PackageForm({
                     {currentStep === 1 && (
                         <StepItinerary
                             form={form}
-                            itineraryPreviewUrls={itineraryPreviewUrls}
-                            handleDayImageUpload={handleDayImageUpload}
-                            removeDayImage={removeDayImage}
+                            existingItineraryImages={existingItineraryImages}
+                            setExistingItineraryImages={setExistingItineraryImages}
                             onNext={handleNext}
                             onBack={handleBack}
                             isLoading={isSaving}

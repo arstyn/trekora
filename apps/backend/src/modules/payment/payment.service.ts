@@ -52,7 +52,7 @@ export class PaymentService {
 
     if (search) {
       query.andWhere(
-        '(booking.bookingNumber ILIKE :search OR customer.name ILIKE :search OR package.name ILIKE :search)',
+        '(booking.bookingNumber ILIKE :search OR customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR package.name ILIKE :search)',
         { search: `%${search}%` },
       );
     }

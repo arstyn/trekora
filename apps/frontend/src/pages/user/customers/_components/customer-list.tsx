@@ -39,6 +39,7 @@ import {
 } from "@tanstack/react-table";
 import { MoreHorizontal, Trash2, Users } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface CustomerListProps {
     customers: ICustomer[];
@@ -53,6 +54,7 @@ export default function CustomerList({
     onDelete,
     onCustomerClick,
 }: CustomerListProps) {
+    const navigate = useNavigate();
     const [customerToDelete, setCustomerToDelete] = useState<ICustomer | null>(
         null,
     );
@@ -74,8 +76,14 @@ export default function CustomerList({
                         className="w-8 h-8 rounded-full object-cover"
                     />
 
-                    <span className="font-medium">
-                        {row.original.firstName} {row.original.lastName}
+                    <span 
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/customers/${row.original.id}`);
+                        }}
+                    >
+                        {[row.original.firstName, row.original.middleName, row.original.lastName].filter(Boolean).join(" ")}
                     </span>
                 </div>
             ),
