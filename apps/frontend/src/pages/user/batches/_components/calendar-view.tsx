@@ -219,9 +219,9 @@ export function CalendarView({ refreshKey }: CalendarViewProps) {
 														{batch.package?.name}
 													</div>
 												))}
-												{batches.length > 3 && (
+												{batchesArr.length > 3 && (
 													<div className="text-xs text-muted-foreground font-medium">
-														+{batches.length - 3} more
+														+{batchesArr.length - 3} more
 													</div>
 												)}
 											</div>
