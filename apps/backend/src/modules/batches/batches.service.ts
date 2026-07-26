@@ -90,6 +90,7 @@ export class BatchesService {
     const query = this.batchRepo
       .createQueryBuilder('batch')
       .leftJoinAndSelect('batch.package', 'package')
+      .leftJoinAndSelect('package.packageTiers', 'packageTiers')
       .leftJoinAndSelect('batch.coordinators', 'coordinators')
       .where('batch.organizationId = :organizationId', { organizationId });
 
@@ -339,6 +340,7 @@ export class BatchesService {
     const batches = await this.batchRepo
       .createQueryBuilder('batch')
       .leftJoinAndSelect('batch.package', 'package')
+      .leftJoinAndSelect('package.packageTiers', 'packageTiers')
       .where('batch.organization_id = :organization_id', {
         organization_id: organizationId,
       })
@@ -367,8 +369,6 @@ export class BatchesService {
     availableSeats: number;
     fastFilling: number;
   }> {
-    const now = new Date();
-
     const batches = await this.batchRepo.find({
       where: { organization: { id: organizationId } },
     });
@@ -380,19 +380,12 @@ export class BatchesService {
     let fastFilling = 0;
 
     for (const batch of batches) {
-      const start = new Date(batch.startDate);
-      const end = new Date(batch.endDate);
-
-      if (start <= now && now <= end) {
+      if (batch.status === BatchStatus.ACTIVE) {
         activeBatches++;
-      }
-
-      if (start > now) {
+      } else if (batch.status === BatchStatus.UPCOMING) {
         upcomingBatches++;
         availableSeats += (batch.totalSeats ?? 0) - (batch.bookedSeats ?? 0);
-      }
-
-      if (end < now || batch.status === BatchStatus.COMPLETED) {
+      } else if (batch.status === BatchStatus.COMPLETED) {
         completedBatches++;
       }
 

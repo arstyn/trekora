@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Calendar, MapPin, DollarSign } from "lucide-react";
-import { createPortal } from "react-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { IBatches } from "@/types/batches.types";
+import { BookingService } from "@/services/booking.service";
+import { Calendar, DollarSign, MapPin, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface BatchTooltipProps {
 	batch: IBatches;
@@ -13,6 +14,8 @@ interface BatchTooltipProps {
 
 export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 	const tooltipRef = useRef<HTMLDivElement>(null);
+	const [dimensions, setDimensions] = useState({ width: 320, height: 350 });
+	const [isMeasured, setIsMeasured] = useState(false);
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
@@ -37,6 +40,14 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 		};
 	}, [onClose]);
 
+	useEffect(() => {
+		if (tooltipRef.current) {
+			const rect = tooltipRef.current.getBoundingClientRect();
+			setDimensions({ width: rect.width, height: rect.height });
+			setIsMeasured(true);
+		}
+	}, [batch]);
+
 	const getStatusBadge = (status: string) => {
 		switch (status) {
 			case "active":
@@ -52,12 +63,34 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 
 	const fillPercentage = Math.round((batch.bookedSeats / batch.totalSeats) * 100);
 
-	// Calculate tooltip position to avoid going off-screen
+	// Position horizontally: try to put it to the right of the cursor (+10px).
+	// If it goes off-screen on the right, put it to the left of the cursor (-width -10px).
+	// Otherwise, keep it within the bounds of the viewport.
+	let left = position.x + 10;
+	if (left + dimensions.width > window.innerWidth) {
+		left = Math.max(10, position.x - dimensions.width - 10);
+	}
+
+	// Position vertically: if the cursor is in the bottom half of the screen,
+	// place the tooltip above the cursor so it doesn't overflow the bottom.
+	// Otherwise, place it below the cursor.
+	let top = position.y + 10;
+	if (position.y > window.innerHeight / 2) {
+		top = Math.max(10, position.y - dimensions.height - 10);
+	} else {
+		// If placing below the cursor, make sure it doesn't exceed the viewport height.
+		if (top + dimensions.height > window.innerHeight) {
+			top = Math.max(10, window.innerHeight - dimensions.height - 10);
+		}
+	}
+
 	const tooltipStyle = {
 		position: "fixed" as const,
-		left: Math.min(position.x + 10, window.innerWidth - 320),
-		top: Math.min(position.y + 10, window.innerHeight - 300),
+		left: left,
+		top: top,
 		zIndex: 1000,
+		opacity: isMeasured ? 1 : 0,
+		pointerEvents: isMeasured ? ("auto" as const) : ("none" as const),
 	};
 
 	return createPortal(
@@ -95,11 +128,33 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 					</div>
 
 					{/* Price */}
-					<div className="flex items-center gap-2">
-						<DollarSign className="w-4 h-4 text-muted-foreground" />
-						<div className="text-sm">
-							<span className="font-medium">Price: </span>
-							{batch.package?.packageTiers?.[0]?.adultCost}
+					<div className="flex items-start gap-2">
+						<DollarSign className="w-4 h-4 text-muted-foreground mt-0.5" />
+						<div className="text-sm w-full">
+							{batch.package?.packageTiers && batch.package.packageTiers.length > 1 ? (
+								<>
+									<span className="font-medium">Pricing Tiers: </span>
+									<div className="mt-1.5 space-y-1 bg-muted/40 p-2 rounded-md border text-xs">
+										{batch.package.packageTiers.map((tier) => (
+											<div key={tier.id || tier.name} className="flex justify-between items-center gap-4">
+												<span className="font-medium truncate max-w-[120px]">{tier.name}</span>
+												<span className="text-muted-foreground font-mono">
+													{BookingService.formatCurrency(Number(tier.adultCost) || 0)}
+												</span>
+											</div>
+										))}
+									</div>
+								</>
+							) : (
+								<>
+									<span className="font-medium">Price: </span>
+									<span>
+										{batch.package?.packageTiers?.[0]?.adultCost 
+											? BookingService.formatCurrency(Number(batch.package.packageTiers[0].adultCost))
+											: "No pricing tiers defined"}
+									</span>
+								</>
+							)}
 						</div>
 					</div>
 
@@ -138,13 +193,12 @@ export function BatchTooltip({ batch, position, onClose }: BatchTooltipProps) {
 						</div>
 						<div className="w-full bg-gray-200 rounded-full h-2">
 							<div
-								className={`h-2 rounded-full transition-all duration-300 ${
-									fillPercentage >= 90
+								className={`h-2 rounded-full transition-all duration-300 ${fillPercentage >= 90
 										? "bg-red-500"
 										: fillPercentage >= 75
-										? "bg-yellow-500"
-										: "bg-green-500"
-								}`}
+											? "bg-yellow-500"
+											: "bg-green-500"
+									}`}
 								style={{ width: `${fillPercentage}%` }}
 							></div>
 						</div>

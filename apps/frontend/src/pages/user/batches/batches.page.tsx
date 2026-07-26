@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { BatchList } from "./_components/batch-list";
 import { CalendarView } from "./_components/calendar-view";
 import { CreateBatchDialog } from "./_components/create-batch-dialog";
-import { UpcomingBatches } from "./_components/upcoming-batches";
 
 export default function BatchesPage() {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -62,10 +61,12 @@ export default function BatchesPage() {
 		// If all lists are empty, keep original order
 		if (activeCount === 0 && upcomingCount === 0 && completedCount === 0) {
 			if (tabId === "calendar") return 1;
+			if (tabId === "all") return 2;
 			return 0;
 		}
 
 		if (tabId === "calendar") return 1;
+		if (tabId === "all") return 3;
 
 		const count = tabId === "active"
 			? activeCount
@@ -97,255 +98,255 @@ export default function BatchesPage() {
 	}, [dashboardStats, hasSetDefaultTab]);
 
 	return (
-		<div className="container mx-auto p-6">
-			<div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-				<div className="lg:col-span-3 space-y-6">
-					<div className="flex justify-between items-center">
-						<div>
-							<h1 className="text-3xl font-bold">Batch Management</h1>
-							<p className="text-muted-foreground">
-								Manage tour package batches and track performance
-							</p>
-						</div>
-						<Button onClick={() => setCreateDialogOpen(true)}>
-							<Plus className="w-4 h-4 mr-2" />
-							Create Batch
-						</Button>
-					</div>
+		<div className="container mx-auto p-6 space-y-6">
+			<div className="flex justify-between items-center">
+				<div>
+					<h1 className="text-3xl font-bold">Batch Management</h1>
+					<p className="text-muted-foreground">
+						Manage tour package batches and track performance
+					</p>
+				</div>
+				<Button onClick={() => setCreateDialogOpen(true)}>
+					<Plus className="w-4 h-4 mr-2" />
+					Create Batch
+				</Button>
+			</div>
 
-					{/* Dashboard Stats */}
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-						<Card>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Active Batches
-								</CardTitle>
-								<Users className="h-4 w-4 text-muted-foreground" />
-							</CardHeader>
-							<CardContent>
-								{isLoading ? (
-									<Skeleton className="h-8 w-16 mb-1" />
-								) : (
-									<div className="text-2xl font-bold">
-										{dashboardStats && dashboardStats.activeBatches}
-									</div>
-								)}
-								<p className="text-xs text-muted-foreground">
-									Currently running
-								</p>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Upcoming Batches
-								</CardTitle>
-								<Calendar className="h-4 w-4 text-muted-foreground" />
-							</CardHeader>
-							<CardContent>
-								{isLoading ? (
-									<Skeleton className="h-8 w-16 mb-1" />
-								) : (
-									<div className="text-2xl font-bold">
-										{dashboardStats && dashboardStats.upcomingBatches}
-									</div>
-								)}
-								<p className="text-xs text-muted-foreground">
-									Starting soon
-								</p>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Available Seats
-								</CardTitle>
-								<TrendingUp className="h-4 w-4 text-muted-foreground" />
-							</CardHeader>
-							<CardContent>
-								{isLoading ? (
-									<Skeleton className="h-8 w-16 mb-1" />
-								) : (
-									<div className="text-2xl font-bold">
-										{dashboardStats && dashboardStats.availableSeats}
-									</div>
-								)}
-								<p className="text-xs text-muted-foreground">
-									Across all upcoming batches
-								</p>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Fast Filling
-								</CardTitle>
-								<AlertTriangle className="h-4 w-4 text-muted-foreground" />
-							</CardHeader>
-							<CardContent>
-								{isLoading ? (
-									<Skeleton className="h-8 w-16 mb-1" />
-								) : (
-									<div className="text-2xl font-bold">
-										{dashboardStats && dashboardStats.fastFilling}
-									</div>
-								)}
-								<p className="text-xs text-muted-foreground">
-									{">"} 75% capacity
-								</p>
-							</CardContent>
-						</Card>
-					</div>
-
-					{/* Fast Filling Batches */}
-					<Card>
-						<CardHeader>
-							<CardTitle>Fast Filling Batches</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-4">
-								{isLoading ? (
-									Array.from({ length: 3 }).map((_, i) => (
-										<div key={`skeleton-${i}`} className="flex items-center justify-between p-4 border rounded-lg">
-											<div className="flex-1 space-y-3">
-												<div className="flex items-center gap-2 mb-2">
-													<Skeleton className="h-6 w-1/3" />
-													<Skeleton className="h-5 w-16" />
-												</div>
-												<Skeleton className="h-4 w-1/4" />
-												<div className="flex items-center gap-2 pr-4">
-													<Skeleton className="h-2 flex-1" />
-													<Skeleton className="h-4 w-16" />
-												</div>
-											</div>
-											<div className="ml-4">
-												<Skeleton className="h-8 w-24" />
-											</div>
-										</div>
-									))
-								) : (
-									fastFillingBatches.map((batch) => (
-										<div
-											key={batch.id}
-											className="flex items-center justify-between p-4 border rounded-lg"
-										>
-											<div className="flex-1">
-												<div className="flex items-center gap-2 mb-2">
-													<h3 className="font-semibold">
-														{batch.package?.name}
-													</h3>
-													{batch.fillRate && (
-														<Badge
-															variant={
-																batch.fillRate >= 90
-																	? "destructive"
-																	: "secondary"
-															}
-														>
-															{batch.fillRate}% Full
-														</Badge>
-													)}
-												</div>
-												<p className="text-sm text-muted-foreground mb-2">
-													Starts:{" "}
-													{new Date(
-														batch.startDate
-													).toLocaleDateString()}
-												</p>
-												<div className="flex items-center gap-2">
-													<Progress
-														value={batch.fillRate}
-														className="flex-1"
-													/>
-													<span className="text-sm text-muted-foreground">
-														{batch.bookedSeats}/{batch.totalSeats}{" "}
-														seats
-													</span>
-												</div>
-											</div>
-											<NavLink to={`/batches/${batch.id}`}>
-												<Button variant="outline" size="sm">
-													View Details
-												</Button>
-											</NavLink>
-										</div>
-									))
-								)}
+			{/* Dashboard Stats */}
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Active Batches
+						</CardTitle>
+						<Users className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						{isLoading ? (
+							<Skeleton className="h-8 w-16 mb-1" />
+						) : (
+							<div className="text-2xl font-bold">
+								{dashboardStats && dashboardStats.activeBatches}
 							</div>
-							{!isLoading && fastFillingBatches.length === 0 && (
-								<div className="flex flex-col items-center justify-center py-10">
-									<div className="text-center">
-										<div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
-											<TrendingUp className="h-8 w-8 text-primary" />
+						)}
+						<p className="text-xs text-muted-foreground">
+							Currently running
+						</p>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Upcoming Batches
+						</CardTitle>
+						<Calendar className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						{isLoading ? (
+							<Skeleton className="h-8 w-16 mb-1" />
+						) : (
+							<div className="text-2xl font-bold">
+								{dashboardStats && dashboardStats.upcomingBatches}
+							</div>
+						)}
+						<p className="text-xs text-muted-foreground">
+							Starting soon
+						</p>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Available Seats
+						</CardTitle>
+						<TrendingUp className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						{isLoading ? (
+							<Skeleton className="h-8 w-16 mb-1" />
+						) : (
+							<div className="text-2xl font-bold">
+								{dashboardStats && dashboardStats.availableSeats}
+							</div>
+						)}
+						<p className="text-xs text-muted-foreground">
+							Across all upcoming batches
+						</p>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Fast Filling
+						</CardTitle>
+						<AlertTriangle className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						{isLoading ? (
+							<Skeleton className="h-8 w-16 mb-1" />
+						) : (
+							<div className="text-2xl font-bold">
+								{dashboardStats && dashboardStats.fastFilling}
+							</div>
+						)}
+						<p className="text-xs text-muted-foreground">
+							{">"} 75% capacity
+						</p>
+					</CardContent>
+				</Card>
+			</div>
+
+			{/* Fast Filling Batches */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Fast Filling Batches</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<div className="space-y-4">
+						{isLoading ? (
+							Array.from({ length: 3 }).map((_, i) => (
+								<div key={`skeleton-${i}`} className="flex items-center justify-between p-4 border rounded-lg">
+									<div className="flex-1 space-y-3">
+										<div className="flex items-center gap-2 mb-2">
+											<Skeleton className="h-6 w-1/3" />
+											<Skeleton className="h-5 w-16" />
 										</div>
-										<h3 className="text-lg font-semibold text-primary mb-2">
-											No fast filling batches
-										</h3>
-										<p className="text-sm text-muted-foreground max-w-[250px] mx-auto">
-											There are currently no batches that are close to full capacity.
-										</p>
+										<Skeleton className="h-4 w-1/4" />
+										<div className="flex items-center gap-2 pr-4">
+											<Skeleton className="h-2 flex-1" />
+											<Skeleton className="h-4 w-16" />
+										</div>
+									</div>
+									<div className="ml-4">
+										<Skeleton className="h-8 w-24" />
 									</div>
 								</div>
-							)}
-						</CardContent>
-					</Card>
-
-					{/* Main Content */}
-					<div className="lg:col-span-3">
-						<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-							<TabsList className="flex">
-								<TabsTrigger
-									value="active"
-									style={{ order: getTabPriority("active") }}
+							))
+						) : (
+							fastFillingBatches.map((batch) => (
+								<div
+									key={batch.id}
+									className="flex items-center justify-between p-4 border rounded-lg"
 								>
-									Active Batches {dashboardStats && dashboardStats.activeBatches > 0 ? `(${dashboardStats.activeBatches})` : ""}
-								</TabsTrigger>
-								<TabsTrigger
-									value="upcoming"
-									style={{ order: getTabPriority("upcoming") }}
-								>
-									Upcoming Batches {dashboardStats && dashboardStats.upcomingBatches > 0 ? `(${dashboardStats.upcomingBatches})` : ""}
-								</TabsTrigger>
-								<TabsTrigger
-									value="completed"
-									style={{ order: getTabPriority("completed") }}
-								>
-									Completed Batches {dashboardStats && dashboardStats.completedBatches > 0 ? `(${dashboardStats.completedBatches})` : ""}
-								</TabsTrigger>
-								<TabsTrigger
-									value="calendar"
-									style={{ order: getTabPriority("calendar") }}
-								>
-									Calendar View
-								</TabsTrigger>
-							</TabsList>
-
-							<TabsContent value="active">
-								<BatchList status="active" refreshKey={refreshKey} />
-							</TabsContent>
-
-							<TabsContent value="upcoming">
-								<BatchList status="upcoming" refreshKey={refreshKey} />
-							</TabsContent>
-
-							<TabsContent value="completed">
-								<BatchList status="completed" refreshKey={refreshKey} />
-							</TabsContent>
-
-							<TabsContent value="calendar">
-								<CalendarView refreshKey={refreshKey} />
-							</TabsContent>
-						</Tabs>
+									<div className="flex-1">
+										<div className="flex items-center gap-2 mb-2">
+											<h3 className="font-semibold">
+												{batch.package?.name}
+											</h3>
+											{batch.fillRate && (
+												<Badge
+													variant={
+														batch.fillRate >= 90
+															? "destructive"
+															: "secondary"
+													}
+												>
+													{batch.fillRate}% Full
+												</Badge>
+											)}
+										</div>
+										<p className="text-sm text-muted-foreground mb-2">
+											Starts:{" "}
+											{new Date(
+												batch.startDate
+											).toLocaleDateString()}
+										</p>
+										<div className="flex items-center gap-2">
+											<Progress
+												value={batch.fillRate}
+												className="flex-1"
+											/>
+											<span className="text-sm text-muted-foreground">
+												{batch.bookedSeats}/{batch.totalSeats}{" "}
+												seats
+											</span>
+										</div>
+									</div>
+									<NavLink to={`/batches/${batch.id}`}>
+										<Button variant="outline" size="sm">
+											View Details
+										</Button>
+									</NavLink>
+								</div>
+							))
+						)}
 					</div>
-				</div>
-				{/* Sidebar - Upcoming Batches */}
-				<div className="lg:col-span-1">
-					<UpcomingBatches refreshKey={refreshKey} />
-				</div>
-			</div>
+					{!isLoading && fastFillingBatches.length === 0 && (
+						<div className="flex flex-col items-center justify-center py-10">
+							<div className="text-center">
+								<div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
+									<TrendingUp className="h-8 w-8 text-primary" />
+								</div>
+								<h3 className="text-lg font-semibold text-primary mb-2">
+									No fast filling batches
+								</h3>
+								<p className="text-sm text-muted-foreground max-w-[250px] mx-auto">
+									There are currently no batches that are close to full capacity.
+								</p>
+							</div>
+						</div>
+					)}
+				</CardContent>
+			</Card>
+
+			{/* Main Content */}
+			<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+				<TabsList className="flex">
+					<TabsTrigger
+						value="active"
+						style={{ order: getTabPriority("active") }}
+					>
+						Active Batches {dashboardStats && dashboardStats.activeBatches > 0 ? `(${dashboardStats.activeBatches})` : ""}
+					</TabsTrigger>
+					<TabsTrigger
+						value="upcoming"
+						style={{ order: getTabPriority("upcoming") }}
+					>
+						Upcoming Batches {dashboardStats && dashboardStats.upcomingBatches > 0 ? `(${dashboardStats.upcomingBatches})` : ""}
+					</TabsTrigger>
+					<TabsTrigger
+						value="completed"
+						style={{ order: getTabPriority("completed") }}
+					>
+						Completed Batches {dashboardStats && dashboardStats.completedBatches > 0 ? `(${dashboardStats.completedBatches})` : ""}
+					</TabsTrigger>
+					<TabsTrigger
+						value="calendar"
+						style={{ order: getTabPriority("calendar") }}
+					>
+						Calendar View
+					</TabsTrigger>
+					<TabsTrigger
+						value="all"
+						style={{ order: getTabPriority("all") }}
+					>
+						All Batches {dashboardStats && ((dashboardStats.activeBatches ?? 0) + (dashboardStats.upcomingBatches ?? 0) + (dashboardStats.completedBatches ?? 0)) > 0 ? `(${(dashboardStats.activeBatches ?? 0) + (dashboardStats.upcomingBatches ?? 0) + (dashboardStats.completedBatches ?? 0)})` : ""}
+					</TabsTrigger>
+				</TabsList>
+
+				<TabsContent value="active">
+					<BatchList status="active" refreshKey={refreshKey} />
+				</TabsContent>
+
+				<TabsContent value="upcoming">
+					<BatchList status="upcoming" refreshKey={refreshKey} />
+				</TabsContent>
+
+				<TabsContent value="completed">
+					<BatchList status="completed" refreshKey={refreshKey} />
+				</TabsContent>
+
+				<TabsContent value="calendar">
+					<CalendarView refreshKey={refreshKey} />
+				</TabsContent>
+
+				<TabsContent value="all">
+					<BatchList status="all" refreshKey={refreshKey} />
+				</TabsContent>
+			</Tabs>
 
 			<CreateBatchDialog
 				open={createDialogOpen}

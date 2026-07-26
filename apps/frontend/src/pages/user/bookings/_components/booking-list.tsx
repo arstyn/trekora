@@ -246,9 +246,14 @@ export function BookingList({ status }: BookingListProps) {
 							bookings.map((booking) => (
 								<TableRow key={booking.id}>
 									<TableCell className="font-medium">
-										{BookingService.formatBookingNumber(
-											booking.bookingNumber
-										)}
+										<NavLink
+											to={`/bookings/${booking.id}`}
+											className="hover:underline text-primary cursor-pointer"
+										>
+											{BookingService.formatBookingNumber(
+												booking.bookingNumber
+											)}
+										</NavLink>
 									</TableCell>
 									<TableCell>
 										<div>
