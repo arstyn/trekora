@@ -161,6 +161,16 @@ export function PackageForm({
         (backendData: Partial<IPackages>) => {
             const transformed: any = { ...backendData };
 
+            if (backendData.mealsTemplateId !== undefined) {
+                transformed.mealsTemplateId = backendData.mealsTemplateId || undefined;
+            }
+            if (backendData.paymentStructureTemplateId !== undefined) {
+                transformed.paymentStructureTemplateId = backendData.paymentStructureTemplateId || undefined;
+            }
+            if (backendData.cancellationStructureTemplateId !== undefined) {
+                transformed.cancellationStructureTemplateId = backendData.cancellationStructureTemplateId || undefined;
+            }
+
 
             if (backendData.days !== undefined)
                 transformed.days = Number(backendData.days) || 0;

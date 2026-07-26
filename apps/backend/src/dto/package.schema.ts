@@ -14,6 +14,9 @@ export interface IPackages {
   thumbnail?: string;
   createdById: string;
   organizationId: string;
+  mealsTemplateId?: string;
+  paymentStructureTemplateId?: string;
+  cancellationStructureTemplateId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -143,6 +146,9 @@ export const packageFormSchema = z.object({
   paymentStructure: z.string().optional(),
   cancellationStructure: z.string().optional(),
   mealsBreakdown: z.string().optional(),
+  paymentStructureTemplateId: z.string().optional(),
+  cancellationStructureTemplateId: z.string().optional(),
+  mealsTemplateId: z.string().optional(),
   transportation: z.string().optional(),
   documentRequirements: z.string().optional(),
   preTripChecklist: z.string().optional(),
