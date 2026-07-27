@@ -15,6 +15,7 @@ import {
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Table,
     TableBody,
@@ -23,7 +24,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
 import axiosInstance from "@/lib/axios";
 import type { IBatches } from "@/types/batches.types";
 import { format } from "date-fns";
@@ -40,7 +40,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 interface BatchListProps {
-    status: "active" | "upcoming" | "completed";
+    status: "active" | "upcoming" | "completed" | "all";
     refreshKey?: number;
 }
 
@@ -60,8 +60,9 @@ export function BatchList({ status, refreshKey }: BatchListProps) {
         try {
             setIsLoading(true);
             const currentLimit = customLimit ?? pagination.limit;
+            const statusParam = status === "all" ? "" : status;
             const res = await axiosInstance.get(
-                `/batches?status=${status}&page=${page}&limit=${currentLimit}&search=${search}`,
+                `/batches?status=${statusParam}&page=${page}&limit=${currentLimit}&search=${search}`,
             );
             // Check if backend returned paginated object or fallback
             if (res.data && res.data.pagination) {
@@ -332,14 +333,16 @@ export function BatchList({ status, refreshKey }: BatchListProps) {
                                 <Calendar className="h-10 w-10 text-primary" />
                             </div>
                             <h3 className="text-xl font-semibold text-primary mb-2">
-                                No {status} batches
+                                No {status === "all" ? "All" : status} batches
                             </h3>
                             <p className="text-muted-foreground max-w-sm mx-auto">
-                                {status === "active" 
-                                    ? "There are currently no active batches running." 
-                                    : status === "upcoming" 
-                                    ? "You don't have any upcoming batches scheduled." 
-                                    : "No batches have been completed yet."}
+                                {status === "active"
+                                    ? "There are currently no active batches running."
+                                    : status === "upcoming"
+                                        ? "You don't have any upcoming batches scheduled."
+                                        : status === "completed"
+                                            ? "No batches have been completed yet."
+                                            : "No batches found."}
                             </p>
                         </div>
                     </div>

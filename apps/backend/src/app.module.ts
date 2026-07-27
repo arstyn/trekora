@@ -32,6 +32,8 @@ import { PermissionModule } from './modules/permission/permission.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { MealsModule } from './modules/meals/meals.module';
+import { PaymentStructuresModule } from './modules/payment-structures/payment-structures.module';
+import { CancellationTiersModule } from './modules/cancellation-tiers/cancellation-tiers.module';
 
 @Module({
   imports: [
@@ -69,6 +71,8 @@ import { MealsModule } from './modules/meals/meals.module';
     WorkflowModule,
     ActivityLogModule,
     MealsModule,
+    PaymentStructuresModule,
+    CancellationTiersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

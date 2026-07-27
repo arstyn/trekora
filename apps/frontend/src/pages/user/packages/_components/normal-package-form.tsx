@@ -13,12 +13,19 @@ import {
     type PackageFormData,
 } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save, Trash2, Globe, MapPin, IndianRupee, Landmark } from "lucide-react";
+import { Loader2, Plus, Save, Globe, MapPin, IndianRupee, Landmark, Edit } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getFileUrl } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import paymentStructuresService from "@/services/payment-structures.service";
+import type { IPaymentStructureTemplate } from "@/services/payment-structures.service";
+import cancellationTiersService from "@/services/cancellation-tiers.service";
+import type { ICancellationTierTemplate } from "@/services/cancellation-tiers.service";
+import PaymentStructureForm from "@/pages/user/payment-structures/_components/payment-structure-form";
+import CancellationTierForm from "@/pages/user/cancellation-tiers/_components/cancellation-tier-form";
 
 interface NormalPackageFormProps {
     isEditing?: boolean;
@@ -103,23 +110,78 @@ export function NormalPackageForm({
 
     const thumbnailSrc = localPreview || (thumbnailFile ? (thumbnailFile.startsWith("blob:") || thumbnailFile.startsWith("data:") ? thumbnailFile : getFileUrl(thumbnailFile)) : undefined);
 
-    const {
-        fields: paymentFields,
-        append: appendPayment,
-        remove: removePayment,
-    } = useFieldArray({
-        control: form.control,
-        name: "paymentStructure",
-    });
+    const [paymentTemplates, setPaymentTemplates] = useState<IPaymentStructureTemplate[]>([]);
+    const [cancellationTemplates, setCancellationTemplates] = useState<ICancellationTierTemplate[]>([]);
+    
+    // Dialog control states
+    const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+    const [editingPaymentTemplate, setEditingPaymentTemplate] = useState<any>(null);
+    const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
+    const [editingCancellationTemplate, setEditingCancellationTemplate] = useState<any>(null);
 
-    const {
-        fields: cancellationFields,
-        append: appendCancellation,
-        remove: removeCancellation,
-    } = useFieldArray({
-        control: form.control,
-        name: "cancellationStructure",
-    });
+    const loadTemplates = async () => {
+        try {
+            const pData = await paymentStructuresService.getTemplates();
+            setPaymentTemplates(pData);
+            const cData = await cancellationTiersService.getTemplates();
+            setCancellationTemplates(cData);
+
+            // Default to 0th position if not already set (only if NOT editing)
+            const currentPaymentId = form.getValues("paymentStructureTemplateId");
+            if (pData.length > 0 && !currentPaymentId && !isEditing) {
+                form.setValue("paymentStructureTemplateId", pData[0].id, { shouldValidate: true });
+                form.setValue("paymentStructure", pData[0].milestones.map(m => ({
+                    name: m.name,
+                    amount: m.amount,
+                    description: m.description,
+                    dueDate: m.dueDate,
+                    order: m.order
+                })), { shouldValidate: true });
+            }
+
+            const currentCancellationId = form.getValues("cancellationStructureTemplateId");
+            if (cData.length > 0 && !currentCancellationId && !isEditing) {
+                form.setValue("cancellationStructureTemplateId", cData[0].id, { shouldValidate: true });
+                form.setValue("cancellationStructure", cData[0].tiers.map(t => ({
+                    timeframe: t.timeframe,
+                    amount: t.amount,
+                    description: t.description
+                })), { shouldValidate: true });
+            }
+        } catch (error) {
+            console.error("Error fetching templates in normal package form:", error);
+        }
+    };
+
+    useEffect(() => {
+        loadTemplates();
+    }, [isEditing]);
+
+    const handleSelectPaymentTemplate = (templateId: string) => {
+        const template = paymentTemplates.find((t) => t.id === templateId);
+        if (template) {
+            form.setValue("paymentStructureTemplateId", template.id);
+            form.setValue("paymentStructure", template.milestones.map(m => ({
+                name: m.name,
+                amount: m.amount,
+                description: m.description,
+                dueDate: m.dueDate,
+                order: m.order
+            })));
+        }
+    };
+
+    const handleSelectCancellationTemplate = (templateId: string) => {
+        const template = cancellationTemplates.find((t) => t.id === templateId);
+        if (template) {
+            form.setValue("cancellationStructureTemplateId", template.id);
+            form.setValue("cancellationStructure", template.tiers.map(t => ({
+                timeframe: t.timeframe,
+                amount: t.amount,
+                description: t.description
+            })));
+        }
+    };
 
     useEffect(() => {
         if (!isEditing || !packageId) return;
@@ -178,6 +240,8 @@ export function NormalPackageForm({
                         packageTiers: data.packageTiers && data.packageTiers.length > 0 ? data.packageTiers : defaultValues.packageTiers,
                         paymentStructure: data.paymentStructure && data.paymentStructure.length > 0 ? data.paymentStructure : defaultValues.paymentStructure,
                         cancellationStructure: data.cancellationStructure && data.cancellationStructure.length > 0 ? data.cancellationStructure : defaultValues.cancellationStructure,
+                        paymentStructureTemplateId: data.paymentStructureTemplateId ?? undefined,
+                        cancellationStructureTemplateId: data.cancellationStructureTemplateId ?? undefined,
                     });
                 }
             } catch (error) {
@@ -575,175 +639,216 @@ export function NormalPackageForm({
 
                     {/* Payment Milestone Section */}
                     <Card className="border border-border/60 shadow-sm rounded-xl">
-                        <CardHeader className="flex flex-row items-center justify-between">
+                        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
                             <div>
                                 <CardTitle className="text-xl flex items-center gap-2">
                                     <Landmark className="w-5 h-5 text-primary" />
                                     Payment Structure
                                 </CardTitle>
-                                <CardDescription>Define due date milestones. Percentages must total 100%.</CardDescription>
+                                <CardDescription>Select milestone template or configure inline</CardDescription>
                             </div>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => appendPayment({ name: "", amount: 0, description: "", dueDate: "booking" })}
-                                className="h-8 gap-1 text-xs"
-                            >
-                                <Plus className="w-3.5 h-3.5" /> Add Milestone
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        const selectedId = form.getValues("paymentStructureTemplateId");
+                                        const template = paymentTemplates.find((t) => t.id === selectedId);
+                                        if (template) {
+                                            setEditingPaymentTemplate(template);
+                                            setPaymentDialogOpen(true);
+                                        }
+                                    }}
+                                    disabled={!form.watch("paymentStructureTemplateId")}
+                                    className="h-8 gap-1 text-xs cursor-pointer"
+                                >
+                                    <Edit className="w-3.5 h-3.5" /> Edit Template
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => {
+                                        setEditingPaymentTemplate(null);
+                                        setPaymentDialogOpen(true);
+                                    }}
+                                    className="h-8 gap-1 text-xs cursor-pointer bg-primary"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> Create New
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="flex justify-between items-center p-3 bg-secondary/30 rounded-lg">
-                                <span className="text-sm font-medium">Total Milestone Percentage:</span>
-                                <Badge variant={totalPaymentPercentage === 100 ? "default" : "destructive"}>
-                                    {totalPaymentPercentage}% / 100%
-                                </Badge>
-                            </div>
+                            <FormField
+                                control={form.control}
+                                name="paymentStructureTemplateId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs">Payment Structure Template</FormLabel>
+                                        <Select
+                                            key={paymentTemplates.length}
+                                            onValueChange={(val) => {
+                                                field.onChange(val);
+                                                handleSelectPaymentTemplate(val);
+                                            }}
+                                            value={field.value || ""}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="cursor-pointer">
+                                                    <SelectValue placeholder="Select payment structure..." />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {paymentTemplates.map((t) => (
+                                                    <SelectItem key={t.id} value={t.id}>
+                                                        {t.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                            {paymentFields.map((field, index) => (
-                                <div key={field.id} className="flex gap-4 items-end border p-4 rounded-xl bg-card/40 relative">
-                                    <FormField
-                                        control={form.control}
-                                        name={`paymentStructure.${index}.dueDate`}
-                                        render={({ field }) => (
-                                            <FormItem className="flex-1">
-                                                <FormLabel className="text-xs">Due Date Timeframe</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value || "booking"}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="booking">At Booking</SelectItem>
-                                                        <SelectItem value="30_days_before">30 Days Before</SelectItem>
-                                                        <SelectItem value="2_weeks_before">2 Weeks Before</SelectItem>
-                                                        <SelectItem value="1_week_before">1 Week Before</SelectItem>
-                                                        <SelectItem value="departure">At Departure</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name={`paymentStructure.${index}.amount`}
-                                        render={({ field }) => (
-                                            <FormItem className="flex-1">
-                                                <FormLabel className="text-xs">Percentage (%)</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        max="100"
-                                                        {...field}
-                                                        value={field.value ?? ""}
-                                                        onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        disabled={paymentFields.length === 1}
-                                        onClick={() => removePayment(index)}
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-50/10 h-10 w-10 shrink-0"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
+                            {/* Preview milestones */}
+                            {form.watch("paymentStructure") && form.watch("paymentStructure")!.length > 0 && (
+                                <div className="space-y-3 pt-3 border-t">
+                                    <div className="flex justify-between items-center text-sm font-semibold">
+                                        <span className="text-muted-foreground">Milestones Preview</span>
+                                        <Badge variant={totalPaymentPercentage === 100 ? "default" : "destructive"}>
+                                            Total: {totalPaymentPercentage}% / 100%
+                                        </Badge>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {form.watch("paymentStructure")!.map((m, idx) => {
+                                            const formatDue = (d: string) => {
+                                                if (d === "booking") return "Booking";
+                                                if (d === "30_days_before") return "30 Days Before";
+                                                if (d === "2_weeks_before") return "2 Weeks Before";
+                                                if (d === "1_week_before") return "1 Week Before";
+                                                if (d === "departure") return "Departure";
+                                                return d;
+                                            };
+                                            return (
+                                                <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-secondary/35 border rounded-lg">
+                                                    <div>
+                                                        <div className="font-bold">{m.name || `Milestone ${idx + 1}`}</div>
+                                                        {m.description && <div className="text-[10px] text-muted-foreground">{m.description}</div>}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="text-[10px]">{formatDue(m.dueDate || "")}</Badge>
+                                                        <Badge variant="secondary" className="font-bold">{m.amount}%</Badge>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            ))}
+                            )}
                         </CardContent>
                     </Card>
 
                     {/* Cancellation Section */}
                     <Card className="border border-border/60 shadow-sm rounded-xl">
-                        <CardHeader className="flex flex-row items-center justify-between">
+                        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
                             <div>
                                 <CardTitle className="text-xl flex items-center gap-2">
                                     <MapPin className="w-5 h-5 text-primary" />
                                     Cancellation Tiers
                                 </CardTitle>
-                                <CardDescription>Policy percentages based on timeframe</CardDescription>
+                                <CardDescription>Select cancellation policy template or configure inline</CardDescription>
                             </div>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => appendCancellation({ timeframe: "30_days_before", amount: 0, description: "" })}
-                                className="h-8 gap-1 text-xs"
-                            >
-                                <Plus className="w-3.5 h-3.5" /> Add Tier
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        const selectedId = form.getValues("cancellationStructureTemplateId");
+                                        const template = cancellationTemplates.find((t) => t.id === selectedId);
+                                        if (template) {
+                                            setEditingCancellationTemplate(template);
+                                            setCancellationDialogOpen(true);
+                                        }
+                                    }}
+                                    disabled={!form.watch("cancellationStructureTemplateId")}
+                                    className="h-8 gap-1 text-xs cursor-pointer"
+                                >
+                                    <Edit className="w-3.5 h-3.5" /> Edit Template
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => {
+                                        setEditingCancellationTemplate(null);
+                                        setCancellationDialogOpen(true);
+                                    }}
+                                    className="h-8 gap-1 text-xs cursor-pointer bg-primary"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> Create New
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {cancellationFields.map((field, index) => (
-                                <div key={field.id} className="flex gap-4 items-end border p-4 rounded-xl bg-card/40 relative">
-                                    <FormField
-                                        control={form.control}
-                                        name={`cancellationStructure.${index}.timeframe`}
-                                        render={({ field }) => (
-                                            <FormItem className="flex-1">
-                                                <FormLabel className="text-xs">Timeframe</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value || "30_days_before"}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="30_days_before">30+ Days Before</SelectItem>
-                                                        <SelectItem value="2_weeks_before">15-30 Days Before</SelectItem>
-                                                        <SelectItem value="1_week_before">7-14 Days Before</SelectItem>
-                                                        <SelectItem value="departure">0-7 Days / No Show</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                            <FormField
+                                control={form.control}
+                                name="cancellationStructureTemplateId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs">Cancellation Tiers Template</FormLabel>
+                                        <Select
+                                            key={cancellationTemplates.length}
+                                            onValueChange={(val) => {
+                                                field.onChange(val);
+                                                handleSelectCancellationTemplate(val);
+                                            }}
+                                            value={field.value || ""}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="cursor-pointer">
+                                                    <SelectValue placeholder="Select cancellation tiers..." />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {cancellationTemplates.map((t) => (
+                                                    <SelectItem key={t.id} value={t.id}>
+                                                        {t.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                                    <FormField
-                                        control={form.control}
-                                        name={`cancellationStructure.${index}.amount`}
-                                        render={({ field }) => (
-                                            <FormItem className="flex-1">
-                                                <FormLabel className="text-xs">Charge Percentage (%)</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        max="100"
-                                                        {...field}
-                                                        value={field.value ?? ""}
-                                                        onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        disabled={cancellationFields.length === 1}
-                                        onClick={() => removeCancellation(index)}
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-50/10 h-10 w-10 shrink-0"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
+                            {/* Preview cancellation tiers */}
+                            {form.watch("cancellationStructure") && form.watch("cancellationStructure")!.length > 0 && (
+                                <div className="space-y-3 pt-3 border-t">
+                                    <div className="text-sm font-semibold text-muted-foreground">Cancellation Policies Preview</div>
+                                    <div className="space-y-2">
+                                        {form.watch("cancellationStructure")!.map((t, idx) => {
+                                            const formatTime = (time: string) => {
+                                                if (time === "30_days_before") return "30+ Days Before";
+                                                if (time === "2_weeks_before") return "15-30 Days Before";
+                                                if (time === "1_week_before") return "7-14 Days Before";
+                                                if (time === "departure") return "0-7 Days Before / No Show";
+                                                return time;
+                                            };
+                                            return (
+                                                <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-secondary/35 border rounded-lg">
+                                                    <div>
+                                                        <div className="font-bold">{formatTime(t.timeframe || "")}</div>
+                                                        {t.description && <div className="text-[10px] text-muted-foreground">{t.description}</div>}
+                                                    </div>
+                                                    <Badge variant="destructive" className="font-bold font-mono">{t.amount}% Charge</Badge>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            ))}
+                            )}
                         </CardContent>
                     </Card>
 
@@ -777,6 +882,48 @@ export function NormalPackageForm({
                     </div>
                 </form>
             </Form>
+
+            {/* Payment Structure dialog */}
+            <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>{editingPaymentTemplate ? "Edit Payment Structure Template" : "Create Payment Structure Template"}</DialogTitle>
+                    </DialogHeader>
+                    <PaymentStructureForm 
+                        initialData={editingPaymentTemplate} 
+                        onSuccess={async (newT: any) => {
+                            await loadTemplates();
+                            setPaymentDialogOpen(false);
+                            if (newT) {
+                                form.setValue("paymentStructureTemplateId", newT.id);
+                                handleSelectPaymentTemplate(newT.id);
+                            }
+                        }}
+                        onCancel={() => setPaymentDialogOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
+
+            {/* Cancellation Tiers dialog */}
+            <Dialog open={cancellationDialogOpen} onOpenChange={setCancellationDialogOpen}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>{editingCancellationTemplate ? "Edit Cancellation Tier Template" : "Create Cancellation Tier Template"}</DialogTitle>
+                    </DialogHeader>
+                    <CancellationTierForm 
+                        initialData={editingCancellationTemplate} 
+                        onSuccess={async (newT: any) => {
+                            await loadTemplates();
+                            setCancellationDialogOpen(false);
+                            if (newT) {
+                                form.setValue("cancellationStructureTemplateId", newT.id);
+                                handleSelectCancellationTemplate(newT.id);
+                            }
+                        }}
+                        onCancel={() => setCancellationDialogOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

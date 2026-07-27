@@ -50,6 +50,15 @@ import MealsPage from "./pages/user/meals/meals.page";
 import CreateMealPage from "./pages/user/meals/create-meal.page";
 import EditMealPage from "./pages/user/meals/edit-meal.page";
 import ViewMealPage from "./pages/user/meals/view-meal.page";
+import DefaultsPage from "./pages/user/defaults/defaults.page";
+import PaymentStructuresPage from "./pages/user/payment-structures/payment-structures.page";
+import CreatePaymentStructurePage from "./pages/user/payment-structures/create-payment-structure.page";
+import EditPaymentStructurePage from "./pages/user/payment-structures/edit-payment-structure.page";
+import ViewPaymentStructurePage from "./pages/user/payment-structures/view-payment-structure.page";
+import CancellationTiersPage from "./pages/user/cancellation-tiers/cancellation-tiers.page";
+import CreateCancellationTierPage from "./pages/user/cancellation-tiers/create-cancellation-tier.page";
+import EditCancellationTierPage from "./pages/user/cancellation-tiers/edit-cancellation-tier.page";
+import ViewCancellationTierPage from "./pages/user/cancellation-tiers/view-cancellation-tier.page";
 
 function AuthenticatedApp() {
     // Add your dashboard and other protected routes here
@@ -128,6 +137,15 @@ function AuthenticatedApp() {
                     <Route path="/meals/create" element={<CreateMealPage />} />
                     <Route path="/meals/edit/:id" element={<EditMealPage />} />
                     <Route path="/meals/:id" element={<ViewMealPage />} />
+                    <Route path="/defaults" element={<DefaultsPage />} />
+                    <Route path="/payment-structures" element={<PaymentStructuresPage />} />
+                    <Route path="/payment-structures/create" element={<CreatePaymentStructurePage />} />
+                    <Route path="/payment-structures/edit/:id" element={<EditPaymentStructurePage />} />
+                    <Route path="/payment-structures/:id" element={<ViewPaymentStructurePage />} />
+                    <Route path="/cancellation-tiers" element={<CancellationTiersPage />} />
+                    <Route path="/cancellation-tiers/create" element={<CreateCancellationTierPage />} />
+                    <Route path="/cancellation-tiers/edit/:id" element={<EditCancellationTierPage />} />
+                    <Route path="/cancellation-tiers/:id" element={<ViewCancellationTierPage />} />
                 </Routes>
             </SidebarInset>
         </SidebarProvider>

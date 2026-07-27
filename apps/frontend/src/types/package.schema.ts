@@ -77,6 +77,9 @@ export interface IPackages {
     groundTransportationCost?: number;
     packageTiers?: PackageTier[];
     additionalCosts?: AdditionalCost[];
+    mealsTemplateId?: string;
+    paymentStructureTemplateId?: string;
+    cancellationStructureTemplateId?: string;
 }
 
 export interface AdditionalCost {
@@ -213,6 +216,9 @@ export const packageFormSchema = z
         paymentStructure: z.array(paymentMilestoneSchema).optional(),
         cancellationStructure: z.array(cancellationTierSchema).optional(),
         mealsBreakdown: mealsBreakdownSchema.optional(),
+        mealsTemplateId: z.string().optional(),
+        paymentStructureTemplateId: z.string().optional(),
+        cancellationStructureTemplateId: z.string().optional(),
         transportation: z.array(transportationSchema).optional(),
         documentRequirements: z.array(documentRequirementSchema).optional(),
         preTripChecklist: z.array(checklistItemSchema).optional(),

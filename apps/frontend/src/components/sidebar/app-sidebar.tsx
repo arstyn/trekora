@@ -37,7 +37,6 @@ import {
     Tickets,
     UsersIcon,
     Loader2,
-    ChefHat,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -188,9 +187,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 ]
                 : []),
             {
-                title: "Meals",
-                url: "/meals",
-                icon: ChefHat,
+                title: "Defaults",
+                url: "/defaults",
+                icon: SettingsIcon,
             },
         ],
         documents: [

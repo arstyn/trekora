@@ -22,9 +22,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import type { PackageFormData } from "@/types/package.schema";
-import { Clock, Hash, MapPin, Plus, Save, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Clock, Hash, MapPin, Plus, Save, Trash2, Utensils } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
+import mealsService from "@/services/meals.service";
+import type { IMeal } from "@/types/meals.types";
 
 interface StepLogisticsProps {
     form: UseFormReturn<PackageFormData>;
@@ -223,6 +225,37 @@ export function StepLogistics({
         name: "transportation",
     });
 
+    const [mealsTemplates, setMealsTemplates] = useState<IMeal[]>([]);
+
+    useEffect(() => {
+        const loadMeals = async () => {
+            try {
+                const data = await mealsService.getMeals();
+                setMealsTemplates(data);
+            } catch (error) {
+                console.error("Error fetching meals templates:", error);
+            }
+        };
+        loadMeals();
+    }, []);
+
+    const handleSelectMealTemplate = (templateId: string) => {
+        if (templateId === "none") {
+            form.setValue("mealsTemplateId", undefined);
+            form.setValue("mealsBreakdown.breakfast", []);
+            form.setValue("mealsBreakdown.lunch", []);
+            form.setValue("mealsBreakdown.dinner", []);
+            return;
+        }
+        const template = mealsTemplates.find((t) => t.id === templateId);
+        if (template) {
+            form.setValue("mealsTemplateId", template.id);
+            form.setValue("mealsBreakdown.breakfast", template.breakfast?.map(item => item.name) || []);
+            form.setValue("mealsBreakdown.lunch", template.lunch?.map(item => item.name) || []);
+            form.setValue("mealsBreakdown.dinner", template.dinner?.map(item => item.name) || []);
+        }
+    };
+
     const [newMealItem, setNewMealItem] = useState<{
         type: "breakfast" | "lunch" | "dinner";
         value: string;
@@ -262,6 +295,39 @@ export function StepLogistics({
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    <FormField
+                        control={form.control}
+                        name="mealsTemplateId"
+                        render={({ field }) => (
+                            <FormItem className="pb-4 border-b border-muted">
+                                <FormLabel className="font-bold flex items-center gap-1.5">
+                                    <Utensils className="h-4 w-4 text-primary" /> Select Meal Plan Template
+                                </FormLabel>
+                                <Select 
+                                    onValueChange={(val) => {
+                                        field.onChange(val);
+                                        handleSelectMealTemplate(val);
+                                    }} 
+                                    value={field.value || "none"}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger className="cursor-pointer">
+                                            <SelectValue placeholder="Select a pre-defined meal plan..." />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="none">None (Custom Meals)</SelectItem>
+                                        {mealsTemplates.map((t) => (
+                                            <SelectItem key={t.id} value={t.id}>
+                                                {t.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </FormItem>
+                        )}
+                    />
+
                     {(["breakfast", "lunch", "dinner"] as const).map((type) => (
                         <div key={type} className="space-y-2">
                             <Label className="capitalize font-bold">

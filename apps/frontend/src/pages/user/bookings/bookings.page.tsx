@@ -1,30 +1,26 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BookingService from "@/services/booking.service";
-import type { IBookingListItem, IBookingStatistics } from "@/types/booking.types";
+import type { IBookingStatistics } from "@/types/booking.types";
 import {
 	AlertCircle,
 	AlertTriangle,
 	Calendar,
 	DollarSign,
-	Loader2,
 	Plus,
 	TrendingUp,
 	Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
 import { BookingList } from "./_components/booking-list";
 import { CreateBookingDialog } from "./_components/create-booking-dialog";
 
 export default function BookingsPage() {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [dashboardStats, setDashboardStats] = useState<IBookingStatistics | null>(null);
-	const [recentBookings, setRecentBookings] = useState<IBookingListItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
@@ -37,34 +33,14 @@ export default function BookingsPage() {
 			setLoading(true);
 			setError(null);
 
-			// Fetch both dashboard stats and recent bookings in parallel
-			const [statsData, recentData] = await Promise.all([
-				BookingService.getBookingStatistics(),
-				BookingService.getRecentBookings(5),
-			]);
+			const statsData = await BookingService.getBookingStatistics();
 
 			setDashboardStats(statsData);
-			setRecentBookings(recentData);
 		} catch (err) {
 			console.error("Error fetching dashboard data:", err);
 			setError("Failed to load dashboard data. Please try again.");
 		} finally {
 			setLoading(false);
-		}
-	};
-
-	const getStatusBadge = (status: string) => {
-		switch (status) {
-			case "confirmed":
-				return <Badge className="bg-green-100 text-green-800">Confirmed</Badge>;
-			case "pending":
-				return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-			case "cancelled":
-				return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
-			case "completed":
-				return <Badge className="bg-blue-100 text-blue-800">Completed</Badge>;
-			default:
-				return <Badge variant="secondary">{status}</Badge>;
 		}
 	};
 
@@ -224,104 +200,7 @@ export default function BookingsPage() {
 				) : null}
 			</div>
 
-			{/* Recent Bookings */}
-			<Card>
-				<CardHeader>
-					<div className="flex justify-between items-center">
-						<CardTitle>Recent Bookings</CardTitle>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={fetchDashboardData}
-							disabled={loading}
-						>
-							{loading ? (
-								<Loader2 className="h-4 w-4 animate-spin" />
-							) : (
-								"Refresh"
-							)}
-						</Button>
-					</div>
-				</CardHeader>
-				<CardContent>
-					{loading ? (
-						<div className="space-y-4">
-							{Array.from({ length: 3 }).map((_, i) => (
-								<div key={i} className="flex items-center justify-between p-4 border rounded-lg">
-									<div className="flex-1 space-y-2">
-										<Skeleton className="h-6 w-1/3" />
-										<Skeleton className="h-4 w-1/4" />
-										<Skeleton className="h-4 w-1/2" />
-									</div>
-									<Skeleton className="h-9 w-24" />
-								</div>
-							))}
-						</div>
-					) : recentBookings.length > 0 ? (
-						<div className="space-y-4">
-							{recentBookings.map((booking) => (
-								<div
-									key={booking.id}
-									className="flex items-center justify-between p-4 border rounded-lg"
-								>
-									<div className="flex-1">
-										<div className="flex items-center gap-2 mb-2">
-											<h3 className="font-semibold">
-												{BookingService.formatBookingNumber(
-													booking.bookingNumber
-												)}{" "}
-												- {booking.customerName}
-											</h3>
-											{getStatusBadge(booking.status)}
-										</div>
-										<p className="text-sm text-muted-foreground mb-2">
-											{booking.packageName} •{" "}
-											{booking.numberOfCustomers} passenger(s)
-										</p>
-										<div className="flex items-center gap-4">
-											<span className="text-sm">
-												Total:{" "}
-												{BookingService.formatCurrency(
-													booking.totalAmount
-												)}
-											</span>
-											<span className="text-sm">
-												Paid:{" "}
-												{BookingService.formatCurrency(
-													booking.advancePaid
-												)}
-											</span>
-											<span className="text-sm text-muted-foreground">
-												Balance:{" "}
-												{BookingService.formatCurrency(
-													booking.balanceAmount
-												)}
-											</span>
-										</div>
-									</div>
-									<NavLink to={`/bookings/${booking.id}`}>
-										<Button variant="outline" size="sm">
-											View Details
-										</Button>
-									</NavLink>
-								</div>
-							))}
-						</div>
-					) : (
-						<div className="flex flex-col items-center justify-center py-8">
-							<div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
-								<Calendar className="h-8 w-8 text-primary" />
-							</div>
-							<h3 className="text-lg font-semibold text-primary mb-1">
-								No recent bookings
-							</h3>
-							<p className="text-muted-foreground text-sm">
-								Bookings will appear here once created.
-							</p>
-						</div>
-					)}
-				</CardContent>
-			</Card>
+
 
 			{/* Booking Tabs */}
 			<Tabs defaultValue="all" className="space-y-4">

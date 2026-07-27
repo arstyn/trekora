@@ -186,6 +186,15 @@ export class Package {
   @JoinColumn()
   organization: Organization;
 
+  @Column({ type: 'uuid', nullable: true, name: 'payment_structure_template_id' })
+  paymentStructureTemplateId: string;
+
+  @Column({ type: 'uuid', nullable: true, name: 'cancellation_structure_template_id' })
+  cancellationStructureTemplateId: string;
+
+  @Column({ type: 'uuid', nullable: true, name: 'meals_template_id' })
+  mealsTemplateId: string;
+
   @CreateDateColumn({ name: 'created_at', nullable: true })
   createdAt: Date;
 
