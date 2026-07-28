@@ -24,6 +24,7 @@ import GoogleCallbackPage from "./pages/auth/google-callback";
 import OnboardingPage from "./pages/auth/onboarding";
 import ResendActivationPage from "./pages/auth/resend-activation";
 import { Home } from "./pages/general/home";
+import ServerErrorPage from "./pages/general/server-error";
 import ActivityLogsPage from "./pages/user/admin/logs.page";
 import AdminOverviewPage from "./pages/user/admin/overview.page";
 import BatchesPage from "./pages/user/batches/batches.page";
@@ -43,6 +44,7 @@ import BlockSlotsPage from "./pages/user/defaults/block-slots.page";
 import DefaultsPage from "./pages/user/defaults/defaults.page";
 import { EmployeesPage } from "./pages/user/employees/employees.page";
 import TeamHierarchyPage from "./pages/user/employees/team-hierarchy.page";
+import ViewEmployeePage from "./pages/user/employees/view-employee.page";
 import ImportPage from "./pages/user/import/import.page";
 import ManagerOverviewPage from "./pages/user/manager/overview.page";
 import CreateMealPage from "./pages/user/meals/create-meal.page";
@@ -60,7 +62,6 @@ import PermissionSetsPage from "./pages/user/permissions/permission-sets.page";
 import PermissionsPage from "./pages/user/permissions/permissions.page";
 import SettingsPage from "./pages/user/settings/settings.page";
 import TodosPage from "./pages/user/todos/todos.page";
-import ServerErrorPage from "./pages/general/server-error";
 
 function AuthenticatedApp() {
     // Add your dashboard and other protected routes here
@@ -92,6 +93,7 @@ function AuthenticatedApp() {
                     />
                     <Route path="/permissions" element={<PermissionsPage />} />
                     <Route path="/employees" element={<EmployeesPage />} />
+                    <Route path="/employees/:id" element={<ViewEmployeePage />} />
                     <Route
                         path="/employees/hierarchy"
                         element={<TeamHierarchyPage />}
