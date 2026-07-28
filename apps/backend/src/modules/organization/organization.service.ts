@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Organization } from 'src/database/entity/organization.entity';
+import { User } from 'src/database/entity/user.entity';
 import { Repository } from 'typeorm';
+import { seedDefaultTemplates } from './seed-templates.helper';
 
 @Injectable()
 export class OrganizationService {
@@ -13,7 +15,19 @@ export class OrganizationService {
   // Create a new organization
   async create(organizationData: Partial<Organization>): Promise<Organization> {
     const newUser = this.organizationRepository.create(organizationData);
-    return await this.organizationRepository.save(newUser);
+    const org = await this.organizationRepository.save(newUser);
+
+    try {
+      // Find the first user in the database to associate as the creator
+      const anyUser = await this.organizationRepository.manager.findOne(User, { where: {} });
+      if (anyUser) {
+        await seedDefaultTemplates(this.organizationRepository.manager, org.id, anyUser.id);
+      }
+    } catch (err) {
+      console.error('Failed to seed default templates for new organization in OrganizationService:', err);
+    }
+
+    return org;
   }
 
   // Find all organizations

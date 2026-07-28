@@ -24,6 +24,7 @@ import { UserService } from '../user/user.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { CompleteOnboardingDto } from 'src/dto/complete-onboarding.dto';
 import { randomUUID } from 'crypto';
+import { seedDefaultTemplates } from '../organization/seed-templates.helper';
 
 @Injectable()
 export class AuthService {
@@ -208,13 +209,15 @@ export class AuthService {
 
       const savedUser = await queryRunner.manager.save(newUser);
 
-      // Create user organization relation
       const userOrg = queryRunner.manager.create(UserOrganization, {
         userId: savedUser.id,
         organizationId: savedOrganization.id,
         relation: 'owner'
       });
       await queryRunner.manager.save(userOrg);
+
+      // Seed default templates for the new organization
+      await seedDefaultTemplates(queryRunner.manager, savedOrganization.id, savedUser.id);
 
       // Create employee
       const employee = queryRunner.manager.create(Employee, {
