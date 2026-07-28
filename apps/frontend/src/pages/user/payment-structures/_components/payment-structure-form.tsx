@@ -1,17 +1,16 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { toast } from "sonner";
-import { Plus, Trash2, Save, X, Info } from "lucide-react";
-
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import paymentStructuresService from "@/services/payment-structures.service";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Info, Plus, Save, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import * as z from "zod";
 
 const milestoneSchema = z.object({
     name: z.string().min(1, "Milestone name is required"),
@@ -65,9 +64,9 @@ export default function PaymentStructureForm({
                 description: m.description || "",
                 dueDate: m.dueDate || "booking",
             })) || [
-                { name: "Booking Amount", amount: 20, description: "Initial deposit", dueDate: "booking" },
-                { name: "Second Installment", amount: 80, description: "Balance payment", dueDate: "departure" }
-            ],
+                    { name: "Booking Amount", amount: 20, description: "Initial deposit", dueDate: "booking" },
+                    { name: "Second Installment", amount: 80, description: "Balance payment", dueDate: "departure" }
+                ],
         },
     });
 
@@ -106,7 +105,7 @@ export default function PaymentStructureForm({
             if (onSuccess) {
                 onSuccess(result);
             } else {
-                navigate("/payment-structures");
+                navigate("/defaults/payment-structures");
             }
         } catch (error: any) {
             console.error("Error saving template:", error);
@@ -299,7 +298,7 @@ export default function PaymentStructureForm({
                             if (onCancel) {
                                 onCancel();
                             } else {
-                                navigate("/payment-structures");
+                                navigate("/defaults/payment-structures");
                             }
                         }}
                         disabled={submitting}

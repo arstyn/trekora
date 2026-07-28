@@ -1,12 +1,12 @@
+import { FileUploader } from "@/components/file-uploader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     Card,
     CardContent
 } from "@/components/ui/card";
-import { FileUploader } from "@/components/file-uploader";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
@@ -38,17 +38,17 @@ import {
     AlertCircle,
     ArrowLeft,
     ArrowRight,
+    Baby,
     Calendar,
     Check,
     ChevronRight,
     Loader2,
     Package as PackageIcon,
+    PersonStanding,
     Plus,
     Search,
-    X,
     User,
-    PersonStanding,
-    Baby
+    X
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -58,6 +58,10 @@ interface CreateBookingDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onBookingCreated?: () => void;
+    preselectedBatchId?: string;
+    preselectedPackageId?: string;
+    preselectedBlockId?: string;
+    preselectedBlockSlots?: number;
 }
 
 export interface ICreateBookingFormData {
@@ -79,12 +83,18 @@ export interface ICreateBookingFormData {
     paymentStructureId: string;
     isPaymentOverridden: boolean;
     paymentOverrideReason: string;
+    batchBlockId?: string;
+    overrideCapacityLimit: boolean;
 }
 
 export function CreateBookingDialog({
     open,
     onOpenChange,
     onBookingCreated,
+    preselectedBatchId,
+    preselectedPackageId,
+    preselectedBlockId,
+    preselectedBlockSlots,
 }: CreateBookingDialogProps) {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -107,9 +117,9 @@ export function CreateBookingDialog({
     const [passportOverrides, setPassportOverrides] = useState<Record<string, boolean>>({});
 
     const [formData, setFormData] = useState<ICreateBookingFormData>({
-        packageId: "",
+        packageId: preselectedPackageId || "",
         packageTierId: "",
-        batchId: "",
+        batchId: preselectedBatchId || "",
         numberOfCustomers: 0,
         customers: [],
         totalAmount: 0,
@@ -125,6 +135,8 @@ export function CreateBookingDialog({
         paymentStructureId: "",
         isPaymentOverridden: false,
         paymentOverrideReason: "",
+        batchBlockId: preselectedBlockId || "",
+        overrideCapacityLimit: false,
     });
 
     const selectedPackage = packages.find((p) => p.id === formData.packageId);
@@ -171,6 +183,18 @@ export function CreateBookingDialog({
             toast.error("Failed to sync traveler details");
         }
     };
+    const getAvailableSeats = (batchObj: IBatches | undefined) => {
+        if (!batchObj) return 0;
+        const total = batchObj.totalSeats || 0;
+        const booked = batchObj.bookedSeats || 0;
+        const blocked = batchObj.blockedSeats || 0;
+
+        if (formData.batchBlockId && batchObj.id === formData.batchId) {
+            return total - booked - blocked + (preselectedBlockSlots || 0);
+        }
+        return total - booked - blocked;
+    };
+
     // Form validation per step
     const validateStep = (currentStep: number) => {
         const newErrors: Record<string, string> = {};
@@ -183,13 +207,19 @@ export function CreateBookingDialog({
         if (currentStep === 2) {
             if (formData.customers.length === 0) {
                 newErrors.customers = "Please select at least one customer";
-            } else if (selectedPackage?.packageLocation?.type === 'international') {
-                const pendingWarnings = formData.customers.some(c => {
-                    const status = checkPassportStatus(c);
-                    return status.hasWarning && !passportOverrides[c.id];
-                });
-                if (pendingWarnings) {
-                    newErrors.passport = "Please resolve or override all traveler passport warnings before proceeding.";
+            } else {
+                if (selectedPackage?.packageLocation?.type === 'international') {
+                    const pendingWarnings = formData.customers.some(c => {
+                        const status = checkPassportStatus(c);
+                        return status.hasWarning && !passportOverrides[c.id];
+                    });
+                    if (pendingWarnings) {
+                        newErrors.passport = "Please resolve or override all traveler passport warnings before proceeding.";
+                    }
+                }
+                const availableSeats = getAvailableSeats(selectedBatch);
+                if (selectedBatch && formData.customers.length > availableSeats && !formData.overrideCapacityLimit) {
+                    newErrors.capacity = `Selected travelers (${formData.customers.length}) exceed batch capacity (${availableSeats} seats left). Check override option to proceed.`;
                 }
             }
         }
@@ -200,6 +230,10 @@ export function CreateBookingDialog({
             }
             if (formData.isPaymentOverridden && !formData.paymentOverrideReason.trim()) {
                 newErrors.paymentOverrideReason = "Please provide a reason for overriding the payment amount";
+            }
+            const availableSeats = getAvailableSeats(selectedBatch);
+            if (selectedBatch && formData.customers.length > availableSeats && !formData.overrideCapacityLimit) {
+                newErrors.capacity = `Selected travelers (${formData.customers.length}) exceed batch capacity (${availableSeats} seats left). Check override option to submit.`;
             }
         }
 
@@ -615,6 +649,8 @@ export function CreateBookingDialog({
                 paymentStructureId: formData.paymentStructureId || undefined,
                 isPaymentOverridden: formData.isPaymentOverridden,
                 paymentOverrideReason: formData.paymentOverrideReason || undefined,
+                batchBlockId: formData.batchBlockId || undefined,
+                overrideCapacityLimit: formData.overrideCapacityLimit,
                 initialPayment:
                     formData.advanceAmount > 0
                         ? {
@@ -689,6 +725,7 @@ export function CreateBookingDialog({
             paymentStructureId: "",
             isPaymentOverridden: false,
             paymentOverrideReason: "",
+            overrideCapacityLimit: false,
         });
         setStep(1);
         setCustomerSearch("");
@@ -944,7 +981,7 @@ export function CreateBookingDialog({
                                                     {availableBatches.length > 0 ? (
                                                         <div className="grid gap-3 grid-cols-1">
                                                             {availableBatches.map((batch) => {
-                                                                const availableSeats = batch.totalSeats - batch.bookedSeats;
+                                                                const availableSeats = getAvailableSeats(batch);
                                                                 const isSelected = formData.batchId === batch.id;
                                                                 return (
                                                                     <div
@@ -1022,6 +1059,40 @@ export function CreateBookingDialog({
                                                     <Alert variant="destructive" className="mt-2 py-2">
                                                         <AlertCircle className="h-4 w-4" />
                                                         <AlertDescription>{errors.passport}</AlertDescription>
+                                                    </Alert>
+                                                )}
+                                                {selectedBatch && formData.customers.length > getAvailableSeats(selectedBatch) && (
+                                                    <Alert className="mt-2 border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-500 py-3">
+                                                        <AlertCircle className="h-4 w-4 text-amber-500" />
+                                                        <AlertDescription className="space-y-2">
+                                                            <div className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                                                                Capacity Warning: Travelers ({formData.customers.length}) exceed available seats ({getAvailableSeats(selectedBatch)} left).
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <Checkbox
+                                                                    id="overrideCapacityLimit"
+                                                                    checked={formData.overrideCapacityLimit}
+                                                                    onCheckedChange={(checked) => {
+                                                                        setFormData(prev => ({
+                                                                            ...prev,
+                                                                            overrideCapacityLimit: !!checked
+                                                                        }));
+                                                                        if (errors.capacity) {
+                                                                            setErrors(prev => ({ ...prev, capacity: "" }));
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <Label htmlFor="overrideCapacityLimit" className="text-xs font-semibold cursor-pointer text-foreground">
+                                                                    Override batch capacity limit
+                                                                </Label>
+                                                            </div>
+                                                        </AlertDescription>
+                                                    </Alert>
+                                                )}
+                                                {errors.capacity && (
+                                                    <Alert variant="destructive" className="mt-2 py-2">
+                                                        <AlertCircle className="h-4 w-4" />
+                                                        <AlertDescription>{errors.capacity}</AlertDescription>
                                                     </Alert>
                                                 )}
                                             </div>
@@ -1335,6 +1406,40 @@ export function CreateBookingDialog({
                                 {/* STEP 3: PAYMENTS & NOTES */}
                                 {step === 3 && (
                                     <div className="space-y-6">
+                                        {selectedBatch && formData.customers.length > getAvailableSeats(selectedBatch) && (
+                                            <Alert className="border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-500 py-3">
+                                                <AlertCircle className="h-4 w-4 text-amber-500" />
+                                                <AlertDescription className="space-y-2">
+                                                    <div className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                                                        Capacity Warning: Travelers ({formData.customers.length}) exceed available seats ({getAvailableSeats(selectedBatch)} left).
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Checkbox
+                                                            id="overrideCapacityLimitStep3"
+                                                            checked={formData.overrideCapacityLimit}
+                                                            onCheckedChange={(checked) => {
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    overrideCapacityLimit: !!checked
+                                                                }));
+                                                                if (errors.capacity) {
+                                                                    setErrors(prev => ({ ...prev, capacity: "" }));
+                                                                }
+                                                            }}
+                                                        />
+                                                        <Label htmlFor="overrideCapacityLimitStep3" className="text-xs font-semibold cursor-pointer text-foreground">
+                                                            Override batch capacity limit and book anyway
+                                                        </Label>
+                                                    </div>
+                                                </AlertDescription>
+                                            </Alert>
+                                        )}
+                                        {errors.capacity && (
+                                            <Alert variant="destructive" className="py-2">
+                                                <AlertCircle className="h-4 w-4" />
+                                                <AlertDescription>{errors.capacity}</AlertDescription>
+                                            </Alert>
+                                        )}
                                         {/* Summary & Breakdown Card */}
                                         <div className="rounded-xl border border-primary/10 bg-primary/[0.02] overflow-hidden">
                                             <div className="p-4 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
@@ -1406,8 +1511,8 @@ export function CreateBookingDialog({
                                                             <div
                                                                 key={milestone.id}
                                                                 className={`p-3.5 border rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-between hover:border-primary/50 hover:shadow-xs ${isSelected && !formData.isPaymentOverridden
-                                                                        ? "border-primary bg-primary/5 ring-1 ring-primary"
-                                                                        : "bg-card border-border"
+                                                                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                                                    : "bg-card border-border"
                                                                     }`}
                                                                 onClick={() => {
                                                                     if (!formData.isPaymentOverridden) {

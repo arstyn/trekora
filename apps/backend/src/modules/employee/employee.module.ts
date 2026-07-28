@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Employee } from 'src/database/entity/employee.entity';
@@ -21,8 +21,8 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     UserModule,
     UserInviteModule,
     MailerModule,
-    PermissionModule,
-    ActivityLogModule,
+    forwardRef(() => PermissionModule),
+    forwardRef(() => ActivityLogModule),
   ],
   exports: [EmployeeService],
 })

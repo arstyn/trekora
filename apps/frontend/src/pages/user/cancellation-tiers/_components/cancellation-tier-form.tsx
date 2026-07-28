@@ -1,16 +1,15 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { toast } from "sonner";
-import { Plus, Trash2, Save, X } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import cancellationTiersService from "@/services/cancellation-tiers.service";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus, Save, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import * as z from "zod";
 
 const tierSchema = z.object({
     timeframe: z.string().min(1, "Timeframe is required"),
@@ -53,9 +52,9 @@ export default function CancellationTierForm({
                 amount: Number(t.amount) || 0,
                 description: t.description || "",
             })) || [
-                { timeframe: "30_days_before", amount: 10, description: "Low cancellation fee" },
-                { timeframe: "departure", amount: 100, description: "Full charge" }
-            ],
+                    { timeframe: "30_days_before", amount: 10, description: "Low cancellation fee" },
+                    { timeframe: "departure", amount: 100, description: "Full charge" }
+                ],
         },
     });
 
@@ -79,7 +78,7 @@ export default function CancellationTierForm({
             if (onSuccess) {
                 onSuccess(result);
             } else {
-                navigate("/cancellation-tiers");
+                navigate("/defaults/cancellation-tiers");
             }
         } catch (error: any) {
             console.error("Error saving cancellation template:", error);
@@ -240,7 +239,7 @@ export default function CancellationTierForm({
                             if (onCancel) {
                                 onCancel();
                             } else {
-                                navigate("/cancellation-tiers");
+                                navigate("/defaults/cancellation-tiers");
                             }
                         }}
                         disabled={submitting}

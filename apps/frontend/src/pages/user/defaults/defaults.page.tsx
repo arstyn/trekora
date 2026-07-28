@@ -1,7 +1,7 @@
-import { useNavigate } from "react-router-dom";
-import { ChefHat, Banknote, AlertTriangle, ArrowRight, Settings2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertTriangle, ArrowRight, Banknote, ChefHat, Settings2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function DefaultsPage() {
     const navigate = useNavigate();
@@ -10,7 +10,7 @@ export default function DefaultsPage() {
         {
             title: "Meal Plans",
             description: "Manage default menus and item configurations for Breakfast, Lunch, and Dinner.",
-            url: "/meals",
+            url: "/defaults/meals",
             icon: ChefHat,
             color: "from-amber-500/10 to-orange-500/10 text-amber-600 border-amber-500/20",
             iconBg: "bg-amber-100 dark:bg-amber-950/50 text-amber-600",
@@ -19,7 +19,7 @@ export default function DefaultsPage() {
         {
             title: "Payment Structures",
             description: "Define template milestone percentages and payment due date guidelines.",
-            url: "/payment-structures",
+            url: "/defaults/payment-structures",
             icon: Banknote,
             color: "from-emerald-500/10 to-teal-500/10 text-emerald-600 border-emerald-500/20",
             iconBg: "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600",
@@ -27,12 +27,21 @@ export default function DefaultsPage() {
         },
         {
             title: "Cancellation Tiers",
-            description: "Configure charge percentages and timeframes for guest cancellations.",
-            url: "/cancellation-tiers",
+            description: "Configure charge percentages and time-frames for guest cancellations.",
+            url: "/defaults/cancellation-tiers",
             icon: AlertTriangle,
             color: "from-rose-500/10 to-red-500/10 text-rose-600 border-rose-500/20",
             iconBg: "bg-rose-100 dark:bg-rose-950/50 text-rose-600",
             badge: "Risk & Policies",
+        },
+        {
+            title: "Block Duration",
+            description: "Configure default timeframe (in days) for temporarily blocking batch slots.",
+            url: "/defaults/block-slots",
+            icon: Settings2,
+            color: "from-blue-500/10 to-indigo-500/10 text-blue-600 border-blue-500/20",
+            iconBg: "bg-blue-100 dark:bg-blue-950/50 text-blue-600",
+            badge: "Sales & Bookings",
         },
     ];
 
@@ -51,13 +60,13 @@ export default function DefaultsPage() {
                 {sections.map((section, idx) => {
                     const Icon = section.icon;
                     return (
-                        <Card 
-                            key={idx} 
+                        <Card
+                            key={idx}
                             className="group relative overflow-hidden border border-muted bg-card/40 backdrop-blur-md shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300 flex flex-col justify-between"
                         >
                             {/* Decorative top gradient bar */}
                             <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${section.color}`} />
-                            
+
                             <CardHeader className="pt-6 pb-4">
                                 <div className="flex items-center justify-between">
                                     <div className={`p-3 rounded-xl ${section.iconBg} transition-transform duration-300 group-hover:scale-110`}>
@@ -76,11 +85,11 @@ export default function DefaultsPage() {
                             </CardHeader>
 
                             <CardContent className="pb-6 pt-2">
-                                <Button 
+                                <Button
                                     onClick={() => navigate(section.url)}
                                     className="w-full flex items-center justify-center gap-2 group/btn cursor-pointer bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm"
                                 >
-                                    Manage Configurations 
+                                    Manage Configurations
                                     <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                                 </Button>
                             </CardContent>

@@ -7,30 +7,44 @@ const AuthContext = createContext({
 	isAuthenticated: false,
 	user: null as IUser | null,
 	loading: true,
+	isBackendDown: false,
 	logout: () => {},
-	refresh: () => Promise.resolve(),
+	refresh: () => Promise.resolve() as Promise<void>,
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const [user, setUser] = useState<IUser | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [isBackendDown, setIsBackendDown] = useState(false);
 
 	const checkAuth = async () => {
-		const token = await getAccessToken();
-		if (token) {
-			try {
+		const hasToken = !!localStorage.getItem("accessToken") || !!localStorage.getItem("refreshToken");
+		try {
+			const token = await getAccessToken();
+			if (token) {
 				const res = await axiosInstance.get("/employee/profile");
 				setUser(res.data?.user || null);
 				setIsAuthenticated(true);
-			} catch (err) {
-				console.error("Auth check failed", err);
+				setIsBackendDown(false);
+			} else {
 				setIsAuthenticated(false);
 				setUser(null);
+				setIsBackendDown(false);
 			}
-		} else {
-			setIsAuthenticated(false);
-			setUser(null);
+		} catch (err: any) {
+			console.error("Auth check failed", err);
+			const isNetwork = !err.response && (err.request || err.code === "ERR_NETWORK" || err.message === "Network Error");
+			if (isNetwork) {
+				setIsBackendDown(true);
+				if (hasToken) {
+					setIsAuthenticated(true);
+				}
+			} else {
+				setIsAuthenticated(false);
+				setUser(null);
+				setIsBackendDown(false);
+			}
 		}
 		setLoading(false);
 	};
@@ -47,10 +61,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 				isAuthenticated,
 				user,
 				loading,
+				isBackendDown,
 				logout: () => {
 					logout();
 					setIsAuthenticated(false);
 					setUser(null);
+					setIsBackendDown(false);
 				},
 				refresh: checkAuth,
 			}}

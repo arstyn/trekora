@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { Navigate, useParams, useNavigate } from "react-router-dom";
-import { useMyPermissionSets } from "@/hooks/use-permissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMyPermissionSets } from "@/hooks/use-permissions";
+import cancellationTiersService from "@/services/cancellation-tiers.service";
 import { AlertTriangle, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import CancellationTierForm from "./_components/cancellation-tier-form";
-import cancellationTiersService from "@/services/cancellation-tiers.service";
 
 export default function EditCancellationTierPage() {
     const { id } = useParams<{ id: string }>();
@@ -24,7 +24,7 @@ export default function EditCancellationTierPage() {
             } catch (error) {
                 console.error("Error loading template:", error);
                 toast.error("Failed to load cancellation template");
-                navigate("/cancellation-tiers");
+                navigate("/defaults/cancellation-tiers");
             } finally {
                 setLoadingTemplate(false);
             }
@@ -47,7 +47,7 @@ export default function EditCancellationTierPage() {
     );
 
     if (!isAdminOrManager) {
-        return <Navigate to="/cancellation-tiers" replace />;
+        return <Navigate to="/defaults/cancellation-tiers" replace />;
     }
 
     return (
@@ -64,7 +64,7 @@ export default function EditCancellationTierPage() {
                 <CardHeader>
                     <CardTitle>Template Details</CardTitle>
                     <CardDescription>
-                        Specify cancellation timeframes and charge percentages.
+                        Specify cancellation time-frames and charge percentages.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

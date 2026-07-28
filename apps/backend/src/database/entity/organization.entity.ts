@@ -37,6 +37,9 @@ export class Organization {
   @Column({ type: 'varchar', nullable: true, name: 'description' })
   description?: string;
 
+  @Column({ type: 'int', default: 3, name: 'default_block_days' })
+  defaultBlockDays: number;
+
   @OneToMany(() => UserOrganization, (userOrg) => userOrg.organization)
   userOrganizations: UserOrganization[];
 }

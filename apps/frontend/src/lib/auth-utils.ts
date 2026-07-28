@@ -16,8 +16,12 @@ export const refreshToken = async () => {
 		const accessToken = response.data.accessToken;
 		localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
 		return accessToken;
-	} catch (error) {
+	} catch (error: any) {
 		console.error("Failed to refresh token", error);
+		const isNetwork = !error.response && (error.request || error.code === "ERR_NETWORK" || error.message === "Network Error");
+		if (isNetwork) {
+			throw error;
+		}
 		return null;
 	}
 };
@@ -32,17 +36,21 @@ export const getAccessToken = async () => {
 	const token = localStorage.getItem(ACCESS_TOKEN_KEY);
 	if (!token) return null;
 
+	let isExpired = false;
 	try {
 		const decoded = jwtDecode(token);
-		if (decoded.exp && decoded.exp * 1000 > Date.now()) {
-			return token;
-		} else {
-			return await refreshToken();
+		if (!decoded.exp || decoded.exp * 1000 <= Date.now()) {
+			isExpired = true;
 		}
 	} catch (e) {
 		console.log("Invalid token:", e);
+		isExpired = true;
+	}
+
+	if (isExpired) {
 		return await refreshToken();
 	}
+	return token;
 };
 
 export const getSession = async () => {

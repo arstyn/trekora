@@ -1,7 +1,7 @@
-import { Navigate } from "react-router-dom";
-import { useMyPermissionSets } from "@/hooks/use-permissions";
-import { MealForm } from "./_components/meal-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMyPermissionSets } from "@/hooks/use-permissions";
+import { Navigate } from "react-router-dom";
+import { MealForm } from "./_components/meal-form";
 
 export default function CreateMealPage() {
     const { permissionSets, loading } = useMyPermissionSets();
@@ -19,7 +19,7 @@ export default function CreateMealPage() {
     }
 
     if (!isAdminOrManager) {
-        return <Navigate to="/meals" replace />;
+        return <Navigate to="/defaults/meals" replace />;
     }
 
     return (

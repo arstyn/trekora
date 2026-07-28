@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -11,7 +12,6 @@ import {
 } from 'class-validator';
 import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
 import { BookingStatus } from 'src/database/entity/booking.entity';
-import { IsBoolean } from 'class-validator';
 
 export class CustomerSelectionDto {
   @IsUUID()
@@ -107,6 +107,14 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   paymentOverrideReason?: string;
+
+  @IsOptional()
+  @IsUUID()
+  batchBlockId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  overrideCapacityLimit?: boolean;
 }
 
 export class UpdateBookingDto {

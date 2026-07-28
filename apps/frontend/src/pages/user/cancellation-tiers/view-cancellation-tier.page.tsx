@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, User, Clock, Trash2, Edit } from "lucide-react";
-import { toast } from "sonner";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMyPermissionSets } from "@/hooks/use-permissions";
 import type { ICancellationTierTemplate } from "@/services/cancellation-tiers.service";
 import cancellationTiersService from "@/services/cancellation-tiers.service";
+import { AlertTriangle, ArrowLeft, Clock, Edit, Trash2, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function ViewCancellationTierPage() {
     const { id } = useParams<{ id: string }>();
@@ -30,7 +29,7 @@ export default function ViewCancellationTierPage() {
             } catch (error) {
                 console.error("Error fetching template:", error);
                 toast.error("Failed to load cancellation tier");
-                navigate("/cancellation-tiers");
+                navigate("/defaults/cancellation-tiers");
             } finally {
                 setLoading(false);
             }
@@ -47,7 +46,7 @@ export default function ViewCancellationTierPage() {
         try {
             await cancellationTiersService.deleteTemplate(template.id);
             toast.success("Cancellation tier template deleted successfully");
-            navigate("/cancellation-tiers");
+            navigate("/defaults/cancellation-tiers");
         } catch (error) {
             console.error("Error deleting template:", error);
             toast.error("Failed to delete template");
@@ -75,7 +74,7 @@ export default function ViewCancellationTierPage() {
     return (
         <div className="container mx-auto p-6 max-w-3xl space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
-                <Button variant="outline" size="sm" onClick={() => navigate("/cancellation-tiers")} className="cursor-pointer">
+                <Button variant="outline" size="sm" onClick={() => navigate("/defaults/cancellation-tiers")} className="cursor-pointer">
                     <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to templates
                 </Button>
                 {!permissionLoading && isAdminOrManager && (
@@ -83,7 +82,7 @@ export default function ViewCancellationTierPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate(`/cancellation-tiers/edit/${template.id}`)}
+                            onClick={() => navigate(`/defaults/cancellation-tiers/edit/${template.id}`)}
                             className="cursor-pointer border-primary/20 text-primary hover:bg-primary/5"
                         >
                             <Edit className="mr-1.5 h-4 w-4" /> Edit Template

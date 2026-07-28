@@ -1,7 +1,7 @@
-import { Navigate } from "react-router-dom";
-import { useMyPermissionSets } from "@/hooks/use-permissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMyPermissionSets } from "@/hooks/use-permissions";
 import { Banknote } from "lucide-react";
+import { Navigate } from "react-router-dom";
 import PaymentStructureForm from "./_components/payment-structure-form";
 
 export default function CreatePaymentStructurePage() {
@@ -20,7 +20,7 @@ export default function CreatePaymentStructurePage() {
     );
 
     if (!isAdminOrManager) {
-        return <Navigate to="/payment-structures" replace />;
+        return <Navigate to="/defaults/payment-structures" replace />;
     }
 
     return (
