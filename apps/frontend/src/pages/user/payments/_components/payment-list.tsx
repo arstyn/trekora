@@ -382,7 +382,12 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
                             payments.map((payment) => (
                                 <TableRow key={payment.id}>
                                     <TableCell className="font-medium">
-                                        {payment.paymentNumber}
+                                        <NavLink
+                                            to={`/payments/${payment.id}`}
+                                            className="text-blue-600 hover:underline"
+                                        >
+                                            {payment.paymentNumber}
+                                        </NavLink>
                                     </TableCell>
                                     <TableCell>
                                         <NavLink
