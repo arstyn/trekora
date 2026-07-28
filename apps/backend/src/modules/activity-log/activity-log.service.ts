@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { ActivityLog } from 'src/database/entity/activity-log.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class ActivityLogService {
   constructor(
     @InjectRepository(ActivityLog)
     private readonly activityLogRepository: Repository<ActivityLog>,
-  ) {}
+  ) { }
 
   async log(
     organizationId: string,
@@ -43,5 +43,13 @@ export class ActivityLogService {
       .andWhere("log.metadata ->> 'employeeId' = :employeeId", { employeeId })
       .orderBy('log.createdAt', 'DESC')
       .getMany();
+  }
+
+  async findByAction(organizationId: string, action: string): Promise<ActivityLog[]> {
+    return this.activityLogRepository.find({
+      where: { organizationId, action },
+      relations: ['performedBy'],
+      order: { createdAt: 'DESC' },
+    });
   }
 }

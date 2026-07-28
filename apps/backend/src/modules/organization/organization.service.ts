@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Organization } from 'src/database/entity/organization.entity';
 import { User } from 'src/database/entity/user.entity';
 import { Repository } from 'typeorm';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 import { seedDefaultTemplates } from './seed-templates.helper';
 
 @Injectable()
@@ -10,7 +11,9 @@ export class OrganizationService {
   constructor(
     @InjectRepository(Organization)
     private readonly organizationRepository: Repository<Organization>,
-  ) {}
+    @Inject(forwardRef(() => ActivityLogService))
+    private readonly activityLogService: ActivityLogService,
+  ) { }
 
   // Create a new organization
   async create(organizationData: Partial<Organization>): Promise<Organization> {
@@ -48,9 +51,44 @@ export class OrganizationService {
   async update(
     id: string,
     updateData: Partial<Organization>,
+    userId?: string,
   ): Promise<Organization | null> {
+    const existingOrg = await this.findOne(id);
+    const previousDays = existingOrg?.defaultBlockDays ?? 3;
+
     await this.organizationRepository.update(id, updateData);
-    return await this.findOne(id);
+    const updatedOrg = await this.findOne(id);
+
+    if (
+      userId &&
+      updateData.defaultBlockDays !== undefined &&
+      previousDays !== updateData.defaultBlockDays
+    ) {
+      try {
+        await this.activityLogService.log(
+          id,
+          userId,
+          'block_slots_default_updated',
+          `Updated default block duration from ${previousDays} ${previousDays === 1 ? 'day' : 'days'} to ${updateData.defaultBlockDays} ${updateData.defaultBlockDays === 1 ? 'day' : 'days'}`,
+          {
+            previousValue: previousDays,
+            newValue: updateData.defaultBlockDays,
+          },
+        );
+      } catch (err) {
+        console.error('Failed to log block slots default update:', err);
+      }
+    }
+
+    return updatedOrg;
+  }
+
+  // Fetch block slot audit logs for an organization
+  async getBlockSlotLogs(organizationId: string) {
+    return await this.activityLogService.findByAction(
+      organizationId,
+      'block_slots_default_updated',
+    );
   }
 
   // Delete a organization by ID
