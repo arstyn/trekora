@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from 'src/modules/user/user.module';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { EmployeeModule } from '../employee/employee.module';
 import { MailerModule } from '../mailer/mailer.module';
 import { OrganizationModule } from '../organization/organization.module';
@@ -11,7 +12,6 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from './guard/auth.guard';
 import { PermissionGuard } from './guard/permission.guard';
 import { GoogleStrategy } from './strategies/google.strategy';
-import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -22,10 +22,10 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     EmployeeModule,
     MailerModule,
     forwardRef(() => PermissionModule),
-    ActivityLogModule,
+    forwardRef(() => ActivityLogModule),
   ],
   providers: [AuthService, GoogleStrategy, AuthGuard, PermissionGuard],
   controllers: [AuthController],
   exports: [AuthGuard, PermissionGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

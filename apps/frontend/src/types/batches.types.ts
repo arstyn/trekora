@@ -10,6 +10,7 @@ export interface IBatches {
     endDate: Date;
     totalSeats: number;
     bookedSeats: number;
+    blockedSeats: number;
     status: string;
     seatChangeReason?: string;
     packageId: string;
@@ -24,6 +25,7 @@ export interface IBatchStats {
     activeBatches: number;
     upcomingBatches: number;
     completedBatches: number;
+    archivedBatches: number;
     availableSeats: number;
     fastFilling: number;
 }

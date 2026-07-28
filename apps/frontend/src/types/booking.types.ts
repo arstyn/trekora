@@ -139,6 +139,8 @@ export interface ICreateBookingRequest {
     paymentStructureId?: string;
     isPaymentOverridden?: boolean;
     paymentOverrideReason?: string;
+    batchBlockId?: string;
+    overrideCapacityLimit?: boolean;
 }
 
 // For updating bookings

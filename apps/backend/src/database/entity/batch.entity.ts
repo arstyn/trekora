@@ -18,6 +18,7 @@ export enum BatchStatus {
   UPCOMING = 'upcoming',
   ACTIVE = 'active',
   COMPLETED = 'completed',
+  ARCHIVED = 'archived',
 }
 
 @Entity()
@@ -36,6 +37,9 @@ export class Batch {
 
   @Column({ name: 'booked_seats', nullable: true, default: 0 })
   bookedSeats: number;
+
+  @Column({ name: 'blocked_seats', type: 'int', default: 0 })
+  blockedSeats: number;
 
   @Column({ name: 'seat_change_reason', type: 'text', nullable: true })
   seatChangeReason: string;

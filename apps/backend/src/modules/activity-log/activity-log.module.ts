@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityLog } from 'src/database/entity/activity-log.entity';
@@ -10,7 +10,7 @@ import { PermissionModule } from '../permission/permission.module';
   imports: [
     TypeOrmModule.forFeature([ActivityLog]),
     JwtModule.register({}),
-    PermissionModule,
+    forwardRef(() => PermissionModule),
   ],
   controllers: [ActivityLogController],
   providers: [ActivityLogService],

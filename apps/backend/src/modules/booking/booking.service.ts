@@ -4,7 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { BatchBlock, BatchBlockStatus } from 'src/database/entity/batch-block.entity';
+import { BatchLog } from 'src/database/entity/batch-log.entity';
 import { Batch } from 'src/database/entity/batch.entity';
+import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { BookingLog } from 'src/database/entity/booking-log.entity';
 import {
@@ -26,7 +29,6 @@ import {
 import { DataSource, In, Repository } from 'typeorm';
 import { WorkflowType } from '../../database/entity/workflow/workflow.entity';
 import { WorkflowService } from '../workflow/workflow.service';
-import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 
 @Injectable()
 export class BookingService {
@@ -92,8 +94,21 @@ export class BookingService {
         throw new NotFoundException('Batch not found');
       }
 
-      const availableSeats = batch.totalSeats - batch.bookedSeats;
-      if (availableSeats < createBookingDto.customerIds.length) {
+      let availableSeats = batch.totalSeats - batch.bookedSeats - batch.blockedSeats;
+      if (createBookingDto.batchBlockId) {
+        const block = await queryRunner.manager.findOne(BatchBlock, {
+          where: {
+            id: createBookingDto.batchBlockId,
+            batchId: batch.id,
+            status: BatchBlockStatus.ACTIVE,
+          },
+        });
+        if (block) {
+          availableSeats += block.slots;
+        }
+      }
+
+      if (availableSeats < createBookingDto.customerIds.length && !createBookingDto.overrideCapacityLimit) {
         throw new BadRequestException(
           `Only ${availableSeats} seats available in this batch`,
         );
@@ -253,10 +268,47 @@ export class BookingService {
         await queryRunner.manager.save(payment);
       }
 
+      let usedBlock = false;
+      let blockSlots = 0;
+      if (createBookingDto.batchBlockId) {
+        const block = await queryRunner.manager.findOne(BatchBlock, {
+          where: {
+            id: createBookingDto.batchBlockId,
+            batchId: batch.id,
+            status: BatchBlockStatus.ACTIVE,
+          },
+        });
+
+        if (block) {
+          block.status = BatchBlockStatus.CONVERTED;
+          await queryRunner.manager.save(BatchBlock, block);
+          blockSlots = block.slots;
+          usedBlock = true;
+
+          // Log block conversion in batch logs
+          const log = queryRunner.manager.create(BatchLog, {
+            batchId: batch.id,
+            changedById: userId,
+            action: 'slots_converted',
+            previousData: { slots: block.slots, reason: block.reason },
+            newData: { bookingId: savedBooking.id, status: BatchBlockStatus.CONVERTED },
+          });
+          await queryRunner.manager.save(BatchLog, log);
+        }
+      }
+
       // Update batch booked seats
-      await queryRunner.manager.update(Batch, batch.id, {
-        bookedSeats: batch.bookedSeats + createBookingDto.customerIds.length,
-      });
+      const numBooked = createBookingDto.customerIds.length;
+      if (usedBlock) {
+        await queryRunner.manager.update(Batch, batch.id, {
+          bookedSeats: batch.bookedSeats + numBooked,
+          blockedSeats: Math.max(0, batch.blockedSeats - blockSlots),
+        });
+      } else {
+        await queryRunner.manager.update(Batch, batch.id, {
+          bookedSeats: batch.bookedSeats + numBooked,
+        });
+      }
 
       // Set the current workflow ID back to the booking
       await queryRunner.manager.update(Booking, savedBooking.id, {
@@ -324,10 +376,10 @@ export class BookingService {
         createdAt: booking.createdAt,
         createdBy: booking.createdBy
           ? {
-              id: booking.createdBy.id,
-              name: booking.createdBy.name,
-              email: booking.createdBy.email,
-            }
+            id: booking.createdBy.id,
+            name: booking.createdBy.name,
+            email: booking.createdBy.email,
+          }
           : null,
       }));
 
@@ -367,10 +419,10 @@ export class BookingService {
       createdAt: booking.createdAt,
       createdBy: booking.createdBy
         ? {
-            id: booking.createdBy.id,
-            name: booking.createdBy.name,
-            email: booking.createdBy.email,
-          }
+          id: booking.createdBy.id,
+          name: booking.createdBy.name,
+          email: booking.createdBy.email,
+        }
         : null,
     }));
   }
@@ -409,10 +461,10 @@ export class BookingService {
       createdAt: booking.createdAt,
       createdBy: booking.createdBy
         ? {
-            id: booking.createdBy.id,
-            name: booking.createdBy.name,
-            email: booking.createdBy.email,
-          }
+          id: booking.createdBy.id,
+          name: booking.createdBy.name,
+          email: booking.createdBy.email,
+        }
         : null,
     }));
   }
@@ -600,18 +652,18 @@ export class BookingService {
         if (bookingToUpdate) {
           // Remove old booking customers
           await queryRunner.manager.delete(BookingCustomer, { bookingId: id });
-          
+
           // Create new booking customers
-          const newBookingCustomers = customers.map(c => 
+          const newBookingCustomers = customers.map(c =>
             queryRunner.manager.create(BookingCustomer, {
               bookingId: id,
               customerId: c.id,
-              ageCategory: 'adult' 
+              ageCategory: 'adult'
             })
           );
-          
+
           await queryRunner.manager.save(BookingCustomer, newBookingCustomers);
-          
+
           bookingToUpdate.numberOfCustomers = customers.length;
           await queryRunner.manager.save(bookingToUpdate);
         }
@@ -900,7 +952,7 @@ export class BookingService {
 
       const removedBookingCustomer = booking.bookingCustomers.splice(customerIndex, 1)[0];
       await queryRunner.manager.delete(BookingCustomer, removedBookingCustomer.id);
-      
+
       booking.numberOfCustomers = booking.bookingCustomers.length;
 
       const packageEntity = await this.packageRepository.findOne({

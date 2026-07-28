@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "sonner";
-import { ArrowLeft, ChefHat, Edit, Utensils } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyPermissionSets } from "@/hooks/use-permissions";
-import type { IMeal } from "@/types/meals.types";
 import mealsService from "@/services/meals.service";
+import type { IMeal } from "@/types/meals.types";
+import { ArrowLeft, ChefHat, Edit, Utensils } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function ViewMealPage() {
     const { id } = useParams<{ id: string }>();
@@ -52,7 +51,7 @@ export default function ViewMealPage() {
             <div className="container mx-auto p-6 text-center">
                 <h2 className="text-xl font-bold text-destructive">Meal Option Not Found</h2>
                 <p className="text-muted-foreground mt-2">The requested meal details could not be loaded.</p>
-                <Button onClick={() => navigate("/meals")} className="mt-4">
+                <Button onClick={() => navigate("/defaults/meals")} className="mt-4">
                     Back to Meals List
                 </Button>
             </div>
@@ -72,7 +71,7 @@ export default function ViewMealPage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => navigate("/meals")}
+                        onClick={() => navigate("/defaults/meals")}
                         className="rounded-full hover:bg-muted"
                     >
                         <ArrowLeft className="h-5 w-5" />
@@ -87,7 +86,7 @@ export default function ViewMealPage() {
                     </div>
                 </div>
                 {isAdminOrManager && (
-                    <Button onClick={() => navigate(`/meals/edit/${meal.id}`)}>
+                    <Button onClick={() => navigate(`/defaults/meals/edit/${meal.id}`)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit Meal Option
                     </Button>
                 )}

@@ -31,6 +31,7 @@ import {
     Calendar,
     Edit,
     Eye,
+    Info,
     MoreHorizontal,
     Search,
     Users,
@@ -38,9 +39,10 @@ import {
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface BatchListProps {
-    status: "active" | "upcoming" | "completed" | "all";
+    status: "active" | "upcoming" | "completed" | "archived" | "all";
     refreshKey?: number;
 }
 
@@ -129,6 +131,12 @@ export function BatchList({ status, refreshKey }: BatchListProps) {
                         Completed
                     </Badge>
                 );
+            case "archived":
+                return (
+                    <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                        Archived
+                    </Badge>
+                );
             default:
                 return <Badge variant="secondary">{status}</Badge>;
         }
@@ -154,6 +162,45 @@ export function BatchList({ status, refreshKey }: BatchListProps) {
         const month = (date.getMonth() + 1).toString().padStart(2, "0");
         const year = date.getFullYear();
         return `${day}/${month}/${year}`;
+    };
+
+    const getBatchDueInfo = (batch: IBatches) => {
+        if (batch.status !== "upcoming") return null;
+
+        const startDate = new Date(batch.startDate);
+        const today = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+
+        const diffTime = startDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+            return {
+                highlightClass: "text-red-600 dark:text-red-400 font-semibold",
+                iconClass: "text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300",
+                tooltipText: "Batch start date has passed. Please mark this as active, completed or archived.",
+            };
+        } else if (diffDays === 0) {
+            return {
+                highlightClass: "text-orange-500 dark:text-orange-400 font-semibold",
+                iconClass: "text-orange-500 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300",
+                tooltipText: "Batch starts today!",
+            };
+        } else if (diffDays <= 3) {
+            return {
+                highlightClass: "text-orange-500 dark:text-orange-400 font-semibold",
+                iconClass: "text-orange-500 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300",
+                tooltipText: `Batch is starting soon (due in ${diffDays} ${diffDays === 1 ? 'day' : 'days'}).`,
+            };
+        } else if (diffDays <= 7) {
+            return {
+                highlightClass: "text-yellow-500 dark:text-yellow-400 font-semibold",
+                iconClass: "text-yellow-500 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300",
+                tooltipText: `Batch is approaching start date (due in ${diffDays} days).`,
+            };
+        }
+        return null;
     };
 
     return (
@@ -212,11 +259,35 @@ export function BatchList({ status, refreshKey }: BatchListProps) {
                                     {batch.package?.name}
                                 </TableCell>
                                 <TableCell>
-                                    <div className="flex items-center gap-1 text-sm">
-                                        <Calendar className="w-4 h-4" />
-                                        {formatDate(batch.startDate)} -{" "}
-                                        {formatDate(batch.endDate)}
-                                    </div>
+                                    {(() => {
+                                        const dueInfo = getBatchDueInfo(batch);
+                                        const highlightClass = dueInfo?.highlightClass || "";
+
+                                        return (
+                                            <div className={`flex items-center gap-1.5 text-sm ${highlightClass}`}>
+                                                <Calendar className="w-4 h-4 shrink-0" />
+                                                <span>
+                                                    {formatDate(batch.startDate)} - {formatDate(batch.endDate)}
+                                                </span>
+                                                {dueInfo && (
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <button
+                                                                type="button"
+                                                                className={`inline-flex focus:outline-none cursor-help shrink-0 ${dueInfo.iconClass}`}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <Info className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            {dueInfo.tooltipText}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-1">
@@ -342,7 +413,9 @@ export function BatchList({ status, refreshKey }: BatchListProps) {
                                         ? "You don't have any upcoming batches scheduled."
                                         : status === "completed"
                                             ? "No batches have been completed yet."
-                                            : "No batches found."}
+                                            : status === "archived"
+                                                ? "No batches have been archived yet."
+                                                : "No batches found."}
                             </p>
                         </div>
                     </div>

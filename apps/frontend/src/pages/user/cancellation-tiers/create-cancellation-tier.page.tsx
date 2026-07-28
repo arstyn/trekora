@@ -1,7 +1,7 @@
-import { Navigate } from "react-router-dom";
-import { useMyPermissionSets } from "@/hooks/use-permissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMyPermissionSets } from "@/hooks/use-permissions";
 import { AlertTriangle } from "lucide-react";
+import { Navigate } from "react-router-dom";
 import CancellationTierForm from "./_components/cancellation-tier-form";
 
 export default function CreateCancellationTierPage() {
@@ -20,7 +20,7 @@ export default function CreateCancellationTierPage() {
     );
 
     if (!isAdminOrManager) {
-        return <Navigate to="/cancellation-tiers" replace />;
+        return <Navigate to="/defaults/cancellation-tiers" replace />;
     }
 
     return (
@@ -37,7 +37,7 @@ export default function CreateCancellationTierPage() {
                 <CardHeader>
                     <CardTitle>Template Details</CardTitle>
                     <CardDescription>
-                        Specify cancellation timeframes and charge percentages.
+                        Specify cancellation time-frames and charge percentages.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

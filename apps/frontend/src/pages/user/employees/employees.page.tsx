@@ -270,7 +270,7 @@ export function EmployeesPage() {
                                 </DropdownMenuItem>
                             ) : (
                                 <>
-                                    {(employee.status === "inactive" || employee.status === "pending_activation") && (
+                                    {(employee.status === "inactive" || employee.status === "pending_activation" || !employee.userId) && (
                                         <DropdownMenuItem
                                             className="text-blue-600"
                                             onClick={async (e) => {
@@ -278,7 +278,7 @@ export function EmployeesPage() {
                                                 await handleResendInvite(employee);
                                             }}
                                         >
-                                            {employee.status === "pending_activation" ? "Resend Invite" : "Send Invite"}
+                                            {employee.status === "pending_activation" || (employee.status === "active" && !employee.userId) ? "Resend Invite" : "Send Invite"}
                                         </DropdownMenuItem>
                                     )}
                                     {employee.status === "terminated" && (
@@ -394,12 +394,12 @@ export function EmployeesPage() {
 
     // Handle employee row click
     const handleEmployeeClick = (employee: IEmployee) => {
-        navigate(`?selected=${employee.id}`);
+        navigate(`/employees/${employee.id}`);
     };
 
     // Handle viewing an employee
     const handleViewEmployee = (employee: IEmployee) => {
-        navigate(`?selected=${employee.id}`);
+        navigate(`/employees/${employee.id}`);
     };
 
     // Handle editing an employee

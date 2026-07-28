@@ -1,17 +1,16 @@
-import React from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { ArrowLeft, ChefHat, Plus, Save, Trash2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mealFormSchema, type MealFormData, type IMeal } from "@/types/meals.types";
 import mealsService from "@/services/meals.service";
+import { mealFormSchema, type IMeal, type MealFormData } from "@/types/meals.types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowLeft, ChefHat, Plus, Save, Trash2 } from "lucide-react";
+import React from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface MealFormProps {
     initialData?: IMeal | null;
@@ -148,7 +147,7 @@ export const MealForm: React.FC<MealFormProps> = ({ initialData, isEditing = fal
                 await mealsService.createMeal(data);
                 toast.success("Meal option created successfully");
             }
-            navigate("/meals");
+            navigate("/defaults/meals");
         } catch (error: any) {
             console.error("Error saving meal:", error);
             const message = error.response?.data?.message || "Failed to save meal option";
@@ -167,7 +166,7 @@ export const MealForm: React.FC<MealFormProps> = ({ initialData, isEditing = fal
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => navigate("/meals")}
+                            onClick={() => navigate("/defaults/meals")}
                             className="rounded-full hover:bg-muted"
                         >
                             <ArrowLeft className="h-5 w-5" />
@@ -236,7 +235,7 @@ export const MealForm: React.FC<MealFormProps> = ({ initialData, isEditing = fal
                     </Card>
 
                     <div className="flex items-center justify-end space-x-3 pt-4 border-t border-muted">
-                        <Button type="button" variant="outline" onClick={() => navigate("/meals")} disabled={submitting}>
+                        <Button type="button" variant="outline" onClick={() => navigate("/defaults/meals")} disabled={submitting}>
                             Cancel
                         </Button>
                         <Button type="submit" disabled={submitting} className="min-w-[120px]">

@@ -12,6 +12,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     Select,
     SelectContent,
@@ -38,29 +41,33 @@ import type { IWorkflowStep } from "@/types/workflow.types";
 import { format } from "date-fns";
 import {
     Calendar,
+    CheckCircle2,
     ChevronRight,
+    Circle,
     ClipboardList,
     DollarSign,
     Download,
     Edit,
+    GitMerge,
     History,
+    LayoutGrid,
+    LayoutList,
     Mail,
     Phone,
+    Timer,
     Trash2,
     Users,
     XCircle,
-    LayoutGrid,
-    LayoutList,
-    GitMerge,
-    CheckCircle2,
-    Circle,
+    Info,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { CreateBookingDialog } from "../bookings/_components/create-booking-dialog";
+import { BatchReportModal } from "./_components/batch-report-modal";
 import { BookingModal } from "./_components/booking-modal";
 import { CoordinatorModal } from "./_components/coordinator-modal";
-import { BatchReportModal } from "./_components/batch-report-modal";
 
 export default function BatchDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -79,6 +86,15 @@ export default function BatchDetailsPage() {
 
     const [showDownloadModal, setShowDownloadModal] = useState(false);
 
+    const [blocks, setBlocks] = useState<any[]>([]);
+    const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+    const [blockSlotsCount, setBlockSlotsCount] = useState(1);
+    const [blockReason, setBlockReason] = useState("");
+    const [isBlocking, setIsBlocking] = useState(false);
+    const [bookingBlockOpen, setBookingBlockOpen] = useState(false);
+    const [selectedBlockId, setSelectedBlockId] = useState<string>("");
+    const [selectedBlockSlots, setSelectedBlockSlots] = useState<number>(0);
+
     const fetchLogs = useCallback(async () => {
         try {
             const res = await axiosInstance.get<IBatchLog[]>(
@@ -87,6 +103,15 @@ export default function BatchDetailsPage() {
             setBatchLogs(res.data);
         } catch (error) {
             console.error("Failed to fetch logs", error);
+        }
+    }, [id]);
+
+    const fetchBlocks = useCallback(async () => {
+        try {
+            const res = await axiosInstance.get<any[]>(`/batches/${id}/blocks`);
+            setBlocks(res.data);
+        } catch (error) {
+            console.error("Failed to fetch blocks", error);
         }
     }, [id]);
 
@@ -105,6 +130,7 @@ export default function BatchDetailsPage() {
             }
             setBatch(rawBatch);
             fetchLogs();
+            fetchBlocks();
         } catch (error: unknown) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -210,6 +236,45 @@ export default function BatchDetailsPage() {
     const totalBatchPaid = activeBookings.reduce((sum, b) => sum + (Number(b.advancePaid) || 0), 0);
     const totalBatchRemaining = activeBookings.reduce((sum, b) => sum + (Number(b.balanceAmount) || 0), 0);
 
+    const getBatchDueInfo = (batchObj: IBatches) => {
+        if (batchObj.status !== "upcoming") return null;
+
+        const startDate = new Date(batchObj.startDate);
+        const today = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+
+        const diffTime = startDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+            return {
+                highlightClass: "text-red-600 dark:text-red-400 font-semibold",
+                iconClass: "text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300",
+                tooltipText: "Batch start date has passed. Please mark this as active, completed or archived.",
+            };
+        } else if (diffDays === 0) {
+            return {
+                highlightClass: "text-orange-500 dark:text-orange-400 font-semibold",
+                iconClass: "text-orange-500 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300",
+                tooltipText: "Batch starts today!",
+            };
+        } else if (diffDays <= 3) {
+            return {
+                highlightClass: "text-orange-500 dark:text-orange-400 font-semibold",
+                iconClass: "text-orange-500 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300",
+                tooltipText: `Batch is starting soon (due in ${diffDays} ${diffDays === 1 ? 'day' : 'days'}).`,
+            };
+        } else if (diffDays <= 7) {
+            return {
+                highlightClass: "text-yellow-500 dark:text-yellow-400 font-semibold",
+                iconClass: "text-yellow-500 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300",
+                tooltipText: `Batch is approaching start date (due in ${diffDays} days).`,
+            };
+        }
+        return null;
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case "active":
@@ -236,6 +301,12 @@ export default function BatchDetailsPage() {
                         On Hold
                     </Badge>
                 );
+            case "archived":
+                return (
+                    <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                        Archived
+                    </Badge>
+                );
             default:
                 return <Badge variant="secondary">{status}</Badge>;
         }
@@ -254,6 +325,24 @@ export default function BatchDetailsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     {batch && getStatusBadge(batch.status)}
+                    {batch && (
+                        (() => {
+                            const dueInfo = getBatchDueInfo(batch);
+                            if (!dueInfo) return null;
+                            return (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className={`inline-flex items-center justify-center p-1 rounded-full cursor-help shrink-0 ${dueInfo.iconClass}`}>
+                                            <Info className="w-4 h-4" />
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        {dueInfo.tooltipText}
+                                    </TooltipContent>
+                                </Tooltip>
+                            );
+                        })()
+                    )}
                     <div className="flex items-center gap-2">
                         <Select
                             value={batch?.status}
@@ -270,6 +359,9 @@ export default function BatchDetailsPage() {
                                 <SelectItem value="active">Active</SelectItem>
                                 <SelectItem value="completed">
                                     Completed
+                                </SelectItem>
+                                <SelectItem value="archived">
+                                    Archived
                                 </SelectItem>
                             </SelectContent>
                         </Select>
@@ -330,11 +422,10 @@ export default function BatchDetailsPage() {
                                 <Users className="w-4 h-4 text-muted-foreground" />
                                 <div>
                                     <p className="text-sm text-muted-foreground">
-                                        Capacity
+                                        Capacity Status
                                     </p>
                                     <p className="font-medium">
-                                        {batch && batch.bookedSeats}/
-                                        {batch && batch.totalSeats} customers
+                                        {batch && batch.bookedSeats} booked / {batch && (batch.blockedSeats || 0)} blocked / {batch && batch.totalSeats} total capacity
                                     </p>
                                 </div>
                             </div>
@@ -448,9 +539,9 @@ export default function BatchDetailsPage() {
                                 </div>
                             ) : (
                                 <p className="text-sm font-medium">
-                                     {batch && BookingService.formatCurrency(
-                                         Number(batch.package?.packageTiers?.[0]?.adultCost) || 0
-                                     )}
+                                    {batch && BookingService.formatCurrency(
+                                        Number(batch.package?.packageTiers?.[0]?.adultCost) || 0
+                                    )}
                                 </p>
                             )}
                         </div>
@@ -522,6 +613,116 @@ export default function BatchDetailsPage() {
                         <div className="text-center py-8 text-muted-foreground">
                             No coordinators were added
                         </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Temporary Slot Blocking */}
+            <Card className="border shadow-md rounded-2xl overflow-hidden bg-card">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                    <CardTitle className="text-lg font-black flex items-center gap-3">
+                        <Timer className="w-6 h-6 text-primary" />
+                        Temporary Slot Blocking
+                    </CardTitle>
+                    <Button
+                        size="sm"
+                        onClick={() => {
+                            setBlockSlotsCount(1);
+                            setBlockReason("");
+                            setBlockDialogOpen(true);
+                        }}
+                        className="cursor-pointer"
+                    >
+                        Block Slots
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    {blocks.filter(b => b.status === "active").length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground border border-dashed rounded-xl p-4">
+                            No active temporary blocks configured for this batch.
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Slots</TableHead>
+                                    <TableHead>Reason</TableHead>
+                                    <TableHead>Blocked By</TableHead>
+                                    <TableHead>Expires At</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {blocks
+                                    .filter(b => b.status === "active")
+                                    .map((block) => {
+                                        const expiryDate = new Date(block.expiresAt);
+                                        const now = new Date();
+                                        const diffMs = expiryDate.getTime() - now.getTime();
+                                        const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+                                        const diffDays = Math.floor(diffHours / 24);
+                                        const remainingText = diffDays > 0
+                                            ? `${diffDays}d ${diffHours % 24}h remaining`
+                                            : `${diffHours}h remaining`;
+
+                                        return (
+                                            <TableRow key={block.id}>
+                                                <TableCell className="font-bold text-base">
+                                                    {block.slots} seats
+                                                </TableCell>
+                                                <TableCell className="max-w-xs truncate">
+                                                    {block.reason || <span className="text-muted-foreground italic">No reason provided</span>}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {block.createdBy?.name || "Automated System"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium">
+                                                            {expiryDate.toLocaleDateString()}
+                                                        </span>
+                                                        <span className="text-xs text-rose-500 font-semibold">
+                                                            {remainingText}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={async () => {
+                                                                if (!confirm("Are you sure you want to release these blocked slots? Batch capacity will decrease accordingly.")) return;
+                                                                try {
+                                                                    await axiosInstance.post(`/batches/${id}/release-block/${block.id}`);
+                                                                    toast.success("Blocked slots released successfully");
+                                                                    getBranch();
+                                                                } catch (error) {
+                                                                    toast.error("Failed to release blocked slots");
+                                                                }
+                                                            }}
+                                                            className="cursor-pointer border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                                                        >
+                                                            Release
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setSelectedBlockId(block.id);
+                                                                setSelectedBlockSlots(block.slots);
+                                                                setBookingBlockOpen(true);
+                                                            }}
+                                                            className="cursor-pointer"
+                                                        >
+                                                            Convert to Booking
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                            </TableBody>
+                        </Table>
                     )}
                 </CardContent>
             </Card>
@@ -967,17 +1168,15 @@ export default function BatchDetailsPage() {
                                                                 return (
                                                                     <div key={step.id} className="flex items-center">
                                                                         {idx > 0 && (
-                                                                            <div className={`h-[2px] w-6 shrink-0 ${
-                                                                                steps[idx - 1].status === "completed" ? "bg-primary" : "bg-muted"
-                                                                            }`} />
+                                                                            <div className={`h-[2px] w-6 shrink-0 ${steps[idx - 1].status === "completed" ? "bg-primary" : "bg-muted"
+                                                                                }`} />
                                                                         )}
-                                                                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs min-w-[140px] max-w-[180px] bg-background shadow-sm transition-all ${
-                                                                            isActive 
-                                                                                ? "border-primary ring-1 ring-primary/30 animate-pulse" 
-                                                                                : isCompleted 
-                                                                                    ? "border-primary/20 bg-primary/5" 
+                                                                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs min-w-[140px] max-w-[180px] bg-background shadow-sm transition-all ${isActive
+                                                                                ? "border-primary ring-1 ring-primary/30 animate-pulse"
+                                                                                : isCompleted
+                                                                                    ? "border-primary/20 bg-primary/5"
                                                                                     : "border-muted"
-                                                                        }`}>
+                                                                            }`}>
                                                                             <div className="shrink-0">
                                                                                 {isCompleted ? (
                                                                                     <CheckCircle2 className="w-4 h-4 text-primary" />
@@ -1408,6 +1607,45 @@ export default function BatchDetailsPage() {
                                                                 </span>
                                                             );
                                                         }
+                                                        if (log.action === "slots_blocked") {
+                                                            const data = log.newData as any;
+                                                            return (
+                                                                <div className="space-y-1">
+                                                                    <p className="font-bold text-foreground/75">
+                                                                        Blocked <span className="text-primary font-black">{data.slots} slots</span>
+                                                                    </p>
+                                                                    {data.reason && (
+                                                                        <p className="text-xs text-muted-foreground italic">
+                                                                            Reason: "{data.reason}"
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        if (log.action === "slots_released") {
+                                                            const data = log.newData as any;
+                                                            return (
+                                                                <p className="font-bold text-rose-500">
+                                                                    Released <span className="font-extrabold">{data.slots} slots</span> back to batch capacity.
+                                                                </p>
+                                                            );
+                                                        }
+                                                        if (log.action === "slots_expired") {
+                                                            const data = log.newData as any;
+                                                            return (
+                                                                <p className="font-bold text-amber-500">
+                                                                    Expired <span className="font-extrabold">{data.slots} slots</span> (automatic release).
+                                                                </p>
+                                                            );
+                                                        }
+                                                        if (log.action === "slots_converted") {
+                                                            const data = log.newData as any;
+                                                            return (
+                                                                <p className="font-bold text-emerald-600">
+                                                                    Converted <span className="font-extrabold">{data.slots} blocked slots</span> to booking.
+                                                                </p>
+                                                            );
+                                                        }
                                                         if (
                                                             log.action ===
                                                             "update"
@@ -1554,6 +1792,86 @@ export default function BatchDetailsPage() {
                     onOpenChange={(open) =>
                         !open && setSelectedCoordinator(null)
                     }
+                />
+            )}
+
+            {/* Block Slots Dialog */}
+            <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Temporarily Block Slots</DialogTitle>
+                        <DialogDescription>
+                            Enter the number of slots to reserve and the sales inquiry detail. Capacity of the batch will be increased automatically.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="slots">Number of Slots</Label>
+                            <Input
+                                id="slots"
+                                type="number"
+                                min={1}
+                                value={blockSlotsCount}
+                                onChange={(e) => setBlockSlotsCount(parseInt(e.target.value) || 1)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="reason">Reason / Inquiry Details</Label>
+                            <Input
+                                id="reason"
+                                placeholder="e.g. Enquiry from John Doe (sure to pay in 2 days)"
+                                value={blockReason}
+                                onChange={(e) => setBlockReason(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setBlockDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={async () => {
+                                if (blockSlotsCount < 1) {
+                                    toast.error("Please enter a valid number of slots");
+                                    return;
+                                }
+                                setIsBlocking(true);
+                                try {
+                                    await axiosInstance.post(`/batches/${id}/block`, {
+                                        slots: blockSlotsCount,
+                                        reason: blockReason,
+                                    });
+                                    toast.success("Slots blocked successfully");
+                                    setBlockDialogOpen(false);
+                                    getBranch();
+                                } catch (error) {
+                                    toast.error("Failed to block slots");
+                                } finally {
+                                    setIsBlocking(false);
+                                }
+                            }}
+                            disabled={isBlocking}
+                            className="bg-primary"
+                        >
+                            {isBlocking ? "Blocking..." : "Confirm Block"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Create Booking Dialog */}
+            {bookingBlockOpen && batch && (
+                <CreateBookingDialog
+                    open={bookingBlockOpen}
+                    onOpenChange={setBookingBlockOpen}
+                    onBookingCreated={() => {
+                        setBookingBlockOpen(false);
+                        getBranch();
+                    }}
+                    preselectedBatchId={batch.id}
+                    preselectedPackageId={batch.packageId}
+                    preselectedBlockId={selectedBlockId}
+                    preselectedBlockSlots={selectedBlockSlots}
                 />
             )}
         </div>

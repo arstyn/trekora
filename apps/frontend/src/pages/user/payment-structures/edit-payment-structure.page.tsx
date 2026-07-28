@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { Navigate, useParams, useNavigate } from "react-router-dom";
-import { useMyPermissionSets } from "@/hooks/use-permissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMyPermissionSets } from "@/hooks/use-permissions";
+import paymentStructuresService from "@/services/payment-structures.service";
 import { Banknote, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import PaymentStructureForm from "./_components/payment-structure-form";
-import paymentStructuresService from "@/services/payment-structures.service";
 
 export default function EditPaymentStructurePage() {
     const { id } = useParams<{ id: string }>();
@@ -24,7 +24,7 @@ export default function EditPaymentStructurePage() {
             } catch (error) {
                 console.error("Error loading template:", error);
                 toast.error("Failed to load payment structure template");
-                navigate("/payment-structures");
+                navigate("/defaults/payment-structures");
             } finally {
                 setLoadingTemplate(false);
             }
@@ -47,7 +47,7 @@ export default function EditPaymentStructurePage() {
     );
 
     if (!isAdminOrManager) {
-        return <Navigate to="/payment-structures" replace />;
+        return <Navigate to="/defaults/payment-structures" replace />;
     }
 
     return (

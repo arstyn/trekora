@@ -366,6 +366,7 @@ export class BatchesService {
     activeBatches: number;
     upcomingBatches: number;
     completedBatches: number;
+    archivedBatches: number;
     availableSeats: number;
     fastFilling: number;
   }> {
@@ -376,6 +377,7 @@ export class BatchesService {
     let activeBatches = 0;
     let upcomingBatches = 0;
     let completedBatches = 0;
+    let archivedBatches = 0;
     let availableSeats = 0;
     let fastFilling = 0;
 
@@ -387,6 +389,8 @@ export class BatchesService {
         availableSeats += (batch.totalSeats ?? 0) - (batch.bookedSeats ?? 0);
       } else if (batch.status === BatchStatus.COMPLETED) {
         completedBatches++;
+      } else if (batch.status === BatchStatus.ARCHIVED) {
+        archivedBatches++;
       }
 
       if (
@@ -402,6 +406,7 @@ export class BatchesService {
       activeBatches,
       upcomingBatches,
       completedBatches,
+      archivedBatches,
       availableSeats,
       fastFilling,
     };

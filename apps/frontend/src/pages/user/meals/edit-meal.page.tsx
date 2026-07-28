@@ -1,11 +1,11 @@
+import { Skeleton } from "@/components/ui/skeleton";
+import { useMyPermissionSets } from "@/hooks/use-permissions";
+import mealsService from "@/services/meals.service";
+import type { IMeal } from "@/types/meals.types";
 import { useEffect, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { useMyPermissionSets } from "@/hooks/use-permissions";
 import { MealForm } from "./_components/meal-form";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { IMeal } from "@/types/meals.types";
-import mealsService from "@/services/meals.service";
 
 export default function EditMealPage() {
     const { id } = useParams<{ id: string }>();
@@ -44,7 +44,7 @@ export default function EditMealPage() {
     }
 
     if (!isAdminOrManager) {
-        return <Navigate to="/meals" replace />;
+        return <Navigate to="/defaults/meals" replace />;
     }
 
     if (!meal) {

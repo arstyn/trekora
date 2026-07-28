@@ -2,20 +2,19 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
-
 import { UserDepartments } from 'src/database/entity/user-departments.entity';
+import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { User } from 'src/database/entity/user.entity';
 import { IUserProfileDTO } from 'src/dto/user-profile.dto';
 import { DataSource, Repository } from 'typeorm';
 import { IEmployeeCreateDTO } from '../../dto/create-employee.dto';
-import { UploadService } from '../upload/upload.service';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 import { MailerService } from '../mailer/mailer.service';
 import { PermissionSetService } from '../permission/permission-set.service';
+import { UploadService } from '../upload/upload.service';
 import { UserDepartmentsService } from '../user-departments/user-departments.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { UserService } from '../user/user.service';
-import { ActivityLogService } from '../activity-log/activity-log.service';
-import { UserInvite } from 'src/database/entity/user-invite.entity';
 
 @Injectable()
 export class EmployeeService {
@@ -30,7 +29,7 @@ export class EmployeeService {
     private readonly uploadService: UploadService,
     private readonly permissionSetService: PermissionSetService,
     private readonly activityLogService: ActivityLogService,
-  ) {}
+  ) { }
 
   /**
    * Helper method to load permission sets for an employee
@@ -434,8 +433,8 @@ export class EmployeeService {
         throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
       }
 
-      if (employee.status === EmployeeStatus.ACTIVE) {
-        throw new HttpException('Employee is already active.', HttpStatus.BAD_REQUEST);
+      if (employee.userId) {
+        throw new HttpException('Employee is already registered.', HttpStatus.BAD_REQUEST);
       }
 
       // Check if an invite already exists
@@ -446,6 +445,10 @@ export class EmployeeService {
 
       // Create invite
       const invite = await this.userInviteService.createInvite(employee);
+
+      // Update employee status to pending_activation so they show as pending in the UI
+      employee.status = EmployeeStatus.PENDING_ACTIVATION;
+      await this.employeeRepository.save(employee);
 
       // Send invite email (implement sendInviteEmail)
       await this.sendInviteEmail(employee.email ?? '', invite.token);
