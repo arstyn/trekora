@@ -1,4 +1,14 @@
 import { PermissionGuard } from "@/components/permission-guard";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,10 +26,12 @@ import {
     MapPin,
     Package,
     Plus,
+    Trash2,
     Users
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { PackageCreateModal } from "./_components/package-create-modal";
 
 export default function Packages() {
@@ -28,6 +40,27 @@ export default function Packages() {
     const [error, setError] = useState<string>();
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<IPackages | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
+        try {
+            await axiosInstance.delete(`/packages/${deleteTarget.id}`);
+            setPackages((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+            toast.success(`"${deleteTarget.name || "Untitled Package"}" deleted successfully`);
+        } catch (err: any) {
+            const message =
+                err?.response?.data?.message ||
+                err?.message ||
+                "Failed to delete package";
+            toast.error(message);
+        } finally {
+            setIsDeleting(false);
+            setDeleteTarget(null);
+        }
+    };
 
     useEffect(() => {
         const getPackages = async () => {
@@ -297,6 +330,18 @@ export default function Packages() {
                                                 </Button>
                                             </NavLink>
                                         </div>
+                                        {pkg.status === "draft" && (
+                                            <PermissionGuard resource="package" action="delete">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                    onClick={() => setDeleteTarget(pkg)}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </PermissionGuard>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -312,6 +357,35 @@ export default function Packages() {
                     navigate(`/packages/create?type=${type}`);
                 }}
             />
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog
+                open={!!deleteTarget}
+                onOpenChange={(open) => !open && setDeleteTarget(null)}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Draft Package?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to permanently delete{" "}
+                            <span className="font-semibold">"{deleteTarget?.name}"</span>?
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeleting ? "Deleting..." : "Delete"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
