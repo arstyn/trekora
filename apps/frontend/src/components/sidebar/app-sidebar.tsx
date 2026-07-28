@@ -44,12 +44,14 @@ import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
 import { NavUser } from "./nav-user";
+import { QuickCreateModal } from "./quick-create-modal";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const [userData, setUserData] = useState<IEmployee>();
     const [organizations, setOrganizations] = useState<any[]>([]);
     const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
-    const { hasPermission: canManagePermissions } = useHasPermission(
+    const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+    const { hasPermission: canManagePermissions, loading: permissionsLoading } = useHasPermission(
         "permission",
         "manage",
     );
@@ -346,10 +348,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-                <NavMain items={data.navMain} />
-                <NavDocuments items={data.documents} />
-                <NavSecondary items={data.navSecondary} className="mt-auto" />
+                <NavMain
+                    items={data.navMain}
+                    loading={permissionsLoading}
+                    onQuickCreate={() => setQuickCreateOpen(true)}
+                />
+                <NavDocuments items={data.documents} loading={permissionsLoading} />
+                <NavSecondary items={data.navSecondary} loading={permissionsLoading} className="mt-auto" />
             </SidebarContent>
+            <QuickCreateModal
+                open={quickCreateOpen}
+                onOpenChange={setQuickCreateOpen}
+            />
             <SidebarFooter>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <NavUser user={data.user} />
