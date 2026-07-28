@@ -13,6 +13,7 @@ import { NotificationButton } from "../notification-button";
 export function NavMain({
 	items,
 	loading,
+	onQuickCreate,
 }: {
 	items: {
 		title: string;
@@ -20,6 +21,7 @@ export function NavMain({
 		icon?: LucideIcon;
 	}[];
 	loading?: boolean;
+	onQuickCreate?: () => void;
 }) {
 	const location = useLocation();
 
@@ -30,7 +32,8 @@ export function NavMain({
 					<SidebarMenuItem className="flex items-center gap-2">
 						<SidebarMenuButton
 							tooltip="Quick Create"
-							className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+							onClick={onQuickCreate}
+							className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground cursor-pointer"
 						>
 							<PlusCircleIcon />
 							<span>Quick Create</span>
@@ -54,7 +57,7 @@ export function NavMain({
 								const isActive = location.pathname === item.url || (item.url !== "/" && location.pathname.startsWith(item.url));
 								return (
 									<SidebarMenuItem key={item.title}>
-										<SidebarMenuButton tooltip={item.title} isActive={isActive} asChild>
+										<SidebarMenuButton tooltip={item.title} isActive={isActive} className="cursor-pointer" asChild>
 											<NavLink to={item.url}>
 												{item.icon && <item.icon />}
 												<span>{item.title}</span>
