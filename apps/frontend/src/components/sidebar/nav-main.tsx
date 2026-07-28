@@ -5,18 +5,21 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PlusCircleIcon, type LucideIcon } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { NotificationButton } from "../notification-button";
 
 export function NavMain({
 	items,
+	loading,
 }: {
 	items: {
 		title: string;
 		url: string;
 		icon?: LucideIcon;
 	}[];
+	loading?: boolean;
 }) {
 	const location = useLocation();
 
@@ -36,19 +39,30 @@ export function NavMain({
 					</SidebarMenuItem>
 				</SidebarMenu>
 				<SidebarMenu>
-					{items.map((item) => {
-						const isActive = location.pathname === item.url || (item.url !== "/" && location.pathname.startsWith(item.url));
-						return (
-							<SidebarMenuItem key={item.title}>
-								<SidebarMenuButton tooltip={item.title} isActive={isActive} asChild>
-									<NavLink to={item.url}>
-										{item.icon && <item.icon />}
-										<span>{item.title}</span>
-									</NavLink>
-								</SidebarMenuButton>
-							</SidebarMenuItem>
-						);
-					})}
+					{loading
+						? Array.from({ length: 4 }).map((_, i) => (
+								<SidebarMenuItem key={i}>
+									<SidebarMenuButton asChild disabled>
+										<div className="flex items-center gap-2">
+											<Skeleton className="size-4 rounded" />
+											<Skeleton className="h-4 w-24 rounded" />
+										</div>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+						  ))
+						: items.map((item) => {
+								const isActive = location.pathname === item.url || (item.url !== "/" && location.pathname.startsWith(item.url));
+								return (
+									<SidebarMenuItem key={item.title}>
+										<SidebarMenuButton tooltip={item.title} isActive={isActive} asChild>
+											<NavLink to={item.url}>
+												{item.icon && <item.icon />}
+												<span>{item.title}</span>
+											</NavLink>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								);
+						  })}
 				</SidebarMenu>
 			</SidebarGroupContent>
 		</SidebarGroup>
