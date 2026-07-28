@@ -144,7 +144,7 @@ export default function PaymentStructuresPage() {
                                     {/* Breakdown Preview */}
                                     <div className="space-y-2">
                                         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Milestone Breakdown</h4>
-                                        <div className="space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
+                                        <div className="space-y-1.5 pr-1">
                                             {template.milestones?.map((m, idx) => (
                                                 <div key={idx} className="flex justify-between items-center text-xs p-1.5 bg-secondary/30 rounded border">
                                                     <span className="font-medium text-foreground truncate max-w-[150px]">
