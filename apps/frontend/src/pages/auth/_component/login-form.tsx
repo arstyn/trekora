@@ -90,7 +90,9 @@ export default function LoginForm() {
 			localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken);
 			localStorage.setItem(REFRESH_TOKEN_KEY, res.data.refreshToken);
 			refresh();
-			navigate("/");
+			const params = new URLSearchParams(window.location.search);
+			const redirectUrl = params.get("redirect") || "/";
+			navigate(redirectUrl);
 		} catch (error: unknown) {
 			if (error instanceof AxiosError) {
 				setError(error.response?.data?.message || "Invalid OTP. Please try again.");

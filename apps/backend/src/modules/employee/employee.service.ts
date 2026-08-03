@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
 import { UserDepartments } from 'src/database/entity/user-departments.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
+import { UserOrganization } from 'src/database/entity/user-organization.entity';
 import { User } from 'src/database/entity/user.entity';
 import { IUserProfileDTO } from 'src/dto/user-profile.dto';
 import { DataSource, Repository } from 'typeorm';
@@ -434,7 +435,23 @@ export class EmployeeService {
       }
 
       if (employee.userId) {
-        throw new HttpException('Employee is already registered.', HttpStatus.BAD_REQUEST);
+        throw new HttpException('Employee is already active in this organization.', HttpStatus.BAD_REQUEST);
+      }
+
+      // Check if user with this email already exists across system
+      const existingUser = employee.email ? await this.userService.findOneWithEmail(employee.email) : null;
+      if (existingUser) {
+        // Check if user is already linked to this employee's organization
+        const userOrgRepo = this.dataSource.getRepository(UserOrganization);
+        const existingUserOrg = await userOrgRepo.findOne({
+          where: { userId: existingUser.id, organizationId: employee.organizationId }
+        });
+        if (existingUserOrg) {
+          // Check if employee is already linked to this user
+          employee.userId = existingUser.id;
+          await this.employeeRepository.save(employee);
+          throw new HttpException('Employee is already registered in this organization.', HttpStatus.BAD_REQUEST);
+        }
       }
 
       // Check if an invite already exists
@@ -451,7 +468,7 @@ export class EmployeeService {
       await this.employeeRepository.save(employee);
 
       // Send invite email (implement sendInviteEmail)
-      await this.sendInviteEmail(employee.email ?? '', invite.token);
+      await this.sendInviteEmail(employee, invite.token);
 
       // Log action
       const action = isResend ? 'invite_resent' : 'invite_sent';
@@ -468,6 +485,9 @@ export class EmployeeService {
 
       return { message: isResend ? 'Invite resent successfully' : 'Invite sent successfully' };
     } catch (error: any) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         error.message ?? 'Internal server error',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -475,37 +495,71 @@ export class EmployeeService {
     }
   }
 
-  // Placeholder for sending invite email
-  async sendInviteEmail(email: string, token: string) {
-    const inviteUrl = `${process.env.FRONTEND_URL}/activate-user-account/${token}`;
+  // Send invite email (customized for new vs existing registered users)
+  async sendInviteEmail(employee: Employee, token: string) {
+    const email = employee.email ?? '';
+    const existingUser = await this.userService.findOneWithEmail(email);
+    const orgName = employee.organization?.name || 'Trekora';
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; background: #f4f4f7; padding: 40px 0;">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-          <tr>
-            <td style="padding: 40px 40px 20px 40px; text-align: center;">
-              <h2 style="color: #333; margin-bottom: 16px;">You're Invited to Join Trekora!</h2>
-              <p style="color: #555; font-size: 16px; margin-bottom: 32px;">Click the button below to activate your account and get started.</p>
-              <a href="${inviteUrl}" style="display: inline-block; padding: 14px 32px; background: #4f46e5; color: #fff; border-radius: 6px; text-decoration: none; font-size: 18px; font-weight: bold; margin-bottom: 24px;">Activate Account</a>
-              <p style="color: #888; font-size: 13px; margin-top: 32px;">If the button doesn't work, copy and paste this link into your browser:</p>
-              <p style="word-break: break-all; color: #4f46e5; font-size: 14px;">${inviteUrl}</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 24px 40px 40px 40px; text-align: center; color: #aaa; font-size: 12px;">
-              &copy; ${new Date().getFullYear()} Trekora. All rights reserved.
-            </td>
-          </tr>
-        </table>
-      </div>
-    `;
+    if (existingUser) {
+      const inviteUrl = `${process.env.FRONTEND_URL}/accept-invitation/${token}`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; background: #f4f4f7; padding: 40px 0;">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+            <tr>
+              <td style="padding: 40px 40px 20px 40px; text-align: center;">
+                <h2 style="color: #333; margin-bottom: 16px;">Invitation to Join ${orgName}</h2>
+                <p style="color: #555; font-size: 16px; margin-bottom: 32px;">You have been invited to join <strong>${orgName}</strong> on Trekora. Click the button below to review and accept the invitation.</p>
+                <a href="${inviteUrl}" style="display: inline-block; padding: 14px 32px; background: #4f46e5; color: #fff; border-radius: 6px; text-decoration: none; font-size: 18px; font-weight: bold; margin-bottom: 24px;">Accept Invitation</a>
+                <p style="color: #888; font-size: 13px; margin-top: 32px;">If the button doesn't work, copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; color: #4f46e5; font-size: 14px;">${inviteUrl}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 24px 40px 40px 40px; text-align: center; color: #aaa; font-size: 12px;">
+                &copy; ${new Date().getFullYear()} ${orgName}. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </div>
+      `;
 
-    await this.mailerService.sendMail({
-      to: email,
-      subject: 'You are invited to join Trekora!',
-      text: `Activate your account: ${inviteUrl}`,
-      html,
-    });
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `Invitation to Join ${orgName} on Trekora`,
+        text: `Accept your invitation to join ${orgName}: ${inviteUrl}`,
+        html,
+      });
+    } else {
+      const inviteUrl = `${process.env.FRONTEND_URL}/activate-user-account/${token}`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; background: #f4f4f7; padding: 40px 0;">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+            <tr>
+              <td style="padding: 40px 40px 20px 40px; text-align: center;">
+                <h2 style="color: #333; margin-bottom: 16px;">You're Invited to Join ${orgName}!</h2>
+                <p style="color: #555; font-size: 16px; margin-bottom: 32px;">Click the button below to activate your account and get started with ${orgName}.</p>
+                <a href="${inviteUrl}" style="display: inline-block; padding: 14px 32px; background: #4f46e5; color: #fff; border-radius: 6px; text-decoration: none; font-size: 18px; font-weight: bold; margin-bottom: 24px;">Activate Account</a>
+                <p style="color: #888; font-size: 13px; margin-top: 32px;">If the button doesn't work, copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; color: #4f46e5; font-size: 14px;">${inviteUrl}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 24px 40px 40px 40px; text-align: center; color: #aaa; font-size: 12px;">
+                &copy; ${new Date().getFullYear()} Trekora. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </div>
+      `;
+
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `You are invited to join ${orgName} on Trekora!`,
+        text: `Activate your account: ${inviteUrl}`,
+        html,
+      });
+    }
   }
 
   // Delete an employee by ID

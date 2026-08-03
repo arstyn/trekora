@@ -345,8 +345,8 @@ export function EmployeesPage() {
                 toast.success("Activation invite sent successfully");
             }
             getEmployees(currentTab === "archived", false);
-        } catch (error) {
-            toast.error("Failed to send invite");
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to send invite");
         }
     };
 

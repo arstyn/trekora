@@ -109,8 +109,8 @@ export default function ViewEmployeePage() {
             toast.success("Invitation sent successfully");
             fetchEmployee();
             fetchLogs();
-        } catch (error) {
-            toast.error("Failed to send invitation");
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to send invitation");
         }
     };
 
