@@ -30,7 +30,7 @@ import {
 import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
 
-type ClearItemKey = "bookings" | "batches" | "customers" | "leads" | "employees" | "packages" | "payments";
+type ClearItemKey = "bookings" | "batches" | "customers" | "leads" | "employees" | "packages" | "payments" | "workflows";
 
 interface ClearItemOption {
 	key: ClearItemKey;
@@ -74,6 +74,11 @@ const CLEAR_OPTIONS: ClearItemOption[] = [
 		label: "Payments",
 		description: "All payment transactions, receipts, and history",
 	},
+	{
+		key: "workflows",
+		label: "Workflows",
+		description: "All automated workflows, steps, and activity logs",
+	},
 ];
 
 export function ClearDataSection() {
@@ -86,6 +91,7 @@ export function ClearDataSection() {
 		employees: false,
 		packages: false,
 		payments: false,
+		workflows: false,
 	});
 	const [step, setStep] = useState<"confirm" | "verify">("confirm");
 	const [otp, setOtp] = useState("");
@@ -179,6 +185,7 @@ export function ClearDataSection() {
 					employees: false,
 					packages: false,
 					payments: false,
+					workflows: false,
 				});
 				setOtp("");
 				setStep("confirm");

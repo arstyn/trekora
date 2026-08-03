@@ -41,13 +41,122 @@ export class UserInviteService {
   async verifyToken(token: string): Promise<UserInvite | null> {
     const invite = await this.inviteRepository.findOne({
       where: { token },
-      relations: ['employee'],
+      relations: ['employee', 'employee.organization'],
     });
 
     if (!invite || invite.used || invite.expiresAt < new Date()) {
       return null;
     }
     return invite;
+  }
+
+  async getInviteDetails(token: string): Promise<any> {
+    const invite = await this.inviteRepository.findOne({
+      where: { token },
+      relations: ['employee', 'employee.organization', 'employee.branch'],
+    });
+
+    if (!invite || invite.used || invite.expiresAt < new Date()) {
+      throw new HttpException('Invalid or expired invite token', HttpStatus.BAD_REQUEST);
+    }
+
+    const user = await this.userService.findOneWithEmail(invite.email);
+
+    return {
+      valid: true,
+      email: invite.email,
+      employeeName: invite.employee.name,
+      employeeDesignation: invite.employee.designation,
+      organizationName: invite.employee.organization?.name,
+      organizationId: invite.employee.organizationId,
+      branchName: invite.employee.branch?.name,
+      isExistingUser: !!user,
+    };
+  }
+
+  async acceptOrgInvite(token: string, requestingUserId: string): Promise<any> {
+    const invite = await this.inviteRepository.findOne({
+      where: { token },
+      relations: ['employee', 'employee.organization'],
+    });
+
+    if (!invite || invite.used || invite.expiresAt < new Date()) {
+      throw new HttpException('Invalid or expired invite token', HttpStatus.BAD_REQUEST);
+    }
+
+    const requestingUser = await this.userService.findOne(requestingUserId);
+    if (!requestingUser || requestingUser.email.toLowerCase() !== invite.email.toLowerCase()) {
+      throw new HttpException(
+        'Logged in user email does not match the invitation email',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // Link user to organization
+    const userOrgRepo = this.employeeRepository.manager.getRepository(UserOrganization);
+    const existingUserOrg = await userOrgRepo.findOne({
+      where: { userId: requestingUser.id, organizationId: invite.employee.organizationId },
+    });
+
+    if (!existingUserOrg) {
+      await userOrgRepo.save(
+        userOrgRepo.create({
+          userId: requestingUser.id,
+          organizationId: invite.employee.organizationId,
+          relation: 'member',
+        }),
+      );
+    }
+
+    // Associate employee record with requestingUser
+    invite.employee.userId = requestingUser.id;
+    invite.employee.status = EmployeeStatus.ACTIVE;
+    invite.employee.isActive = true;
+    await this.employeeRepository.save(invite.employee);
+
+    // Update last accessed organization if not set
+    if (!requestingUser.lastAccessedOrganizationId) {
+      await this.userService.update(requestingUser.id, {
+        lastAccessedOrganizationId: invite.employee.organizationId,
+      });
+    }
+
+    invite.used = true;
+    await this.inviteRepository.save(invite);
+
+    return {
+      success: true,
+      message: `You have successfully joined ${invite.employee.organization?.name || 'the organization'}.`,
+      organizationId: invite.employee.organizationId,
+    };
+  }
+
+  async declineOrgInvite(token: string, requestingUserId: string): Promise<any> {
+    const invite = await this.inviteRepository.findOne({
+      where: { token },
+      relations: ['employee'],
+    });
+
+    if (!invite || invite.used || invite.expiresAt < new Date()) {
+      throw new HttpException('Invalid or expired invite token', HttpStatus.BAD_REQUEST);
+    }
+
+    const requestingUser = await this.userService.findOne(requestingUserId);
+    if (!requestingUser || requestingUser.email.toLowerCase() !== invite.email.toLowerCase()) {
+      throw new HttpException(
+        'Logged in user email does not match the invitation email',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    invite.used = true;
+    await this.inviteRepository.save(invite);
+
+    // Terminate or keep employee as inactive
+    invite.employee.status = EmployeeStatus.INACTIVE;
+    await this.employeeRepository.save(invite.employee);
+
+    return { success: true, message: 'Invitation declined.' };
   }
 
   async acceptInvite(token: string): Promise<any> {

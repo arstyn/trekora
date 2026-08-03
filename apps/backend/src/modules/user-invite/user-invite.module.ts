@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
 import { Employee } from 'src/database/entity/employee.entity';
 import { UserModule } from '../user/user.module';
@@ -9,7 +10,7 @@ import { UserInviteService } from './user-invite.service';
 @Module({
   providers: [UserInviteService],
   controllers: [UserInviteController],
-  imports: [TypeOrmModule.forFeature([UserInvite, Employee]), UserModule],
+  imports: [TypeOrmModule.forFeature([UserInvite, Employee]), UserModule, JwtModule.register({})],
   exports: [UserInviteService],
 })
 export class UserInviteModule {}

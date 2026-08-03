@@ -39,9 +39,25 @@ export class PermissionSetController {
     const userId = req.user.userId;
     const organizationId = req.user.organizationId;
 
-    const employee = await this.employeeRepository.findOne({
+    let employee = await this.employeeRepository.findOne({
       where: { userId, organizationId },
     });
+
+    if (!employee) {
+      const user = await this.employeeRepository.manager.query(
+        `SELECT "email" FROM "user" WHERE "id" = $1 LIMIT 1`,
+        [userId],
+      );
+      if (user && user[0]?.email) {
+        employee = await this.employeeRepository.findOne({
+          where: { email: user[0].email, organizationId },
+        });
+        if (employee && !employee.userId) {
+          employee.userId = userId;
+          await this.employeeRepository.save(employee);
+        }
+      }
+    }
 
     if (!employee) {
       return [];
@@ -94,7 +110,7 @@ export class PermissionSetController {
   @Delete(':id')
   @RequirePermission('permission-set', 'manage')
   async delete(@Param('id') id: string): Promise<void> {
-    return await this.permissionSetService.delete(id);
+    return await this.permissionSetService.remove(id);
   }
 
   // Assign permission set to an employee

@@ -20,6 +20,7 @@ import ViewPackagePage from "@/pages/user/packages/view-package.page";
 import { Route, Routes, useLocation } from "react-router-dom";
 import ActivatePage from "./pages/auth/activate-account";
 import ActivateUserPage from "./pages/auth/activate-user-account";
+import AcceptInvitationPage from "./pages/auth/accept-invitation";
 import GoogleCallbackPage from "./pages/auth/google-callback";
 import OnboardingPage from "./pages/auth/onboarding";
 import ResendActivationPage from "./pages/auth/resend-activation";
@@ -206,6 +207,10 @@ export default function App() {
                 <Route
                     path="/activate-user-account/:id"
                     element={<ActivateUserPage />}
+                />
+                <Route
+                    path="/accept-invitation/:id"
+                    element={<AcceptInvitationPage />}
                 />
                 <Route
                     path="/resend-activation"
