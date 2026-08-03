@@ -714,20 +714,26 @@ export class BookingService {
         bookedSeats: booking.batch.bookedSeats - booking.numberOfCustomers,
       });
 
-      // Get the current workflow before deleting booking if needed, 
-      // but onDelete: CASCADE in workflow-step should handle steps.
-      // We should delete the workflow manually if it's not cascaded from booking.
-      if (booking.currentWorkflowId) {
-        await queryRunner.manager.delete('workflows', {
-          id: booking.currentWorkflowId,
-        });
-      }
+      const workflowId = booking.currentWorkflowId;
 
       // Log deletion before actual delete
       await this.logAction(id, booking.createdById, 'delete', booking, null, queryRunner.manager);
 
       // Delete booking (cascades to payments, documents)
       await queryRunner.manager.delete(Booking, id);
+
+      // Delete workflow and its related logs and steps after booking is removed
+      if (workflowId) {
+        await queryRunner.manager.delete('workflow_logs', {
+          workflowId: workflowId,
+        });
+        await queryRunner.manager.delete('workflow_steps', {
+          workflowId: workflowId,
+        });
+        await queryRunner.manager.delete('workflows', {
+          id: workflowId,
+        });
+      }
 
       await queryRunner.commitTransaction();
     } catch (error) {

@@ -18,14 +18,14 @@ export class WorkflowLog {
   @Column({ type: 'uuid', name: 'workflow_id' })
   workflowId: string;
 
-  @ManyToOne(() => Workflow)
+  @ManyToOne(() => Workflow, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'workflow_id' })
   workflow: Workflow;
 
   @Column({ type: 'uuid', name: 'step_id', nullable: true })
   stepId: string;
 
-  @ManyToOne(() => WorkflowStep)
+  @ManyToOne(() => WorkflowStep, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'step_id' })
   step: WorkflowStep;
 
