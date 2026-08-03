@@ -157,6 +157,27 @@ export class SettingsService {
         }
       }
 
+      // Clear Workflows (explicitly delete workflow_logs and workflow_steps before workflows to avoid foreign key violations)
+      if (dto.workflows) {
+        await queryRunner.query(
+          `UPDATE "bookings" SET "current_workflow_id" = NULL WHERE "organization_id" = $1 AND "current_workflow_id" IN (SELECT "id" FROM "workflows" WHERE "organization_id" = $1)`,
+          [organizationId],
+        );
+        await queryRunner.query(
+          `DELETE FROM "workflow_logs" WHERE "workflow_id" IN (SELECT "id" FROM "workflows" WHERE "organization_id" = $1)`,
+          [organizationId],
+        );
+        await queryRunner.query(
+          `DELETE FROM "workflow_steps" WHERE "workflow_id" IN (SELECT "id" FROM "workflows" WHERE "organization_id" = $1)`,
+          [organizationId],
+        );
+        const result = await queryRunner.query(
+          `DELETE FROM "workflows" WHERE "organization_id" = $1`,
+          [organizationId],
+        );
+        cleared.workflows = result[1] || 0;
+      }
+
       // Clear Batches (cascades to batch_logs, batch_blocks, batch_coordinators, batch_customers)
       if (dto.batches) {
         const result = await queryRunner.query(

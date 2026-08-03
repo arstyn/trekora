@@ -43,123 +43,102 @@ export class PermissionSetService {
   async create(createDto: CreatePermissionSetDto): Promise<PermissionSet> {
     const { permissionIds, organizationId, ...permissionSetData } = createDto;
 
-    const permissionSet =
-      this.permissionSetRepository.create({
-        ...permissionSetData,
-        organizationId,
-      });
+    const permissionSet = this.permissionSetRepository.create({
+      ...permissionSetData,
+      organizationId,
+    });
     const savedPermissionSet =
       await this.permissionSetRepository.save(permissionSet);
 
-    // Add permissions if provided
     if (permissionIds && permissionIds.length > 0) {
-      await this.updatePermissionSetPermissions(
-        savedPermissionSet.id,
-        permissionIds,
-        organizationId,
-      );
+      await this.updatePermissions(savedPermissionSet.id, permissionIds);
     }
 
-    const result = await this.findOne(savedPermissionSet.id);
-    if (!result) {
-      throw new NotFoundException(
-        `Permission set with ID ${savedPermissionSet.id} not found`,
-      );
-    }
-    return result;
+    return this.findOne(savedPermissionSet.id);
   }
 
   // Find all permission sets for an organization
   async findAll(organizationId: string): Promise<PermissionSet[]> {
-    return await this.permissionSetRepository.find({
+    return this.permissionSetRepository.find({
       where: { organizationId },
       relations: [
         'permissionSetPermissions',
         'permissionSetPermissions.permission',
       ],
-      order: { createdAt: 'DESC' },
     });
   }
 
-  // Find a permission set by ID
-  async findOne(id: string): Promise<PermissionSet | null> {
-    return await this.permissionSetRepository.findOne({
+  // Find one permission set by ID
+  async findOne(id: string): Promise<PermissionSet> {
+    const permissionSet = await this.permissionSetRepository.findOne({
       where: { id },
       relations: [
         'permissionSetPermissions',
         'permissionSetPermissions.permission',
       ],
     });
+
+    if (!permissionSet) {
+      throw new NotFoundException(`Permission set with ID ${id} not found`);
+    }
+
+    return permissionSet;
   }
 
   // Update a permission set
   async update(
     id: string,
     updateDto: UpdatePermissionSetDto,
-  ): Promise<PermissionSet | null> {
-    const permissionSet = await this.permissionSetRepository.findOne({
-      where: { id },
-    });
-    if (!permissionSet) {
-      throw new NotFoundException(`Permission set with ID ${id} not found`);
-    }
+  ): Promise<PermissionSet> {
+    const { permissionIds, ...permissionSetData } = updateDto;
 
-    const { permissionIds, ...updateData } = updateDto;
-    Object.assign(permissionSet, updateData);
-    const updatedPermissionSet =
-      await this.permissionSetRepository.save(permissionSet);
+    await this.permissionSetRepository.update(id, permissionSetData);
 
-    // Update permissions if provided
     if (permissionIds !== undefined) {
-      await this.updatePermissionSetPermissions(
-        id,
-        permissionIds,
-        permissionSet.organizationId,
-      );
+      await this.updatePermissions(id, permissionIds);
     }
 
     return this.findOne(id);
   }
 
   // Delete a permission set
-  async delete(id: string): Promise<void> {
-    const permissionSet = await this.permissionSetRepository.findOne({
-      where: { id },
-    });
-    if (!permissionSet) {
-      throw new NotFoundException(`Permission set with ID ${id} not found`);
-    }
-    await this.permissionSetRepository.delete(id);
+  async remove(id: string): Promise<void> {
+    const permissionSet = await this.findOne(id);
+    await this.permissionSetRepository.remove(permissionSet);
   }
 
   // Update permissions for a permission set
-  private async updatePermissionSetPermissions(
+  private async updatePermissions(
     permissionSetId: string,
     permissionIds: string[],
-    organizationId: string,
   ): Promise<void> {
-    // Remove existing permissions
-    await this.permissionSetPermissionRepository.delete({
-      permissionSetId,
+    // Delete existing permissions for this set
+    await this.permissionSetPermissionRepository.delete({ permissionSetId });
+
+    if (permissionIds.length === 0) {
+      return;
+    }
+
+    // Verify all permissions exist
+    const permissions = await this.permissionRepository.find({
+      where: { id: In(permissionIds) },
     });
 
-    // Add new permissions (filtered by organizationId to ensure security)
-    if (permissionIds.length > 0) {
-      const permissions = await this.permissionRepository.find({
-        where: { id: In(permissionIds), organizationId },
-      });
-
-      const permissionSetPermissions = permissions.map((permission) =>
-        this.permissionSetPermissionRepository.create({
-          permissionSetId,
-          permissionId: permission.id,
-        }),
-      );
-
-      await this.permissionSetPermissionRepository.save(
-        permissionSetPermissions,
-      );
+    if (permissions.length !== permissionIds.length) {
+      throw new NotFoundException('One or more permissions not found');
     }
+
+    // Create new relations
+    const permissionSetPermissions = permissionIds.map((permissionId) =>
+      this.permissionSetPermissionRepository.create({
+        permissionSetId,
+        permissionId,
+      }),
+    );
+
+    await this.permissionSetPermissionRepository.save(
+      permissionSetPermissions,
+    );
   }
 
   // Assign permission set to an employee profile
@@ -221,7 +200,40 @@ export class PermissionSetService {
       ],
     });
 
-    return profilePermissionSets.map((pps) => pps.permissionSet);
+    let sets = profilePermissionSets
+      .map((pps) => pps.permissionSet)
+      .filter((ps): ps is PermissionSet => !!ps);
+
+    // Auto-heal: If an employee has NO permission sets assigned, check if there is an Admin permission set for their organization
+    if (sets.length === 0) {
+      const employee = await this.employeeRepository.findOne({
+        where: { id: employeeId },
+      });
+
+      if (employee && employee.organizationId) {
+        const adminSet = await this.permissionSetRepository.findOne({
+          where: [
+            { organizationId: employee.organizationId, name: 'Admin - Full Access' },
+            { organizationId: employee.organizationId, name: 'Admin' },
+          ],
+          relations: [
+            'permissionSetPermissions',
+            'permissionSetPermissions.permission',
+          ],
+        });
+
+        if (adminSet) {
+          try {
+            await this.assignPermissionSet(adminSet.id, employeeId);
+          } catch (e) {
+            // Ignore duplicate assignment errors
+          }
+          sets = [adminSet];
+        }
+      }
+    }
+
+    return sets;
   }
 
   /**
@@ -237,28 +249,19 @@ export class PermissionSetService {
       organizationId,
     );
 
+    // Get all permissions for this organization
+    const permissions =
+      await this.permissionService.findAll(organizationId);
+    const permissionMap = new Map(permissions.map((p) => [p.name, p.id]));
+
     const createdSets: PermissionSet[] = [];
 
-    // Get all permissions for this organization
-    const allPermissions = await this.permissionRepository.find({
-      where: { organizationId },
-    });
-    const permissionMap = new Map(allPermissions.map((p) => [p.name, p.id]));
-
-    // Create permission sets for each role
-    for (const [roleName, config] of Object.entries(defaultPermissionSets)) {
-      // Find permission IDs for this permission set
-      const permissionIds: string[] = [];
-      for (const permissionName of config.permissionNames) {
-        const permissionId = permissionMap.get(permissionName);
-        if (permissionId) {
-          permissionIds.push(permissionId);
-        } else {
-          console.warn(
-            `Permission ${permissionName} not found for organization ${organizationId}, skipping for ${roleName} permission set`,
-          );
-        }
-      }
+    // Create each default permission set
+    for (const [key, config] of Object.entries(defaultPermissionSets)) {
+      // Get permission IDs for this set
+      const permissionIds = config.permissionNames
+        .map((name) => permissionMap.get(name))
+        .filter((id): id is string => id !== undefined);
 
       // Create the permission set
       const permissionSet = await this.create({

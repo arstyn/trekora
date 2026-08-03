@@ -32,4 +32,8 @@ export class ClearDataDto {
   @IsOptional()
   @IsBoolean()
   payments?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  workflows?: boolean;
 }
