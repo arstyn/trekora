@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UserInviteService } from './user-invite.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { ApiRequestJWT } from 'src/interface/api-request-jwt.interface';
+import { AuthGuard as JwtAuthGuard } from '../auth/guard/auth.guard';
+import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 
 @Controller('user-invite')
 export class UserInviteController {

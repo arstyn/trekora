@@ -259,7 +259,7 @@ export class AuthService {
             // Send invite email
             if (teamEmployee.email)
               await this.employeeService.sendInviteEmail(
-                teamEmployee.email,
+                savedTeamEmployee,
                 savedInvite.token,
               );
           } catch (memberError) {
@@ -517,7 +517,7 @@ export class AuthService {
     // Generate a new invite token
     const invite = await this.userInviteService.createInvite(employee);
     if (employee.email) {
-      await this.employeeService.sendInviteEmail(employee.email, invite.token);
+      await this.employeeService.sendInviteEmail(employee, invite.token);
     }
     return {
       success: true,
@@ -814,7 +814,7 @@ export class AuthService {
             // Send invite email
             if (teamEmployee.email) {
               await this.employeeService.sendInviteEmail(
-                teamEmployee.email,
+                savedTeamEmployee,
                 savedInvite.token,
               );
             }
