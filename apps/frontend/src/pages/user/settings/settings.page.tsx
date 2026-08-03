@@ -3,6 +3,7 @@ import { OrganizationSection } from "./_components/organization-section";
 import { ThemeSection } from "./_components/theme-section";
 import { NotificationSection } from "./_components/notification-section";
 import { AccountActionsSection } from "./_components/account-actions-section";
+import { ClearDataSection } from "./_components/clear-data-section";
 
 export default function SettingsPage() {
 	return (
@@ -13,6 +14,7 @@ export default function SettingsPage() {
 				<ThemeSection />
 				<NotificationSection />
 				<AccountActionsSection />
+				<ClearDataSection />
 			</div>
 		</div>
 	);

@@ -400,4 +400,12 @@ export const permissions = [
     action: 'view',
     description: 'View workflow details',
   },
+
+  // Settings permissions
+  {
+    name: 'settings.clear-data',
+    resource: 'settings',
+    action: 'clear-data',
+    description: 'Clear organization data (bookings, batches, customers, leads, employees, packages)',
+  },
 ];

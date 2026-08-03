@@ -93,6 +93,7 @@ export const defaultPermissionSets: Record<
       'workflow.update',
       'workflow.delete',
       'workflow.view',
+      'settings.clear-data',
     ],
   },
   manager: {

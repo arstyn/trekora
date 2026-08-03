@@ -129,7 +129,7 @@ export class Booking {
   @Column({ type: 'uuid', name: 'current_workflow_id', nullable: true })
   currentWorkflowId: string;
 
-  @ManyToOne(() => Workflow, { nullable: true })
+  @ManyToOne(() => Workflow, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'current_workflow_id' })
   currentWorkflow: Workflow;
 

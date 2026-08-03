@@ -35,6 +35,7 @@ import { UserInviteModule } from './modules/user-invite/user-invite.module';
 import { UserNotificationModule } from './modules/user-notification/user-notification.module';
 import { UserModule } from './modules/user/user.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { WorkflowModule } from './modules/workflow/workflow.module';
     BookingModule,
     PaymentModule,
     ImportModule,
+    SettingsModule,
     DashboardModule,
     WorkflowModule,
     ActivityLogModule,
