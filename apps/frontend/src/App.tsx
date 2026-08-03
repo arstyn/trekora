@@ -26,6 +26,7 @@ import OnboardingPage from "./pages/auth/onboarding";
 import ResendActivationPage from "./pages/auth/resend-activation";
 import { Home } from "./pages/general/home";
 import ServerErrorPage from "./pages/general/server-error";
+import NotFoundPage from "./pages/general/not-found";
 import ActivityLogsPage from "./pages/user/admin/logs.page";
 import AdminOverviewPage from "./pages/user/admin/overview.page";
 import BatchesPage from "./pages/user/batches/batches.page";
@@ -152,6 +153,7 @@ function AuthenticatedApp() {
                     <Route path="/defaults/cancellation-tiers/edit/:id" element={<EditCancellationTierPage />} />
                     <Route path="/defaults/cancellation-tiers/:id" element={<ViewCancellationTierPage />} />
                     <Route path="/defaults/block-slots" element={<BlockSlotsPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
                 </Routes>
             </SidebarInset>
         </SidebarProvider>
@@ -176,6 +178,21 @@ export default function App() {
         if (!isPublicStatic || hasToken) {
             return <ServerErrorPage onRetry={refresh} />;
         }
+    }
+
+    // Standalone routes that shouldn't render inside sidebar/app layout or public navbar/footer
+    const isStandaloneRoute = location.pathname.startsWith("/accept-invitation/") ||
+        location.pathname.startsWith("/activate-account/") ||
+        location.pathname.startsWith("/activate-user-account/");
+
+    if (isStandaloneRoute) {
+        return (
+            <Routes>
+                <Route path="/accept-invitation/:id" element={<AcceptInvitationPage />} />
+                <Route path="/activate-account/:id" element={<ActivatePage />} />
+                <Route path="/activate-user-account/:id" element={<ActivateUserPage />} />
+            </Routes>
+        );
     }
 
     if (isAuthenticated) {
@@ -220,6 +237,7 @@ export default function App() {
                     path="/google-callback"
                     element={<GoogleCallbackPage />}
                 />
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
             <Footer />
         </>

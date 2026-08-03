@@ -65,8 +65,8 @@ export default function AcceptInvitationPage() {
 				localStorage.setItem("activeOrganizationId", res.data.organizationId);
 			}
 			setTimeout(() => {
-				navigate("/user/dashboard");
-			}, 2000);
+				window.location.href = "/";
+			}, 1500);
 		} catch (err: unknown) {
 			if (err instanceof AxiosError) {
 				setError(err.response?.data?.message || "Failed to accept invitation.");

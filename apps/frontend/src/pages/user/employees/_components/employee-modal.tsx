@@ -334,9 +334,14 @@ export function EmployeeModal({
 
 			if (onSuccess) onSuccess(resData, mode as "add" | "edit");
 			onOpenChange(false);
-		} catch (error) {
-			if (error instanceof Error) toast.error(error.message);
-			else toast.error(`Failed to ${mode} employee`);
+		} catch (error: any) {
+			if (error?.response?.data?.message) {
+				toast.error(error.response.data.message);
+			} else if (error instanceof Error) {
+				toast.error(error.message);
+			} else {
+				toast.error(`Failed to ${mode} employee`);
+			}
 		} finally {
 			setIsSubmitting(false);
 		}
