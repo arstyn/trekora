@@ -434,8 +434,8 @@ export class EmployeeService {
         throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
       }
 
-      if (employee.userId) {
-        throw new HttpException('Employee is already active in this organization.', HttpStatus.BAD_REQUEST);
+      if (employee.userId && employee.status === EmployeeStatus.ACTIVE) {
+        throw new HttpException('Employee is already registered in this organization.', HttpStatus.BAD_REQUEST);
       }
 
       // Check if user with this email already exists across system
@@ -447,7 +447,7 @@ export class EmployeeService {
           where: { userId: existingUser.id, organizationId: employee.organizationId }
         });
         if (existingUserOrg) {
-          // Check if employee is already linked to this user
+          // Link employee to this user if not already linked
           employee.userId = existingUser.id;
           await this.employeeRepository.save(employee);
           throw new HttpException('Employee is already registered in this organization.', HttpStatus.BAD_REQUEST);
