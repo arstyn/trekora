@@ -7,10 +7,17 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowManager } from "@/components/workflow/workflow-manager";
-import type { IBooking } from "@/types/booking.types";
+import { useAuth } from "@/context/authContext";
+import EnhancedCustomerForm from "@/pages/user/customers/_components/enhanced-customer-form";
+import BookingService from "@/services/booking.service";
+import { InvoiceService } from "@/services/invoice.service";
+import type { IBatches } from "@/types/batches.types";
+import type { IBooking, ICustomer } from "@/types/booking.types";
+import { format } from "date-fns";
 import {
     Calendar,
     ClipboardList,
@@ -20,18 +27,15 @@ import {
     Mail,
     Phone,
     Plus,
+    Search,
     User,
+    UserMinus,
+    UserPlus,
     Users,
     XCircle,
-    UserMinus,
 } from "lucide-react";
-import { format } from "date-fns";
-import BookingService from "@/services/booking.service";
-import { InvoiceService } from "@/services/invoice.service";
-import { useAuth } from "@/context/authContext";
-import { toast } from "sonner";
 import { useEffect, useState } from "react";
-import type { IBatches } from "@/types/batches.types";
+import { toast } from "sonner";
 
 interface BookingModalProps {
     booking: IBooking;
@@ -53,11 +57,36 @@ export function BookingModal({
     const [isMoving, setIsMoving] = useState(false);
     const [selectedBatchId, setSelectedBatchId] = useState<string>("");
 
+    const [isAddTravelerOpen, setIsAddTravelerOpen] = useState(false);
+    const [travelerMode, setTravelerMode] = useState<"select" | "create">("select");
+    const [customerSearch, setCustomerSearch] = useState("");
+    const [allCustomers, setAllCustomers] = useState<ICustomer[]>([]);
+    const [loadingCustomers, setLoadingCustomers] = useState(false);
+    const [isSubmittingTraveler, setIsSubmittingTraveler] = useState(false);
+
     useEffect(() => {
         if (open && booking) {
             BookingService.getAvailableBatches(booking.package.id).then(setAvailableBatches);
         }
     }, [open, booking]);
+
+    const loadCustomers = async (searchQuery: string = "") => {
+        try {
+            setLoadingCustomers(true);
+            const res = await BookingService.getCustomers({ limit: 20, search: searchQuery || undefined });
+            setAllCustomers(res.customers);
+        } catch (err) {
+            console.error("Failed to load customers", err);
+        } finally {
+            setLoadingCustomers(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isAddTravelerOpen && travelerMode === "select") {
+            loadCustomers(customerSearch);
+        }
+    }, [isAddTravelerOpen, travelerMode, customerSearch]);
 
     const handleCancelBooking = async () => {
         if (!confirm("Are you sure you want to cancel this entire booking?")) return;
@@ -77,7 +106,7 @@ export function BookingModal({
             return;
         }
         if (!confirm("Are you sure you want to move this booking to another batch?")) return;
-        
+
         setIsMoving(true);
         try {
             await BookingService.moveBooking(booking.id, selectedBatchId);
@@ -114,6 +143,20 @@ export function BookingModal({
         }
     };
 
+    const handleAddTraveler = async (customerId: string) => {
+        try {
+            setIsSubmittingTraveler(true);
+            await BookingService.addCustomerToBooking(booking.id, customerId);
+            toast.success("Traveler added to booking successfully");
+            setIsAddTravelerOpen(false);
+            onUpdate?.();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to add traveler");
+        } finally {
+            setIsSubmittingTraveler(false);
+        }
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="min-w-5xl max-h-[90vh] p-0">
@@ -124,30 +167,30 @@ export function BookingModal({
                             Booking Details: {booking.bookingNumber}
                         </div>
                         <div className="flex items-center gap-2">
-                             {booking.status !== 'cancelled' && booking.status !== 'on_hold' && (
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
+                            {booking.status !== 'cancelled' && booking.status !== 'on_hold' && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     className="text-amber-600 border-amber-200 hover:bg-amber-50"
                                     onClick={handlePutOnHold}
                                 >
                                     Put on Hold
                                 </Button>
-                             )}
-                             {booking.status !== 'cancelled' && (
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
+                            )}
+                            {booking.status !== 'cancelled' && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     className="text-destructive border-red-200 hover:bg-red-50"
                                     onClick={handleCancelBooking}
                                 >
                                     <XCircle className="w-4 h-4 mr-2" />
                                     Cancel Booking
                                 </Button>
-                             )}
-                             {booking.status !== 'cancelled' && (
+                            )}
+                            {booking.status !== 'cancelled' && (
                                 <div className="flex items-center gap-2">
-                                    <select 
+                                    <select
                                         className="text-sm border rounded p-1 h-9"
                                         value={selectedBatchId}
                                         onChange={(e) => setSelectedBatchId(e.target.value)}
@@ -163,8 +206,8 @@ export function BookingModal({
                                             ))
                                         }
                                     </select>
-                                    <Button 
-                                        variant="outline" 
+                                    <Button
+                                        variant="outline"
                                         size="sm"
                                         onClick={handleMoveBooking}
                                         disabled={!selectedBatchId || isMoving}
@@ -172,7 +215,7 @@ export function BookingModal({
                                         Move
                                     </Button>
                                 </div>
-                             )}
+                            )}
                         </div>
                     </DialogTitle>
                 </DialogHeader>
@@ -389,7 +432,7 @@ export function BookingModal({
                             <CardContent>
                                 <div className="space-y-3">
                                     {booking.payments &&
-                                    booking.payments.length > 0 ? (
+                                        booking.payments.length > 0 ? (
                                         booking.payments.map((payment, idx) => (
                                             <div
                                                 key={idx}
@@ -405,7 +448,7 @@ export function BookingModal({
                                                         <Badge
                                                             variant={
                                                                 payment.status ===
-                                                                "completed"
+                                                                    "completed"
                                                                     ? "default"
                                                                     : "secondary"
                                                             }
@@ -422,11 +465,11 @@ export function BookingModal({
                                                         •{" "}
                                                         {payment.paymentDate
                                                             ? format(
-                                                                  new Date(
-                                                                      payment.paymentDate,
-                                                                  ),
-                                                                  "MMM d, yyyy",
-                                                              )
+                                                                new Date(
+                                                                    payment.paymentDate,
+                                                                ),
+                                                                "MMM d, yyyy",
+                                                            )
                                                             : "Date N/A"}
                                                     </p>
                                                 </div>
@@ -453,10 +496,106 @@ export function BookingModal({
 
                         {/* Travelers List */}
                         <div className="space-y-3">
-                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2 px-1">
-                                <Users className="w-3 h-3" />
-                                Travelers ({booking.customers?.length})
+                            <div className="flex items-center justify-between px-1">
+                                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                    <Users className="w-3 h-3" />
+                                    Travelers ({booking.customers?.length})
+                                </div>
+                                {booking.status !== 'cancelled' && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 text-xs"
+                                        onClick={() => setIsAddTravelerOpen(!isAddTravelerOpen)}
+                                    >
+                                        <Plus className="w-3.5 h-3.5 mr-1" />
+                                        Add Traveler
+                                    </Button>
+                                )}
                             </div>
+
+                            {isAddTravelerOpen && (
+                                <Card className="border-primary/40 bg-muted/20 p-4 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-semibold text-foreground">Add Traveler to Booking</span>
+                                        <div className="flex items-center gap-2 bg-background p-1 rounded-lg border">
+                                            <Button
+                                                type="button"
+                                                variant={travelerMode === "select" ? "default" : "ghost"}
+                                                size="sm"
+                                                className="h-7 text-xs px-2.5"
+                                                onClick={() => setTravelerMode("select")}
+                                            >
+                                                <User className="w-3.5 h-3.5 mr-1" />
+                                                Select Existing
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant={travelerMode === "create" ? "default" : "ghost"}
+                                                size="sm"
+                                                className="h-7 text-xs px-2.5"
+                                                onClick={() => setTravelerMode("create")}
+                                            >
+                                                <UserPlus className="w-3.5 h-3.5 mr-1" />
+                                                Create On-The-Fly
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {travelerMode === "select" ? (
+                                        <div className="space-y-3">
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="Search customer by name, email, phone..."
+                                                    value={customerSearch}
+                                                    onChange={(e) => setCustomerSearch(e.target.value)}
+                                                    className="pl-9 h-9 text-xs"
+                                                />
+                                            </div>
+                                            <ScrollArea className="h-44 border rounded-lg bg-background p-2">
+                                                <div className="space-y-1">
+                                                    {allCustomers.filter(c => !booking.customers?.some(bc => bc.id === c.id)).map(cust => (
+                                                        <div
+                                                            key={cust.id}
+                                                            className="flex items-center justify-between p-2 rounded hover:bg-accent cursor-pointer text-xs"
+                                                        >
+                                                            <div>
+                                                                <p className="font-semibold text-foreground">{cust.firstName} {cust.lastName}</p>
+                                                                <p className="text-muted-foreground">{cust.email} • {cust.phone}</p>
+                                                            </div>
+                                                            <Button
+                                                                size="sm"
+                                                                className="h-7 text-xs px-2"
+                                                                disabled={isSubmittingTraveler}
+                                                                onClick={() => cust.id && handleAddTraveler(cust.id)}
+                                                            >
+                                                                Add
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                    {allCustomers.filter(c => !booking.customers?.some(bc => bc.id === c.id)).length === 0 && (
+                                                        <p className="text-xs text-muted-foreground text-center py-4">
+                                                            {loadingCustomers ? "Loading customers..." : "No available customers found"}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </ScrollArea>
+                                        </div>
+                                    ) : (
+                                        <div className="border rounded-lg p-3 bg-background">
+                                            <EnhancedCustomerForm
+                                                onSave={async (newCust) => {
+                                                    if (newCust.id) {
+                                                        await handleAddTraveler(newCust.id);
+                                                    }
+                                                }}
+                                                onCancel={() => setIsAddTravelerOpen(false)}
+                                            />
+                                        </div>
+                                    )}
+                                </Card>
+                            )}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {booking.customers?.map((customer) => (
                                     <div
@@ -478,7 +617,7 @@ export function BookingModal({
                                                     variant="ghost"
                                                     size="sm"
                                                     className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                                                    onClick={() => handleRemoveTraveler(customer.id, `${customer.firstName} ${customer.lastName}`)}
+                                                    onClick={() => customer.id && handleRemoveTraveler(customer.id, `${customer.firstName} ${customer.lastName}`)}
                                                 >
                                                     <UserMinus className="w-4 h-4" />
                                                 </Button>

@@ -13,6 +13,7 @@ import {
 import { BookingStatus } from 'src/database/entity/booking.entity';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import {
+  AddTravelersDto,
   CreateBookingDto,
   CreatePaymentDto,
   UpdateBookingDto,
@@ -156,6 +157,34 @@ export class BookingController {
   @RequirePermission('booking', 'update')
   cancel(@Param('id') id: string, @Request() req: ApiRequestJWT) {
     return this.bookingService.cancelBooking(id, req.user.userId);
+  }
+
+  @Post(':id/add-customer/:customerId')
+  @RequirePermission('booking', 'update')
+  addCustomer(
+    @Param('id') id: string,
+    @Param('customerId') customerId: string,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.bookingService.addCustomerToBooking(
+      id,
+      customerId,
+      req.user.userId,
+    );
+  }
+
+  @Post(':id/add-customers')
+  @RequirePermission('booking', 'update')
+  addCustomers(
+    @Param('id') id: string,
+    @Body() dto: AddTravelersDto,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.bookingService.addCustomersToBooking(
+      id,
+      dto.customerIds,
+      req.user.userId,
+    );
   }
 
   @Post(':id/cancel-customer/:customerId')

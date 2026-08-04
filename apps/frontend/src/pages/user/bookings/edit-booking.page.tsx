@@ -69,7 +69,7 @@ export default function EditBookingPage() {
 				status: bookingData.status,
 				totalAmount: bookingData.totalAmount,
 				specialRequests: bookingData.specialRequests || "",
-				customerIds: bookingData.customers.map((c) => c.id),
+				customerIds: bookingData.customers.map((c) => c.id).filter((id): id is string => Boolean(id)),
 				selectedCustomers: bookingData.customers,
 			});
 		} catch (err) {

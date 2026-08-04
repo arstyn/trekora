@@ -1,17 +1,17 @@
 import axiosInstance from "@/lib/axios";
+import type { IBatches } from "@/types/batches.types";
 import type {
+    BookingStatus,
     IBooking,
     IBookingListItem,
+    IBookingLog,
+    IBookingPayment,
     IBookingStatistics,
     ICreateBookingRequest,
-    IUpdateBookingRequest,
-    IBookingPayment,
-    BookingStatus,
-    IBookingLog,
-    IPackage,
     ICustomer,
+    IPackage,
+    IUpdateBookingRequest,
 } from "@/types/booking.types";
-import type { IBatches } from "@/types/batches.types";
 
 /* -------------------- Booking Service -------------------- */
 export class BookingService {
@@ -97,6 +97,27 @@ export class BookingService {
     ): Promise<IBooking> {
         const response = await axiosInstance.post(
             `${this.baseUrl}/${bookingId}/cancel-customer/${customerId}`,
+        );
+        return response.data;
+    }
+
+    static async addCustomerToBooking(
+        bookingId: string,
+        customerId: string,
+    ): Promise<IBooking> {
+        const response = await axiosInstance.post(
+            `${this.baseUrl}/${bookingId}/add-customer/${customerId}`,
+        );
+        return response.data;
+    }
+
+    static async addCustomersToBooking(
+        bookingId: string,
+        customerIds: string[],
+    ): Promise<IBooking> {
+        const response = await axiosInstance.post(
+            `${this.baseUrl}/${bookingId}/add-customers`,
+            { customerIds },
         );
         return response.data;
     }
