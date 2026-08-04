@@ -117,6 +117,13 @@ export class CreateBookingDto {
   overrideCapacityLimit?: boolean;
 }
 
+export class AddTravelersDto {
+  @IsArray()
+  @IsUUID(4, { each: true })
+  customerIds: string[];
+}
+
+
 export class UpdateBookingDto {
   @IsOptional()
   @IsUUID()
@@ -175,6 +182,7 @@ export class BookingSummaryDto {
   customerName: string;
   customerEmail: string;
   packageName: string;
+  batchId?: string;
   batchStartDate: Date;
   numberOfCustomers: number;
   totalAmount: number;

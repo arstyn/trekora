@@ -48,11 +48,13 @@ import {
     Plus,
     Search,
     User,
+    UserPlus,
     X
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import EnhancedCustomerForm from "@/pages/user/customers/_components/enhanced-customer-form";
 
 interface CreateBookingDialogProps {
     open: boolean;
@@ -105,6 +107,7 @@ export function CreateBookingDialog({
     const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
     const [loadingData, setLoadingData] = useState(false);
     const [customerSearch, setCustomerSearch] = useState("");
+    const [customerMode, setCustomerMode] = useState<"select" | "create">("select");
     const [packageSearch, setPackageSearch] = useState("");
     const [packagePage, setPackagePage] = useState(1);
     const [customerPagination, setCustomerPagination] = useState({
@@ -115,6 +118,9 @@ export function CreateBookingDialog({
     });
     const [loadingCustomers, setLoadingCustomers] = useState(false);
     const [passportOverrides, setPassportOverrides] = useState<Record<string, boolean>>({});
+    const [duplicateCustomerOverrides, setDuplicateCustomerOverrides] = useState<Record<string, boolean>>({});
+    const [batchBookedOverrides, setBatchBookedOverrides] = useState<Record<string, boolean>>({});
+    const [customerExistingBookings, setCustomerExistingBookings] = useState<Record<string, any[]>>({});
 
     const [formData, setFormData] = useState<ICreateBookingFormData>({
         packageId: preselectedPackageId || "",
@@ -165,6 +171,34 @@ export function CreateBookingDialog({
             isExpirySoon,
         };
     };
+
+    const getDuplicateCustomerCount = (customer: ICustomer) => {
+        const custId = customer.id || customer.email || customer.phone || customer.firstName;
+        if (!custId) return 0;
+        return formData.customers.filter(c => (c.id || c.email || c.phone || c.firstName) === custId).length;
+    };
+
+    const fetchCustomerBookings = async (customer: ICustomer) => {
+        if (!customer.id) return;
+        const custId = customer.id;
+        if (customerExistingBookings[custId] !== undefined) return;
+        try {
+            const bookings = await BookingService.getBookingsByCustomer(custId);
+            setCustomerExistingBookings(prev => ({
+                ...prev,
+                [custId]: Array.isArray(bookings) ? bookings : []
+            }));
+        } catch (err) {
+            console.error(`Failed to fetch bookings for customer ${custId}`, err);
+        }
+    };
+
+    const getExistingBatchBookings = (customer: ICustomer, batchId: string) => {
+        if (!customer.id || !batchId) return [];
+        const bookings = customerExistingBookings[customer.id] || [];
+        return bookings.filter(b => b.batchId === batchId || b.batch?.id === batchId);
+    };
+
     const syncCustomerDetails = async (customerId: string) => {
         try {
             const response = await BookingService.getCustomerById(customerId);
@@ -211,11 +245,27 @@ export function CreateBookingDialog({
                 if (selectedPackage?.packageLocation?.type === 'international') {
                     const pendingWarnings = formData.customers.some(c => {
                         const status = checkPassportStatus(c);
-                        return status.hasWarning && !passportOverrides[c.id];
+                        return status.hasWarning && !(c.id && passportOverrides[c.id]);
                     });
                     if (pendingWarnings) {
                         newErrors.passport = "Please resolve or override all traveler passport warnings before proceeding.";
                     }
+                }
+                const pendingDuplicateWarnings = formData.customers.some(c => {
+                    const custId = c.id || c.email || c.phone || c.firstName;
+                    const count = getDuplicateCustomerCount(c);
+                    return count > 1 && !(custId && duplicateCustomerOverrides[custId]);
+                });
+                if (pendingDuplicateWarnings) {
+                    newErrors.duplicateCustomer = "A customer is selected multiple times for this booking. Please acknowledge the duplicate customer warning to proceed.";
+                }
+                const pendingBatchBookedWarnings = formData.customers.some(c => {
+                    const custId = c.id || c.email || c.phone || c.firstName;
+                    const existingBookings = getExistingBatchBookings(c, formData.batchId);
+                    return existingBookings.length > 0 && !(custId && batchBookedOverrides[custId]);
+                });
+                if (pendingBatchBookedWarnings) {
+                    newErrors.batchBookedCustomer = "A selected customer has an existing booking in this travel batch. Please acknowledge the existing batch booking warning to proceed.";
                 }
                 const availableSeats = getAvailableSeats(selectedBatch);
                 if (selectedBatch && formData.customers.length > availableSeats && !formData.overrideCapacityLimit) {
@@ -367,6 +417,15 @@ export function CreateBookingDialog({
         }
     };
 
+    // Automatically fetch existing bookings for selected customers
+    useEffect(() => {
+        formData.customers.forEach(c => {
+            if (c.id && customerExistingBookings[c.id] === undefined) {
+                fetchCustomerBookings(c);
+            }
+        });
+    }, [formData.customers]);
+
     // Load batches when package is selected
     useEffect(() => {
         if (formData.packageId) {
@@ -435,7 +494,8 @@ export function CreateBookingDialog({
         let total = 0;
 
         currentCustomers.forEach(customer => {
-            const selection = selections[customer.id] || { tierId: commonTierId, ageCategory: 'adult' };
+            const custId = customer.id || customer.email || customer.phone || customer.firstName;
+            const selection = selections[custId] || { tierId: commonTierId, ageCategory: 'adult' };
             const effectiveTierId = isCommon ? commonTierId : selection.tierId;
             const ageCategory = selection.ageCategory || 'adult';
 
@@ -467,16 +527,17 @@ export function CreateBookingDialog({
     };
 
     const handleCustomerSelect = (customer: ICustomer) => {
+        const custId = customer.id || customer.email || customer.phone || customer.firstName;
         const isAlreadySelected = formData.customers.some(
-            (c) => c.id === customer.id,
+            (c) => (c.id || c.email || c.phone || c.firstName) === custId,
         );
 
         if (isAlreadySelected) {
             const newCount = formData.customers.length - 1;
             setFormData((prev) => {
-                const newCustomers = prev.customers.filter((c) => c.id !== customer.id);
+                const newCustomers = prev.customers.filter((c) => (c.id || c.email || c.phone || c.firstName) !== custId);
                 const newSelections = { ...prev.customerSelections };
-                delete newSelections[customer.id];
+                delete newSelections[custId];
                 return {
                     ...prev,
                     customers: newCustomers,
@@ -492,7 +553,7 @@ export function CreateBookingDialog({
                 const defaultTierId = prev.packageTierId || (pkg?.packageTiers && pkg.packageTiers.length > 0 ? (pkg.packageTiers[0].id || "") : "");
                 const newSelections = {
                     ...prev.customerSelections,
-                    [customer.id]: { tierId: defaultTierId, ageCategory: 'adult' as const }
+                    [custId]: { tierId: defaultTierId, ageCategory: 'adult' as const }
                 };
                 const newCustomers = [...prev.customers, customer];
                 return {
@@ -521,7 +582,8 @@ export function CreateBookingDialog({
         setFormData((prev) => {
             const newSelections = { ...prev.customerSelections };
             if (customerToRemove) {
-                delete newSelections[customerToRemove.id];
+                const custId = customerToRemove.id || customerToRemove.email || customerToRemove.phone || customerToRemove.firstName;
+                delete newSelections[custId];
             }
             return {
                 ...prev,
@@ -538,10 +600,11 @@ export function CreateBookingDialog({
         setFormData((prev) => {
             const newSelections = { ...prev.customerSelections };
             prev.customers.forEach(c => {
-                if (!newSelections[c.id]) {
-                    newSelections[c.id] = { tierId: defaultTierId, ageCategory: 'adult' };
+                const custId = c.id || c.email || c.phone || c.firstName;
+                if (!newSelections[custId]) {
+                    newSelections[custId] = { tierId: defaultTierId, ageCategory: 'adult' };
                 } else {
-                    newSelections[c.id].tierId = defaultTierId;
+                    newSelections[custId].tierId = defaultTierId;
                 }
             });
             return {
@@ -567,8 +630,9 @@ export function CreateBookingDialog({
         setFormData((prev) => {
             const newSelections = { ...prev.customerSelections };
             prev.customers.forEach(c => {
-                if (newSelections[c.id]) {
-                    newSelections[c.id].tierId = tierId;
+                const custId = c.id || c.email || c.phone || c.firstName;
+                if (newSelections[custId]) {
+                    newSelections[custId].tierId = tierId;
                 }
             });
             return {
@@ -630,7 +694,7 @@ export function CreateBookingDialog({
 
             const customerIds = formData.customers
                 .map((c) => c.id)
-                .filter((id) => id);
+                .filter((id): id is string => Boolean(id));
 
             const bookingData: ICreateBookingRequest = {
                 customerId: formData.customers[0]?.id || "",
@@ -737,6 +801,9 @@ export function CreateBookingDialog({
         });
         setLoadingCustomers(false);
         setPassportOverrides({});
+        setDuplicateCustomerOverrides({});
+        setBatchBookedOverrides({});
+        setCustomerExistingBookings({});
         setError(null);
         setErrors({});
         setPackageSearch("");
@@ -1011,11 +1078,11 @@ export function CreateBookingDialog({
                                                                                     {availableSeats} left
                                                                                 </Badge>
                                                                             </div>
-                                                                            {isSelected && (
-                                                                                <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                                                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40 bg-background"}`}>
+                                                                                {isSelected && (
                                                                                     <Check className="h-3 w-3 text-primary-foreground" />
-                                                                                </span>
-                                                                            )}
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 );
@@ -1040,113 +1107,154 @@ export function CreateBookingDialog({
                                     <div className="space-y-6">
                                         <div className="space-y-4">
                                             <div className="space-y-2">
-                                                <Label htmlFor="customerSearch" className="text-sm font-semibold">1. Search and Select Travelers</Label>
-                                                <div className="relative">
-                                                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        id="customerSearch"
-                                                        placeholder="Search travelers by name, email, or phone..."
-                                                        value={customerSearch}
-                                                        onChange={(e) => {
-                                                            setCustomerSearch(e.target.value);
-                                                            searchCustomers(e.target.value);
-                                                        }}
-                                                        className="pl-10 h-10 border-input bg-background"
-                                                    />
+                                                <div className="flex justify-end">
                                                 </div>
-                                                {errors.customers && <p className="text-xs text-destructive mt-1 font-medium">{errors.customers}</p>}
-                                                {errors.passport && (
-                                                    <Alert variant="destructive" className="mt-2 py-2">
-                                                        <AlertCircle className="h-4 w-4" />
-                                                        <AlertDescription>{errors.passport}</AlertDescription>
-                                                    </Alert>
-                                                )}
-                                                {selectedBatch && formData.customers.length > getAvailableSeats(selectedBatch) && (
-                                                    <Alert className="mt-2 border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-500 py-3">
-                                                        <AlertCircle className="h-4 w-4 text-amber-500" />
-                                                        <AlertDescription className="space-y-2">
-                                                            <div className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                                                                Capacity Warning: Travelers ({formData.customers.length}) exceed available seats ({getAvailableSeats(selectedBatch)} left).
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <Checkbox
-                                                                    id="overrideCapacityLimit"
-                                                                    checked={formData.overrideCapacityLimit}
-                                                                    onCheckedChange={(checked) => {
-                                                                        setFormData(prev => ({
-                                                                            ...prev,
-                                                                            overrideCapacityLimit: !!checked
-                                                                        }));
-                                                                        if (errors.capacity) {
-                                                                            setErrors(prev => ({ ...prev, capacity: "" }));
-                                                                        }
+
+                                                {customerMode === "select" ? (
+                                                    <>
+
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="relative w-full">
+                                                                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                                <Input
+                                                                    id="customerSearch"
+                                                                    placeholder="Search travelers by name, email, or phone..."
+                                                                    value={customerSearch}
+                                                                    onChange={(e) => {
+                                                                        setCustomerSearch(e.target.value);
+                                                                        searchCustomers(e.target.value);
                                                                     }}
+                                                                    className="pl-10 h-10 border-input bg-background"
                                                                 />
-                                                                <Label htmlFor="overrideCapacityLimit" className="text-xs font-semibold cursor-pointer text-foreground">
-                                                                    Override batch capacity limit
-                                                                </Label>
                                                             </div>
-                                                        </AlertDescription>
-                                                    </Alert>
-                                                )}
-                                                {errors.capacity && (
-                                                    <Alert variant="destructive" className="mt-2 py-2">
-                                                        <AlertCircle className="h-4 w-4" />
-                                                        <AlertDescription>{errors.capacity}</AlertDescription>
-                                                    </Alert>
+                                                            <Button
+                                                                type="button"
+
+                                                                onClick={() => setCustomerMode("create")}
+                                                            >
+                                                                <UserPlus className="w-3.5 h-3.5 mr-1" />
+                                                                Create New
+                                                            </Button>
+                                                        </div>
+                                                        {errors.customers && <p className="text-xs text-destructive mt-1 font-medium">{errors.customers}</p>}
+                                                        {errors.passport && (
+                                                            <Alert variant="destructive" className="mt-2 py-2">
+                                                                <AlertCircle className="h-4 w-4" />
+                                                                <AlertDescription>{errors.passport}</AlertDescription>
+                                                            </Alert>
+                                                        )}
+                                                        {errors.duplicateCustomer && (
+                                                            <Alert variant="destructive" className="mt-2 py-2">
+                                                                <AlertCircle className="h-4 w-4" />
+                                                                <AlertDescription>{errors.duplicateCustomer}</AlertDescription>
+                                                            </Alert>
+                                                        )}
+                                                        {errors.batchBookedCustomer && (
+                                                            <Alert variant="destructive" className="mt-2 py-2">
+                                                                <AlertCircle className="h-4 w-4" />
+                                                                <AlertDescription>{errors.batchBookedCustomer}</AlertDescription>
+                                                            </Alert>
+                                                        )}
+                                                        {selectedBatch && formData.customers.length > getAvailableSeats(selectedBatch) && (
+                                                            <Alert className="mt-2 border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-500 py-3">
+                                                                <AlertCircle className="h-4 w-4 text-amber-500" />
+                                                                <AlertDescription className="space-y-2">
+                                                                    <div className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                                                                        Capacity Warning: Travelers ({formData.customers.length}) exceed available seats ({getAvailableSeats(selectedBatch)} left).
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Checkbox
+                                                                            id="overrideCapacityLimit"
+                                                                            checked={formData.overrideCapacityLimit}
+                                                                            onCheckedChange={(checked) => {
+                                                                                setFormData(prev => ({
+                                                                                    ...prev,
+                                                                                    overrideCapacityLimit: !!checked
+                                                                                }));
+                                                                                if (errors.capacity) {
+                                                                                    setErrors(prev => ({ ...prev, capacity: "" }));
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        <Label htmlFor="overrideCapacityLimit" className="text-xs font-semibold cursor-pointer text-foreground">
+                                                                            Override batch capacity limit
+                                                                        </Label>
+                                                                    </div>
+                                                                </AlertDescription>
+                                                            </Alert>
+                                                        )}
+                                                        {errors.capacity && (
+                                                            <Alert variant="destructive" className="mt-2 py-2">
+                                                                <AlertCircle className="h-4 w-4" />
+                                                                <AlertDescription>{errors.capacity}</AlertDescription>
+                                                            </Alert>
+                                                        )}
+                                                        <ScrollArea
+                                                            className="h-60 border rounded-xl bg-card p-3"
+                                                            onScrollCapture={(e) => {
+                                                                const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                                                                if (scrollHeight - scrollTop <= clientHeight + 10) {
+                                                                    loadMoreCustomers();
+                                                                }
+                                                            }}
+                                                        >
+                                                            <div className="space-y-1">
+                                                                {customers.length > 0 ? (
+                                                                    customers.map((c, idx) => {
+                                                                        const custId = c.id || c.email || c.phone || c.firstName;
+                                                                        const isChecked = formData.customers.some((x) => (x.id || x.email || x.phone || x.firstName) === custId);
+                                                                        return (
+                                                                            <div
+                                                                                key={c.id || `cust-${idx}`}
+                                                                                className={`flex items-center space-x-3 p-2.5 rounded-lg hover:bg-accent cursor-pointer transition-colors ${isChecked ? 'bg-accent/40' : ''}`}
+                                                                                onClick={() => handleCustomerSelect(c)}
+                                                                            >
+                                                                                <Checkbox
+                                                                                    checked={isChecked}
+                                                                                    onCheckedChange={() => handleCustomerSelect(c)}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                />
+                                                                                <Avatar className="h-9 w-9">
+                                                                                    <AvatarImage src={c.profilePhoto} alt={`${c.firstName} ${c.lastName}`} />
+                                                                                    <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
+                                                                                        {c.firstName[0]}{c.lastName?.[0] || ''}
+                                                                                    </AvatarFallback>
+                                                                                </Avatar>
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
+                                                                                    {(c.email || c.phone) ? (
+                                                                                        <p className="text-xs text-muted-foreground truncate">
+                                                                                            {c.email}
+                                                                                            {c.email && c.phone ? " • " : ""}
+                                                                                            {c.phone}
+                                                                                        </p>
+                                                                                    ) : null}
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })
+                                                                ) : (
+                                                                    <div className="text-center py-8 text-sm text-muted-foreground">
+                                                                        {loadingCustomers ? "Loading customers..." : "No customers found"}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </ScrollArea>
+                                                    </>
+                                                ) : (
+                                                    <div className="border rounded-xl p-4 bg-muted/20">
+                                                        <EnhancedCustomerForm
+                                                            onSave={(newCust) => {
+                                                                setCustomers((prev) => [newCust, ...prev]);
+                                                                handleCustomerSelect(newCust);
+                                                                setCustomerMode("select");
+                                                                toast.success(`Customer ${newCust.firstName} created & added to booking`);
+                                                            }}
+                                                            onCancel={() => setCustomerMode("select")}
+                                                        />
+                                                    </div>
                                                 )}
                                             </div>
-
-                                            <ScrollArea
-                                                className="h-60 border rounded-xl bg-card p-3"
-                                                onScrollCapture={(e) => {
-                                                    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-                                                    if (scrollHeight - scrollTop <= clientHeight + 10) {
-                                                        loadMoreCustomers();
-                                                    }
-                                                }}
-                                            >
-                                                <div className="space-y-1">
-                                                    {customers.length > 0 ? (
-                                                        customers.map((c) => {
-                                                            const isChecked = formData.customers.some((x) => x.id === c.id);
-                                                            return (
-                                                                <div
-                                                                    key={c.id}
-                                                                    className={`flex items-center space-x-3 p-2.5 rounded-lg hover:bg-accent cursor-pointer transition-colors ${isChecked ? 'bg-accent/40' : ''}`}
-                                                                    onClick={() => handleCustomerSelect(c)}
-                                                                >
-                                                                    <Checkbox
-                                                                        checked={isChecked}
-                                                                        onCheckedChange={() => handleCustomerSelect(c)}
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                    />
-                                                                    <Avatar className="h-9 w-9">
-                                                                        <AvatarImage src={c.profilePhoto} alt={`${c.firstName} ${c.lastName}`} />
-                                                                        <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
-                                                                            {c.firstName[0]}{c.lastName?.[0] || ''}
-                                                                        </AvatarFallback>
-                                                                    </Avatar>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
-                                                                        {(c.email || c.phone) ? (
-                                                                            <p className="text-xs text-muted-foreground truncate">
-                                                                                {c.email}
-                                                                                {c.email && c.phone ? " • " : ""}
-                                                                                {c.phone}
-                                                                            </p>
-                                                                        ) : null}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })
-                                                    ) : (
-                                                        <div className="text-center py-8 text-sm text-muted-foreground">
-                                                            {loadingCustomers ? "Loading customers..." : "No customers found"}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </ScrollArea>
                                         </div>
 
                                         {formData.customers.length > 0 && (
@@ -1235,9 +1343,9 @@ export function CreateBookingDialog({
 
                                                 <div className="space-y-3">
                                                     {formData.customers.map((c, index) => {
-                                                        const selection = formData.customerSelections[c.id] || { tierId: formData.packageTierId, ageCategory: 'adult' };
+                                                        const selection = formData.customerSelections[c.id!] || { tierId: formData.packageTierId, ageCategory: 'adult' };
                                                         return (
-                                                            <div key={c.id} className="flex flex-col p-3 bg-card border rounded-xl hover:shadow-xs transition-shadow gap-3">
+                                                            <div key={c.id || index} className="flex flex-col p-3 bg-card border rounded-xl hover:shadow-xs transition-shadow gap-3">
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
                                                                         <Avatar className="h-8 w-8">
@@ -1263,7 +1371,8 @@ export function CreateBookingDialog({
                                                                                 value={selection.tierId}
                                                                                 onValueChange={(val) => {
                                                                                     setFormData(prev => {
-                                                                                        const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, tierId: val } };
+                                                                                        const customerKey = c.id || '';
+                                                                                        const newSelections = { ...prev.customerSelections, [customerKey]: { ...selection, tierId: val } };
                                                                                         return {
                                                                                             ...prev,
                                                                                             customerSelections: newSelections,
@@ -1303,15 +1412,16 @@ export function CreateBookingDialog({
                                                                             </Select>
                                                                         )}
                                                                         <Select
-                                                                            value={selection.ageCategory}
+                                                                            value={selection.ageCategory || 'adult'}
                                                                             onValueChange={(val: 'adult' | 'child' | 'infant') => {
+                                                                                if (!c.id) return;
                                                                                 setFormData(prev => {
-                                                                                    const newSelections = { ...prev.customerSelections, [c.id]: { ...selection, ageCategory: val } };
+                                                                                    const newSelections = { ...prev.customerSelections, [c.id!]: { ...selection, ageCategory: val } };
                                                                                     return {
                                                                                         ...prev,
                                                                                         customerSelections: newSelections,
                                                                                         totalAmount: calculateTotalAmount(prev.packageId, prev.packageTierId, prev.isCommonTier, newSelections, prev.customers)
-                                                                                    }
+                                                                                    };
                                                                                 });
                                                                             }}
                                                                         >
@@ -1339,7 +1449,7 @@ export function CreateBookingDialog({
                                                                     const status = checkPassportStatus(c);
                                                                     if (!status.hasWarning) return null;
 
-                                                                    const isOverridden = !!passportOverrides[c.id];
+                                                                    const isOverridden = !!(c.id && passportOverrides[c.id]);
 
                                                                     return (
                                                                         <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
@@ -1365,7 +1475,7 @@ export function CreateBookingDialog({
                                                                                         <span className="text-muted-foreground/30">•</span>
                                                                                         <button
                                                                                             type="button"
-                                                                                            onClick={() => syncCustomerDetails(c.id)}
+                                                                                            onClick={() => c.id && syncCustomerDetails(c.id)}
                                                                                             className="inline-flex items-center gap-1 font-bold text-primary hover:underline hover:text-primary/80 transition-colors cursor-pointer"
                                                                                         >
                                                                                             Sync Details ↻
@@ -1378,9 +1488,10 @@ export function CreateBookingDialog({
                                                                                     id={`override-passport-${c.id}`}
                                                                                     checked={isOverridden}
                                                                                     onCheckedChange={(checked) => {
+                                                                                        if (!c.id) return;
                                                                                         setPassportOverrides(prev => ({
                                                                                             ...prev,
-                                                                                            [c.id]: !!checked
+                                                                                            [c.id!]: !!checked
                                                                                         }));
                                                                                         if (errors.passport) {
                                                                                             setErrors(prev => ({ ...prev, passport: "" }));
@@ -1394,9 +1505,87 @@ export function CreateBookingDialog({
                                                                         </div>
                                                                     );
                                                                 })()}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                                {(() => {
+                                                                        const custId = c.id || c.email || c.phone || c.firstName;
+                                                                        const dupCount = getDuplicateCustomerCount(c);
+                                                                        if (dupCount <= 1) return null;
+
+                                                                        const isDupOverridden = !!(custId && duplicateCustomerOverrides[custId]);
+
+                                                                        return (
+                                                                            <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isDupOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
+                                                                                <div className="flex items-start gap-2">
+                                                                                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                                                    <div className="flex-1">
+                                                                                        <p className="font-medium">
+                                                                                            Duplicate customer selection ({c.firstName} {c.lastName} is selected {dupCount} times for this booking).
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10">
+                                                                                    <Checkbox
+                                                                                        id={`override-duplicate-${custId}-${index}`}
+                                                                                        checked={isDupOverridden}
+                                                                                        onCheckedChange={(checked) => {
+                                                                                            if (!custId) return;
+                                                                                            setDuplicateCustomerOverrides(prev => ({
+                                                                                                ...prev,
+                                                                                                [custId]: !!checked
+                                                                                            }));
+                                                                                            if (errors.duplicateCustomer) {
+                                                                                                setErrors(prev => ({ ...prev, duplicateCustomer: "" }));
+                                                                                            }
+                                                                                        }}
+                                                                                    />
+                                                                                    <Label htmlFor={`override-duplicate-${custId}-${index}`} className="text-[11px] font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
+                                                                                        Acknowledge duplicate customer selection
+                                                                                    </Label>
+                                                                                </div>
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                                {(() => {
+                                                                        const custId = c.id || c.email || c.phone || c.firstName;
+                                                                        const existingBookings = getExistingBatchBookings(c, formData.batchId);
+                                                                        if (existingBookings.length === 0) return null;
+
+                                                                        const isBatchBookedOverridden = !!(custId && batchBookedOverrides[custId]);
+
+                                                                        return (
+                                                                            <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isBatchBookedOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
+                                                                                <div className="flex items-start gap-2">
+                                                                                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                                                    <div className="flex-1">
+                                                                                        <p className="font-medium">
+                                                                                            Existing batch booking warning ({c.firstName} {c.lastName} is already booked in this batch — Booking #{existingBookings.map(b => b.bookingNumber).join(', ')}).
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10">
+                                                                                    <Checkbox
+                                                                                        id={`override-batch-booked-${custId}-${index}`}
+                                                                                        checked={isBatchBookedOverridden}
+                                                                                        onCheckedChange={(checked) => {
+                                                                                            if (!custId) return;
+                                                                                            setBatchBookedOverrides(prev => ({
+                                                                                                ...prev,
+                                                                                                [custId]: !!checked
+                                                                                            }));
+                                                                                            if (errors.batchBookedCustomer) {
+                                                                                                setErrors(prev => ({ ...prev, batchBookedCustomer: "" }));
+                                                                                            }
+                                                                                        }}
+                                                                                    />
+                                                                                    <Label htmlFor={`override-batch-booked-${custId}-${index}`} className="text-[11px] font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
+                                                                                        Acknowledge existing batch booking
+                                                                                    </Label>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            );
+                                                        })}
                                                 </div>
                                             </div>
                                         )}
@@ -1458,7 +1647,7 @@ export function CreateBookingDialog({
                                                     <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Traveler Price Details</h5>
                                                     <div className="space-y-2 divide-y divide-muted/30">
                                                         {formData.customers.map((c) => {
-                                                            const selection = formData.customerSelections[c.id] || { tierId: formData.packageTierId, ageCategory: 'adult' };
+                                                            const selection = formData.customerSelections[c.id!] || { tierId: formData.packageTierId, ageCategory: 'adult' };
                                                             const effectiveTierId = formData.isCommonTier ? formData.packageTierId : selection.tierId;
                                                             const ageCategory = selection.ageCategory || 'adult';
                                                             const tier = selectedPackage.packageTiers?.find((t) => t.id === effectiveTierId);
@@ -1862,7 +2051,7 @@ export function CreateBookingDialog({
                                         {formData.customers.length > 0 ? (
                                             <div className="space-y-2 max-h-[16vh] overflow-y-auto pr-1">
                                                 {formData.customers.map((c) => {
-                                                    const selection = formData.customerSelections[c.id];
+                                                    const selection = c.id ? formData.customerSelections[c.id] : undefined;
                                                     const tier = selectedPackage?.packageTiers?.find(t => t.id === (formData.isCommonTier ? formData.packageTierId : selection?.tierId));
                                                     return (
                                                         <div key={c.id} className="p-2 border rounded-lg bg-background text-xs space-y-1">

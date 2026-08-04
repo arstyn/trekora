@@ -23,6 +23,7 @@ export default function BookingsPage() {
 	const [dashboardStats, setDashboardStats] = useState<IBookingStatistics | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [refreshKey, setRefreshKey] = useState(0);
 
 	useEffect(() => {
 		fetchDashboardData();
@@ -45,8 +46,9 @@ export default function BookingsPage() {
 	};
 
 	const handleBookingCreated = () => {
-		// Refresh dashboard data when a new booking is created
+		// Refresh dashboard data and trigger list reload when a new booking is created
 		fetchDashboardData();
+		setRefreshKey((prev) => prev + 1);
 	};
 
 	if (error) {
@@ -213,23 +215,23 @@ export default function BookingsPage() {
 				</TabsList>
 
 				<TabsContent value="all">
-					<BookingList status="all" />
+					<BookingList status="all" key={refreshKey} />
 				</TabsContent>
 
 				<TabsContent value="pending">
-					<BookingList status="pending" />
+					<BookingList status="pending" key={refreshKey} />
 				</TabsContent>
 
 				<TabsContent value="confirmed">
-					<BookingList status="confirmed" />
+					<BookingList status="confirmed" key={refreshKey} />
 				</TabsContent>
 
 				<TabsContent value="cancelled">
-					<BookingList status="cancelled" />
+					<BookingList status="cancelled" key={refreshKey} />
 				</TabsContent>
 
 				<TabsContent value="completed">
-					<BookingList status="completed" />
+					<BookingList status="completed" key={refreshKey} />
 				</TabsContent>
 			</Tabs>
 

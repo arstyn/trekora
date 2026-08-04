@@ -452,6 +452,7 @@ export class BookingService {
         booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
       customerEmail: booking.customer.email || '',
       packageName: booking.package.name,
+      batchId: booking.batchId,
       batchStartDate: booking.batch.startDate,
       numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
@@ -988,6 +989,116 @@ export class BookingService {
         {
           numberOfCustomers: booking.numberOfCustomers,
           removedCustomerId: customerId,
+        },
+        queryRunner.manager,
+      );
+
+      await queryRunner.commitTransaction();
+      return this.findOne(bookingId);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async addCustomerToBooking(
+    bookingId: string,
+    customerId: string,
+    userId: string,
+  ): Promise<BookingResponseDto> {
+    return this.addCustomersToBooking(bookingId, [customerId], userId);
+  }
+
+  async addCustomersToBooking(
+    bookingId: string,
+    customerIds: string[],
+    userId: string,
+  ): Promise<BookingResponseDto> {
+    if (!customerIds || customerIds.length === 0) {
+      throw new BadRequestException('At least one customer must be provided');
+    }
+
+    const booking = await this.bookingRepository.findOne({
+      where: { id: bookingId },
+      relations: ['bookingCustomers', 'batch'],
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const existingCustomerIds = booking.bookingCustomers?.map(bc => bc.customer.id) || [];
+    const newCustomerIds = customerIds.filter(id => !existingCustomerIds.includes(id));
+
+    if (newCustomerIds.length === 0) {
+      throw new BadRequestException('All selected customers are already in this booking');
+    }
+
+    const customersToAdd = await this.customerRepository.findBy({
+      id: In(newCustomerIds),
+    });
+
+    if (customersToAdd.length !== newCustomerIds.length) {
+      throw new BadRequestException('One or more specified customers were not found');
+    }
+
+    const availableSeats = booking.batch.totalSeats - booking.batch.bookedSeats - booking.batch.blockedSeats;
+    if (availableSeats < newCustomerIds.length) {
+      throw new BadRequestException(
+        `Only ${availableSeats} seats available in this batch`,
+      );
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const previousData = {
+        numberOfCustomers: booking.numberOfCustomers,
+        customerIds: existingCustomerIds,
+      };
+
+      const newBookingCustomers = newCustomerIds.map(cId =>
+        queryRunner.manager.create(BookingCustomer, {
+          bookingId,
+          customerId: cId,
+          ageCategory: 'adult',
+        })
+      );
+
+      await queryRunner.manager.save(BookingCustomer, newBookingCustomers);
+
+      booking.numberOfCustomers = booking.numberOfCustomers + newCustomerIds.length;
+
+      const packageEntity = await this.packageRepository.findOne({
+        where: { id: booking.packageId },
+        relations: ['packageTiers'],
+      });
+
+      if (packageEntity) {
+        const tier = packageEntity.packageTiers?.find(t => t.id === booking.packageTierId) || packageEntity.packageTiers?.[0];
+        const adultPrice = tier ? Number(tier.adultCost || 0) : 0;
+        booking.totalAmount = adultPrice * booking.numberOfCustomers;
+        booking.balanceAmount = booking.totalAmount - booking.advancePaid;
+      }
+
+      await queryRunner.manager.save(booking);
+
+      await queryRunner.manager.update(Batch, booking.batch.id, {
+        bookedSeats: booking.batch.bookedSeats + newCustomerIds.length,
+      });
+
+      await this.logAction(
+        bookingId,
+        userId,
+        'customer_added',
+        previousData,
+        {
+          numberOfCustomers: booking.numberOfCustomers,
+          addedCustomerIds: newCustomerIds,
         },
         queryRunner.manager,
       );

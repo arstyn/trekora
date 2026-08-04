@@ -26,16 +26,16 @@ export interface IBookingPayment {
 }
 
 export interface ICustomer {
-    id: string;
+    id?: string;
     firstName: string;
     lastName?: string;
     middleName?: string;
-    email: string;
-    phone: string;
+    email?: string;
+    phone?: string;
     alternativePhone?: string;
-    dateOfBirth: string;
-    gender: string;
-    address: string;
+    dateOfBirth?: string;
+    gender?: string;
+    address?: string;
     emergencyContactName?: string;
     emergencyContactPhone?: string;
     emergencyContactRelation?: string;

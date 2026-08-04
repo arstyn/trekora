@@ -653,7 +653,7 @@ export default function BookingDetailsPage() {
                                             {customer.firstName} {customer.lastName}
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-0.5 capitalize">
-                                            {customer.gender} • {format(new Date(customer.dateOfBirth), "MMM d, yyyy")}
+                                            {customer.gender || 'N/A'} • {customer.dateOfBirth ? format(new Date(customer.dateOfBirth), "MMM d, yyyy") : 'N/A'}
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -673,7 +673,7 @@ export default function BookingDetailsPage() {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-8 w-8 hover:bg-red-50 hover:text-red-600 rounded-md"
-                                                onClick={() => handleRemoveTraveler(customer.id, `${customer.firstName} ${customer.lastName}`)}
+                                                onClick={() => customer.id && handleRemoveTraveler(customer.id, `${customer.firstName} ${customer.lastName}`)}
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>

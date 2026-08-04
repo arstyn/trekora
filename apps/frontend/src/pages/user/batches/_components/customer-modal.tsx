@@ -112,8 +112,8 @@ export function CustomerModal({
                                                 Age
                                             </label>
                                             <p className="text-sm font-semibold">
-                                                {getAge(customer.dateOfBirth)}{" "}
-                                                years
+                                                {customer.dateOfBirth ? getAge(customer.dateOfBirth) : "N/A"}{" "}
+                                                {customer.dateOfBirth ? "years" : ""}
                                             </p>
                                         </div>
                                         <div className="space-y-2">
@@ -122,7 +122,7 @@ export function CustomerModal({
                                             </label>
                                             <p className="text-sm font-semibold">
                                                 {formatDate(
-                                                    customer.dateOfBirth,
+                                                    customer.dateOfBirth || "",
                                                 )}
                                             </p>
                                         </div>
@@ -136,7 +136,7 @@ export function CustomerModal({
                                                     className="text-xs"
                                                 >
                                                     {getGenderDisplay(
-                                                        customer.gender,
+                                                        customer.gender || "",
                                                     )}
                                                 </Badge>
                                             </div>
