@@ -240,6 +240,7 @@ export default function ViewPackagePage() {
                             {basicData.destination || "Destination not set"}
                             {basicData.packageLocation?.countries && basicData.packageLocation.countries.length > 0 && ` • ${basicData.packageLocation.countries.join(", ")}`}
                             {basicData.packageLocation?.states && basicData.packageLocation.states.length > 0 && ` • ${basicData.packageLocation.states.join(", ")}`}
+                            {basicData.packageLocation?.cities && basicData.packageLocation.cities.length > 0 && ` • ${basicData.packageLocation.cities.join(", ")}`}
                         </p>
                     </div>
                 </div>
