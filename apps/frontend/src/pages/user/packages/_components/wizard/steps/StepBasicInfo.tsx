@@ -25,10 +25,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { getFileUrl } from "@/lib/utils";
+import { SearchableSelect } from "@/components/searchable-select";
+import { countries } from "@/pages/user/customers/_components/countries";
+import { getAllStates, getDistricts } from "india-state-district";
 
 interface StepBasicInfoProps {
     form: UseFormReturn<PackageFormData>;
@@ -61,24 +64,42 @@ export function StepBasicInfo({
 
     const thumbnailSrc = localPreview || (thumbnailFile ? (thumbnailFile.startsWith("blob:") || thumbnailFile.startsWith("data:") ? thumbnailFile : getFileUrl(thumbnailFile)) : undefined);
 
-    const [newItem, setNewItem] = useState<{
-        type: "countries" | "states" | "cities";
-        value: string;
-    }>({ type: "countries", value: "" });
+    const locationType = form.watch("packageLocation.type") || "local";
+    const selectedCountry = form.watch("packageLocation.countries")?.[0] || (locationType === "local" ? "India" : "");
+    const selectedState = form.watch("packageLocation.states")?.[0] || "";
+    const selectedCity = form.watch("packageLocation.cities")?.[0] || "";
 
-    const addLocationItem = (type: "countries" | "states" | "cities") => {
-        if (!newItem.value.trim()) return;
-        const current = form.getValues(`packageLocation.${type}`) || [];
-        form.setValue(`packageLocation.${type}`, [...current, newItem.value.trim()]);
-        setNewItem({ type, value: "" });
+    const stateOptions = getAllStates().map((s) => ({
+        value: s.name,
+        label: s.name,
+    }));
+
+    const selectedStateObj = getAllStates().find((s) => s.name === selectedState);
+    const districtOptions = selectedStateObj
+        ? getDistricts(selectedStateObj.code).map((d) => ({
+            value: d,
+            label: d,
+        }))
+        : [];
+
+    const handleCountryChange = (val: string) => {
+        form.setValue("packageLocation.countries", [val]);
+        if (val === "India") {
+            form.setValue("packageLocation.states", ["Kerala"]);
+            form.setValue("packageLocation.cities", []);
+        } else {
+            form.setValue("packageLocation.states", []);
+            form.setValue("packageLocation.cities", []);
+        }
     };
 
-    const removeLocationItem = (type: "countries" | "states" | "cities", index: number) => {
-        const current = form.getValues(`packageLocation.${type}`) || [];
-        form.setValue(
-            `packageLocation.${type}`,
-            current.filter((_, i) => i !== index),
-        );
+    const handleStateChange = (val: string) => {
+        form.setValue("packageLocation.states", [val]);
+        form.setValue("packageLocation.cities", []);
+    };
+
+    const handleCityChange = (val: string) => {
+        form.setValue("packageLocation.cities", [val]);
     };
 
     return (
@@ -353,98 +374,100 @@ export function StepBasicInfo({
                     />
 
                     {form.watch("packageLocation.type") && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {form.watch("packageLocation.type") === "international" && (
-                                <div className="space-y-2">
-                                    <Label className="font-medium">Countries</Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            placeholder="Add country..."
-                                            value={newItem.type === "countries" ? newItem.value : ""}
-                                            onChange={(e) => setNewItem({ type: "countries", value: e.target.value })}
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                    e.preventDefault();
-                                                    addLocationItem("countries");
-                                                }
-                                            }}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t">
+                            {form.watch("packageLocation.type") === "international" ? (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Country</Label>
+                                        <SearchableSelect
+                                            options={countries}
+                                            value={selectedCountry}
+                                            onChange={handleCountryChange}
+                                            placeholder="Select Country"
+                                            searchPlaceholder="Search Country..."
                                         />
-                                        <Button type="button" onClick={() => addLocationItem("countries")} variant="secondary">
-                                            <Plus className="w-4 h-4" />
-                                        </Button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {(form.watch("packageLocation.countries") || []).map((item, idx) => (
-                                            <div key={idx} className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md text-sm">
-                                                <span>{item}</span>
-                                                <Button type="button" variant="ghost" size="sm" className="h-auto p-0" onClick={() => removeLocationItem("countries", idx)}>
-                                                    <Trash2 className="w-3 h-3 text-red-500" />
-                                                </Button>
+                                    
+                                    {selectedCountry === "India" ? (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium">State</Label>
+                                                <SearchableSelect
+                                                    options={stateOptions}
+                                                    value={selectedState}
+                                                    onChange={handleStateChange}
+                                                    placeholder="Select State"
+                                                    searchPlaceholder="Search State..."
+                                                />
                                             </div>
-                                        ))}
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium">City</Label>
+                                                <SearchableSelect
+                                                    options={districtOptions}
+                                                    value={selectedCity}
+                                                    onChange={handleCityChange}
+                                                    placeholder={selectedState ? "Select City" : "Select State First"}
+                                                    searchPlaceholder="Search City..."
+                                                    disabled={!selectedState}
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium">State/Region</Label>
+                                                <Input
+                                                    placeholder="Enter state..."
+                                                    value={selectedState}
+                                                    onChange={(e) => form.setValue("packageLocation.states", [e.target.value])}
+                                                    className="h-9 text-sm"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium">City</Label>
+                                                <Input
+                                                    placeholder="Enter city..."
+                                                    value={selectedCity}
+                                                    onChange={(e) => form.setValue("packageLocation.cities", [e.target.value])}
+                                                    className="h-9 text-sm"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Country</Label>
+                                        <Input
+                                            value="India"
+                                            disabled
+                                            className="h-9 text-sm bg-muted text-muted-foreground"
+                                        />
                                     </div>
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">State</Label>
+                                        <SearchableSelect
+                                            options={stateOptions}
+                                            value={selectedState}
+                                            onChange={handleStateChange}
+                                            placeholder="Select State"
+                                            searchPlaceholder="Search State..."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">City</Label>
+                                        <SearchableSelect
+                                            options={districtOptions}
+                                            value={selectedCity}
+                                            onChange={handleCityChange}
+                                            placeholder={selectedState ? "Select City" : "Select State First"}
+                                            searchPlaceholder="Search City..."
+                                            disabled={!selectedState}
+                                        />
+                                    </div>
+                                </>
                             )}
-
-                            <div className="space-y-2">
-                                <Label className="font-medium">States/Regions</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="Add state..."
-                                        value={newItem.type === "states" ? newItem.value : ""}
-                                        onChange={(e) => setNewItem({ type: "states", value: e.target.value })}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                addLocationItem("states");
-                                            }
-                                        }}
-                                    />
-                                    <Button type="button" onClick={() => addLocationItem("states")} variant="secondary">
-                                        <Plus className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {(form.watch("packageLocation.states") || []).map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md text-sm">
-                                            <span>{item}</span>
-                                            <Button type="button" variant="ghost" size="sm" className="h-auto p-0" onClick={() => removeLocationItem("states", idx)}>
-                                                <Trash2 className="w-3 h-3 text-red-500" />
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="font-medium">Cities</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="Add city..."
-                                        value={newItem.type === "cities" ? newItem.value : ""}
-                                        onChange={(e) => setNewItem({ type: "cities", value: e.target.value })}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                addLocationItem("cities");
-                                            }
-                                        }}
-                                    />
-                                    <Button type="button" onClick={() => addLocationItem("cities")} variant="secondary">
-                                        <Plus className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {(form.watch("packageLocation.cities") || []).map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md text-sm">
-                                            <span>{item}</span>
-                                            <Button type="button" variant="ghost" size="sm" className="h-auto p-0" onClick={() => removeLocationItem("cities", idx)}>
-                                                <Trash2 className="w-3 h-3 text-red-500" />
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
                         </div>
                     )}
                 </CardContent>

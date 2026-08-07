@@ -26,6 +26,10 @@ import cancellationTiersService from "@/services/cancellation-tiers.service";
 import type { ICancellationTierTemplate } from "@/services/cancellation-tiers.service";
 import PaymentStructureForm from "@/pages/user/payment-structures/_components/payment-structure-form";
 import CancellationTierForm from "@/pages/user/cancellation-tiers/_components/cancellation-tier-form";
+import { SearchableSelect } from "@/components/searchable-select";
+import { countries } from "@/pages/user/customers/_components/countries";
+import { getAllStates, getDistricts } from "india-state-district";
+import { Label } from "@/components/ui/label";
 
 interface NormalPackageFormProps {
     isEditing?: boolean;
@@ -109,6 +113,44 @@ export function NormalPackageForm({
     }, [selectedThumbnail]);
 
     const thumbnailSrc = localPreview || (thumbnailFile ? (thumbnailFile.startsWith("blob:") || thumbnailFile.startsWith("data:") ? thumbnailFile : getFileUrl(thumbnailFile)) : undefined);
+
+    const locationType = form.watch("packageLocation.type") || "local";
+    const selectedCountry = form.watch("packageLocation.countries")?.[0] || (locationType === "local" ? "India" : "");
+    const selectedState = form.watch("packageLocation.states")?.[0] || "";
+    const selectedCity = form.watch("packageLocation.cities")?.[0] || "";
+
+    const stateOptions = getAllStates().map((s) => ({
+        value: s.name,
+        label: s.name,
+    }));
+
+    const selectedStateObj = getAllStates().find((s) => s.name === selectedState);
+    const districtOptions = selectedStateObj
+        ? getDistricts(selectedStateObj.code).map((d) => ({
+            value: d,
+            label: d,
+        }))
+        : [];
+
+    const handleCountryChange = (val: string) => {
+        form.setValue("packageLocation.countries", [val]);
+        if (val === "India") {
+            form.setValue("packageLocation.states", ["Kerala"]);
+            form.setValue("packageLocation.cities", []);
+        } else {
+            form.setValue("packageLocation.states", []);
+            form.setValue("packageLocation.cities", []);
+        }
+    };
+
+    const handleStateChange = (val: string) => {
+        form.setValue("packageLocation.states", [val]);
+        form.setValue("packageLocation.cities", []);
+    };
+
+    const handleCityChange = (val: string) => {
+        form.setValue("packageLocation.cities", [val]);
+    };
 
     const [paymentTemplates, setPaymentTemplates] = useState<IPaymentStructureTemplate[]>([]);
     const [cancellationTemplates, setCancellationTemplates] = useState<ICancellationTierTemplate[]>([]);
@@ -505,6 +547,104 @@ export function NormalPackageForm({
                                     )}
                                 />
                             </div>
+
+                            {locationType && (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                                    {locationType === "international" ? (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium">Country</Label>
+                                                <SearchableSelect
+                                                    options={countries}
+                                                    value={selectedCountry}
+                                                    onChange={handleCountryChange}
+                                                    placeholder="Select Country"
+                                                    searchPlaceholder="Search Country..."
+                                                />
+                                            </div>
+                                            
+                                            {selectedCountry === "India" ? (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-medium">State</Label>
+                                                        <SearchableSelect
+                                                            options={stateOptions}
+                                                            value={selectedState}
+                                                            onChange={handleStateChange}
+                                                            placeholder="Select State"
+                                                            searchPlaceholder="Search State..."
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-medium">City</Label>
+                                                        <SearchableSelect
+                                                            options={districtOptions}
+                                                            value={selectedCity}
+                                                            onChange={handleCityChange}
+                                                            placeholder={selectedState ? "Select City" : "Select State First"}
+                                                            searchPlaceholder="Search City..."
+                                                            disabled={!selectedState}
+                                                        />
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-medium">State/Region</Label>
+                                                        <Input
+                                                            placeholder="Enter state..."
+                                                            value={selectedState}
+                                                            onChange={(e) => form.setValue("packageLocation.states", [e.target.value])}
+                                                            className="h-9 text-sm"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-medium">City</Label>
+                                                        <Input
+                                                            placeholder="Enter city..."
+                                                            value={selectedCity}
+                                                            onChange={(e) => form.setValue("packageLocation.cities", [e.target.value])}
+                                                            className="h-9 text-sm"
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium">Country</Label>
+                                                <Input
+                                                    value="India"
+                                                    disabled
+                                                    className="h-9 text-sm bg-muted text-muted-foreground"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium">State</Label>
+                                                <SearchableSelect
+                                                    options={stateOptions}
+                                                    value={selectedState}
+                                                    onChange={handleStateChange}
+                                                    placeholder="Select State"
+                                                    searchPlaceholder="Search State..."
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium">City</Label>
+                                                <SearchableSelect
+                                                    options={districtOptions}
+                                                    value={selectedCity}
+                                                    onChange={handleCityChange}
+                                                    placeholder={selectedState ? "Select City" : "Select State First"}
+                                                    searchPlaceholder="Search City..."
+                                                    disabled={!selectedState}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
 
                             <FormField
                                 control={form.control}
