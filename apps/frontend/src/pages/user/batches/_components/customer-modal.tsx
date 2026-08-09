@@ -15,6 +15,7 @@ import {
     MapPin,
     Phone,
     Shield,
+    ShieldAlert,
     User,
 } from "lucide-react";
 
@@ -80,11 +81,53 @@ export function CustomerModal({
                         <User className="w-5 h-5 text-primary" />
                         Customer Details: {customer.firstName}{" "}
                         {customer.lastName}
+                        {customer.isBlacklisted && (
+                            <Badge variant="destructive" className="bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-2 py-0.5 ml-2">
+                                Blacklisted
+                            </Badge>
+                        )}
                     </DialogTitle>
                 </DialogHeader>
 
                 <ScrollArea className="h-[calc(90vh-120px)] px-4 sm:px-6">
                     <div className="space-y-4 sm:space-y-6 py-4">
+                        {/* Blacklisted Warning Banner */}
+                        {customer.isBlacklisted && (
+                            <div className="relative overflow-hidden rounded-xl border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-red-950/25 to-background p-4 shadow-md space-y-2 dark:border-rose-800/40">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 rounded-lg bg-rose-500/15 text-rose-500 border border-rose-500/20 shrink-0 mt-0.5">
+                                        <ShieldAlert className="w-4 h-4 animate-pulse" />
+                                    </div>
+                                    <div className="space-y-1.5 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-[11px] font-bold tracking-wider uppercase text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 rounded-full">
+                                                Blacklisted Account
+                                            </span>
+                                            {customer.blacklistedAt && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    • Blacklisted on {formatDate(customer.blacklistedAt)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5 text-xs">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400 block mb-0.5">Reason for Blacklisting</span>
+                                            <p className="font-medium text-foreground">{customer.blacklistedReason || "No reason specified"}</p>
+                                        </div>
+                                        {customer.blacklistedBy && (
+                                            <p className="text-[11px] text-muted-foreground pt-0.5">
+                                                Blacklisted by: <strong className="text-foreground font-semibold">
+                                                    {[customer.blacklistedBy.firstName, customer.blacklistedBy.lastName].filter(Boolean).join(" ") || customer.blacklistedBy.email}
+                                                </strong>
+                                                {customer.blacklistedBy.email && (customer.blacklistedBy.firstName || customer.blacklistedBy.lastName) && (
+                                                    <span className="ml-1 opacity-75">({customer.blacklistedBy.email})</span>
+                                                )}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                             {/* Personal Information */}
                             <Card>

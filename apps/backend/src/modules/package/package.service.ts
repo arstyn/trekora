@@ -1,30 +1,30 @@
 import {
+  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'crypto';
+import { AdditionalCost } from 'src/database/entity/package-related/additional-costs.entity';
 import { CancellationTier } from 'src/database/entity/package-related/cancellation-tiers.entity';
+import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
 import { DocumentRequirement } from 'src/database/entity/package-related/document-requirements.entity';
 import { Exclusion } from 'src/database/entity/package-related/exclusions.entity';
 import { Inclusion } from 'src/database/entity/package-related/inclusions.entity';
+import { ItineraryDay } from 'src/database/entity/package-related/itinerary-days.entity';
 import { MealsBreakdown } from 'src/database/entity/package-related/meals-breakdowns.entity';
+import { PackageActivity } from 'src/database/entity/package-related/package-activities.entity';
 import { PackageLocation } from 'src/database/entity/package-related/package-locations.entity';
+import { PackageTier } from 'src/database/entity/package-related/package-tiers.entity';
 import { PaymentMilestone } from 'src/database/entity/package-related/payment-milestones.entity';
 import { TransportationOption } from 'src/database/entity/package-related/transportation-options.entity';
-import { PackageTier } from 'src/database/entity/package-related/package-tiers.entity';
-import { AdditionalCost } from 'src/database/entity/package-related/additional-costs.entity';
-import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
+import { PackageFormData } from 'src/dto/package.schema';
 import { DataSource, Repository } from 'typeorm';
 import { CancellationPolicy } from '../../database/entity/package-related/cancellation-policies.entity';
 import { Package } from '../../database/entity/package-related/package.entity';
-import { ItineraryDay } from 'src/database/entity/package-related/itinerary-days.entity';
-import { ITransportation, PackageFormData } from 'src/dto/package.schema';
 import { UploadService } from '../upload/upload.service';
-import { PackageActivity } from 'src/database/entity/package-related/package-activities.entity';
-import { randomUUID } from 'crypto';
 
 @Injectable()
 export class PackageService {
@@ -319,6 +319,11 @@ export class PackageService {
         'nights',
         'description',
         'maxGuests',
+        'maxDiscountType',
+        'maxDiscountScope',
+        'maxDiscountValue',
+        'maxDiscountPercentage',
+        'packageSetup',
         'thumbnail',
         'status',
       ],

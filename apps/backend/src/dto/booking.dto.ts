@@ -75,6 +75,11 @@ export class CreateBookingDto {
   totalAmount: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountAmount?: number;
+
+  @IsOptional()
   @IsString()
   specialRequests?: string;
 
@@ -148,6 +153,11 @@ export class UpdateBookingDto {
   totalAmount?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountAmount?: number;
+
+  @IsOptional()
   @IsEnum(BookingStatus)
   status?: BookingStatus;
 
@@ -186,6 +196,7 @@ export class BookingSummaryDto {
   batchStartDate: Date;
   numberOfCustomers: number;
   totalAmount: number;
+  discountAmount?: number;
   advancePaid: number;
   balanceAmount: number;
   status: BookingStatus;
@@ -240,6 +251,7 @@ export class BookingResponseDto {
   };
   numberOfCustomers: number;
   totalAmount: number;
+  discountAmount?: number;
   advancePaid: number;
   balanceAmount: number;
   status: BookingStatus;

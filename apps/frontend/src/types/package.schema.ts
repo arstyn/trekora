@@ -48,6 +48,10 @@ export interface IPackages {
     nights?: number;
     description?: string;
     maxGuests?: number;
+    maxDiscountType?: "amount" | "percentage";
+    maxDiscountScope?: "group" | "passenger";
+    maxDiscountValue?: number;
+    maxDiscountPercentage?: number;
     category?:
     | "adventure"
     | "cultural"
@@ -197,6 +201,10 @@ export const packageFormSchema = z
         nights: z.number().optional(),
         description: z.string().optional(),
         maxGuests: z.number().optional(),
+        maxDiscountType: z.enum(["amount", "percentage"]).optional(),
+        maxDiscountScope: z.enum(["group", "passenger"]).optional(),
+        maxDiscountValue: z.number().min(0).optional(),
+        maxDiscountPercentage: z.number().min(0).max(100).optional(),
         category: z
             .enum([
                 "adventure",

@@ -28,11 +28,12 @@ import {
     Phone,
     Plus,
     Search,
+    Tag,
     User,
     UserMinus,
     UserPlus,
     Users,
-    XCircle,
+    XCircle
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -266,6 +267,29 @@ export function BookingModal({
                                             ₹{booking.totalAmount}
                                         </span>
                                     </div>
+                                    {Boolean(booking.discountAmount) && Number(booking.discountAmount) > 0 && (
+                                        <div className="flex justify-between items-start text-sm">
+                                            <span className="text-muted-foreground flex items-center gap-1">
+                                                <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                                Discount Applied:
+                                            </span>
+                                            <div className="text-right">
+                                                <span className="font-semibold text-emerald-600 dark:text-emerald-400 block">
+                                                    -₹{Number(booking.discountAmount).toLocaleString("en-IN")}
+                                                    {Number(booking.totalAmount) > 0 && (
+                                                        <span className="text-xs text-muted-foreground ml-1 font-normal">
+                                                            ({((Number(booking.discountAmount) / (Number(booking.totalAmount) + Number(booking.discountAmount))) * 100).toFixed(1)}%)
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                {booking.numberOfCustomers > 1 && (
+                                                    <span className="text-[10px] text-muted-foreground block font-medium">
+                                                        (-₹{Math.round(Number(booking.discountAmount) / booking.numberOfCustomers).toLocaleString("en-IN")} / traveler across {booking.numberOfCustomers} passengers)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">
                                             Paid:
@@ -561,8 +585,19 @@ export function BookingModal({
                                                             className="flex items-center justify-between p-2 rounded hover:bg-accent cursor-pointer text-xs"
                                                         >
                                                             <div>
-                                                                <p className="font-semibold text-foreground">{cust.firstName} {cust.lastName}</p>
-                                                                <p className="text-muted-foreground">{cust.email} • {cust.phone}</p>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <p className="font-semibold text-foreground">{cust.firstName} {cust.lastName}</p>
+                                                                    {cust.isBlacklisted && (
+                                                                        <Badge variant="destructive" className="text-[9px] px-1 py-0 font-bold">
+                                                                            Blacklisted
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                {cust.isBlacklisted ? (
+                                                                    <p className="text-destructive font-semibold text-[11px]">Reason: {cust.blacklistedReason || 'No description'}</p>
+                                                                ) : (
+                                                                    <p className="text-muted-foreground">{cust.email} • {cust.phone}</p>
+                                                                )}
                                                             </div>
                                                             <Button
                                                                 size="sm"
@@ -600,14 +635,19 @@ export function BookingModal({
                                 {booking.customers?.map((customer) => (
                                     <div
                                         key={customer.id}
-                                        className="p-3 border rounded-lg bg-background"
+                                        className={`p-3 border rounded-lg bg-background ${customer.isBlacklisted ? 'border-destructive/50 bg-destructive/5' : ''}`}
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-1">
-                                                <p className="font-medium text-sm">
-                                                    {customer.firstName}{" "}
-                                                    {customer.lastName}
-                                                </p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="font-medium text-sm">
+                                                        {customer.firstName}{" "}
+                                                        {customer.lastName}
+                                                    </p>
+                                                    {customer.isBlacklisted && (
+                                                        <Badge variant="destructive" className="text-[9px] px-1 py-0">Blacklisted</Badge>
+                                                    )}
+                                                </div>
                                                 <p className="text-xs text-muted-foreground">
                                                     {customer.email}
                                                 </p>

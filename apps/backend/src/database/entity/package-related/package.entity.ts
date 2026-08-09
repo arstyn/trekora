@@ -53,6 +53,38 @@ export class Package {
   @Column({ nullable: true })
   maxGuests: number;
 
+  @Column('text', {
+    nullable: true,
+    name: 'max_discount_type',
+    default: 'amount',
+  })
+  maxDiscountType: 'amount' | 'percentage';
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'max_discount_value',
+    default: 0,
+  })
+  maxDiscountValue: number;
+
+  @Column('decimal', {
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    name: 'max_discount_percentage',
+    default: 0,
+  })
+  maxDiscountPercentage: number;
+
+  @Column('text', {
+    nullable: true,
+    name: 'max_discount_scope',
+    default: 'group',
+  })
+  maxDiscountScope: 'group' | 'passenger';
+
   @Column({
     type: 'enum',
     enum: [

@@ -23,8 +23,9 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type { PackageFormData } from "@/types/package.schema";
-import { AlertTriangle, Plus, Save, Trash2, Edit } from "lucide-react";
+import { AlertTriangle, Plus, Save, Trash2, Edit, Percent, DollarSign, User, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
@@ -330,6 +331,134 @@ export function StepFinance({
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    <div className="p-4 bg-card border rounded-lg max-w-sm">
+                        <FormField
+                            control={form.control}
+                            name="maxDiscountType"
+                            render={({ field: typeField }) => {
+                                const currentType = typeField.value || "amount";
+                                return (
+                                    <FormItem>
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <FormLabel className="flex items-center gap-1.5 font-medium text-xs">
+                                                {currentType === "amount" ? (
+                                                    <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                                ) : (
+                                                    <Percent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                                )}
+                                                Max Discount Limit
+                                            </FormLabel>
+                                            
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                {/* Discount Scope Switcher */}
+                                                <FormField
+                                                    control={form.control}
+                                                    name="maxDiscountScope"
+                                                    render={({ field: scopeField }) => {
+                                                        const currentScope = scopeField.value || "group";
+                                                        return (
+                                                            <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border text-xs gap-0.5">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        scopeField.onChange("group");
+                                                                        form.setValue("maxDiscountScope", "group");
+                                                                    }}
+                                                                    className={cn(
+                                                                        "px-2 py-0.5 rounded-md transition-all font-medium flex items-center gap-1 cursor-pointer",
+                                                                        currentScope === "group"
+                                                                            ? "bg-background text-foreground shadow-xs"
+                                                                            : "text-muted-foreground hover:text-foreground"
+                                                                    )}
+                                                                >
+                                                                    <Users className="w-3 h-3" />
+                                                                    Group Total
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        scopeField.onChange("passenger");
+                                                                        form.setValue("maxDiscountScope", "passenger");
+                                                                    }}
+                                                                    className={cn(
+                                                                        "px-2 py-0.5 rounded-md transition-all font-medium flex items-center gap-1 cursor-pointer",
+                                                                        currentScope === "passenger"
+                                                                            ? "bg-background text-foreground shadow-xs"
+                                                                            : "text-muted-foreground hover:text-foreground"
+                                                                    )}
+                                                                >
+                                                                    <User className="w-3 h-3" />
+                                                                    Per Passenger
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    }}
+                                                />
+
+                                                {/* Unit Selector */}
+                                                <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border text-xs">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            typeField.onChange("amount");
+                                                            form.setValue("maxDiscountType", "amount");
+                                                        }}
+                                                        className={cn(
+                                                            "px-2 py-0.5 rounded-md transition-all font-medium cursor-pointer",
+                                                            currentType === "amount"
+                                                                ? "bg-background text-foreground shadow-xs"
+                                                                : "text-muted-foreground hover:text-foreground"
+                                                        )}
+                                                    >
+                                                        Amount (₹)
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            typeField.onChange("percentage");
+                                                            form.setValue("maxDiscountType", "percentage");
+                                                        }}
+                                                        className={cn(
+                                                            "px-2 py-0.5 rounded-md transition-all font-medium cursor-pointer",
+                                                            currentType === "percentage"
+                                                                ? "bg-background text-foreground shadow-xs"
+                                                                : "text-muted-foreground hover:text-foreground"
+                                                        )}
+                                                    >
+                                                        Percent (%)
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <FormControl>
+                                            <FormField
+                                                control={form.control}
+                                                name="maxDiscountValue"
+                                                render={({ field: valField }) => (
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        max={currentType === "percentage" ? "100" : undefined}
+                                                        step={currentType === "percentage" ? "0.01" : "1"}
+                                                        placeholder={currentType === "amount" ? "e.g. 500" : "e.g. 10"}
+                                                        {...valField}
+                                                        value={valField.value ?? ""}
+                                                        onChange={(e) => {
+                                                            const numVal = e.target.value === "" ? 0 : Number(e.target.value);
+                                                            valField.onChange(numVal);
+                                                            if (currentType === "percentage") {
+                                                                form.setValue("maxDiscountPercentage", numVal);
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                );
+                            }}
+                        />
+                    </div>
                     {transportations.length === 0 ? (
                         <div className="p-4 bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 rounded-lg text-sm flex items-center gap-3">
                             <AlertTriangle className="w-5 h-5 flex-shrink-0" />
@@ -415,6 +544,12 @@ export function StepFinance({
                                         const transportCost = Number(selectedTransport?.cost) || 0;
                                         const finalPrice = Number(tier?.adultCost) || 0;
                                         const margin = finalPrice - (calculatedBaseCost + transportCost);
+                                        const discountType = form.watch("maxDiscountType") || "amount";
+                                        const discountVal = form.watch("maxDiscountValue") ?? form.watch("maxDiscountPercentage") ?? 0;
+                                        const maxDiscountAmount = discountType === "percentage"
+                                            ? Math.round((finalPrice * discountVal) / 100)
+                                            : Math.min(finalPrice, discountVal);
+                                        const discountedAdultPrice = Math.max(0, finalPrice - maxDiscountAmount);
 
                                         return (
                                             <div className="mt-4 p-3 bg-primary/5 rounded-md border border-primary/20 space-y-2">
@@ -430,6 +565,17 @@ export function StepFinance({
                                                          ₹{finalPrice} (Adult Price) - [₹{calculatedBaseCost} (Base Total) + ₹{transportCost} (Transport)] = ₹{margin}
                                                      </span>
                                                 </div>
+                                                {discountVal > 0 && finalPrice > 0 && (
+                                                    <div className="flex justify-between items-center text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-md mt-2">
+                                                        <span className="flex items-center gap-1.5 font-semibold">
+                                                            {discountType === "percentage" ? <Percent className="w-3.5 h-3.5" /> : <DollarSign className="w-3.5 h-3.5" />}
+                                                            Max Discount {discountType === "percentage" ? `(${discountVal}%)` : `(₹${discountVal})`}:
+                                                        </span>
+                                                        <span>
+                                                            <strong>-₹{maxDiscountAmount.toLocaleString("en-IN")}</strong> → Reduced Adult Price: <strong>₹{discountedAdultPrice.toLocaleString("en-IN")}</strong>
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })()}

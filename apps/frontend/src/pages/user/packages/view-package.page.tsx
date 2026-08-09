@@ -16,6 +16,8 @@ import {
     Edit,
     History,
     MapPin,
+    Percent,
+    Tag,
     Users,
     XCircle
 } from "lucide-react";
@@ -296,6 +298,19 @@ export default function ViewPackagePage() {
                                             {basicData.maxGuests || "Not set"}
                                         </div>
                                     </div>
+                                    {((basicData?.maxDiscountValue && basicData.maxDiscountValue > 0) || (basicData?.maxDiscountPercentage && basicData.maxDiscountPercentage > 0)) && (
+                                        <div className="text-center p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                                            <Percent className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
+                                            <div className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+                                                Max Discount Limit
+                                            </div>
+                                            <div className="font-semibold text-emerald-900 dark:text-emerald-100">
+                                                {basicData.maxDiscountType === "percentage"
+                                                    ? `${basicData.maxDiscountPercentage}% Off ${basicData.maxDiscountScope === "passenger" ? "/ Passenger" : "Total"}`
+                                                    : `₹${(basicData.maxDiscountValue || 0).toLocaleString("en-IN")} Off ${basicData.maxDiscountScope === "passenger" ? "/ Passenger" : "Total"}`}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -461,11 +476,21 @@ export default function ViewPackagePage() {
                         ) : (
                             <>
                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle>Package Tiers & Pricing</CardTitle>
-                                        <CardDescription>
-                                            Base cost structure for this package
-                                        </CardDescription>
+                                    <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+                                        <div>
+                                            <CardTitle>Package Tiers & Pricing</CardTitle>
+                                            <CardDescription>
+                                                Base cost structure for this package
+                                            </CardDescription>
+                                        </div>
+                                        {((basicData?.maxDiscountValue && basicData.maxDiscountValue > 0) || (basicData?.maxDiscountPercentage && basicData.maxDiscountPercentage > 0)) && (
+                                            <Badge variant="outline" className="text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30 px-3 py-1 font-semibold flex items-center gap-1.5 text-xs">
+                                                <Tag className="w-3.5 h-3.5" />
+                                                Max Discount Limit: {basicData.maxDiscountType === "percentage"
+                                                    ? `${basicData.maxDiscountPercentage}%`
+                                                    : `₹${(basicData.maxDiscountValue || 0).toLocaleString("en-IN")}`} {basicData.maxDiscountScope === "passenger" ? "/ Passenger" : "Total"}
+                                            </Badge>
+                                        )}
                                     </CardHeader>
                                     <CardContent>
                                         <div className="space-y-4">
@@ -490,25 +515,28 @@ export default function ViewPackagePage() {
                                                         return (
                                                             <div
                                                                 key={index}
-                                                                className="flex flex-col md:flex-row items-center justify-between p-4 border rounded-lg"
+                                                                className="flex flex-col md:flex-row items-center justify-between p-4 border rounded-lg gap-4 bg-card"
                                                             >
                                                                 <div className="mb-2 md:mb-0">
-                                                                    <h4 className="font-semibold text-lg text-primary">
+                                                                    <h4 className="font-semibold text-lg text-primary flex items-center gap-2">
                                                                         {tier?.name || "Pricing Tier"}
+                                                                        {isNormal && (
+                                                                            <Badge variant="secondary" className="text-[10px] uppercase font-semibold">Standard</Badge>
+                                                                        )}
                                                                     </h4>
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-4 text-center">
                                                                     <div>
                                                                         <div className="text-sm text-muted-foreground">Adult</div>
-                                                                        <div className="font-medium">₹{totalAdultCost}</div>
+                                                                        <div className="font-medium">₹{totalAdultCost.toLocaleString("en-IN")}</div>
                                                                     </div>
                                                                     <div>
                                                                         <div className="text-sm text-muted-foreground">Child</div>
-                                                                        <div className="font-medium">₹{childCost}</div>
+                                                                        <div className="font-medium">₹{childCost.toLocaleString("en-IN")}</div>
                                                                     </div>
                                                                     <div>
                                                                         <div className="text-sm text-muted-foreground">Infant</div>
-                                                                        <div className="font-medium">₹{infantCost}</div>
+                                                                        <div className="font-medium">₹{infantCost.toLocaleString("en-IN")}</div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1028,6 +1056,19 @@ export default function ViewPackagePage() {
                                         <span className="text-sm font-medium capitalize">
                                             {basicData.category || "Not set"}
                                         </span>
+                                    </div>
+                                )}
+                                {((basicData?.maxDiscountValue && basicData.maxDiscountValue > 0) || (basicData?.maxDiscountPercentage && basicData.maxDiscountPercentage > 0)) && (
+                                    <div className="flex justify-between items-center pt-2 border-t">
+                                        <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                                            <Percent className="w-3.5 h-3.5" />
+                                            Max Discount:
+                                        </span>
+                                        <Badge variant="outline" className="text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30 font-semibold text-xs">
+                                            {basicData.maxDiscountType === "percentage"
+                                                ? `${basicData.maxDiscountPercentage}% Off`
+                                                : `₹${(basicData.maxDiscountValue || 0).toLocaleString("en-IN")} Off`}
+                                        </Badge>
                                     </div>
                                 )}
                             </CardContent>
