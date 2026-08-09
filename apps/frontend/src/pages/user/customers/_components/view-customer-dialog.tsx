@@ -1,5 +1,6 @@
 import { ImageGallery } from "@/components/image-gallery";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -10,7 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ICustomer } from "@/types/customer.type";
 import { format } from "date-fns";
-import { Eye } from "lucide-react";
+import { Eye, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -105,6 +106,43 @@ export function ViewCustomerDialog({
                 </DialogHeader>
 
                 <ScrollArea className="space-y-6 max-h-[70vh] pr-4">
+                    {/* Blacklisted Warning Banner */}
+                    {customer.isBlacklisted && (
+                        <div className="relative overflow-hidden rounded-xl border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-red-950/25 to-background p-4 shadow-md space-y-2 dark:border-rose-800/40 mb-4">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-lg bg-rose-500/15 text-rose-500 border border-rose-500/20 shrink-0 mt-0.5">
+                                    <ShieldAlert className="w-4 h-4 animate-pulse" />
+                                </div>
+                                <div className="space-y-1.5 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-[11px] font-bold tracking-wider uppercase text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 rounded-full">
+                                            Blacklisted Account
+                                        </span>
+                                        {customer.blacklistedAt && (
+                                            <span className="text-xs text-muted-foreground">
+                                                • Blacklisted on {format(new Date(customer.blacklistedAt), "PPP")}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5 text-xs">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400 block mb-0.5">Reason for Blacklisting</span>
+                                        <p className="font-medium text-foreground">{customer.blacklistedReason || "No reason specified"}</p>
+                                    </div>
+                                    {customer.blacklistedBy && (
+                                        <p className="text-[11px] text-muted-foreground pt-0.5">
+                                            Blacklisted by: <strong className="text-foreground font-semibold">
+                                                {[customer.blacklistedBy.firstName, customer.blacklistedBy.lastName].filter(Boolean).join(" ") || customer.blacklistedBy.email}
+                                            </strong>
+                                            {customer.blacklistedBy.email && (customer.blacklistedBy.firstName || customer.blacklistedBy.lastName) && (
+                                                <span className="ml-1 opacity-75">({customer.blacklistedBy.email})</span>
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Header with profile photo and basic info */}
                     <div className="flex items-center border-b pb-4">
                         <div
@@ -133,9 +171,14 @@ export function ViewCustomerDialog({
                         </div>
                         <div className="flex items-center justify-between w-full px-4">
                             <div>
-                                 <h3 className="text-xl font-semibold">
-                                     {[customer.firstName, customer.middleName, customer.lastName].filter(Boolean).join(" ")}
-                                 </h3>
+                                <h3 className="text-xl font-semibold flex items-center gap-2">
+                                    {[customer.firstName, customer.middleName, customer.lastName].filter(Boolean).join(" ")}
+                                    {customer.isBlacklisted && (
+                                        <Badge variant="destructive" className="bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-2 py-0.5">
+                                            Blacklisted
+                                        </Badge>
+                                    )}
+                                </h3>
                                 <p className="text-sm text-muted-foreground">
                                     {customer.email}
                                 </p>
@@ -205,36 +248,36 @@ export function ViewCustomerDialog({
                     {(customer.emergencyContactName ||
                         customer.emergencyContactPhone ||
                         customer.emergencyContactRelation) && (
-                        <div className="space-y-4">
-                            <h4 className="text-lg font-semibold text-primary mt-5">
-                                Emergency Contact
-                            </h4>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-3">
-                                    <Detail
-                                        label="Contact Name"
-                                        value={display(
-                                            customer.emergencyContactName,
-                                        )}
-                                    />
-                                    <Detail
-                                        label="Phone"
-                                        value={display(
-                                            customer.emergencyContactPhone,
-                                        )}
-                                    />
-                                </div>
-                                <div className="space-y-3">
-                                    <Detail
-                                        label="Relation"
-                                        value={display(
-                                            customer.emergencyContactRelation,
-                                        )}
-                                    />
+                            <div className="space-y-4">
+                                <h4 className="text-lg font-semibold text-primary mt-5">
+                                    Emergency Contact
+                                </h4>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-3">
+                                        <Detail
+                                            label="Contact Name"
+                                            value={display(
+                                                customer.emergencyContactName,
+                                            )}
+                                        />
+                                        <Detail
+                                            label="Phone"
+                                            value={display(
+                                                customer.emergencyContactPhone,
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <Detail
+                                            label="Relation"
+                                            value={display(
+                                                customer.emergencyContactRelation,
+                                            )}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
                     {/* Passport Information */}
                     {(customer.passportNumber ||
@@ -242,135 +285,135 @@ export function ViewCustomerDialog({
                         customer.passportIssueDate ||
                         customer.passportExpiryDate ||
                         (customer.passportPhotos && customer.passportPhotos.length > 0)) && (
-                        <div className="space-y-4">
-                            <h4 className="text-lg font-semibold text-primary mt-5">
-                                Passport Information
-                            </h4>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-3">
-                                    <Detail
-                                        label="Passport Number"
-                                        value={display(customer.passportNumber)}
-                                    />
-                                    <Detail
-                                        label="Country"
-                                        value={display(
-                                            customer.passportCountry,
-                                        )}
-                                    />
-                                </div>
-                                <div className="space-y-3">
-                                    <Detail
-                                        label="Issue Date"
-                                        value={display(formattedPassportIssue)}
-                                    />
-                                    <Detail
-                                        label="Expiry Date"
-                                        value={display(formattedPassportExpiry)}
-                                    />
-                                </div>
-                            </div>
-                            {/* Passport Photos */}
-                            {customer.passportPhotos &&
-                                customer.passportPhotos.length > 0 && (
+                            <div className="space-y-4">
+                                <h4 className="text-lg font-semibold text-primary mt-5">
+                                    Passport Information
+                                </h4>
+                                <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-3">
-                                        <h5 className="text-md font-medium text-muted-foreground">
-                                            Passport Photos
-                                        </h5>
-                                        <ImageGallery
-                                            images={customer.passportPhotos}
-                                            onImageClick={(imageUrl) =>
-                                                openImageModal(
-                                                    imageUrl,
-                                                    "Passport Photo",
-                                                )
-                                            }
+                                        <Detail
+                                            label="Passport Number"
+                                            value={display(customer.passportNumber)}
+                                        />
+                                        <Detail
+                                            label="Country"
+                                            value={display(
+                                                customer.passportCountry,
+                                            )}
                                         />
                                     </div>
-                                )}
-                        </div>
-                    )}
+                                    <div className="space-y-3">
+                                        <Detail
+                                            label="Issue Date"
+                                            value={display(formattedPassportIssue)}
+                                        />
+                                        <Detail
+                                            label="Expiry Date"
+                                            value={display(formattedPassportExpiry)}
+                                        />
+                                    </div>
+                                </div>
+                                {/* Passport Photos */}
+                                {customer.passportPhotos &&
+                                    customer.passportPhotos.length > 0 && (
+                                        <div className="space-y-3">
+                                            <h5 className="text-md font-medium text-muted-foreground">
+                                                Passport Photos
+                                            </h5>
+                                            <ImageGallery
+                                                images={customer.passportPhotos}
+                                                onImageClick={(imageUrl) =>
+                                                    openImageModal(
+                                                        imageUrl,
+                                                        "Passport Photo",
+                                                    )
+                                                }
+                                            />
+                                        </div>
+                                    )}
+                            </div>
+                        )}
 
                     {/* ID Documents */}
                     {(customer.aadhaarId ||
                         customer.voterId ||
                         (customer.aadhaarIdPhotos && customer.aadhaarIdPhotos.length > 0) ||
                         (customer.voterIdPhotos && customer.voterIdPhotos.length > 0)) && (
-                        <div className="space-y-4">
-                            <h4 className="text-lg font-semibold text-primary mt-5">
-                                ID Documents
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Aadhaar ID Section */}
-                                {(customer.aadhaarId ||
-                                    customer.aadhaarIdPhotos?.length) && (
-                                    <div className="space-y-3">
-                                        <Detail
-                                            label="Aadhaar ID"
-                                            value={display(customer.aadhaarId)}
-                                        />
-                                        {/* Aadhaar Photos */}
-                                        {customer.aadhaarIdPhotos &&
-                                            customer.aadhaarIdPhotos.length >
-                                                0 && (
-                                                <div className="space-y-2">
-                                                    <h6 className="text-sm font-medium text-muted-foreground">
-                                                        Aadhaar Photos
-                                                    </h6>
-                                                    <ImageGallery
-                                                        images={
-                                                            customer.aadhaarIdPhotos
-                                                        }
-                                                        onImageClick={(
-                                                            imageUrl,
-                                                        ) =>
-                                                            openImageModal(
-                                                                imageUrl,
-                                                                "Aadhaar ID Photo",
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-                                            )}
-                                    </div>
-                                )}
+                            <div className="space-y-4">
+                                <h4 className="text-lg font-semibold text-primary mt-5">
+                                    ID Documents
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Aadhaar ID Section */}
+                                    {(customer.aadhaarId ||
+                                        customer.aadhaarIdPhotos?.length) && (
+                                            <div className="space-y-3">
+                                                <Detail
+                                                    label="Aadhaar ID"
+                                                    value={display(customer.aadhaarId)}
+                                                />
+                                                {/* Aadhaar Photos */}
+                                                {customer.aadhaarIdPhotos &&
+                                                    customer.aadhaarIdPhotos.length >
+                                                    0 && (
+                                                        <div className="space-y-2">
+                                                            <h6 className="text-sm font-medium text-muted-foreground">
+                                                                Aadhaar Photos
+                                                            </h6>
+                                                            <ImageGallery
+                                                                images={
+                                                                    customer.aadhaarIdPhotos
+                                                                }
+                                                                onImageClick={(
+                                                                    imageUrl,
+                                                                ) =>
+                                                                    openImageModal(
+                                                                        imageUrl,
+                                                                        "Aadhaar ID Photo",
+                                                                    )
+                                                                }
+                                                            />
+                                                        </div>
+                                                    )}
+                                            </div>
+                                        )}
 
-                                {/* Voter ID Section */}
-                                {(customer.voterId ||
-                                    customer.voterIdPhotos?.length) && (
-                                    <div className="space-y-3">
-                                        <Detail
-                                            label="Voter ID"
-                                            value={display(customer.voterId)}
-                                        />
-                                        {/* Voter ID Photos */}
-                                        {customer.voterIdPhotos &&
-                                            customer.voterIdPhotos.length >
-                                                0 && (
-                                                <div className="space-y-2">
-                                                    <h6 className="text-sm font-medium text-muted-foreground">
-                                                        Voter ID Photos
-                                                    </h6>
-                                                    <ImageGallery
-                                                        images={
-                                                            customer.voterIdPhotos
-                                                        }
-                                                        onImageClick={(
-                                                            imageUrl,
-                                                        ) =>
-                                                            openImageModal(
-                                                                imageUrl,
-                                                                "Voter ID Photo",
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-                                            )}
-                                    </div>
-                                )}
+                                    {/* Voter ID Section */}
+                                    {(customer.voterId ||
+                                        customer.voterIdPhotos?.length) && (
+                                            <div className="space-y-3">
+                                                <Detail
+                                                    label="Voter ID"
+                                                    value={display(customer.voterId)}
+                                                />
+                                                {/* Voter ID Photos */}
+                                                {customer.voterIdPhotos &&
+                                                    customer.voterIdPhotos.length >
+                                                    0 && (
+                                                        <div className="space-y-2">
+                                                            <h6 className="text-sm font-medium text-muted-foreground">
+                                                                Voter ID Photos
+                                                            </h6>
+                                                            <ImageGallery
+                                                                images={
+                                                                    customer.voterIdPhotos
+                                                                }
+                                                                onImageClick={(
+                                                                    imageUrl,
+                                                                ) =>
+                                                                    openImageModal(
+                                                                        imageUrl,
+                                                                        "Voter ID Photo",
+                                                                    )
+                                                                }
+                                                            />
+                                                        </div>
+                                                    )}
+                                            </div>
+                                        )}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
                     {/* Travel Preferences */}
                     {/* {(customer.dietaryRestrictions ||
