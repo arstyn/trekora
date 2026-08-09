@@ -186,4 +186,21 @@ export class CustomerController {
   async delete(@Param('id') id: string): Promise<void> {
     return this.customerService.delete(id);
   }
+
+  // Blacklist Customer
+  @Put(':id/blacklist')
+  @RequirePermission('customer', 'update')
+  async toggleBlacklist(
+    @Param('id') id: string,
+    @Body() body: { isBlacklisted: boolean; reason?: string },
+    @Request() req: ApiRequestJWT,
+  ): Promise<Customer | null> {
+    return this.customerService.blacklistCustomer(
+      id,
+      body.isBlacklisted,
+      body.reason,
+      req.user.userId,
+    );
+  }
 }
+

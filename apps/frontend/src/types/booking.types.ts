@@ -49,6 +49,16 @@ export interface ICustomer {
     voterId?: string;
     aadhaarId?: string;
     profilePhoto?: string;
+    isBlacklisted?: boolean;
+    blacklistedReason?: string;
+    blacklistedAt?: string;
+    blacklistedById?: string;
+    blacklistedBy?: {
+        id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+    };
     createdAt?: string;
     updatedAt?: string;
 }

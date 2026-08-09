@@ -135,6 +135,23 @@ export class Customer {
   @Column({ type: 'text', nullable: true, name: 'notes' })
   notes?: string;
 
+  // Blacklist Details
+  @Column({ type: 'boolean', name: 'is_blacklisted', default: false })
+  isBlacklisted: boolean;
+
+  @Column({ type: 'text', name: 'blacklisted_reason', nullable: true })
+  blacklistedReason?: string;
+
+  @Column({ type: 'timestamp', name: 'blacklisted_at', nullable: true })
+  blacklistedAt?: Date;
+
+  @Column({ type: 'uuid', name: 'blacklisted_by_id', nullable: true })
+  blacklistedById?: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'blacklisted_by_id' })
+  blacklistedBy?: User;
+
   // System Fields
   @Column({ type: 'uuid', name: 'created_by_id', nullable: true })
   createdById?: string;

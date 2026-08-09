@@ -139,6 +139,7 @@ export class CustomerService {
     // Get paginated results
     const customers = await queryBuilder
       .leftJoinAndSelect('customer.createdBy', 'createdBy')
+      .leftJoinAndSelect('customer.blacklistedBy', 'blacklistedBy')
       .orderBy('customer.createdAt', 'DESC')
       .limit(limit)
       .offset(offset)
@@ -188,6 +189,7 @@ export class CustomerService {
 
     const customers = await queryBuilder
       .leftJoinAndSelect('customer.createdBy', 'createdBy')
+      .leftJoinAndSelect('customer.blacklistedBy', 'blacklistedBy')
       .orderBy('customer.createdAt', 'DESC')
       .limit(limit)
       .offset(offset)
@@ -249,7 +251,10 @@ export class CustomerService {
   }
 
   async findOneWithFiles(id: string): Promise<Customer | null> {
-    const customer = await this.customerRepository.findOne({ where: { id } });
+    const customer = await this.customerRepository.findOne({
+      where: { id },
+      relations: ['createdBy', 'blacklistedBy'],
+    });
     if (!customer) return null;
 
     return customer;
@@ -282,6 +287,8 @@ export class CustomerService {
 
     // Get paginated results
     const customers = await queryBuilder
+      .leftJoinAndSelect('customer.createdBy', 'createdBy')
+      .leftJoinAndSelect('customer.blacklistedBy', 'blacklistedBy')
       .orderBy('customer.createdAt', 'DESC')
       .limit(limit)
       .offset(offset)
@@ -294,5 +301,22 @@ export class CustomerService {
       total,
       hasMore,
     };
+  }
+
+  async blacklistCustomer(
+    id: string,
+    isBlacklisted: boolean,
+    reason?: string,
+    userId?: string,
+  ): Promise<Customer | null> {
+    const updateData: Partial<Customer> = {
+      isBlacklisted,
+      blacklistedReason: isBlacklisted ? reason || '' : undefined,
+      blacklistedAt: isBlacklisted ? new Date() : undefined,
+      blacklistedById: isBlacklisted ? userId : undefined,
+    };
+
+    await this.customerRepository.update(id, updateData);
+    return this.findOneWithFiles(id);
   }
 }

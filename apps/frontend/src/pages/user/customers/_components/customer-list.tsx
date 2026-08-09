@@ -77,13 +77,18 @@ export default function CustomerList({
                     />
 
                     <span 
-                        className="font-medium text-primary hover:underline cursor-pointer"
+                        className="font-medium text-primary hover:underline cursor-pointer flex items-center gap-1.5"
                         onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/customers/${row.original.id}`);
                         }}
                     >
                         {[row.original.firstName, row.original.middleName, row.original.lastName].filter(Boolean).join(" ")}
+                        {row.original.isBlacklisted && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 font-semibold">
+                                Blacklisted
+                            </Badge>
+                        )}
                     </span>
                 </div>
             ),

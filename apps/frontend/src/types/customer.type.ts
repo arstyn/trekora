@@ -50,7 +50,18 @@ export interface ICustomer {
 	medicalConditions?: string;
 	specialRequests?: string;
 
-	// Additional Information
+	// Blacklist Details
+	isBlacklisted?: boolean;
+	blacklistedReason?: string;
+	blacklistedAt?: string;
+	blacklistedById?: string;
+	blacklistedBy?: {
+		id: string;
+		firstName?: string;
+		lastName?: string;
+		email?: string;
+	};
+
 	notes?: string;
 	createdBy?: {
 		id: string;

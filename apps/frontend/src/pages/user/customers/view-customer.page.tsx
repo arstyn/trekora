@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
 import BookingService from "@/services/booking.service";
 import type { ICustomer } from "@/types/customer.type";
@@ -50,6 +51,11 @@ export default function ViewCustomerPage() {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [imageModalOpen, setImageModalOpen] = useState(false);
     const [imageModalTitle, setImageModalTitle] = useState<string>("Document Image");
+
+    // Blacklist State
+    const [blacklistDialogOpen, setBlacklistDialogOpen] = useState(false);
+    const [blacklistReason, setBlacklistReason] = useState("");
+    const [isSubmittingBlacklist, setIsSubmittingBlacklist] = useState(false);
 
     const fetchCustomerData = useCallback(async () => {
         if (!id) return;
@@ -97,6 +103,33 @@ export default function ViewCustomerPage() {
         setCustomer(updatedCustomer);
         setIsEditing(false);
         toast.success("Customer profile updated successfully");
+    };
+
+    const handleToggleBlacklist = async (isBlacklisting: boolean) => {
+        if (!id) return;
+        if (isBlacklisting && !blacklistReason.trim()) {
+            toast.error("Please enter a reason for blacklisting this customer.");
+            return;
+        }
+        try {
+            setIsSubmittingBlacklist(true);
+            const res = await axiosInstance.put<ICustomer>(`/customers/${id}/blacklist`, {
+                isBlacklisted: isBlacklisting,
+                reason: blacklistReason.trim(),
+            });
+            setCustomer(res.data);
+            setBlacklistDialogOpen(false);
+            toast.success(
+                isBlacklisting
+                    ? "Customer has been blacklisted successfully."
+                    : "Customer removed from blacklist successfully."
+            );
+        } catch (err: any) {
+            console.error("Failed to update blacklist status:", err);
+            toast.error(err.response?.data?.message || "Failed to update blacklist status.");
+        } finally {
+            setIsSubmittingBlacklist(false);
+        }
     };
 
     const openImageModal = (imageUrl: string, title: string = "Document Image") => {
@@ -238,19 +271,97 @@ export default function ViewCustomerPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                        Customer
-                    </Badge>
-                    <Button variant="outline" onClick={() => navigate("/customers")}>
-                        <ArrowLeft className="w-4 h-4 mr-2" />
+                    {customer.isBlacklisted ? (
+                        <Badge variant="destructive" className="px-2.5 py-1 text-xs font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                            Blacklisted
+                        </Badge>
+                    ) : (
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                            Active Customer
+                        </Badge>
+                    )}
+                    <Button
+                        variant={customer.isBlacklisted ? "outline" : "destructive"}
+                        size="sm"
+                        className={customer.isBlacklisted ? "border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500" : ""}
+                        onClick={() => {
+                            setBlacklistReason(customer.blacklistedReason || "");
+                            setBlacklistDialogOpen(true);
+                        }}
+                    >
+                        <ShieldAlert className="w-4 h-4 mr-1.5" />
+                        {customer.isBlacklisted ? "Manage Blacklist" : "Blacklist Customer"}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => navigate("/customers")}>
+                        <ArrowLeft className="w-4 h-4 mr-1.5" />
                         Back
                     </Button>
-                    <Button onClick={() => setIsEditing(true)}>
-                        <Edit className="w-4 h-4 mr-2" />
+                    <Button size="sm" onClick={() => setIsEditing(true)}>
+                        <Edit className="w-4 h-4 mr-1.5" />
                         Edit Profile
                     </Button>
                 </div>
             </div>
+
+            {/* Blacklisted Warning Banner */}
+            {customer.isBlacklisted && (
+                <div className="relative overflow-hidden rounded-2xl border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-red-950/25 to-background p-5 shadow-lg dark:border-rose-800/40 dark:from-rose-950/50 dark:via-red-950/30">
+                    <div className="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
+                        <ShieldAlert className="w-40 h-40 text-rose-500" />
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+                        <div className="flex items-start gap-3.5 flex-1">
+                            <div className="p-2.5 rounded-xl bg-rose-500/15 text-rose-500 border border-rose-500/20 shrink-0 mt-0.5">
+                                <ShieldAlert className="w-5 h-5 animate-pulse" />
+                            </div>
+                            <div className="space-y-2 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-bold tracking-wider uppercase text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 rounded-full">
+                                        Blacklisted Account
+                                    </span>
+                                    {customer.blacklistedAt && (
+                                        <span className="text-xs text-muted-foreground">
+                                            • Blacklisted on {formatDate(customer.blacklistedAt)}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 text-sm">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-rose-400 block mb-1">Reason for Blacklisting</span>
+                                    <p className="font-medium text-foreground leading-relaxed">{customer.blacklistedReason || "No reason specified"}</p>
+                                </div>
+
+                                {customer.blacklistedBy && (
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-0.5">
+                                        <User className="w-3.5 h-3.5 text-rose-400" />
+                                        <span>
+                                            Blacklisted by: <strong className="text-foreground font-semibold">
+                                                {[customer.blacklistedBy.firstName, customer.blacklistedBy.lastName].filter(Boolean).join(" ") || customer.blacklistedBy.email}
+                                            </strong>
+                                            {customer.blacklistedBy.email && (customer.blacklistedBy.firstName || customer.blacklistedBy.lastName) && (
+                                                <span className="ml-1 opacity-75">({customer.blacklistedBy.email})</span>
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-rose-500/30 hover:border-rose-500 hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 self-start sm:self-center shrink-0"
+                            onClick={() => {
+                                setBlacklistReason(customer.blacklistedReason || "");
+                                setBlacklistDialogOpen(true);
+                            }}
+                        >
+                            <ShieldAlert className="w-4 h-4 mr-1.5" />
+                            Manage Blacklist
+                        </Button>
+                    </div>
+                </div>
+            )}
             {/* Main content grid: 3-column equal layout with zero empty horizontal space */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Column 1: Customer Overview */}
@@ -642,20 +753,86 @@ export default function ViewCustomerPage() {
                 />
             )}
 
-            {/* Image Preview Zoom Modal */}
+            {/* Image Zoom Modal */}
             <Dialog open={imageModalOpen} onOpenChange={setImageModalOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
-                    <DialogHeader className="p-6 pb-0">
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
                         <DialogTitle>{imageModalTitle}</DialogTitle>
                     </DialogHeader>
-                    <div className="p-6 pt-0 flex justify-center items-center overflow-auto max-h-[75vh]">
-                        {selectedImage && (
+                    {selectedImage && (
+                        <div className="flex items-center justify-center p-4">
                             <img
                                 src={selectedImage}
-                                alt="Zoomed Document"
-                                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg border"
+                                alt={imageModalTitle}
+                                className="max-h-[70vh] object-contain rounded-lg shadow-md"
                             />
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Blacklist Dialog Modal */}
+            <Dialog open={blacklistDialogOpen} onOpenChange={setBlacklistDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <ShieldAlert className="w-5 h-5 text-destructive" />
+                            {customer.isBlacklisted ? "Manage Customer Blacklist" : "Blacklist Customer"}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        {customer.isBlacklisted && (
+                            <div className="p-3 bg-destructive/10 rounded-lg text-xs space-y-1">
+                                <p className="font-semibold text-destructive">Status: BLACKLISTED</p>
+                                <p>Blacklisted by: {customer.blacklistedBy ? `${customer.blacklistedBy.firstName || ''} ${customer.blacklistedBy.lastName || ''}` : 'Authorized Staff'}</p>
+                                {customer.blacklistedAt && <p>Date: {formatDate(customer.blacklistedAt)}</p>}
+                            </div>
                         )}
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-foreground">
+                                Blacklist Description / Reason <span className="text-destructive">*</span>
+                            </label>
+                            <Textarea
+                                placeholder="Specify why this customer is being blacklisted (e.g. repeated payment default, abusive behavior, fraud)..."
+                                value={blacklistReason}
+                                onChange={(e) => setBlacklistReason(e.target.value)}
+                                rows={4}
+                                className="text-xs"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                        {customer.isBlacklisted ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isSubmittingBlacklist}
+                                onClick={() => handleToggleBlacklist(false)}
+                                className="text-xs text-emerald-600 hover:text-emerald-700"
+                            >
+                                Remove from Blacklist
+                            </Button>
+                        ) : <div />}
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setBlacklistDialogOpen(false)}
+                                className="text-xs"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                disabled={isSubmittingBlacklist || !blacklistReason.trim()}
+                                onClick={() => handleToggleBlacklist(true)}
+                                className="text-xs"
+                            >
+                                {isSubmittingBlacklist ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                                {customer.isBlacklisted ? "Update Reason" : "Confirm Blacklist"}
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

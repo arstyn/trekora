@@ -51,6 +51,7 @@ import {
     PersonStanding,
     Plus,
     Search,
+    ShieldAlert,
     Tag,
     User,
     UserPlus,
@@ -1127,6 +1128,33 @@ export function CreateBookingDialog({
                                 {/* STEP 2: TRAVELERS & PRICING SELECTION */}
                                 {step === 2 && (
                                     <div className="space-y-6">
+                                         {formData.customers.some(c => c.isBlacklisted) && (
+                                             <div className="relative overflow-hidden rounded-xl border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-red-950/20 to-background p-4 shadow-md space-y-3 dark:border-rose-800/40">
+                                                 <div className="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-wider">
+                                                     <ShieldAlert className="w-4 h-4 text-rose-500 animate-pulse" />
+                                                     <span>Warning: Blacklisted Customer Selected</span>
+                                                 </div>
+                                                 <div className="space-y-2">
+                                                     {formData.customers.filter(c => c.isBlacklisted).map((c, bIdx) => (
+                                                         <div key={c.id || `bl-${bIdx}`} className="p-3 bg-background/70 border border-rose-500/20 rounded-lg text-xs space-y-1">
+                                                             <div className="flex items-center justify-between font-bold text-foreground">
+                                                                 <span>{c.firstName} {c.lastName}</span>
+                                                                 <Badge variant="destructive" className="text-[10px] px-2 py-0.5 bg-rose-500/20 text-rose-400 border border-rose-500/30">Blacklisted</Badge>
+                                                             </div>
+                                                             <p className="text-muted-foreground">
+                                                                 Reason: <span className="font-semibold text-rose-300">{c.blacklistedReason || "No description provided"}</span>
+                                                             </p>
+                                                             {c.blacklistedBy && (
+                                                                 <p className="text-[11px] text-muted-foreground/80">
+                                                                     Blacklisted by: {[c.blacklistedBy.firstName, c.blacklistedBy.lastName].filter(Boolean).join(" ") || c.blacklistedBy.email}
+                                                                     {c.blacklistedAt && ` on ${new Date(c.blacklistedAt).toLocaleDateString()}`}
+                                                                 </p>
+                                                             )}
+                                                         </div>
+                                                     ))}
+                                                 </div>
+                                             </div>
+                                         )}
                                         <div className="space-y-4">
                                             <div className="space-y-2">
                                                 <div className="flex justify-end">
@@ -1243,8 +1271,19 @@ export function CreateBookingDialog({
                                                                                     </AvatarFallback>
                                                                                 </Avatar>
                                                                                 <div className="flex-1 min-w-0">
-                                                                                    <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
-                                                                                    {(c.email || c.phone) ? (
+                                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                                        <p className="text-sm font-semibold truncate text-foreground">{c.firstName} {c.lastName}</p>
+                                                                                        {c.isBlacklisted && (
+                                                                                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 font-bold">
+                                                                                                Blacklisted
+                                                                                            </Badge>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    {c.isBlacklisted ? (
+                                                                                        <p className="text-xs font-semibold text-destructive truncate">
+                                                                                            Reason: {c.blacklistedReason || "No reason specified"}
+                                                                                        </p>
+                                                                                    ) : (c.email || c.phone) ? (
                                                                                         <p className="text-xs text-muted-foreground truncate">
                                                                                             {c.email}
                                                                                             {c.email && c.phone ? " • " : ""}
