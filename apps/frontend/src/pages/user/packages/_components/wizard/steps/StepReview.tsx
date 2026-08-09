@@ -218,46 +218,47 @@ export function StepReview({
 
     return (
         <div className="space-y-6">
+            {/* Status Banner */}
             <Card
-                className={
+                className={`shadow-xs border rounded-2xl ${
                     hasErrors
-                        ? "border-red-200 bg-red-50/10"
-                        : "border-green-200 bg-green-50/10"
-                }
+                        ? "border-rose-500/30 bg-rose-500/5"
+                        : "border-emerald-500/30 bg-emerald-500/5"
+                }`}
             >
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2.5 text-base font-bold">
                         {hasErrors ? (
-                            <AlertCircle className="text-red-500" />
+                            <AlertCircle className="w-5 h-5 text-rose-500" />
                         ) : (
-                            <CheckCircle2 className="text-green-500" />
+                            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                         )}
-                        Review Package Status
+                        <span>Review Package Readiness</span>
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-xs">
                         {hasErrors
-                            ? "Please fix the following errors before publishing."
-                            : "Your package is ready to be published!"}
+                            ? "Please resolve the highlighted validation errors before publishing."
+                            : "All mandatory fields and cost structures are complete! Ready to publish."}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {issues.length > 0 ? (
-                        <div className="space-y-3">
+                        <div className="space-y-2.5">
                             {issues.map((issue, idx) => (
                                 <div
                                     key={idx}
-                                    className={`flex items-start gap-3 p-3 rounded-lg border ${
+                                    className={`flex items-start gap-3 p-3 rounded-xl border text-xs ${
                                         issue.severity === "error"
-                                            ? "border-red-100 bg-red-50/50 text-red-800"
-                                            : "border-yellow-100 bg-yellow-50/50 text-yellow-800"
+                                            ? "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                                            : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
                                     }`}
                                 >
-                                    <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+                                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                                     <div>
-                                        <p className="font-semibold text-sm">
+                                        <p className="font-bold">
                                             {issue.field}
                                         </p>
-                                        <p className="text-sm">
+                                        <p className="text-[11px] opacity-90">
                                             {issue.message}
                                         </p>
                                     </div>
@@ -266,29 +267,30 @@ export function StepReview({
                         </div>
                     ) : (
                         <div className="flex flex-col items-center py-6 text-center">
-                            <Rocket className="w-12 h-12 text-primary mb-2 animate-bounce" />
-                            <p className="font-medium text-lg">
-                                All checks passed!
+                            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mb-3">
+                                <Rocket className="w-8 h-8 animate-bounce" />
+                            </div>
+                            <p className="font-bold text-base text-foreground">
+                                All Systems Go!
                             </p>
-                            <p className="text-muted-foreground">
-                                You can now publish this package to make it
-                                visible to customers.
+                            <p className="text-xs text-muted-foreground mt-1 max-w-md">
+                                Your tour package is fully configured. Publish now to make it visible to clients and available for booking.
                             </p>
                         </div>
                     )}
                 </CardContent>
             </Card>
 
+            {/* Pending Changes Block */}
             {pendingChanges.length > 0 && (
-                <Card className="border-amber-200 bg-amber-50/10">
+                <Card className="shadow-xs border border-amber-500/30 bg-amber-500/5 rounded-2xl">
                     <CardHeader>
-                        <CardTitle className="text-amber-700 text-lg flex items-center gap-2">
-                            <FileEdit className="w-5 h-5" />
-                            Pending Changes
+                        <CardTitle className="text-amber-700 dark:text-amber-400 text-base font-bold flex items-center gap-2">
+                            <FileEdit className="w-4 h-4" />
+                            Pending Changes Summary
                         </CardTitle>
-                        <CardDescription>
-                            The following modifications will be saved when you
-                            publish.
+                        <CardDescription className="text-xs">
+                            The following modifications will be published live to the catalog.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -296,17 +298,17 @@ export function StepReview({
                             {pendingChanges.map((change, idx) => (
                                 <div
                                     key={idx}
-                                    className="flex items-center justify-between text-sm p-2 rounded border"
+                                    className="flex items-center justify-between text-xs p-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10"
                                 >
-                                    <span className="font-medium text-amber-700">
+                                    <span className="font-semibold text-amber-800 dark:text-amber-300">
                                         {change.field}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-gray-400 line-through truncate max-w-[150px]">
+                                        <span className="text-muted-foreground line-through truncate max-w-[140px] text-[11px]">
                                             {String(change.from || "Empty")}
                                         </span>
-                                        <span className="text-gray-400">→</span>
-                                        <span className="text-amber-700 font-medium truncate max-w-[150px]">
+                                        <span className="text-muted-foreground text-[10px]">→</span>
+                                        <span className="text-amber-700 dark:text-amber-300 font-bold truncate max-w-[140px]">
                                             {String(change.to || "Empty")}
                                         </span>
                                     </div>
@@ -317,15 +319,16 @@ export function StepReview({
                 </Card>
             )}
 
+            {/* Stats Summary Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
+                <Card className="shadow-xs border rounded-2xl">
                     <CardHeader>
-                        <CardTitle>Summary</CardTitle>
+                        <CardTitle className="text-base font-bold">Package Overview</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 text-xs">
                         <div className="flex justify-between items-center border-b pb-2">
                             <span className="text-muted-foreground">Name</span>
-                            <span className="font-medium">
+                            <span className="font-bold text-foreground">
                                 {values.name || "N/A"}
                             </span>
                         </div>
@@ -333,21 +336,21 @@ export function StepReview({
                             <span className="text-muted-foreground">
                                 Destination
                             </span>
-                            <span className="font-medium">
+                            <span className="font-bold text-foreground">
                                 {values.destination || "N/A"}
                             </span>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
-                            <span className="text-muted-foreground">Price (Starting from)</span>
-                            <Badge variant="outline" className="text-base">
-                                ₹{values.packageTiers?.[0]?.adultCost || 0}
+                            <span className="text-muted-foreground">Base Adult Price</span>
+                            <Badge variant="outline" className="text-xs font-mono font-bold border-primary/30 text-primary rounded-md">
+                                ₹{(values.packageTiers?.[0]?.adultCost || 0).toLocaleString()}
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
                             <span className="text-muted-foreground">
                                 Duration
                             </span>
-                            <span className="font-medium">
+                            <span className="font-semibold text-foreground">
                                 {values.days ? `${values.days} Days / ${values.nights} Nights` : "N/A"}
                             </span>
                         </div>
@@ -363,9 +366,9 @@ export function StepReview({
                                           ? "outline"
                                           : "secondary"
                                 }
-                                className={`capitalize ${
+                                className={`capitalize text-xs font-semibold rounded-md ${
                                     packageData?.status === "edited"
-                                        ? "border-amber-500 text-amber-600 bg-amber-50"
+                                        ? "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/40"
                                         : ""
                                 }`}
                             >
@@ -375,65 +378,70 @@ export function StepReview({
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="shadow-xs border rounded-2xl">
                     <CardHeader>
-                        <CardTitle>Content Stats</CardTitle>
+                        <CardTitle className="text-base font-bold">Content Components</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 text-xs">
                         <div className="flex justify-between items-center border-b pb-2">
                             <span className="text-muted-foreground">
-                                Itinerary
+                                Itinerary Days
                             </span>
-                            <span>{values.itinerary?.length || 0} Days</span>
+                            <span className="font-semibold">{values.itinerary?.length || 0} Days</span>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
                             <span className="text-muted-foreground">
                                 Inclusions
                             </span>
-                            <span>{values.inclusions?.length || 0} Items</span>
+                            <span className="font-semibold">{values.inclusions?.length || 0} Items</span>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
                             <span className="text-muted-foreground">
                                 Exclusions
                             </span>
-                            <span>{values.exclusions?.length || 0} Items</span>
+                            <span className="font-semibold">{values.exclusions?.length || 0} Items</span>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
                             <span className="text-muted-foreground">
-                                Documents
+                                Document Requirements
                             </span>
-                            <span>
-                                {values.documentRequirements?.length || 0}{" "}
-                                Required
+                            <span className="font-semibold">
+                                {values.documentRequirements?.length || 0} Required
                             </span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-muted-foreground">
-                                Checklist Items
+                                Checklist Tasks
                             </span>
-                            <span>
-                                {values.preTripChecklist?.length || 0} Items
+                            <span className="font-semibold">
+                                {values.preTripChecklist?.length || 0} Tasks
                             </span>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
+            {/* Action Bar */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-t pt-6">
-                <Button type="button" variant="outline" onClick={onBack}>
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onBack}
+                    className="rounded-xl px-5 text-xs font-semibold"
+                >
                     Back
                 </Button>
 
                 <div className="flex flex-wrap gap-2 justify-end w-full md:w-auto">
-                    {/* Management Actions based on status */}
                     {packageData?.status === "draft" && (
                         <Button
                             type="button"
                             variant="destructive"
                             onClick={onDelete}
                             disabled={isLoading}
+                            className="rounded-xl text-xs font-semibold gap-1.5"
                         >
-                            <Trash2 className="w-4 h-4 mr-2" />
+                            <Trash2 className="w-4 h-4" />
                             Delete Draft
                         </Button>
                     )}
@@ -446,9 +454,9 @@ export function StepReview({
                                 variant="outline"
                                 onClick={onUnpublish}
                                 disabled={isLoading}
-                                className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                                className="rounded-xl text-xs font-semibold gap-1.5 border-orange-500/30 text-orange-600 hover:bg-orange-500/10"
                             >
-                                <RotateCcw className="w-4 h-4 mr-2" />
+                                <RotateCcw className="w-4 h-4" />
                                 {packageData?.status === "edited"
                                     ? "Discard Changes"
                                     : "Unpublish"}
@@ -458,9 +466,9 @@ export function StepReview({
                                 variant="outline"
                                 onClick={onArchive}
                                 disabled={isLoading}
-                                className="border-gray-200 text-gray-700 hover:bg-gray-50"
+                                className="rounded-xl text-xs font-semibold gap-1.5"
                             >
-                                <Archive className="w-4 h-4 mr-2" />
+                                <Archive className="w-4 h-4" />
                                 Archive
                             </Button>
                         </>
@@ -470,10 +478,11 @@ export function StepReview({
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={onUnpublish} // Moving archived back to draft
+                            onClick={onUnpublish}
                             disabled={isLoading}
+                            className="rounded-xl text-xs font-semibold gap-1.5"
                         >
-                            <FileEdit className="w-4 h-4 mr-2" />
+                            <FileEdit className="w-4 h-4" />
                             Move to Draft
                         </Button>
                     )}
@@ -490,8 +499,9 @@ export function StepReview({
                             )
                         }
                         disabled={!packageData?.id}
+                        className="rounded-xl text-xs font-semibold gap-1.5"
                     >
-                        <Eye className="w-4 h-4 mr-2" />
+                        <Eye className="w-4 h-4" />
                         Preview
                     </Button>
 
@@ -502,12 +512,12 @@ export function StepReview({
                             type="button"
                             onClick={onPublish}
                             disabled={isLoading || hasErrors}
-                            className="bg-primary hover:bg-primary/90 min-w-[120px]"
+                            className="rounded-xl px-6 text-xs font-semibold gap-1.5 bg-primary hover:bg-primary/90"
                         >
                             {isLoading ? (
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
-                                <Rocket className="w-4 h-4 mr-2" />
+                                <Rocket className="w-4 h-4" />
                             )}
                             {packageData?.status === "published" ||
                             packageData?.status === "edited"

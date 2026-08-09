@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { PackageFormData } from "@/types/package.schema";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useFieldArray, type UseFormReturn } from "react-hook-form";
 
@@ -483,18 +483,24 @@ export function StepItinerary({
                 </CardContent>
             </Card>
 
-            <div className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onBack}>
+            <div className="flex justify-between items-center pt-4 border-t">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onBack}
+                    className="rounded-xl px-5 gap-2 text-xs font-semibold"
+                >
+                    <ArrowLeft className="w-4 h-4" />
                     Back
                 </Button>
                 <Button
                     type="button"
                     onClick={onNext}
                     disabled={isLoading}
-                    className="gap-2"
+                    className="rounded-xl px-6 gap-2 text-xs font-semibold"
                 >
-                    {isLoading ? "Saving..." : "Save \u0026 Next"}
-                    <Save className="w-4 h-4" />
+                    {isLoading ? "Saving..." : "Save & Next"}
+                    <ArrowRight className="w-4 h-4" />
                 </Button>
             </div>
         </div>

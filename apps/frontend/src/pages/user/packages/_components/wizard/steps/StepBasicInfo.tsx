@@ -76,28 +76,29 @@ export function StepBasicInfo({
 
     return (
         <div className="space-y-6">
-            <Card>
+            {/* Thumbnail Card */}
+            <Card className="shadow-xs border rounded-2xl">
                 <CardHeader>
-                    <CardTitle>Package Thumbnail</CardTitle>
-                    <CardDescription>
-                        Upload a main image for your package
+                    <CardTitle className="text-base font-bold">Package Thumbnail</CardTitle>
+                    <CardDescription className="text-xs">
+                        Upload a primary high-resolution cover image for your package brochure & listing
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {hasThumbnail ? (
-                        <div className="space-y-4">
-                            <Label className="text-sm font-medium mb-2 block">Package Thumbnail</Label>
-                            <div className="relative group overflow-hidden rounded-xl border aspect-[16/9] w-full max-h-[360px] bg-muted flex items-center justify-center shadow-md">
+                        <div className="space-y-3">
+                            <Label className="text-xs font-semibold block">Package Cover Image</Label>
+                            <div className="relative group overflow-hidden rounded-2xl border aspect-[16/9] w-full max-h-[340px] bg-muted flex items-center justify-center shadow-md">
                                 <img
                                     src={thumbnailSrc}
                                     alt="Package thumbnail"
-                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                 />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-xs">
                                     <Button
                                         type="button"
                                         variant="destructive"
-                                        className="shadow-lg"
+                                        className="shadow-lg rounded-xl text-xs"
                                         onClick={() => {
                                             form.setValue("thumbnail", undefined);
                                             setThumbnailFile(undefined);
@@ -110,7 +111,7 @@ export function StepBasicInfo({
                         </div>
                     ) : (
                         <div className="w-full">
-                            <Label className="text-sm font-medium mb-2 block">Upload Thumbnail</Label>
+                            <Label className="text-xs font-semibold mb-2 block">Upload Thumbnail</Label>
                             <FileUploader
                                 value={[]}
                                 onChange={(files) => {
@@ -120,34 +121,36 @@ export function StepBasicInfo({
                                 }}
                                 maxFiles={1}
                                 accept="image/*"
-                                className="w-full"
+                                className="w-full rounded-2xl border-dashed"
                             />
-                            <p className="text-xs text-muted-foreground mt-2">
-                                Recommended: 400x300px, JPG or PNG (under 5MB)
+                            <p className="text-[11px] text-muted-foreground mt-2">
+                                Recommended resolution: 1200x800px, JPG or PNG (under 5MB)
                             </p>
                         </div>
                     )}
                 </CardContent>
             </Card>
 
-            <Card>
+            {/* Basic Information Card */}
+            <Card className="shadow-xs border rounded-2xl">
                 <CardHeader>
-                    <CardTitle>Basic Information</CardTitle>
-                    <CardDescription>
-                        Enter the basic details of your tour package
+                    <CardTitle className="text-base font-bold">Basic Information</CardTitle>
+                    <CardDescription className="text-xs">
+                        Enter title, destination, category, and stay duration details
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                             control={form.control}
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Package Name</FormLabel>
+                                    <FormLabel className="text-xs font-medium">Package Name</FormLabel>
                                     <FormControl>
                                         <Input
                                             placeholder="e.g., Bali Paradise Getaway"
+                                            className="rounded-xl h-10 text-xs"
                                             {...field}
                                         />
                                     </FormControl>
@@ -160,10 +163,11 @@ export function StepBasicInfo({
                             name="destination"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Destination</FormLabel>
+                                    <FormLabel className="text-xs font-medium">Primary Destination</FormLabel>
                                     <FormControl>
                                         <Input
                                             placeholder="e.g., Bali, Indonesia"
+                                            className="rounded-xl h-10 text-xs"
                                             {...field}
                                         />
                                     </FormControl>
@@ -178,11 +182,11 @@ export function StepBasicInfo({
                         name="description"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Description</FormLabel>
+                                <FormLabel className="text-xs font-medium">Overview Description</FormLabel>
                                 <FormControl>
                                     <Textarea
-                                        placeholder="Describe your tour package..."
-                                        className="min-h-[100px]"
+                                        placeholder="Describe key highlights, experience, and overview of this package..."
+                                        className="min-h-[100px] rounded-xl text-xs"
                                         {...field}
                                     />
                                 </FormControl>
@@ -197,12 +201,13 @@ export function StepBasicInfo({
                             name="days"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Days</FormLabel>
+                                    <FormLabel className="text-xs font-medium">Total Days</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             min="0"
                                             placeholder="7"
+                                            className="rounded-xl h-10 font-mono text-xs"
                                             {...field}
                                             value={field.value ?? ""}
                                             onChange={(e) =>
@@ -221,12 +226,13 @@ export function StepBasicInfo({
                             name="nights"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Nights</FormLabel>
+                                    <FormLabel className="text-xs font-medium">Total Nights</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             min="0"
                                             placeholder="6"
+                                            className="rounded-xl h-10 font-mono text-xs"
                                             {...field}
                                             value={field.value ?? ""}
                                             onChange={(e) =>
@@ -245,12 +251,13 @@ export function StepBasicInfo({
                             name="maxGuests"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Max Guests</FormLabel>
+                                    <FormLabel className="text-xs font-medium">Max Group Capacity</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             min="0"
                                             placeholder="12"
+                                            className="rounded-xl h-10 font-mono text-xs"
                                             {...field}
                                             value={field.value ?? ""}
                                             onChange={(e) =>
@@ -271,35 +278,23 @@ export function StepBasicInfo({
                         name="category"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Category</FormLabel>
+                                <FormLabel className="text-xs font-medium">Travel Category</FormLabel>
                                 <Select
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
                                 >
                                     <FormControl>
-                                        <SelectTrigger>
+                                        <SelectTrigger className="rounded-xl h-10 text-xs">
                                             <SelectValue placeholder="Select category" />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        <SelectItem value="adventure">
-                                            Adventure
-                                        </SelectItem>
-                                        <SelectItem value="cultural">
-                                            Cultural
-                                        </SelectItem>
-                                        <SelectItem value="relaxation">
-                                            Relaxation
-                                        </SelectItem>
-                                        <SelectItem value="wildlife">
-                                            Wildlife
-                                        </SelectItem>
-                                        <SelectItem value="luxury">
-                                            Luxury
-                                        </SelectItem>
-                                        <SelectItem value="budget">
-                                            Budget
-                                        </SelectItem>
+                                        <SelectItem value="adventure">Adventure</SelectItem>
+                                        <SelectItem value="cultural">Cultural</SelectItem>
+                                        <SelectItem value="relaxation">Relaxation</SelectItem>
+                                        <SelectItem value="wildlife">Wildlife</SelectItem>
+                                        <SelectItem value="luxury">Luxury</SelectItem>
+                                        <SelectItem value="budget">Budget</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -309,11 +304,12 @@ export function StepBasicInfo({
                 </CardContent>
             </Card>
 
-            <Card>
+            {/* Package Location Card */}
+            <Card className="shadow-xs border rounded-2xl">
                 <CardHeader>
-                    <CardTitle>Package Location</CardTitle>
-                    <CardDescription>
-                        Where is this tour taking place?
+                    <CardTitle className="text-base font-bold">Package Location Scope</CardTitle>
+                    <CardDescription className="text-xs">
+                        Specify geographic coverage (Domestic/Local vs International) and target cities
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -322,45 +318,41 @@ export function StepBasicInfo({
                         name="packageLocation.type"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Package Type</FormLabel>
+                                <FormLabel className="text-xs font-medium">Package Region Type</FormLabel>
                                 <Select
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
                                 >
                                     <FormControl>
-                                        <SelectTrigger>
+                                        <SelectTrigger className="rounded-xl h-10 text-xs">
                                             <SelectValue />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        <SelectItem value="international">
-                                            International
-                                        </SelectItem>
-                                        <SelectItem value="local">
-                                            Local/Domestic
-                                        </SelectItem>
+                                        <SelectItem value="international">International Destination</SelectItem>
+                                        <SelectItem value="local">Local / Domestic India</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormItem>
                         )}
                     />
 
-                    <div className="border rounded-xl p-4 bg-card/50 space-y-3 shadow-xs border-t pt-4">
+                    <div className="border rounded-2xl p-4 bg-muted/30 space-y-3 shadow-xs">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                                <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
+                                <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
                                     {locationType === "international" ? <Globe className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <h4 className="text-sm font-semibold text-foreground">Package Destinations</h4>
-                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold border-primary/30 text-primary">
+                                        <h4 className="text-xs font-bold text-foreground">Selected Destinations</h4>
+                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold border-primary/30 text-primary rounded-md">
                                             {locationType}
                                         </Badge>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">
                                         {locationType === "international"
-                                            ? "Configured for international markets & travel destinations"
+                                            ? "Configured for international travel destinations"
                                             : "Configured for domestic travel across India"}
                                     </p>
                                 </div>
@@ -370,7 +362,7 @@ export function StepBasicInfo({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setLocationModalOpen(true)}
-                                className="text-xs gap-1.5 h-8 font-medium shrink-0 cursor-pointer border-primary/20 hover:border-primary"
+                                className="text-xs gap-1.5 h-8 font-semibold shrink-0 cursor-pointer rounded-xl border-primary/20 hover:border-primary"
                             >
                                 <Edit className="h-3.5 w-3.5" />
                                 Configure Locations
@@ -379,19 +371,19 @@ export function StepBasicInfo({
 
                         <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t text-xs">
                             {selectedCountries.map((c) => (
-                                <Badge key={`fc-${c}`} variant="secondary" className="text-xs gap-1 font-normal bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200">
+                                <Badge key={`fc-${c}`} variant="secondary" className="text-xs gap-1 font-medium bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 rounded-md">
                                     <Globe className="h-3 w-3" />
                                     <span>{c}</span>
                                 </Badge>
                             ))}
                             {selectedStates.map((s) => (
-                                <Badge key={`fs-${s}`} variant="secondary" className="text-xs gap-1 font-normal bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200">
+                                <Badge key={`fs-${s}`} variant="secondary" className="text-xs gap-1 font-medium bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 rounded-md">
                                     <Landmark className="h-3 w-3" />
                                     <span>{s}</span>
                                 </Badge>
                             ))}
                             {selectedCities.map((ct) => (
-                                <Badge key={`fct-${ct}`} variant="secondary" className="text-xs gap-1 font-normal bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200">
+                                <Badge key={`fct-${ct}`} variant="secondary" className="text-xs gap-1 font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 rounded-md">
                                     <Building2 className="h-3 w-3" />
                                     <span>{ct}</span>
                                 </Badge>
@@ -417,14 +409,14 @@ export function StepBasicInfo({
                 </CardContent>
             </Card>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-2 border-t">
                 <Button
                     type="button"
                     onClick={onNext}
                     disabled={isLoading}
-                    className="gap-2"
+                    className="rounded-xl px-6 gap-2 text-xs font-semibold"
                 >
-                    {isLoading ? "Saving..." : "Save \u0026 Next"}
+                    {isLoading ? "Saving..." : "Save & Next"}
                     <Save className="w-4 h-4" />
                 </Button>
             </div>

@@ -21,12 +21,23 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import type { PackageFormData } from "@/types/package.schema";
-import { Clock, Hash, MapPin, Plus, Save, Trash2, Utensils } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 import mealsService from "@/services/meals.service";
 import type { IMeal } from "@/types/meals.types";
+import type { PackageFormData } from "@/types/package.schema";
+import {
+    ArrowLeft,
+    ArrowRight,
+    Bus,
+    Clock,
+    Hash,
+    MapPin,
+    Plus,
+    Trash2,
+    Truck,
+    Utensils
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 
 interface StepLogisticsProps {
     form: UseFormReturn<PackageFormData>;
@@ -287,31 +298,39 @@ export function StepLogistics({
 
     return (
         <div className="space-y-6">
-            <Card>
+            {/* Meals Breakdown Card */}
+            <Card className="shadow-xs border rounded-2xl">
                 <CardHeader>
-                    <CardTitle>Meals Breakdown</CardTitle>
-                    <CardDescription>
-                        Details about what's served for each meal
-                    </CardDescription>
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                            <Utensils className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-base font-bold">Meals Breakdown</CardTitle>
+                            <CardDescription className="text-xs">
+                                Define breakfast, lunch, and dinner inclusions for traveler itinerary
+                            </CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <FormField
                         control={form.control}
                         name="mealsTemplateId"
                         render={({ field }) => (
-                            <FormItem className="pb-4 border-b border-muted">
-                                <FormLabel className="font-bold flex items-center gap-1.5">
-                                    <Utensils className="h-4 w-4 text-primary" /> Select Meal Plan Template
+                            <FormItem className="pb-4 border-b">
+                                <FormLabel className="font-semibold text-xs flex items-center gap-1.5">
+                                    Select Meal Plan Template
                                 </FormLabel>
-                                <Select 
+                                <Select
                                     onValueChange={(val) => {
                                         field.onChange(val);
                                         handleSelectMealTemplate(val);
-                                    }} 
+                                    }}
                                     value={field.value || "none"}
                                 >
                                     <FormControl>
-                                        <SelectTrigger className="cursor-pointer">
+                                        <SelectTrigger className="cursor-pointer rounded-xl h-10 text-xs">
                                             <SelectValue placeholder="Select a pre-defined meal plan..." />
                                         </SelectTrigger>
                                     </FormControl>
@@ -329,13 +348,14 @@ export function StepLogistics({
                     />
 
                     {(["breakfast", "lunch", "dinner"] as const).map((type) => (
-                        <div key={type} className="space-y-2">
-                            <Label className="capitalize font-bold">
-                                {type}
+                        <div key={type} className="space-y-2.5">
+                            <Label className="capitalize font-semibold text-xs text-foreground">
+                                {type} Items
                             </Label>
                             <div className="flex gap-2">
                                 <Input
-                                    placeholder={`Add ${type} item...`}
+                                    placeholder={`Add ${type} menu item...`}
+                                    className="rounded-xl h-9 text-xs"
                                     value={
                                         newMealItem.type === type
                                             ? newMealItem.value
@@ -357,48 +377,51 @@ export function StepLogistics({
                                 <Button
                                     type="button"
                                     onClick={() => addMealItem(type)}
-                                    variant="secondary"
+                                    size="sm"
+                                    className="rounded-xl px-3 gap-1 shrink-0"
                                 >
-                                    <Plus className="w-4 h-4" />
+                                    <Plus className="w-4 h-4" /> Add
                                 </Button>
                             </div>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5">
                                 {(
                                     form.watch(`mealsBreakdown.${type}`) || []
                                 ).map((item, index) => (
                                     <div
                                         key={index}
-                                        className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md text-sm"
+                                        className="flex items-center gap-1.5 bg-muted/60 border px-2.5 py-1 rounded-xl text-xs"
                                     >
-                                        <span>{item}</span>
+                                        <span className="font-medium">{item}</span>
                                         <Button
                                             type="button"
                                             variant="ghost"
-                                            size="sm"
-                                            className="h-auto p-0 hover:bg-transparent"
+                                            size="icon"
+                                            className="h-4 w-4 text-rose-500 hover:bg-rose-500/10 rounded-full"
                                             onClick={() =>
                                                 removeMealItem(type, index)
                                             }
                                         >
-                                            <Trash2 className="w-3 h-3 text-red-500" />
+                                            <Trash2 className="w-3 h-3" />
                                         </Button>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     ))}
+
                     <div className="pt-4 border-t">
                         <FormField
                             control={form.control}
                             name="mealsBreakdown.mealsCost"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Total Meals Cost (₹)</FormLabel>
+                                    <FormLabel className="text-xs font-medium">Total Meals Cost (₹)</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             min="0"
                                             placeholder="e.g., 5000"
+                                            className="rounded-xl h-10 font-mono text-xs max-w-sm"
                                             {...field}
                                             value={field.value ?? ""}
                                             onChange={(e) =>
@@ -415,37 +438,52 @@ export function StepLogistics({
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>Transportation Options</CardTitle>
-                            <CardDescription>Available transport tiers and costs</CardDescription>
+            {/* Transportation Options Card */}
+            <Card className="shadow-xs border rounded-2xl">
+                <CardHeader className="border-b">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                <Truck className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-base font-bold">Transportation Options</CardTitle>
+                                <CardDescription className="text-xs">
+                                    Configure transport tiers (Flights, Trains, Buses) linked to pricing tiers
+                                </CardDescription>
+                            </div>
                         </div>
                         <Button
                             type="button"
                             onClick={() => appendTransportation({ id: crypto.randomUUID(), title: "", segments: [], cost: 0 })}
                             size="sm"
+                            className="rounded-xl gap-1.5 text-xs font-semibold shrink-0"
                         >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Option
+                            <Plus className="w-4 h-4" />
+                            Add Transport Option
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="p-6 space-y-6">
                     {transportationFields.map((field, index) => (
-                        <div key={field.id} className="border rounded-lg p-4 space-y-4">
+                        <div key={field.id} className="border rounded-2xl p-5 space-y-4 bg-card/50 shadow-xs">
                             <div className="flex justify-between items-center pb-2 border-b">
-                                <h4 className="font-medium text-primary flex items-center gap-2">
-                                    Transportation Option {index + 1}
-                                </h4>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
+                                        Option {index + 1}
+                                    </span>
+                                    <span className="font-semibold text-xs">
+                                        {form.watch(`transportation.${index}.title`) || "Unnamed Option"}
+                                    </span>
+                                </div>
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
+                                    className="text-rose-500 hover:bg-rose-500/10 rounded-xl h-8 text-xs gap-1"
                                     onClick={() => removeTransportation(index)}
                                 >
-                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                    <Trash2 className="w-3.5 h-3.5" /> Remove
                                 </Button>
                             </div>
 
@@ -455,9 +493,9 @@ export function StepLogistics({
                                     name={`transportation.${index}.title`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Title</FormLabel>
+                                            <FormLabel className="text-xs font-medium">Option Title</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="e.g., Two-Way Flight, Mixed (Train+Flight)" {...field} />
+                                                <Input className="rounded-xl h-10 text-xs" placeholder="e.g., Round-trip Flight + AC Coach" {...field} />
                                             </FormControl>
                                         </FormItem>
                                     )}
@@ -468,12 +506,13 @@ export function StepLogistics({
                                     name={`transportation.${index}.cost`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Total Option Cost (₹)</FormLabel>
+                                            <FormLabel className="text-xs font-medium">Total Option Cost (₹)</FormLabel>
                                             <FormControl>
                                                 <Input
                                                     type="number"
                                                     min="0"
                                                     placeholder="0"
+                                                    className="rounded-xl h-10 font-mono text-xs"
                                                     {...field}
                                                     value={field.value ?? ""}
                                                     onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
@@ -488,19 +527,26 @@ export function StepLogistics({
                         </div>
                     ))}
                     {transportationFields.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                            No transportation options added. Click 'Add Option' to include transport tiers.
-                        </p>
+                        <div className="text-center py-8 border border-dashed rounded-2xl bg-muted/20 space-y-1">
+                            <p className="text-xs font-semibold text-muted-foreground">No transportation options added yet.</p>
+                            <p className="text-[11px] text-muted-foreground/70">Click "Add Transport Option" above to include transportation choices for pricing tiers.</p>
+                        </div>
                     )}
                 </CardContent>
             </Card>
 
-
-
-            <Card>
+            {/* Ground Transportation Card */}
+            <Card className="shadow-xs border rounded-2xl">
                 <CardHeader>
-                    <CardTitle>Ground Transportation</CardTitle>
-                    <CardDescription>Overall ground transportation costs for the package</CardDescription>
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            <Bus className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-base font-bold">Ground Transportation</CardTitle>
+                            <CardDescription className="text-xs">Fixed local cabs, transfers, or bus charter expenses</CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <FormField
@@ -508,12 +554,13 @@ export function StepLogistics({
                         name="groundTransportationCost"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Ground Transportation Cost (₹)</FormLabel>
+                                <FormLabel className="text-xs font-medium">Ground Transport Cost (₹)</FormLabel>
                                 <FormControl>
                                     <Input
                                         type="number"
                                         min="0"
-                                        placeholder="e.g., 2000"
+                                        placeholder="e.g., 3500"
+                                        className="rounded-xl h-10 font-mono text-xs max-w-sm"
                                         {...field}
                                         value={field.value ?? ""}
                                         onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
@@ -525,18 +572,25 @@ export function StepLogistics({
                 </CardContent>
             </Card>
 
-            <div className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onBack}>
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center pt-4 border-t">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onBack}
+                    className="rounded-xl px-5 gap-2 text-xs font-semibold"
+                >
+                    <ArrowLeft className="w-4 h-4" />
                     Back
                 </Button>
                 <Button
                     type="button"
                     onClick={onNext}
                     disabled={isLoading}
-                    className="gap-2"
+                    className="rounded-xl px-6 gap-2 text-xs font-semibold"
                 >
-                    {isLoading ? "Saving..." : "Save \u0026 Next"}
-                    <Save className="w-4 h-4" />
+                    {isLoading ? "Saving..." : "Save & Next"}
+                    <ArrowRight className="w-4 h-4" />
                 </Button>
             </div>
         </div>
