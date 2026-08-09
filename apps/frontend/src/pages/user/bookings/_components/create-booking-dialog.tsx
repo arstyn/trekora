@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import EnhancedCustomerForm from "@/pages/user/customers/_components/enhanced-customer-form";
 import BookingService from "@/services/booking.service";
 import type { IBatches } from "@/types/batches.types";
 import type {
@@ -42,19 +44,22 @@ import {
     Calendar,
     Check,
     ChevronRight,
+    DollarSign,
+    Info,
     Loader2,
     Package as PackageIcon,
     PersonStanding,
     Plus,
     Search,
+    Tag,
     User,
     UserPlus,
+    Users,
     X
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import EnhancedCustomerForm from "@/pages/user/customers/_components/enhanced-customer-form";
 
 interface CreateBookingDialogProps {
     open: boolean;
@@ -73,6 +78,7 @@ export interface ICreateBookingFormData {
     numberOfCustomers: number;
     customers: ICustomer[];
     totalAmount: number;
+    discountAmount: number;
     advanceAmount: number;
     paymentMethod: PaymentMethod | "";
     paymentReference: string;
@@ -121,6 +127,8 @@ export function CreateBookingDialog({
     const [duplicateCustomerOverrides, setDuplicateCustomerOverrides] = useState<Record<string, boolean>>({});
     const [batchBookedOverrides, setBatchBookedOverrides] = useState<Record<string, boolean>>({});
     const [customerExistingBookings, setCustomerExistingBookings] = useState<Record<string, any[]>>({});
+    const [discountInputType, setDiscountInputType] = useState<"amount" | "percentage">("amount");
+    const [perPassengerDiscountValue, setPerPassengerDiscountValue] = useState<number>(0);
 
     const [formData, setFormData] = useState<ICreateBookingFormData>({
         packageId: preselectedPackageId || "",
@@ -129,6 +137,7 @@ export function CreateBookingDialog({
         numberOfCustomers: 0,
         customers: [],
         totalAmount: 0,
+        discountAmount: 0,
         advanceAmount: 0,
         paymentMethod: "",
         paymentReference: "",
@@ -277,9 +286,6 @@ export function CreateBookingDialog({
         if (currentStep === 3) {
             if (formData.advanceAmount > 0 && !formData.paymentMethod) {
                 newErrors.paymentMethod = "Please select a payment method for advance payment";
-            }
-            if (formData.isPaymentOverridden && !formData.paymentOverrideReason.trim()) {
-                newErrors.paymentOverrideReason = "Please provide a reason for overriding the payment amount";
             }
             const availableSeats = getAvailableSeats(selectedBatch);
             if (selectedBatch && formData.customers.length > availableSeats && !formData.overrideCapacityLimit) {
@@ -440,25 +446,28 @@ export function CreateBookingDialog({
         if (paymentStructure.length === 0) return;
 
         setFormData((prev) => {
-            // If payment structure is overridden, don't change anything
             if (prev.isPaymentOverridden) return prev;
 
-            // Find current active milestone or default to the first one (order = 1)
             let activeMilestone = paymentStructure.find(m => m.id === prev.paymentStructureId);
             if (!activeMilestone) {
-                // Default to the first one (order = 1)
                 activeMilestone = paymentStructure[0];
             }
 
-            // Calculate cumulative percent up to this milestone
             const milestoneIdx = paymentStructure.findIndex(m => m.id === activeMilestone.id);
             const cumulativePercent = paymentStructure
                 .slice(0, milestoneIdx + 1)
                 .reduce((sum, m) => sum + Number(m.amount || 0), 0);
 
-            const newAdvanceAmount = Math.round((prev.totalAmount * cumulativePercent) / 100);
+            const baseTotal = calculateBaseTotal(
+                prev.packageId,
+                prev.packageTierId,
+                prev.isCommonTier,
+                prev.customerSelections,
+                prev.customers
+            );
 
-            // Only update state if values actually changed to avoid infinite loop
+            const newAdvanceAmount = Math.round((baseTotal * cumulativePercent) / 100);
+
             if (prev.paymentStructureId === activeMilestone.id && prev.advanceAmount === newAdvanceAmount) {
                 return prev;
             }
@@ -469,7 +478,7 @@ export function CreateBookingDialog({
                 advanceAmount: newAdvanceAmount,
             };
         });
-    }, [selectedPackage, formData.totalAmount, formData.isPaymentOverridden]);
+    }, [selectedPackage, formData.totalAmount, formData.discountAmount, formData.isPaymentOverridden]);
 
     const loadAvailableBatches = async (packageId: string) => {
         try {
@@ -486,7 +495,8 @@ export function CreateBookingDialog({
         commonTierId: string,
         isCommon: boolean,
         selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
-        currentCustomers: ICustomer[]
+        currentCustomers: ICustomer[],
+        discount: number = formData.discountAmount || 0
     ) => {
         const pkg = packages.find((p) => p.id === pkgId);
         if (!pkg) return 0;
@@ -523,7 +533,17 @@ export function CreateBookingDialog({
             }
         });
 
-        return total;
+        return Math.max(0, total - discount);
+    };
+
+    const calculateBaseTotal = (
+        pkgId: string,
+        commonTierId: string,
+        isCommon: boolean,
+        selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
+        currentCustomers: ICustomer[]
+    ) => {
+        return calculateTotalAmount(pkgId, commonTierId, isCommon, selections, currentCustomers, 0);
     };
 
     const handleCustomerSelect = (customer: ICustomer) => {
@@ -703,6 +723,7 @@ export function CreateBookingDialog({
                 batchId: formData.batchId,
                 customerIds,
                 totalAmount: formData.totalAmount,
+                discountAmount: formData.discountAmount || 0,
                 specialRequests: formData.specialRequests,
                 isCommonTier: formData.isCommonTier,
                 customerSelections: Object.entries(formData.customerSelections).map(([customerId, selection]) => ({
@@ -777,6 +798,7 @@ export function CreateBookingDialog({
             numberOfCustomers: 0,
             customers: [],
             totalAmount: 0,
+            discountAmount: 0,
             advanceAmount: 0,
             paymentMethod: "",
             paymentReference: "",
@@ -1506,86 +1528,86 @@ export function CreateBookingDialog({
                                                                     );
                                                                 })()}
                                                                 {(() => {
-                                                                        const custId = c.id || c.email || c.phone || c.firstName;
-                                                                        const dupCount = getDuplicateCustomerCount(c);
-                                                                        if (dupCount <= 1) return null;
+                                                                    const custId = c.id || c.email || c.phone || c.firstName;
+                                                                    const dupCount = getDuplicateCustomerCount(c);
+                                                                    if (dupCount <= 1) return null;
 
-                                                                        const isDupOverridden = !!(custId && duplicateCustomerOverrides[custId]);
+                                                                    const isDupOverridden = !!(custId && duplicateCustomerOverrides[custId]);
 
-                                                                        return (
-                                                                            <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isDupOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
-                                                                                <div className="flex items-start gap-2">
-                                                                                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                                                                                    <div className="flex-1">
-                                                                                        <p className="font-medium">
-                                                                                            Duplicate customer selection ({c.firstName} {c.lastName} is selected {dupCount} times for this booking).
-                                                                                        </p>
-                                                                                    </div>
+                                                                    return (
+                                                                        <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isDupOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
+                                                                            <div className="flex items-start gap-2">
+                                                                                <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                                                <div className="flex-1">
+                                                                                    <p className="font-medium">
+                                                                                        Duplicate customer selection ({c.firstName} {c.lastName} is selected {dupCount} times for this booking).
+                                                                                    </p>
                                                                                 </div>
-                                                                                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10">
-                                                                                    <Checkbox
-                                                                                        id={`override-duplicate-${custId}-${index}`}
-                                                                                        checked={isDupOverridden}
-                                                                                        onCheckedChange={(checked) => {
-                                                                                            if (!custId) return;
-                                                                                            setDuplicateCustomerOverrides(prev => ({
-                                                                                                ...prev,
-                                                                                                [custId]: !!checked
-                                                                                            }));
-                                                                                            if (errors.duplicateCustomer) {
-                                                                                                setErrors(prev => ({ ...prev, duplicateCustomer: "" }));
-                                                                                            }
-                                                                                        }}
-                                                                                    />
-                                                                                    <Label htmlFor={`override-duplicate-${custId}-${index}`} className="text-[11px] font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
-                                                                                        Acknowledge duplicate customer selection
-                                                                                    </Label>
-                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10">
+                                                                                <Checkbox
+                                                                                    id={`override-duplicate-${custId}-${index}`}
+                                                                                    checked={isDupOverridden}
+                                                                                    onCheckedChange={(checked) => {
+                                                                                        if (!custId) return;
+                                                                                        setDuplicateCustomerOverrides(prev => ({
+                                                                                            ...prev,
+                                                                                            [custId]: !!checked
+                                                                                        }));
+                                                                                        if (errors.duplicateCustomer) {
+                                                                                            setErrors(prev => ({ ...prev, duplicateCustomer: "" }));
+                                                                                        }
+                                                                                    }}
+                                                                                />
+                                                                                <Label htmlFor={`override-duplicate-${custId}-${index}`} className="text-[11px] font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
+                                                                                    Acknowledge duplicate customer selection
+                                                                                </Label>
+                                                                            </div>
                                                                         </div>
                                                                     );
                                                                 })()}
                                                                 {(() => {
-                                                                        const custId = c.id || c.email || c.phone || c.firstName;
-                                                                        const existingBookings = getExistingBatchBookings(c, formData.batchId);
-                                                                        if (existingBookings.length === 0) return null;
+                                                                    const custId = c.id || c.email || c.phone || c.firstName;
+                                                                    const existingBookings = getExistingBatchBookings(c, formData.batchId);
+                                                                    if (existingBookings.length === 0) return null;
 
-                                                                        const isBatchBookedOverridden = !!(custId && batchBookedOverrides[custId]);
+                                                                    const isBatchBookedOverridden = !!(custId && batchBookedOverrides[custId]);
 
-                                                                        return (
-                                                                            <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isBatchBookedOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
-                                                                                <div className="flex items-start gap-2">
-                                                                                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                                                                                    <div className="flex-1">
-                                                                                        <p className="font-medium">
-                                                                                            Existing batch booking warning ({c.firstName} {c.lastName} is already booked in this batch — Booking #{existingBookings.map(b => b.bookingNumber).join(', ')}).
-                                                                                        </p>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10">
-                                                                                    <Checkbox
-                                                                                        id={`override-batch-booked-${custId}-${index}`}
-                                                                                        checked={isBatchBookedOverridden}
-                                                                                        onCheckedChange={(checked) => {
-                                                                                            if (!custId) return;
-                                                                                            setBatchBookedOverrides(prev => ({
-                                                                                                ...prev,
-                                                                                                [custId]: !!checked
-                                                                                            }));
-                                                                                            if (errors.batchBookedCustomer) {
-                                                                                                setErrors(prev => ({ ...prev, batchBookedCustomer: "" }));
-                                                                                            }
-                                                                                        }}
-                                                                                    />
-                                                                                    <Label htmlFor={`override-batch-booked-${custId}-${index}`} className="text-[11px] font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
-                                                                                        Acknowledge existing batch booking
-                                                                                    </Label>
+                                                                    return (
+                                                                        <div className={`p-2.5 rounded-lg border text-xs space-y-2 ${isBatchBookedOverridden ? 'bg-muted/50 border-muted' : 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
+                                                                            <div className="flex items-start gap-2">
+                                                                                <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                                                <div className="flex-1">
+                                                                                    <p className="font-medium">
+                                                                                        Existing batch booking warning ({c.firstName} {c.lastName} is already booked in this batch — Booking #{existingBookings.map(b => b.bookingNumber).join(', ')}).
+                                                                                    </p>
                                                                                 </div>
                                                                             </div>
-                                                                        );
-                                                                    })()}
-                                                                </div>
-                                                            );
-                                                        })}
+                                                                            <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10">
+                                                                                <Checkbox
+                                                                                    id={`override-batch-booked-${custId}-${index}`}
+                                                                                    checked={isBatchBookedOverridden}
+                                                                                    onCheckedChange={(checked) => {
+                                                                                        if (!custId) return;
+                                                                                        setBatchBookedOverrides(prev => ({
+                                                                                            ...prev,
+                                                                                            [custId]: !!checked
+                                                                                        }));
+                                                                                        if (errors.batchBookedCustomer) {
+                                                                                            setErrors(prev => ({ ...prev, batchBookedCustomer: "" }));
+                                                                                        }
+                                                                                    }}
+                                                                                />
+                                                                                <Label htmlFor={`override-batch-booked-${custId}-${index}`} className="text-[11px] font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
+                                                                                    Acknowledge existing batch booking
+                                                                                </Label>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
@@ -1683,11 +1705,236 @@ export function CreateBookingDialog({
                                             )}
                                         </div>
 
-                                        {/* Select Payment Structure */}
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-semibold">Select Payment Structure</Label>
-                                            {paymentStructure.length > 0 ? (
-                                                <div className="space-y-2.5">
+                                        {/* Discount Section */}
+                                        {(() => {
+                                            const baseTotal = calculateBaseTotal(
+                                                formData.packageId,
+                                                formData.packageTierId,
+                                                formData.isCommonTier,
+                                                formData.customerSelections,
+                                                formData.customers
+                                            );
+                                            const pkgDiscountType = selectedPackage?.maxDiscountType || (selectedPackage?.maxDiscountPercentage ? "percentage" : "amount");
+                                            const pkgDiscountScope = selectedPackage?.maxDiscountScope || "group";
+                                            const effectiveDiscountScope = pkgDiscountScope === "passenger" ? "individual" : "group";
+                                            const pkgMaxVal = selectedPackage?.maxDiscountValue ?? selectedPackage?.maxDiscountPercentage ?? 0;
+                                            const travelerCount = formData.customers.length || 1;
+
+                                            const maxDiscountAmount = pkgDiscountScope === "passenger"
+                                                ? (pkgDiscountType === "percentage" ? Math.round((baseTotal * pkgMaxVal) / 100) : pkgMaxVal * travelerCount)
+                                                : (pkgDiscountType === "percentage" ? Math.round((baseTotal * pkgMaxVal) / 100) : pkgMaxVal);
+
+                                            const isDiscountExceeded = (formData.discountAmount || 0) > maxDiscountAmount && maxDiscountAmount > 0;
+
+                                            const discountPercentageValue = baseTotal > 0 && formData.discountAmount
+                                                ? Number(((formData.discountAmount / baseTotal) * 100).toFixed(2))
+                                                : "";
+
+                                            return (
+                                                <div className="p-4 rounded-xl border bg-card space-y-4">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+                                                        <div>
+                                                            <Label className="text-sm font-semibold flex items-center gap-1.5">
+                                                                <Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                                                Booking Discount
+                                                            </Label>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                {pkgDiscountScope === "passenger"
+                                                                    ? "Discount is configured per passenger for this package."
+                                                                    : "Discount is configured for the entire booking group."}
+                                                                {maxDiscountAmount > 0 && (
+                                                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 ml-1">
+                                                                        Max allowed: {pkgDiscountScope === "passenger"
+                                                                            ? `${pkgDiscountType === "percentage" ? `${pkgMaxVal}%` : `₹${pkgMaxVal}`} / passenger × ${travelerCount} travelers = ${BookingService.formatCurrency(maxDiscountAmount)} Max`
+                                                                            : `${pkgDiscountType === "percentage" ? `${pkgMaxVal}%` : `₹${pkgMaxVal}`} Total (${BookingService.formatCurrency(maxDiscountAmount)})`}
+                                                                    </span>
+                                                                )}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Discount Scope Indicator (Locked to Package Configuration) */}
+                                                        {pkgDiscountScope === "passenger" ? (
+                                                            <div className="inline-flex items-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs font-semibold gap-1.5 self-start sm:self-auto">
+                                                                <User className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                                                Per Passenger Discount
+                                                            </div>
+                                                        ) : (
+                                                            <div className="inline-flex items-center bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 text-xs font-semibold gap-1.5 self-start sm:self-auto">
+                                                                <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                                                Group Discount
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Calculation Type Header & Amount / Percentage Toggle */}
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs font-semibold text-muted-foreground">
+                                                            {effectiveDiscountScope === "group" ? "Total Group Discount Input" : `Per-Passenger Discount Input (${travelerCount} Travelers)`}
+                                                        </span>
+                                                        <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border text-xs">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDiscountInputType("amount")}
+                                                                className={cn(
+                                                                    "px-2.5 py-1 rounded-md transition-all font-medium",
+                                                                    discountInputType === "amount"
+                                                                        ? "bg-background text-foreground shadow-xs"
+                                                                        : "text-muted-foreground hover:text-foreground"
+                                                                )}
+                                                            >
+                                                                Amount (₹)
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDiscountInputType("percentage")}
+                                                                className={cn(
+                                                                    "px-2.5 py-1 rounded-md transition-all font-medium",
+                                                                    discountInputType === "percentage"
+                                                                        ? "bg-background text-foreground shadow-xs"
+                                                                        : "text-muted-foreground hover:text-foreground"
+                                                                )}
+                                                            >
+                                                                Percent (%)
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {effectiveDiscountScope === "group" ? (
+                                                        /* Group Discount Input */
+                                                        <div className="flex items-center gap-3 flex-wrap">
+                                                            {discountInputType === "amount" ? (
+                                                                <Input
+                                                                    id="discountAmount"
+                                                                    type="number"
+                                                                    min="0"
+                                                                    max={baseTotal}
+                                                                    value={formData.discountAmount || ""}
+                                                                    onChange={(e) => {
+                                                                        const raw = e.target.value;
+                                                                        const val = raw === "" ? 0 : Math.max(0, Number(raw) || 0);
+                                                                        const newTotal = Math.max(0, baseTotal - val);
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            discountAmount: val,
+                                                                            totalAmount: newTotal,
+                                                                        }));
+                                                                    }}
+                                                                    placeholder="Enter group discount in ₹..."
+                                                                    className="h-10 max-w-xs bg-background font-semibold"
+                                                                />
+                                                            ) : (
+                                                                <Input
+                                                                    id="discountPercentage"
+                                                                    type="number"
+                                                                    min="0"
+                                                                    max="100"
+                                                                    step="0.01"
+                                                                    value={discountPercentageValue}
+                                                                    onChange={(e) => {
+                                                                        const raw = e.target.value;
+                                                                        const pct = raw === "" ? 0 : Math.max(0, Math.min(100, Number(raw) || 0));
+                                                                        const val = Math.round((baseTotal * pct) / 100);
+                                                                        const newTotal = Math.max(0, baseTotal - val);
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            discountAmount: val,
+                                                                            totalAmount: newTotal,
+                                                                        }));
+                                                                    }}
+                                                                    placeholder="Enter group discount in %..."
+                                                                    className="h-10 max-w-xs bg-background font-semibold"
+                                                                />
+                                                            )}
+
+                                                            {formData.discountAmount > 0 && (
+                                                                <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 py-1.5 px-2.5">
+                                                                    - {BookingService.formatCurrency(formData.discountAmount)} Total Group Discount
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        /* Individual Per-Passenger Input */
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center gap-3 flex-wrap">
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    value={perPassengerDiscountValue || ""}
+                                                                    onChange={(e) => {
+                                                                        const raw = e.target.value;
+                                                                        const val = raw === "" ? 0 : Math.max(0, Number(raw) || 0);
+                                                                        setPerPassengerDiscountValue(val);
+                                                                        let totalDisc = 0;
+                                                                        if (discountInputType === "amount") {
+                                                                            totalDisc = val * travelerCount;
+                                                                        } else {
+                                                                            totalDisc = Math.round((baseTotal * val) / 100);
+                                                                        }
+                                                                        const newTotal = Math.max(0, baseTotal - totalDisc);
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            discountAmount: totalDisc,
+                                                                            totalAmount: newTotal,
+                                                                        }));
+                                                                    }}
+                                                                    placeholder={discountInputType === "amount" ? "Enter discount per passenger (₹)..." : "Enter discount per passenger (%)..."}
+                                                                    className="h-10 max-w-xs bg-background font-semibold"
+                                                                />
+                                                                {formData.discountAmount > 0 && (
+                                                                    <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 py-1.5 px-2.5">
+                                                                        - {BookingService.formatCurrency(formData.discountAmount)} Total (- {discountInputType === "amount" ? BookingService.formatCurrency(perPassengerDiscountValue) : `${perPassengerDiscountValue}%`} / traveler)
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Individual passenger breakdown summary */}
+                                                            {formData.customers.length > 0 && formData.discountAmount > 0 && (
+                                                                <div className="p-3 bg-muted/20 border rounded-lg space-y-2">
+                                                                    <p className="text-[11px] font-semibold text-muted-foreground uppercase">
+                                                                        Per Passenger Discount Breakdown ({travelerCount} Travelers)
+                                                                    </p>
+                                                                    <div className="space-y-1.5 divide-y divide-border/40">
+                                                                        {formData.customers.map((c, i) => {
+                                                                            const perPersonDisc = Math.round(formData.discountAmount / travelerCount);
+                                                                            return (
+                                                                                <div key={c.id || i} className="flex justify-between items-center text-xs pt-1.5 first:pt-0">
+                                                                                    <span className="font-medium text-foreground">{c.firstName} {c.lastName}</span>
+                                                                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                                                                        - {BookingService.formatCurrency(perPersonDisc)}
+                                                                                    </span>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Excess Discount Warning */}
+                                                    {isDiscountExceeded && (
+                                                        <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 py-2.5">
+                                                            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                                                            <AlertDescription className="text-xs font-medium">
+                                                                Warning: Discount amount ({BookingService.formatCurrency(formData.discountAmount)}) exceeds maximum allowed discount of {pkgDiscountType === "percentage" ? `${pkgMaxVal}%` : BookingService.formatCurrency(pkgMaxVal)} ({BookingService.formatCurrency(maxDiscountAmount)}) for this package.
+                                                            </AlertDescription>
+                                                        </Alert>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Expected Payment Structure Reference */}
+                                        {paymentStructure.length > 0 && (
+                                            <div className="space-y-2.5 p-4 rounded-xl border bg-muted/20">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                                        <Info className="w-3.5 h-3.5 text-primary" />
+                                                        Expected Payment Structure (Package Reference)
+                                                    </Label>
+                                                    <span className="text-[11px] text-muted-foreground">Click a milestone to auto-fill</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                     {paymentStructure.map((milestone, idx) => {
                                                         const milestonePercent = Number(milestone.amount || 0);
                                                         const cumulativePercent = paymentStructure
@@ -1698,135 +1945,87 @@ export function CreateBookingDialog({
 
                                                         return (
                                                             <div
-                                                                key={milestone.id}
-                                                                className={`p-3.5 border rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-between hover:border-primary/50 hover:shadow-xs ${isSelected && !formData.isPaymentOverridden
-                                                                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                                                                    : "bg-card border-border"
-                                                                    }`}
+                                                                key={milestone.id || idx}
                                                                 onClick={() => {
-                                                                    if (!formData.isPaymentOverridden) {
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            paymentStructureId: milestone.id || "",
-                                                                            advanceAmount: calculatedCost,
-                                                                        }));
-                                                                        if (errors.paymentOverrideReason) {
-                                                                            setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
-                                                                        }
-                                                                    }
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        paymentStructureId: milestone.id || "",
+                                                                        advanceAmount: calculatedCost,
+                                                                    }));
                                                                 }}
+                                                                className={cn(
+                                                                    "p-3 rounded-lg border text-left cursor-pointer transition-all flex items-center justify-between gap-2",
+                                                                    isSelected
+                                                                        ? "bg-primary/10 border-primary ring-1 ring-primary text-foreground font-semibold"
+                                                                        : "bg-background border-border hover:border-primary/40 text-muted-foreground hover:text-foreground"
+                                                                )}
                                                             >
-                                                                <div className="space-y-1">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${isSelected && !formData.isPaymentOverridden ? "border-primary text-primary" : "border-muted-foreground/30"}`}>
-                                                                            {isSelected && !formData.isPaymentOverridden && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                                                                        </span>
-                                                                        <p className="text-sm font-bold text-foreground">
-                                                                            {milestone.dueDate?.replace(/_/g, " ") || "Payment Option"}
-                                                                        </p>
-                                                                        <Badge variant="secondary" className="text-[10px] font-semibold py-0 px-1.5">
-                                                                            {idx > 0 ? `${milestonePercent}% (Total: ${cumulativePercent}%)` : `${milestonePercent}%`}
-                                                                        </Badge>
-                                                                    </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="text-xs font-semibold truncate">
+                                                                        {milestone.dueDate?.replace(/_/g, " ") || `Milestone ${idx + 1}`}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-muted-foreground">
+                                                                        {idx > 0 ? `${milestonePercent}% (Cumulative ${cumulativePercent}%)` : `${milestonePercent}% target`}
+                                                                    </p>
                                                                 </div>
-                                                                <div className="font-bold text-base text-primary mr-1">
+                                                                <span className="text-xs font-bold text-primary shrink-0">
                                                                     {BookingService.formatCurrency(calculatedCost)}
-                                                                </div>
+                                                                </span>
                                                             </div>
                                                         );
                                                     })}
                                                 </div>
-                                            ) : (
-                                                <p className="text-xs text-muted-foreground italic bg-muted/20 p-3 rounded-xl border border-dashed text-center">
-                                                    No payment structure milestones defined for this package. Turn on override to enter custom advance payment.
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        {/* Override Options */}
-                                        <div className="flex items-center justify-between border rounded-xl p-4 bg-muted/10">
-                                            <div className="space-y-0.5">
-                                                <Label htmlFor="override-payment" className="text-sm font-semibold cursor-pointer">Override Payment Amount</Label>
-                                                <p className="text-xs text-muted-foreground">Allows entering a custom advance payment and override reason.</p>
                                             </div>
-                                            <Switch
-                                                id="override-payment"
-                                                checked={formData.isPaymentOverridden}
-                                                onCheckedChange={(checked) => {
-                                                    setFormData((prev) => {
-                                                        let newAdvanceAmount = prev.advanceAmount;
-                                                        if (!checked && prev.paymentStructureId && paymentStructure.length > 0) {
-                                                            const milestoneIdx = paymentStructure.findIndex(m => m.id === prev.paymentStructureId);
-                                                            if (milestoneIdx !== -1) {
-                                                                const cumulativePercent = paymentStructure
-                                                                    .slice(0, milestoneIdx + 1)
-                                                                    .reduce((sum, m) => sum + Number(m.amount || 0), 0);
-                                                                newAdvanceAmount = Math.round((prev.totalAmount * cumulativePercent) / 100);
-                                                            }
-                                                        }
-                                                        return {
-                                                            ...prev,
-                                                            isPaymentOverridden: checked,
-                                                            advanceAmount: checked ? prev.advanceAmount : newAdvanceAmount,
-                                                            paymentOverrideReason: checked ? prev.paymentOverrideReason : "",
-                                                        };
-                                                    });
-                                                    if (!checked && errors.paymentOverrideReason) {
-                                                        setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
-                                                    }
-                                                }}
-                                            />
-                                        </div>
+                                        )}
 
-                                        {formData.isPaymentOverridden && (
-                                            <div className="grid sm:grid-cols-2 gap-4 p-4 border border-amber-500/20 bg-amber-500/5 rounded-xl animate-in fade-in duration-200">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="customAdvanceAmount" className="text-xs font-bold text-muted-foreground">Custom Advance Amount *</Label>
+                                        {/* Direct Advance Payment Input */}
+                                        <div className="p-4 rounded-xl border bg-card space-y-3">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                <div>
+                                                    <Label htmlFor="advanceAmount" className="text-sm font-semibold flex items-center gap-1.5">
+                                                        <DollarSign className="w-4 h-4 text-primary" />
+                                                        Advance Payment Amount
+                                                    </Label>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        Enter advance payment collected now. (Advance can be zero if no payment is collected upfront).
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <div className="relative flex-1 min-w-[200px] max-w-xs">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-semibold">₹</span>
                                                     <Input
-                                                        id="customAdvanceAmount"
+                                                        id="advanceAmount"
                                                         type="number"
                                                         min="0"
                                                         max={formData.totalAmount}
                                                         value={formData.advanceAmount || ""}
                                                         onChange={(e) => {
+                                                            const raw = e.target.value;
+                                                            const val = raw === "" ? 0 : Math.max(0, Number(raw) || 0);
                                                             setFormData((prev) => ({
                                                                 ...prev,
-                                                                advanceAmount: Number.parseInt(e.target.value) || 0,
+                                                                advanceAmount: val,
+                                                                isPaymentOverridden: true,
                                                             }));
                                                             setError(null);
                                                         }}
-                                                        placeholder="Enter custom amount..."
-                                                        className="h-10 bg-background border-amber-500/20 focus-visible:ring-amber-500"
-                                                        required
+                                                        placeholder="0"
+                                                        className="h-10 pl-7 bg-background font-semibold"
                                                     />
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="paymentOverrideReason" className="text-xs font-bold text-muted-foreground">Reason for Override *</Label>
-                                                    <Input
-                                                        id="paymentOverrideReason"
-                                                        value={formData.paymentOverrideReason}
-                                                        onChange={(e) => {
-                                                            setFormData((prev) => ({
-                                                                ...prev,
-                                                                paymentOverrideReason: e.target.value,
-                                                            }));
-                                                            setError(null);
-                                                            if (errors.paymentOverrideReason) {
-                                                                setErrors(prev => ({ ...prev, paymentOverrideReason: "" }));
-                                                            }
-                                                        }}
-                                                        placeholder="Why is this custom amount used?"
-                                                        className="h-10 bg-background border-amber-500/20 focus-visible:ring-amber-500"
-                                                        required
-                                                    />
-                                                    {errors.paymentOverrideReason && (
-                                                        <p className="text-xs text-destructive font-medium">
-                                                            {errors.paymentOverrideReason}
-                                                        </p>
-                                                    )}
-                                                </div>
+                                                {formData.advanceAmount === 0 ? (
+                                                    <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/40 py-1.5 px-2.5">
+                                                        ₹0 Advance (Remaining Balance: {BookingService.formatCurrency(formData.totalAmount)})
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 py-1.5 px-2.5">
+                                                        Advance: {BookingService.formatCurrency(formData.advanceAmount)} • Remaining: {BookingService.formatCurrency(Math.max(0, formData.totalAmount - formData.advanceAmount))}
+                                                    </Badge>
+                                                )}
                                             </div>
-                                        )}
+                                        </div>
 
                                         {/* Rest of the payment functionality */}
                                         {formData.advanceAmount > 0 && (

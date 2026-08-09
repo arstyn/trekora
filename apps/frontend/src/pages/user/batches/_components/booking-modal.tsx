@@ -28,6 +28,7 @@ import {
     Phone,
     Plus,
     Search,
+    Tag,
     User,
     UserMinus,
     UserPlus,
@@ -258,14 +259,37 @@ export function BookingModal({
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-muted-foreground">
-                                            Total Amount:
-                                        </span>
-                                        <span className="font-bold">
-                                            ₹{booking.totalAmount}
-                                        </span>
-                                    </div>
+                                     <div className="flex justify-between items-center text-sm">
+                                         <span className="text-muted-foreground">
+                                             Total Amount:
+                                         </span>
+                                         <span className="font-bold">
+                                             ₹{booking.totalAmount}
+                                         </span>
+                                     </div>
+                                     {Boolean(booking.discountAmount) && Number(booking.discountAmount) > 0 && (
+                                         <div className="flex justify-between items-start text-sm">
+                                             <span className="text-muted-foreground flex items-center gap-1">
+                                                 <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                                 Discount Applied:
+                                             </span>
+                                             <div className="text-right">
+                                                 <span className="font-semibold text-emerald-600 dark:text-emerald-400 block">
+                                                     -₹{Number(booking.discountAmount).toLocaleString("en-IN")}
+                                                     {Number(booking.totalAmount) > 0 && (
+                                                         <span className="text-xs text-muted-foreground ml-1 font-normal">
+                                                             ({((Number(booking.discountAmount) / (Number(booking.totalAmount) + Number(booking.discountAmount))) * 100).toFixed(1)}%)
+                                                         </span>
+                                                     )}
+                                                 </span>
+                                                 {booking.numberOfCustomers > 1 && (
+                                                     <span className="text-[10px] text-muted-foreground block font-medium">
+                                                         (-₹{Math.round(Number(booking.discountAmount) / booking.numberOfCustomers).toLocaleString("en-IN")} / traveler across {booking.numberOfCustomers} passengers)
+                                                     </span>
+                                                 )}
+                                             </div>
+                                         </div>
+                                     )}
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">
                                             Paid:

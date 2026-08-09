@@ -8,6 +8,10 @@ export interface IPackages {
   nights?: number;
   description?: string;
   maxGuests?: number;
+  maxDiscountType?: 'amount' | 'percentage';
+  maxDiscountScope?: 'group' | 'passenger';
+  maxDiscountValue?: number;
+  maxDiscountPercentage?: number;
   category?: 'documents' | 'booking' | 'preparation' | 'communication';
   status?: 'draft' | 'published';
   packageSetup?: 'normal' | 'advanced';
@@ -127,6 +131,10 @@ export const packageFormSchema = z.object({
   nights: z.preprocess((val) => (val ? Number(val) : undefined), z.number().optional()),
   description: z.string().optional(),
   maxGuests: z.number().optional(),
+  maxDiscountType: z.enum(['amount', 'percentage']).optional().default('amount'),
+  maxDiscountScope: z.enum(['group', 'passenger']).optional().default('group'),
+  maxDiscountValue: z.preprocess((val) => (val !== undefined && val !== null && val !== '' ? Number(val) : undefined), z.number().min(0).optional()),
+  maxDiscountPercentage: z.preprocess((val) => (val !== undefined && val !== null && val !== '' ? Number(val) : undefined), z.number().min(0).max(100).optional()),
   category: z
     .enum([
       'adventure',

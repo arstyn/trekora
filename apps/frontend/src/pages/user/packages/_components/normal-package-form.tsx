@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
-import { getFileUrl } from "@/lib/utils";
+import { cn, getFileUrl } from "@/lib/utils";
 import CancellationTierForm from "@/pages/user/cancellation-tiers/_components/cancellation-tier-form";
 import PaymentStructureForm from "@/pages/user/payment-structures/_components/payment-structure-form";
 import type { ICancellationTierTemplate } from "@/services/cancellation-tiers.service";
@@ -20,7 +20,7 @@ import {
     type PackageFormData,
 } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Edit, Globe, IndianRupee, Landmark, Loader2, MapPin, Plus, Save } from "lucide-react";
+import { Building2, Edit, Globe, IndianRupee, Landmark, Loader2, MapPin, Percent, Plus, Save, User, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -50,6 +50,10 @@ const defaultValues: PackageFormData = {
         states: [],
         cities: [],
     },
+    maxDiscountType: "amount",
+    maxDiscountScope: "group",
+    maxDiscountValue: 0,
+    maxDiscountPercentage: 0,
     packageTiers: [
         {
             name: "Standard",
@@ -238,6 +242,10 @@ export function NormalPackageForm({
                         nights: data.nights ?? 0,
                         description: data.description ?? "",
                         maxGuests: data.maxGuests ?? 1,
+                        maxDiscountType: data.maxDiscountType ?? (data.maxDiscountPercentage ? "percentage" : "amount"),
+                        maxDiscountScope: data.maxDiscountScope ?? "group",
+                        maxDiscountValue: data.maxDiscountValue !== undefined && data.maxDiscountValue !== null ? parseFloat(data.maxDiscountValue.toString()) : (data.maxDiscountPercentage ? parseFloat(data.maxDiscountPercentage.toString()) : 0),
+                        maxDiscountPercentage: data.maxDiscountPercentage ? parseFloat(data.maxDiscountPercentage.toString()) : 0,
                         category: data.category ?? "adventure",
                         status: data.status ?? "draft",
                         packageSetup: "normal",
@@ -371,7 +379,7 @@ export function NormalPackageForm({
     }
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="w-full space-y-8 p-6">
             <Form {...form}>
                 <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
                     <div className="flex justify-between items-center pb-4 border-b">
@@ -649,7 +657,7 @@ export function NormalPackageForm({
                             </CardTitle>
                             <CardDescription>Define the base pricing for adults, children, and infants.</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <FormField
                                     control={form.control}
@@ -713,6 +721,167 @@ export function NormalPackageForm({
                                         </FormItem>
                                     )}
                                 />
+                            </div>
+
+                            {/* Max Discount Configuration Section Below Prices */}
+                            <div className="pt-4 border-t space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/40 border p-4 rounded-xl">
+                                    <div className="space-y-0.5">
+                                        <div className="flex items-center gap-2">
+                                            <Percent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                            <h4 className="text-sm font-semibold">Maximum Discount Limit</h4>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Set the maximum allowed discount that can be offered for this package during booking.
+                                        </p>
+                                    </div>
+
+                                    <FormField
+                                        control={form.control}
+                                        name="maxDiscountType"
+                                        render={({ field: typeField }) => {
+                                            const currentType = typeField.value || "amount";
+                                            return (
+                                                <div className="flex flex-wrap items-center gap-4 shrink-0">
+                                                    {/* Discount Scope Switcher (Group vs Passenger) */}
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="maxDiscountScope"
+                                                        render={({ field: scopeField }) => {
+                                                            const currentScope = scopeField.value || "group";
+                                                            return (
+                                                                <div className="inline-flex items-center bg-background p-1 rounded-lg border text-xs gap-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            scopeField.onChange("group");
+                                                                            form.setValue("maxDiscountScope", "group");
+                                                                        }}
+                                                                        className={cn(
+                                                                            "px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1 cursor-pointer",
+                                                                            currentScope === "group"
+                                                                                ? "bg-primary text-primary-foreground shadow-xs"
+                                                                                : "text-muted-foreground hover:text-foreground"
+                                                                        )}
+                                                                    >
+                                                                        <Users className="w-3.5 h-3.5" />
+                                                                        Group Total
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            scopeField.onChange("passenger");
+                                                                            form.setValue("maxDiscountScope", "passenger");
+                                                                        }}
+                                                                        className={cn(
+                                                                            "px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1 cursor-pointer",
+                                                                            currentScope === "passenger"
+                                                                                ? "bg-primary text-primary-foreground shadow-xs"
+                                                                                : "text-muted-foreground hover:text-foreground"
+                                                                        )}
+                                                                    >
+                                                                        <User className="w-3.5 h-3.5" />
+                                                                        Per Passenger
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        }}
+                                                    />
+
+                                                    {/* Unit Selector (Amount vs Percentage) */}
+                                                    <div className="inline-flex items-center bg-background p-1 rounded-lg border text-xs">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                typeField.onChange("amount");
+                                                                form.setValue("maxDiscountType", "amount");
+                                                            }}
+                                                            className={cn(
+                                                                "px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer",
+                                                                currentType === "amount"
+                                                                    ? "bg-primary text-primary-foreground shadow-xs"
+                                                                    : "text-muted-foreground hover:text-foreground"
+                                                            )}
+                                                        >
+                                                            Amount (₹)
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                typeField.onChange("percentage");
+                                                                form.setValue("maxDiscountType", "percentage");
+                                                            }}
+                                                            className={cn(
+                                                                "px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer",
+                                                                currentType === "percentage"
+                                                                    ? "bg-primary text-primary-foreground shadow-xs"
+                                                                    : "text-muted-foreground hover:text-foreground"
+                                                            )}
+                                                        >
+                                                            Percent (%)
+                                                        </button>
+                                                    </div>
+
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="maxDiscountValue"
+                                                        render={({ field: valField }) => (
+                                                            <div className="w-36">
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    max={currentType === "percentage" ? "100" : undefined}
+                                                                    step={currentType === "percentage" ? "0.01" : "1"}
+                                                                    placeholder={currentType === "amount" ? "e.g. 500" : "e.g. 10"}
+                                                                    {...valField}
+                                                                    value={valField.value ?? ""}
+                                                                    onChange={(e) => {
+                                                                        const numVal = e.target.value === "" ? 0 : Number(e.target.value);
+                                                                        valField.onChange(numVal);
+                                                                        if (currentType === "percentage") {
+                                                                            form.setValue("maxDiscountPercentage", numVal);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    />
+                                                </div>
+                                            );
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Live Discount Rules & Calculation Preview Banner */}
+                                {(() => {
+                                    const discountType = form.watch("maxDiscountType") || "amount";
+                                    const discountScope = form.watch("maxDiscountScope") || "group";
+                                    const discountVal = form.watch("maxDiscountValue") ?? form.watch("maxDiscountPercentage") ?? 0;
+
+                                    if (discountVal <= 0) return null;
+
+                                    return (
+                                        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-emerald-900 dark:text-emerald-200">
+                                            <div className="font-medium flex items-center gap-1.5">
+                                                <span className="font-bold">Max Discount Rule Active:</span>
+                                                <span className="text-[11px] opacity-90">
+                                                    {discountScope === "passenger"
+                                                        ? `${discountType === "percentage" ? `${discountVal}%` : `₹${discountVal}`} limit per passenger (multiplied by total travelers)`
+                                                        : `Fixed ${discountType === "percentage" ? `${discountVal}%` : `₹${discountVal}`} limit total per booking`}
+                                                </span>
+                                            </div>
+                                            {discountScope === "passenger" && (
+                                                <div className="flex flex-wrap items-center gap-3 font-semibold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 text-[11px]">
+                                                    <span>1 Traveler = {discountType === "percentage" ? `${discountVal}%` : `₹${discountVal}`}</span>
+                                                    <span>•</span>
+                                                    <span>2 Travelers = {discountType === "percentage" ? `${discountVal}%` : `₹${discountVal * 2}`}</span>
+                                                    <span>•</span>
+                                                    <span>3 Travelers = {discountType === "percentage" ? `${discountVal}%` : `₹${discountVal * 3}`}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </CardContent>
                     </Card>

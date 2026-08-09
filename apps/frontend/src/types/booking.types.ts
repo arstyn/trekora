@@ -63,6 +63,10 @@ export interface IPackage {
     description?: string;
     thumbnail?: string;
     packageSetup?: "normal" | "advanced";
+    maxDiscountType?: "amount" | "percentage";
+    maxDiscountScope?: "group" | "passenger";
+    maxDiscountValue?: number;
+    maxDiscountPercentage?: number;
     packageTiers?: PackageTier[];
     transportation?: any[];
     paymentStructure?: IPaymentStructure[];
@@ -87,6 +91,7 @@ export interface IBooking {
     batch: IBatch;
     numberOfCustomers: number;
     totalAmount: number;
+    discountAmount?: number;
     advancePaid: number;
     balanceAmount: number;
     status: BookingStatus;
@@ -109,6 +114,7 @@ export interface IBookingListItem {
     batchStartDate: string;
     numberOfCustomers: number;
     totalAmount: number;
+    discountAmount?: number;
     advancePaid: number;
     balanceAmount: number;
     status: BookingStatus;
@@ -128,6 +134,7 @@ export interface ICreateBookingRequest {
     batchId: string;
     customerIds: string[];
     totalAmount: number;
+    discountAmount?: number;
     specialRequests?: string;
     initialPayment?: Omit<IBookingPayment, "id" | "status">;
     isCommonTier?: boolean;

@@ -75,6 +75,14 @@ export class Booking {
   @Column('decimal', {
     precision: 10,
     scale: 2,
+    name: 'discount_amount',
+    default: 0,
+  })
+  discountAmount: number;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
     name: 'advance_paid',
     default: 0,
   })

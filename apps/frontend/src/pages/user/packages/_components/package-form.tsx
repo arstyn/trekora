@@ -38,6 +38,9 @@ const defaultValues: PackageFormData = {
     nights: 0,
     description: "",
     maxGuests: 0,
+    maxDiscountType: "amount",
+    maxDiscountValue: 0,
+    maxDiscountPercentage: 0,
     category: "adventure",
     inclusions: [],
     exclusions: [],
@@ -604,7 +607,7 @@ export function PackageForm({
     }
 
     return (
-        <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="w-full space-y-8 p-6">
             {/* Multi-step Header */}
             <div className="mb-10">
                 <div className="flex justify-between items-center mb-4">

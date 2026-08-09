@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import * as fs from 'fs';
+import * as path from 'path';
 
 const sslMode = process.env.DB_SSL_MODE === 'true';
 
@@ -18,8 +19,8 @@ export default new DataSource({
         database: process.env.DB_NAME || 'trekora',
       }),
 
-  entities: ['src/**/*.entity.{ts,js}'],
-  migrations: ['src/database/migrations/*.{ts,js}'],
+  entities: [path.join(__dirname, 'src/**/*.entity.{ts,js}').replace(/\\/g, '/')],
+  migrations: [path.join(__dirname, 'src/database/migrations/*.{ts,js}').replace(/\\/g, '/')],
 
   synchronize: false, // never true in prod
   logging: false,
