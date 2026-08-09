@@ -8,10 +8,17 @@ import {
 } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+    ArrowLeft,
+    CalendarDays,
     CheckCircle2,
+    CheckSquare,
+    Coins,
+    FileText,
+    Info,
     Loader2,
-    Package as PackageIcon,
     Rocket,
+    Sparkles,
+    Truck
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -124,13 +131,13 @@ const SECTION_KEYS: Record<string, string[]> = {
 };
 
 const STEPS = [
-    { title: "Basic Info", icon: PackageIcon },
-    { title: "Itinerary", icon: PackageIcon },
-    { title: "Inclusion & Exclusion", icon: PackageIcon },
-    { title: "Logistics", icon: PackageIcon },
-    { title: "Finance", icon: PackageIcon },
-    { title: "Requirements", icon: PackageIcon },
-    { title: "Review", icon: Rocket },
+    { title: "Basic Info", description: "Core details & location", icon: Info },
+    { title: "Itinerary", description: "Day-by-day activities", icon: CalendarDays },
+    { title: "Inclusions", description: "Included & excluded items", icon: CheckSquare },
+    { title: "Logistics", description: "Transport & meals", icon: Truck },
+    { title: "Finance", description: "Pricing tiers & policies", icon: Coins },
+    { title: "Requirements", description: "Documents & checklist", icon: FileText },
+    { title: "Review", description: "Summary & publish", icon: Rocket },
 ];
 
 export function PackageForm({
@@ -607,53 +614,102 @@ export function PackageForm({
     }
 
     return (
-        <div className="w-full space-y-8 p-6">
-            {/* Multi-step Header */}
-            <div className="mb-10">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Package Wizard</h2>
-                    {packageId && (
+        <div className="w-full space-y-8 p-4 md:p-6">
+            {/* Header Card with Progress */}
+            <div className="bg-card border rounded-2xl p-5 md:p-6 shadow-xs space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+                    <div className="flex items-center gap-3">
                         <Button
                             type="button"
-                            variant="link"
-                            size="sm"
-                            className="text-primary gap-2"
-                            onClick={() => setCurrentStep(STEPS.length - 1)}
+                            variant="outline"
+                            size="icon"
+                            className="rounded-xl h-10 w-10 shrink-0"
+                            onClick={() => navigate("/packages")}
                         >
-                            Skip to Review
-                            <Rocket className="w-4 h-4" />
+                            <ArrowLeft className="w-4 h-4" />
                         </Button>
-                    )}
-                </div>
-                <div className="flex justify-between items-center mb-8 relative">
-                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-secondary -z-10 transform -translate-y-1/2" />
-                    {STEPS.map((step, idx) => (
-                        <div
-                            key={idx}
-                            className="flex flex-col items-center gap-2 bg-background px-2"
-                        >
-                            <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer ${idx < currentStep
-                                    ? "bg-primary border-primary text-primary-foreground"
-                                    : idx === currentStep
-                                        ? "border-primary text-primary ring-4 ring-primary/10"
-                                        : "bg-background border-muted text-muted-foreground hover:border-primary/50"
-                                    }`}
-                                onClick={() => setCurrentStep(idx)}
-                            >
-                                {idx < currentStep ? (
-                                    <CheckCircle2 className="w-6 h-6" />
-                                ) : (
-                                    <span>{idx + 1}</span>
-                                )}
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-xl md:text-2xl font-bold tracking-tight">
+                                    {isEditing ? "Edit Package" : "Create Advanced Package"}
+                                </h1>
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    Step {currentStep + 1} of {STEPS.length}
+                                </span>
                             </div>
-                            <span
-                                className={`text-xs font-medium hidden md:block ${idx === currentStep ? "text-primary" : "text-muted-foreground"}`}
-                            >
-                                {step.title}
-                            </span>
+                            <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+                                {STEPS[currentStep].title} — {STEPS[currentStep].description}
+                            </p>
                         </div>
-                    ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                        {packageId && (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                className="gap-2 rounded-xl text-xs"
+                                onClick={() => setCurrentStep(STEPS.length - 1)}
+                            >
+                                <Rocket className="w-3.5 h-3.5 text-primary" />
+                                Skip to Review
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Progress bar line */}
+                <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                    <div
+                        className="bg-primary h-full transition-all duration-500 ease-out rounded-full"
+                        style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
+                    />
+                </div>
+
+                {/* Stepper Navigation */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                    {STEPS.map((step, idx) => {
+                        const Icon = step.icon;
+                        const isCompleted = idx < currentStep;
+                        const isActive = idx === currentStep;
+
+                        return (
+                            <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setCurrentStep(idx)}
+                                className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all duration-200 cursor-pointer ${isActive
+                                    ? "bg-primary/10 border-primary text-primary font-semibold shadow-xs"
+                                    : isCompleted
+                                        ? "bg-card hover:bg-accent/50 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                                        : "bg-card hover:bg-accent/30 border-muted text-muted-foreground"
+                                    }`}
+                            >
+                                <div
+                                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold transition-colors ${isActive
+                                        ? "bg-primary text-primary-foreground"
+                                        : isCompleted
+                                            ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                                            : "bg-muted text-muted-foreground"
+                                        }`}
+                                >
+                                    {isCompleted ? (
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                    ) : (
+                                        <Icon className="w-4 h-4" />
+                                    )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs truncate font-medium">{step.title}</p>
+                                    <p className="text-[10px] text-muted-foreground truncate hidden lg:block">
+                                        {isCompleted ? "Completed" : isActive ? "Active" : `Step ${idx + 1}`}
+                                    </p>
+                                </div>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 

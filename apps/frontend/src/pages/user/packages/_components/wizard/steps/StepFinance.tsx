@@ -7,6 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
     FormControl,
     FormField,
@@ -24,18 +25,35 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import CancellationTierForm from "@/pages/user/cancellation-tiers/_components/cancellation-tier-form";
+import PaymentStructureForm from "@/pages/user/payment-structures/_components/payment-structure-form";
+import type { ICancellationTierTemplate } from "@/services/cancellation-tiers.service";
+import cancellationTiersService from "@/services/cancellation-tiers.service";
+import type { IPaymentStructureTemplate } from "@/services/payment-structures.service";
+import paymentStructuresService from "@/services/payment-structures.service";
 import type { PackageFormData } from "@/types/package.schema";
-import { AlertTriangle, Plus, Save, Trash2, Edit, Percent, DollarSign, User, Users } from "lucide-react";
-import { useState, useEffect } from "react";
+import {
+    AlertTriangle,
+    ArrowLeft,
+    ArrowRight,
+    Bus,
+    Calculator,
+    DollarSign,
+    Edit,
+    MapPin,
+    Percent,
+    Plus,
+    Receipt,
+    Trash2,
+    TrendingUp,
+    User,
+    Users,
+    Utensils,
+    Wallet
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import paymentStructuresService from "@/services/payment-structures.service";
-import type { IPaymentStructureTemplate } from "@/services/payment-structures.service";
-import cancellationTiersService from "@/services/cancellation-tiers.service";
-import type { ICancellationTierTemplate } from "@/services/cancellation-tiers.service";
-import PaymentStructureForm from "@/pages/user/payment-structures/_components/payment-structure-form";
-import CancellationTierForm from "@/pages/user/cancellation-tiers/_components/cancellation-tier-form";
 
 interface StepFinanceProps {
     form: UseFormReturn<PackageFormData>;
@@ -71,7 +89,7 @@ export function StepFinance({
 
     const [paymentTemplates, setPaymentTemplates] = useState<IPaymentStructureTemplate[]>([]);
     const [cancellationTemplates, setCancellationTemplates] = useState<ICancellationTierTemplate[]>([]);
-    
+
     // Dialog control states
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [editingPaymentTemplate, setEditingPaymentTemplate] = useState<any>(null);
@@ -199,67 +217,104 @@ export function StepFinance({
 
     return (
         <div className="space-y-6">
-            <Card className="bg-primary/5 border-primary/20">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Calculated Base Cost</CardTitle>
-                    <CardDescription>Aggregated from Itinerary, Meals, Additional Costs, and Ground Transport</CardDescription>
+            {/* Base Cost Overview Card */}
+            <Card className="bg-gradient-to-br from-primary/10 via-card to-card border-primary/20 shadow-xs overflow-hidden rounded-2xl">
+                <CardHeader className="pb-3 border-b border-primary/10 bg-primary/5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 rounded-xl bg-primary/15 text-primary">
+                                <Calculator className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-base font-bold">Calculated Base Cost</CardTitle>
+                                <CardDescription className="text-xs">
+                                    Aggregated cost breakdown from Itinerary, Meals, Additional Costs, and Ground Transport
+                                </CardDescription>
+                            </div>
+                        </div>
+                        <Badge variant="outline" className="bg-background/80 border-primary/30 text-primary font-mono px-3 py-1 text-xs self-start sm:self-auto">
+                            Base Total: ₹{calculatedBaseCost.toLocaleString("en-IN")}
+                        </Badge>
+                    </div>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                        <div>
-                            <span className="text-muted-foreground block mb-1">Itinerary (Activities & Accomm.)</span>
-                            <span className="font-semibold">₹{itineraryCost}</span>
+                <CardContent className="pt-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                        <div className="p-3 rounded-xl bg-background/60 border space-y-1">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+                                <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                                Itinerary
+                            </span>
+                            <p className="text-base font-bold font-mono">₹{itineraryCost.toLocaleString("en-IN")}</p>
                         </div>
-                        <div>
-                            <span className="text-muted-foreground block mb-1">Meals</span>
-                            <span className="font-semibold">₹{mealsCost}</span>
+                        <div className="p-3 rounded-xl bg-background/60 border space-y-1">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+                                <Utensils className="w-3.5 h-3.5 text-orange-500" />
+                                Meals
+                            </span>
+                            <p className="text-base font-bold font-mono">₹{mealsCost.toLocaleString("en-IN")}</p>
                         </div>
-                        <div>
-                            <span className="text-muted-foreground block mb-1">Additional Costs</span>
-                            <span className="font-semibold">₹{addCostsSum}</span>
+                        <div className="p-3 rounded-xl bg-background/60 border space-y-1">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+                                <Receipt className="w-3.5 h-3.5 text-purple-500" />
+                                Additional
+                            </span>
+                            <p className="text-base font-bold font-mono">₹{addCostsSum.toLocaleString("en-IN")}</p>
                         </div>
-                        <div>
-                            <span className="text-muted-foreground block mb-1">Ground Transport</span>
-                            <span className="font-semibold">₹{groundTransportCost}</span>
+                        <div className="p-3 rounded-xl bg-background/60 border space-y-1">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+                                <Bus className="w-3.5 h-3.5 text-emerald-500" />
+                                Ground Transport
+                            </span>
+                            <p className="text-base font-bold font-mono">₹{groundTransportCost.toLocaleString("en-IN")}</p>
                         </div>
-                        <div>
-                            <span className="text-muted-foreground block mb-1">Total Base Cost</span>
-                            <span className="font-bold text-lg text-primary">₹{calculatedBaseCost}</span>
+                        <div className="col-span-2 sm:col-span-1 p-3 rounded-xl bg-primary text-primary-foreground space-y-1 shadow-xs">
+                            <span className="text-xs opacity-90 flex items-center gap-1.5 font-medium">
+                                <Wallet className="w-3.5 h-3.5" />
+                                Base Cost Total
+                            </span>
+                            <p className="text-lg font-bold font-mono">₹{calculatedBaseCost.toLocaleString("en-IN")}</p>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            <Card>
+            {/* Additional Costs Section */}
+            <Card className="shadow-xs border rounded-2xl">
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>Additional Costs</CardTitle>
-                            <CardDescription>
-                                Add any extra costs not covered in the package tiers.
-                            </CardDescription>
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                                <Receipt className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-base font-bold">Additional Costs</CardTitle>
+                                <CardDescription className="text-xs">
+                                    Define fixed surcharges or extra service fees not covered in pricing tiers.
+                                </CardDescription>
+                            </div>
                         </div>
                         <Button
                             type="button"
                             onClick={() => appendAdditionalCost({ name: "", cost: 0 })}
                             size="sm"
+                            className="rounded-xl gap-1.5 text-xs font-semibold"
                         >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Cost
+                            <Plus className="w-4 h-4" />
+                            Add Cost Fee
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                     {additionalCostFields.map((field, index) => (
-                        <div key={field.id} className="flex gap-3 items-end">
+                        <div key={field.id} className="flex gap-3 items-end p-3 rounded-xl bg-muted/40 border">
                             <FormField
                                 control={form.control}
                                 name={`additionalCosts.${index}.name`}
                                 render={({ field }) => (
                                     <FormItem className="flex-1">
-                                        <FormLabel>Cost Name</FormLabel>
+                                        <FormLabel className="text-xs font-medium">Cost Name</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="e.g. Visa Fee" {...field} />
+                                            <Input className="rounded-xl h-9 text-xs" placeholder="e.g. Visa Fee, National Park Entry" {...field} />
                                         </FormControl>
                                     </FormItem>
                                 )}
@@ -268,12 +323,13 @@ export function StepFinance({
                                 control={form.control}
                                 name={`additionalCosts.${index}.cost`}
                                 render={({ field }) => (
-                                    <FormItem className="flex-1">
-                                        <FormLabel>Amount (₹)</FormLabel>
+                                    <FormItem className="w-36">
+                                        <FormLabel className="text-xs font-medium">Amount (₹)</FormLabel>
                                         <FormControl>
                                             <Input
                                                 type="number"
                                                 min="0"
+                                                className="rounded-xl h-9 text-xs font-mono"
                                                 {...field}
                                                 value={field.value ?? ""}
                                                 onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
@@ -286,26 +342,35 @@ export function StepFinance({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="mb-1"
+                                className="h-9 w-9 text-rose-500 hover:bg-rose-500/10 rounded-xl shrink-0"
                                 onClick={() => removeAdditionalCost(index)}
                             >
-                                <Trash2 className="w-4 h-4 text-red-500" />
+                                <Trash2 className="w-4 h-4" />
                             </Button>
                         </div>
                     ))}
                     {additionalCostFields.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-2">No additional costs added.</p>
+                        <div className="text-center py-6 border border-dashed rounded-xl bg-muted/20 space-y-1">
+                            <p className="text-xs font-semibold text-muted-foreground">No additional costs added yet.</p>
+                            <p className="text-[11px] text-muted-foreground/70">Click "Add Cost Fee" above if you need permits, visa fees, or taxes.</p>
+                        </div>
                     )}
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
+            {/* Package Pricing Tiers Card */}
+            <Card className="shadow-xs border rounded-2xl">
+                <CardHeader className="border-b bg-card">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <CardTitle>Package Pricing Tiers</CardTitle>
-                            <CardDescription>
-                                Define cost structure for Adults, Children, and Infants.
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-base font-bold">Package Pricing Tiers</CardTitle>
+                                <Badge variant="secondary" className="text-xs font-mono">
+                                    {tierFields.length} {tierFields.length === 1 ? "Tier" : "Tiers"}
+                                </Badge>
+                            </div>
+                            <CardDescription className="text-xs mt-0.5">
+                                Define pricing tiers (Adults, Children, Infants) & link transportation packages.
                             </CardDescription>
                         </div>
                         {transportations.length > 0 && (
@@ -323,41 +388,52 @@ export function StepFinance({
                                     })
                                 }
                                 size="sm"
+                                className="rounded-xl gap-1.5 text-xs font-semibold shrink-0"
                             >
-                                <Plus className="w-4 h-4 mr-2" />
-                                Add Tier
+                                <Plus className="w-4 h-4" />
+                                Add Pricing Tier
                             </Button>
                         )}
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="p-4 bg-card border rounded-lg max-w-sm">
+                <CardContent className="p-6 space-y-6">
+                    {/* Max Discount Limit Header Control */}
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 via-primary/5 to-background border border-emerald-500/20 space-y-3">
                         <FormField
                             control={form.control}
                             name="maxDiscountType"
                             render={({ field: typeField }) => {
                                 const currentType = typeField.value || "amount";
                                 return (
-                                    <FormItem>
-                                        <div className="flex items-center justify-between gap-2 mb-1">
-                                            <FormLabel className="flex items-center gap-1.5 font-medium text-xs">
-                                                {currentType === "amount" ? (
-                                                    <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                                ) : (
-                                                    <Percent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                                )}
-                                                Max Discount Limit
-                                            </FormLabel>
-                                            
+                                    <FormItem className="space-y-2">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                                                    {currentType === "amount" ? (
+                                                        <DollarSign className="w-4 h-4" />
+                                                    ) : (
+                                                        <Percent className="w-4 h-4" />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <FormLabel className="text-xs font-bold text-foreground block">
+                                                        Max Discount Limit
+                                                    </FormLabel>
+                                                    <span className="text-[11px] text-muted-foreground">
+                                                        Set the maximum allowable discount for bookings
+                                                    </span>
+                                                </div>
+                                            </div>
+
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                {/* Discount Scope Switcher */}
+                                                {/* Scope Switcher */}
                                                 <FormField
                                                     control={form.control}
                                                     name="maxDiscountScope"
                                                     render={({ field: scopeField }) => {
                                                         const currentScope = scopeField.value || "group";
                                                         return (
-                                                            <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border text-xs gap-0.5">
+                                                            <div className="inline-flex items-center bg-muted/80 p-0.5 rounded-lg border text-xs gap-0.5">
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => {
@@ -365,13 +441,13 @@ export function StepFinance({
                                                                         form.setValue("maxDiscountScope", "group");
                                                                     }}
                                                                     className={cn(
-                                                                        "px-2 py-0.5 rounded-md transition-all font-medium flex items-center gap-1 cursor-pointer",
+                                                                        "px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1.5 text-xs cursor-pointer",
                                                                         currentScope === "group"
-                                                                            ? "bg-background text-foreground shadow-xs"
+                                                                            ? "bg-background text-foreground shadow-xs font-semibold"
                                                                             : "text-muted-foreground hover:text-foreground"
                                                                     )}
                                                                 >
-                                                                    <Users className="w-3 h-3" />
+                                                                    <Users className="w-3.5 h-3.5 text-primary" />
                                                                     Group Total
                                                                 </button>
                                                                 <button
@@ -381,13 +457,13 @@ export function StepFinance({
                                                                         form.setValue("maxDiscountScope", "passenger");
                                                                     }}
                                                                     className={cn(
-                                                                        "px-2 py-0.5 rounded-md transition-all font-medium flex items-center gap-1 cursor-pointer",
+                                                                        "px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1.5 text-xs cursor-pointer",
                                                                         currentScope === "passenger"
-                                                                            ? "bg-background text-foreground shadow-xs"
+                                                                            ? "bg-background text-foreground shadow-xs font-semibold"
                                                                             : "text-muted-foreground hover:text-foreground"
                                                                     )}
                                                                 >
-                                                                    <User className="w-3 h-3" />
+                                                                    <User className="w-3.5 h-3.5 text-primary" />
                                                                     Per Passenger
                                                                 </button>
                                                             </div>
@@ -395,8 +471,8 @@ export function StepFinance({
                                                     }}
                                                 />
 
-                                                {/* Unit Selector */}
-                                                <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border text-xs">
+                                                {/* Unit Selector Switcher */}
+                                                <div className="inline-flex items-center bg-muted/80 p-0.5 rounded-lg border text-xs">
                                                     <button
                                                         type="button"
                                                         onClick={() => {
@@ -404,9 +480,9 @@ export function StepFinance({
                                                             form.setValue("maxDiscountType", "amount");
                                                         }}
                                                         className={cn(
-                                                            "px-2 py-0.5 rounded-md transition-all font-medium cursor-pointer",
+                                                            "px-2.5 py-1 rounded-md transition-all font-medium text-xs cursor-pointer",
                                                             currentType === "amount"
-                                                                ? "bg-background text-foreground shadow-xs"
+                                                                ? "bg-background text-foreground shadow-xs font-semibold dark:text-emerald-400"
                                                                 : "text-muted-foreground hover:text-foreground"
                                                         )}
                                                     >
@@ -419,9 +495,9 @@ export function StepFinance({
                                                             form.setValue("maxDiscountType", "percentage");
                                                         }}
                                                         className={cn(
-                                                            "px-2 py-0.5 rounded-md transition-all font-medium cursor-pointer",
+                                                            "px-2.5 py-1 rounded-md transition-all font-medium text-xs cursor-pointer",
                                                             currentType === "percentage"
-                                                                ? "bg-background text-foreground shadow-xs"
+                                                                ? "bg-background text-foreground shadow-xs font-semibold dark:text-emerald-400"
                                                                 : "text-muted-foreground hover:text-foreground"
                                                         )}
                                                     >
@@ -430,114 +506,149 @@ export function StepFinance({
                                                 </div>
                                             </div>
                                         </div>
-                                        <FormControl>
+
+                                        <div className="pt-1">
                                             <FormField
                                                 control={form.control}
                                                 name="maxDiscountValue"
                                                 render={({ field: valField }) => (
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        max={currentType === "percentage" ? "100" : undefined}
-                                                        step={currentType === "percentage" ? "0.01" : "1"}
-                                                        placeholder={currentType === "amount" ? "e.g. 500" : "e.g. 10"}
-                                                        {...valField}
-                                                        value={valField.value ?? ""}
-                                                        onChange={(e) => {
-                                                            const numVal = e.target.value === "" ? 0 : Number(e.target.value);
-                                                            valField.onChange(numVal);
-                                                            if (currentType === "percentage") {
-                                                                form.setValue("maxDiscountPercentage", numVal);
-                                                            }
-                                                        }}
-                                                    />
+                                                    <div className="relative max-w-sm">
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            max={currentType === "percentage" ? "100" : undefined}
+                                                            step={currentType === "percentage" ? "0.01" : "1"}
+                                                            placeholder={currentType === "amount" ? "e.g. 1000" : "e.g. 15"}
+                                                            className="rounded-xl h-10 font-mono text-sm pl-9"
+                                                            {...valField}
+                                                            value={valField.value ?? ""}
+                                                            onChange={(e) => {
+                                                                const numVal = e.target.value === "" ? 0 : Number(e.target.value);
+                                                                valField.onChange(numVal);
+                                                                if (currentType === "percentage") {
+                                                                    form.setValue("maxDiscountPercentage", numVal);
+                                                                }
+                                                            }}
+                                                        />
+                                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none font-semibold text-xs">
+                                                            {currentType === "amount" ? "₹" : "%"}
+                                                        </div>
+                                                    </div>
                                                 )}
                                             />
-                                        </FormControl>
+                                        </div>
                                     </FormItem>
                                 );
                             }}
                         />
                     </div>
+
+                    {/* Transportation Check Alert */}
                     {transportations.length === 0 ? (
-                        <div className="p-4 bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 rounded-lg text-sm flex items-center gap-3">
-                            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                            <span>
-                                <span className="font-medium">Transportation options are required.</span> Please go back to the Logistics step and add at least one transportation option before defining package tiers.
-                            </span>
+                        <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 text-amber-900 dark:text-amber-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                                    <AlertTriangle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-sm text-amber-900 dark:text-amber-100">Transportation options are required</h4>
+                                    <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                                        You must add at least one transportation option in Step 4 (Logistics) before defining package pricing tiers.
+                                    </p>
+                                </div>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={onBack}
+                                className="rounded-xl border-amber-500/40 bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 font-bold gap-2 shrink-0 text-xs"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                Go to Logistics Step
+                            </Button>
                         </div>
                     ) : (
                         <>
                             {tierFields.map((field, index) => (
-                                <div key={field.id} className="border rounded-lg p-4 space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <h4 className="font-medium">Pricing Tier {index + 1}</h4>
+                                <div key={field.id} className="border rounded-2xl p-5 space-y-5 bg-card/60 shadow-xs hover:border-primary/30 transition-all">
+                                    <div className="flex justify-between items-center border-b pb-3">
+                                        <div className="flex items-center gap-2">
+                                            <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 text-xs font-bold px-2.5 py-0.5">
+                                                Tier {index + 1}
+                                            </Badge>
+                                            <span className="font-bold text-sm">
+                                                {form.watch(`packageTiers.${index}.name`) || "Unnamed Tier"}
+                                            </span>
+                                        </div>
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="sm"
+                                            className="text-rose-500 hover:bg-rose-500/10 rounded-xl h-8 text-xs gap-1"
                                             onClick={() => removeTier(index)}
                                         >
-                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                            <Trash2 className="w-3.5 h-3.5" /> Remove Tier
                                         </Button>
                                     </div>
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name={`packageTiers.${index}.name`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Tier Name (e.g. Standard, Premium)</FormLabel>
-                                                        <FormControl>
-                                                            <Input {...field} />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name={`packageTiers.${index}.adultCost`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Adult Price (₹)</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                type="number"
-                                                                min="0"
-                                                                {...field}
-                                                                value={field.value ?? ""}
-                                                                onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                                                            />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                        <div>
-                                            <FormField
-                                                control={form.control}
-                                                name={`packageTiers.${index}.transportationId`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Transportation Option</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value || "none"}>
-                                                            <FormControl>
-                                                                <SelectTrigger><SelectValue placeholder="Select transportation" /></SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="none">None</SelectItem>
-                                                                {transportations.map((t) => (
-                                                                    t.id ? <SelectItem key={t.id} value={t.id}>{t.title || 'Unnamed'} (₹{t.cost || 0})</SelectItem> : null
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name={`packageTiers.${index}.name`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs font-medium">Tier Name (e.g. Deluxe, VIP, Standard)</FormLabel>
+                                                    <FormControl>
+                                                        <Input className="rounded-xl h-10 text-xs" placeholder="e.g. Standard Package" {...field} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`packageTiers.${index}.adultCost`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs font-medium">Adult Price (₹)</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            className="rounded-xl h-10 font-mono text-xs"
+                                                            {...field}
+                                                            value={field.value ?? ""}
+                                                            onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
 
+                                    <div>
+                                        <FormField
+                                            control={form.control}
+                                            name={`packageTiers.${index}.transportationId`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs font-medium">Linked Transportation Option</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value || "none"}>
+                                                        <FormControl>
+                                                            <SelectTrigger className="rounded-xl h-10 text-xs"><SelectValue placeholder="Select transportation option" /></SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">None (No Transport)</SelectItem>
+                                                            {transportations.map((t) => (
+                                                                t.id ? <SelectItem key={t.id} value={t.id}>{t.title || 'Unnamed Option'} (₹{t.cost || 0})</SelectItem> : null
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    {/* Operator Margin & Discount Calculation Box */}
                                     {(() => {
                                         const tier = form.watch(`packageTiers.${index}`);
                                         const selectedTransport = transportations.find((t) => t.id === tier?.transportationId);
@@ -552,26 +663,29 @@ export function StepFinance({
                                         const discountedAdultPrice = Math.max(0, finalPrice - maxDiscountAmount);
 
                                         return (
-                                            <div className="mt-4 p-3 bg-primary/5 rounded-md border border-primary/20 space-y-2">
+                                            <div className="p-4 rounded-xl bg-card border space-y-3 shadow-xs">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="font-medium text-sm">Calculated Operator Margin:</span>
-                                                    <span className={`font-bold text-lg ${margin >= 0 ? "text-green-600" : "text-destructive"}`}>
-                                                        ₹{margin}
+                                                    <span className="font-semibold text-xs flex items-center gap-1.5">
+                                                        <TrendingUp className="w-4 h-4 text-primary" />
+                                                        Calculated Operator Margin:
+                                                    </span>
+                                                    <span className={`font-bold text-base px-2.5 py-0.5 rounded-lg font-mono ${margin >= 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"}`}>
+                                                        ₹{margin.toLocaleString("en-IN")}
                                                     </span>
                                                 </div>
-                                                <div className="text-xs text-muted-foreground border-t pt-2 flex flex-col md:flex-row md:justify-between gap-1">
-                                                     <span>Calculation Breakdown:</span>
-                                                     <span className="font-mono">
-                                                         ₹{finalPrice} (Adult Price) - [₹{calculatedBaseCost} (Base Total) + ₹{transportCost} (Transport)] = ₹{margin}
-                                                     </span>
+                                                <div className="text-[11px] text-muted-foreground border-t pt-2 flex flex-col md:flex-row md:justify-between gap-1 font-mono">
+                                                    <span>Breakdown:</span>
+                                                    <span>
+                                                        ₹{finalPrice} (Adult Price) - [₹{calculatedBaseCost} (Base) + ₹{transportCost} (Transport)] = ₹{margin}
+                                                    </span>
                                                 </div>
                                                 {discountVal > 0 && finalPrice > 0 && (
-                                                    <div className="flex justify-between items-center text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-md mt-2">
-                                                        <span className="flex items-center gap-1.5 font-semibold">
+                                                    <div className="flex justify-between items-center text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl mt-2">
+                                                        <span className="flex items-center gap-1.5 font-bold">
                                                             {discountType === "percentage" ? <Percent className="w-3.5 h-3.5" /> : <DollarSign className="w-3.5 h-3.5" />}
-                                                            Max Discount {discountType === "percentage" ? `(${discountVal}%)` : `(₹${discountVal})`}:
+                                                            Max Discount Limit {discountType === "percentage" ? `(${discountVal}%)` : `(₹${discountVal})`}:
                                                         </span>
-                                                        <span>
+                                                        <span className="font-mono">
                                                             <strong>-₹{maxDiscountAmount.toLocaleString("en-IN")}</strong> → Reduced Adult Price: <strong>₹{discountedAdultPrice.toLocaleString("en-IN")}</strong>
                                                         </span>
                                                     </div>
@@ -580,9 +694,10 @@ export function StepFinance({
                                         );
                                     })()}
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t">
-                                        <div className="space-y-3">
-                                            <Label className="font-medium">Child Pricing</Label>
+                                    {/* Child & Infant pricing */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t">
+                                        <div className="space-y-2.5">
+                                            <Label className="font-semibold text-xs">Child Pricing Rules</Label>
                                             <div className="flex gap-2">
                                                 <FormField
                                                     control={form.control}
@@ -591,11 +706,11 @@ export function StepFinance({
                                                         <FormItem className="flex-1">
                                                             <Select onValueChange={field.onChange} defaultValue={field.value || "percentage"}>
                                                                 <FormControl>
-                                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                                    <SelectTrigger className="rounded-xl h-9 text-xs"><SelectValue /></SelectTrigger>
                                                                 </FormControl>
                                                                 <SelectContent>
                                                                     <SelectItem value="percentage">Percentage (%)</SelectItem>
-                                                                    <SelectItem value="flat">Flat Amount</SelectItem>
+                                                                    <SelectItem value="flat">Flat Amount (₹)</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         </FormItem>
@@ -611,6 +726,7 @@ export function StepFinance({
                                                                     type="number"
                                                                     min="0"
                                                                     placeholder="Value"
+                                                                    className="rounded-xl h-9 text-xs font-mono"
                                                                     {...field}
                                                                     value={field.value ?? ""}
                                                                     onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
@@ -621,8 +737,8 @@ export function StepFinance({
                                                 />
                                             </div>
                                         </div>
-                                        <div className="space-y-3">
-                                            <Label className="font-medium">Infant Pricing</Label>
+                                        <div className="space-y-2.5">
+                                            <Label className="font-semibold text-xs">Infant Pricing Rules</Label>
                                             <div className="flex gap-2">
                                                 <FormField
                                                     control={form.control}
@@ -631,11 +747,11 @@ export function StepFinance({
                                                         <FormItem className="flex-1">
                                                             <Select onValueChange={field.onChange} defaultValue={field.value || "percentage"}>
                                                                 <FormControl>
-                                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                                    <SelectTrigger className="rounded-xl h-9 text-xs"><SelectValue /></SelectTrigger>
                                                                 </FormControl>
                                                                 <SelectContent>
                                                                     <SelectItem value="percentage">Percentage (%)</SelectItem>
-                                                                    <SelectItem value="flat">Flat Amount</SelectItem>
+                                                                    <SelectItem value="flat">Flat Amount (₹)</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         </FormItem>
@@ -651,6 +767,7 @@ export function StepFinance({
                                                                     type="number"
                                                                     min="0"
                                                                     placeholder="Value"
+                                                                    className="rounded-xl h-9 text-xs font-mono"
                                                                     {...field}
                                                                     value={field.value ?? ""}
                                                                     onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
@@ -665,20 +782,24 @@ export function StepFinance({
                                 </div>
                             ))}
                             {tierFields.length === 0 && (
-                                <p className="text-sm text-muted-foreground text-center py-4">No pricing tiers added.</p>
+                                <div className="text-center py-8 border border-dashed rounded-2xl bg-muted/20 space-y-1">
+                                    <p className="text-xs font-semibold text-muted-foreground">No pricing tiers created yet.</p>
+                                    <p className="text-[11px] text-muted-foreground/70">Click "Add Pricing Tier" above to define package tiers.</p>
+                                </div>
                             )}
                         </>
                     )}
                 </CardContent>
             </Card>
 
-            <Card>
+            {/* Payment Structure Card */}
+            <Card className="shadow-xs border rounded-2xl">
                 <CardHeader>
                     <div className="flex justify-between items-center flex-wrap gap-2">
                         <div>
-                            <CardTitle>Payment Structure</CardTitle>
-                            <CardDescription>
-                                Select milestone template or configure inline
+                            <CardTitle className="text-base font-bold">Payment Structure</CardTitle>
+                            <CardDescription className="text-xs">
+                                Select milestone payment schedule template or configure custom terms.
                             </CardDescription>
                         </div>
                         <div className="flex gap-2">
@@ -695,9 +816,9 @@ export function StepFinance({
                                     }
                                 }}
                                 disabled={!form.watch("paymentStructureTemplateId")}
-                                className="cursor-pointer"
+                                className="cursor-pointer rounded-xl h-8 text-xs gap-1.5"
                             >
-                                <Edit className="h-4 w-4 mr-1.5" /> Edit Template
+                                <Edit className="h-3.5 w-3.5" /> Edit Template
                             </Button>
                             <Button
                                 type="button"
@@ -706,9 +827,9 @@ export function StepFinance({
                                     setEditingPaymentTemplate(null);
                                     setPaymentDialogOpen(true);
                                 }}
-                                className="cursor-pointer bg-primary"
+                                className="cursor-pointer rounded-xl h-8 text-xs gap-1.5"
                             >
-                                <Plus className="h-4 w-4 mr-1.5" /> Create New
+                                <Plus className="h-3.5 w-3.5" /> Create New
                             </Button>
                         </div>
                     </div>
@@ -719,7 +840,7 @@ export function StepFinance({
                         name="paymentStructureTemplateId"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Payment Structure Template</FormLabel>
+                                <FormLabel className="text-xs font-medium">Payment Structure Template</FormLabel>
                                 <Select
                                     key={paymentTemplates.length}
                                     onValueChange={(val) => {
@@ -729,8 +850,8 @@ export function StepFinance({
                                     value={field.value || ""}
                                 >
                                     <FormControl>
-                                        <SelectTrigger className="cursor-pointer">
-                                            <SelectValue placeholder="Select payment structure..." />
+                                        <SelectTrigger className="cursor-pointer rounded-xl h-10 text-xs">
+                                            <SelectValue placeholder="Select payment structure template..." />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -748,9 +869,9 @@ export function StepFinance({
                     {/* Preview milestones */}
                     {form.watch("paymentStructure") && form.watch("paymentStructure")!.length > 0 && (
                         <div className="space-y-3 pt-3 border-t">
-                            <div className="flex justify-between items-center text-sm font-semibold">
+                            <div className="flex justify-between items-center text-xs font-semibold">
                                 <span className="text-muted-foreground">Milestones Preview</span>
-                                <Badge variant={totalPayments === 100 ? "default" : "destructive"}>
+                                <Badge variant={totalPayments === 100 ? "default" : "destructive"} className="font-mono text-xs rounded-lg">
                                     Total: {totalPayments}%
                                 </Badge>
                             </div>
@@ -765,14 +886,14 @@ export function StepFinance({
                                         return d;
                                     };
                                     return (
-                                        <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-secondary/35 border rounded-lg">
+                                        <div key={idx} className="flex justify-between items-center text-xs p-3 bg-muted/40 border rounded-xl">
                                             <div>
-                                                <div className="font-bold">{m.name || `Milestone ${idx + 1}`}</div>
-                                                {m.description && <div className="text-[10px] text-muted-foreground">{m.description}</div>}
+                                                <div className="font-bold text-xs">{m.name || `Milestone ${idx + 1}`}</div>
+                                                {m.description && <div className="text-[11px] text-muted-foreground mt-0.5">{m.description}</div>}
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="text-[10px]">{formatDue(m.dueDate || "")}</Badge>
-                                                <Badge variant="secondary" className="font-bold">{m.amount}%</Badge>
+                                                <Badge variant="outline" className="text-[10px] rounded-md">{formatDue(m.dueDate || "")}</Badge>
+                                                <Badge variant="secondary" className="font-bold font-mono text-xs rounded-md">{m.amount}%</Badge>
                                             </div>
                                         </div>
                                     );
@@ -783,13 +904,14 @@ export function StepFinance({
                 </CardContent>
             </Card>
 
-            <Card>
+            {/* Cancellation Tiers Card */}
+            <Card className="shadow-xs border rounded-2xl">
                 <CardHeader>
                     <div className="flex justify-between items-center flex-wrap gap-2">
                         <div>
-                            <CardTitle>Cancellation Tiers</CardTitle>
-                            <CardDescription>
-                                Select cancellation policy template or configure inline
+                            <CardTitle className="text-base font-bold">Cancellation Tiers</CardTitle>
+                            <CardDescription className="text-xs">
+                                Select cancellation policy penalty template or configure custom terms.
                             </CardDescription>
                         </div>
                         <div className="flex gap-2">
@@ -806,9 +928,9 @@ export function StepFinance({
                                     }
                                 }}
                                 disabled={!form.watch("cancellationStructureTemplateId")}
-                                className="cursor-pointer"
+                                className="cursor-pointer rounded-xl h-8 text-xs gap-1.5"
                             >
-                                <Edit className="h-4 w-4 mr-1.5" /> Edit Template
+                                <Edit className="h-3.5 w-3.5" /> Edit Template
                             </Button>
                             <Button
                                 type="button"
@@ -817,9 +939,9 @@ export function StepFinance({
                                     setEditingCancellationTemplate(null);
                                     setCancellationDialogOpen(true);
                                 }}
-                                className="cursor-pointer bg-primary"
+                                className="cursor-pointer rounded-xl h-8 text-xs gap-1.5"
                             >
-                                <Plus className="h-4 w-4 mr-1.5" /> Create New
+                                <Plus className="h-3.5 w-3.5" /> Create New
                             </Button>
                         </div>
                     </div>
@@ -830,7 +952,7 @@ export function StepFinance({
                         name="cancellationStructureTemplateId"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Cancellation Tiers Template</FormLabel>
+                                <FormLabel className="text-xs font-medium">Cancellation Tiers Template</FormLabel>
                                 <Select
                                     key={cancellationTemplates.length}
                                     onValueChange={(val) => {
@@ -840,8 +962,8 @@ export function StepFinance({
                                     value={field.value || ""}
                                 >
                                     <FormControl>
-                                        <SelectTrigger className="cursor-pointer">
-                                            <SelectValue placeholder="Select cancellation tiers..." />
+                                        <SelectTrigger className="cursor-pointer rounded-xl h-10 text-xs">
+                                            <SelectValue placeholder="Select cancellation tiers template..." />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -859,7 +981,7 @@ export function StepFinance({
                     {/* Preview cancellation tiers */}
                     {form.watch("cancellationStructure") && form.watch("cancellationStructure")!.length > 0 && (
                         <div className="space-y-3 pt-3 border-t">
-                            <div className="text-sm font-semibold text-muted-foreground">Cancellation Policies Preview</div>
+                            <div className="text-xs font-semibold text-muted-foreground">Cancellation Policies Preview</div>
                             <div className="space-y-2">
                                 {form.watch("cancellationStructure")!.map((t, idx) => {
                                     const formatTime = (time: string) => {
@@ -870,12 +992,12 @@ export function StepFinance({
                                         return time;
                                     };
                                     return (
-                                        <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-secondary/35 border rounded-lg">
+                                        <div key={idx} className="flex justify-between items-center text-xs p-3 bg-muted/40 border rounded-xl">
                                             <div>
-                                                <div className="font-bold">{formatTime(t.timeframe || "")}</div>
-                                                {t.description && <div className="text-[10px] text-muted-foreground">{t.description}</div>}
+                                                <div className="font-bold text-xs">{formatTime(t.timeframe || "")}</div>
+                                                {t.description && <div className="text-[11px] text-muted-foreground mt-0.5">{t.description}</div>}
                                             </div>
-                                            <Badge variant="destructive" className="font-bold font-mono">{t.amount}% Charge</Badge>
+                                            <Badge variant="destructive" className="font-bold font-mono text-xs rounded-md">{t.amount}% Charge</Badge>
                                         </div>
                                     );
                                 })}
@@ -885,27 +1007,28 @@ export function StepFinance({
                 </CardContent>
             </Card>
 
-            <Card>
+            {/* Cancellation Policy Bullet Points Card */}
+            <Card className="shadow-xs border rounded-2xl">
                 <CardHeader>
-                    <CardTitle>Cancellation Policy Details</CardTitle>
-                    <CardDescription>
-                        Additional points for your policy
+                    <CardTitle className="text-base font-bold">Cancellation Policy Guidelines</CardTitle>
+                    <CardDescription className="text-xs">
+                        Add clear bullet points or explicit rules regarding cancellation requests.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex gap-2">
                         <Textarea
-                            placeholder="Add policy point..."
+                            placeholder="Add policy note (e.g. Requests must be submitted in writing)..."
                             value={newPolicyPoint}
                             onChange={(e) => setNewPolicyPoint(e.target.value)}
+                            className="rounded-xl text-xs min-h-[70px]"
                         />
                         <Button
                             type="button"
                             onClick={addPolicyPoint}
-                            variant="secondary"
-                            className="h-auto"
+                            className="rounded-xl shrink-0 px-4 gap-1.5"
                         >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-4 h-4" /> Add Note
                         </Button>
                     </div>
                     <div className="space-y-2">
@@ -913,16 +1036,17 @@ export function StepFinance({
                             (point, index) => (
                                 <div
                                     key={index}
-                                    className="flex gap-2 p-3 border rounded-lg bg-secondary/10"
+                                    className="flex items-center gap-2 p-3 border rounded-xl bg-muted/30 text-xs"
                                 >
-                                    <p className="flex-1 text-sm">{point}</p>
+                                    <p className="flex-1 font-medium">{point}</p>
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        size="sm"
+                                        size="icon"
+                                        className="h-8 w-8 text-rose-500 hover:bg-rose-500/10 rounded-lg shrink-0"
                                         onClick={() => removePolicyPoint(index)}
                                     >
-                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                        <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </div>
                             ),
@@ -931,18 +1055,25 @@ export function StepFinance({
                 </CardContent>
             </Card>
 
-            <div className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onBack}>
+            {/* Step Action Buttons */}
+            <div className="flex justify-between items-center pt-4 border-t">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onBack}
+                    className="rounded-xl px-5 gap-2 text-xs font-semibold"
+                >
+                    <ArrowLeft className="w-4 h-4" />
                     Back
                 </Button>
                 <Button
                     type="button"
                     onClick={onNext}
                     disabled={isLoading}
-                    className="gap-2"
+                    className="rounded-xl px-6 gap-2 text-xs font-semibold"
                 >
-                    {isLoading ? "Saving..." : "Save \u0026 Next"}
-                    <Save className="w-4 h-4" />
+                    {isLoading ? "Saving..." : "Save & Next"}
+                    <ArrowRight className="w-4 h-4" />
                 </Button>
             </div>
 
@@ -952,8 +1083,8 @@ export function StepFinance({
                     <DialogHeader>
                         <DialogTitle>{editingPaymentTemplate ? "Edit Payment Structure Template" : "Create Payment Structure Template"}</DialogTitle>
                     </DialogHeader>
-                    <PaymentStructureForm 
-                        initialData={editingPaymentTemplate} 
+                    <PaymentStructureForm
+                        initialData={editingPaymentTemplate}
                         onSuccess={async (newT: any) => {
                             await loadTemplates();
                             setPaymentDialogOpen(false);
@@ -973,8 +1104,8 @@ export function StepFinance({
                     <DialogHeader>
                         <DialogTitle>{editingCancellationTemplate ? "Edit Cancellation Tier Template" : "Create Cancellation Tier Template"}</DialogTitle>
                     </DialogHeader>
-                    <CancellationTierForm 
-                        initialData={editingCancellationTemplate} 
+                    <CancellationTierForm
+                        initialData={editingCancellationTemplate}
                         onSuccess={async (newT: any) => {
                             await loadTemplates();
                             setCancellationDialogOpen(false);
