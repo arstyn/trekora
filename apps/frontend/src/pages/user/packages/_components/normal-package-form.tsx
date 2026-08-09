@@ -1,35 +1,31 @@
+import { FileUploader } from "@/components/file-uploader";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { FileUploader } from "@/components/file-uploader";
 import axiosInstance from "@/lib/axios";
+import { getFileUrl } from "@/lib/utils";
+import CancellationTierForm from "@/pages/user/cancellation-tiers/_components/cancellation-tier-form";
+import PaymentStructureForm from "@/pages/user/payment-structures/_components/payment-structure-form";
+import type { ICancellationTierTemplate } from "@/services/cancellation-tiers.service";
+import cancellationTiersService from "@/services/cancellation-tiers.service";
+import paymentStructuresService, { type IPaymentStructureTemplate } from "@/services/payment-structures.service";
 import {
     packageFormSchema,
     type IPackages,
     type PackageFormData,
 } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save, Globe, MapPin, IndianRupee, Landmark, Edit } from "lucide-react";
+import { Building2, Edit, Globe, IndianRupee, Landmark, Loader2, MapPin, Plus, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { getFileUrl } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import paymentStructuresService from "@/services/payment-structures.service";
-import type { IPaymentStructureTemplate } from "@/services/payment-structures.service";
-import cancellationTiersService from "@/services/cancellation-tiers.service";
-import type { ICancellationTierTemplate } from "@/services/cancellation-tiers.service";
-import PaymentStructureForm from "@/pages/user/payment-structures/_components/payment-structure-form";
-import CancellationTierForm from "@/pages/user/cancellation-tiers/_components/cancellation-tier-form";
-import { SearchableSelect } from "@/components/searchable-select";
-import { countries } from "@/pages/user/customers/_components/countries";
-import { getAllStates, getDistricts } from "india-state-district";
-import { Label } from "@/components/ui/label";
+import { LocationSelectionModal, type PackageLocationValue } from "./location-selection-modal";
 
 interface NormalPackageFormProps {
     isEditing?: boolean;
@@ -115,46 +111,18 @@ export function NormalPackageForm({
     const thumbnailSrc = localPreview || (thumbnailFile ? (thumbnailFile.startsWith("blob:") || thumbnailFile.startsWith("data:") ? thumbnailFile : getFileUrl(thumbnailFile)) : undefined);
 
     const locationType = form.watch("packageLocation.type") || "local";
-    const selectedCountry = form.watch("packageLocation.countries")?.[0] || (locationType === "local" ? "India" : "");
-    const selectedState = form.watch("packageLocation.states")?.[0] || "";
-    const selectedCity = form.watch("packageLocation.cities")?.[0] || "";
+    const selectedCountries = form.watch("packageLocation.countries") || (locationType === "local" ? ["India"] : []);
+    const selectedStates = form.watch("packageLocation.states") || [];
+    const selectedCities = form.watch("packageLocation.cities") || [];
 
-    const stateOptions = getAllStates().map((s) => ({
-        value: s.name,
-        label: s.name,
-    }));
+    const [locationModalOpen, setLocationModalOpen] = useState(false);
 
-    const selectedStateObj = getAllStates().find((s) => s.name === selectedState);
-    const districtOptions = selectedStateObj
-        ? getDistricts(selectedStateObj.code).map((d) => ({
-            value: d,
-            label: d,
-        }))
-        : [];
-
-    const handleCountryChange = (val: string) => {
-        form.setValue("packageLocation.countries", [val]);
-        if (val === "India") {
-            form.setValue("packageLocation.states", ["Kerala"]);
-            form.setValue("packageLocation.cities", []);
-        } else {
-            form.setValue("packageLocation.states", []);
-            form.setValue("packageLocation.cities", []);
-        }
+    const handleLocationModalChange = (newVal: PackageLocationValue) => {
+        form.setValue("packageLocation", newVal);
     };
-
-    const handleStateChange = (val: string) => {
-        form.setValue("packageLocation.states", [val]);
-        form.setValue("packageLocation.cities", []);
-    };
-
-    const handleCityChange = (val: string) => {
-        form.setValue("packageLocation.cities", [val]);
-    };
-
     const [paymentTemplates, setPaymentTemplates] = useState<IPaymentStructureTemplate[]>([]);
     const [cancellationTemplates, setCancellationTemplates] = useState<ICancellationTierTemplate[]>([]);
-    
+
     // Dialog control states
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [editingPaymentTemplate, setEditingPaymentTemplate] = useState<any>(null);
@@ -235,7 +203,7 @@ export function NormalPackageForm({
                 if (res.data) {
                     // Transform backend response to match form structure
                     const data: any = { ...res.data };
-                    
+
                     if (res.data.thumbnail) {
                         setThumbnailFile(res.data.thumbnail);
                     }
@@ -548,103 +516,75 @@ export function NormalPackageForm({
                                 />
                             </div>
 
-                            {locationType && (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-                                    {locationType === "international" ? (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-medium">Country</Label>
-                                                <SearchableSelect
-                                                    options={countries}
-                                                    value={selectedCountry}
-                                                    onChange={handleCountryChange}
-                                                    placeholder="Select Country"
-                                                    searchPlaceholder="Search Country..."
-                                                />
+                            <div className="border rounded-xl p-4 bg-card/50 space-y-3 shadow-xs mt-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
+                                            {locationType === "international" ? <Globe className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="text-sm font-semibold text-foreground">Package Destinations</h4>
+                                                <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold border-primary/30 text-primary">
+                                                    {locationType}
+                                                </Badge>
                                             </div>
-                                            
-                                            {selectedCountry === "India" ? (
-                                                <>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium">State</Label>
-                                                        <SearchableSelect
-                                                            options={stateOptions}
-                                                            value={selectedState}
-                                                            onChange={handleStateChange}
-                                                            placeholder="Select State"
-                                                            searchPlaceholder="Search State..."
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium">City</Label>
-                                                        <SearchableSelect
-                                                            options={districtOptions}
-                                                            value={selectedCity}
-                                                            onChange={handleCityChange}
-                                                            placeholder={selectedState ? "Select City" : "Select State First"}
-                                                            searchPlaceholder="Search City..."
-                                                            disabled={!selectedState}
-                                                        />
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium">State/Region</Label>
-                                                        <Input
-                                                            placeholder="Enter state..."
-                                                            value={selectedState}
-                                                            onChange={(e) => form.setValue("packageLocation.states", [e.target.value])}
-                                                            className="h-9 text-sm"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium">City</Label>
-                                                        <Input
-                                                            placeholder="Enter city..."
-                                                            value={selectedCity}
-                                                            onChange={(e) => form.setValue("packageLocation.cities", [e.target.value])}
-                                                            className="h-9 text-sm"
-                                                        />
-                                                    </div>
-                                                </>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-medium">Country</Label>
-                                                <Input
-                                                    value="India"
-                                                    disabled
-                                                    className="h-9 text-sm bg-muted text-muted-foreground"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-medium">State</Label>
-                                                <SearchableSelect
-                                                    options={stateOptions}
-                                                    value={selectedState}
-                                                    onChange={handleStateChange}
-                                                    placeholder="Select State"
-                                                    searchPlaceholder="Search State..."
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-medium">City</Label>
-                                                <SearchableSelect
-                                                    options={districtOptions}
-                                                    value={selectedCity}
-                                                    onChange={handleCityChange}
-                                                    placeholder={selectedState ? "Select City" : "Select State First"}
-                                                    searchPlaceholder="Search City..."
-                                                    disabled={!selectedState}
-                                                />
-                                            </div>
-                                        </>
+                                            <p className="text-xs text-muted-foreground">
+                                                {locationType === "international"
+                                                    ? "Configured for international markets & travel destinations"
+                                                    : "Configured for domestic travel across India"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setLocationModalOpen(true)}
+                                        className="text-xs gap-1.5 h-8 font-medium shrink-0 cursor-pointer border-primary/20 hover:border-primary"
+                                    >
+                                        <Edit className="h-3.5 w-3.5" />
+                                        Configure Locations
+                                    </Button>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t text-xs">
+                                    {selectedCountries.map((c) => (
+                                        <Badge key={`fc-${c}`} variant="secondary" className="text-xs gap-1 font-normal bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200">
+                                            <Globe className="h-3 w-3" />
+                                            <span>{c}</span>
+                                        </Badge>
+                                    ))}
+                                    {selectedStates.map((s) => (
+                                        <Badge key={`fs-${s}`} variant="secondary" className="text-xs gap-1 font-normal bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200">
+                                            <Landmark className="h-3 w-3" />
+                                            <span>{s}</span>
+                                        </Badge>
+                                    ))}
+                                    {selectedCities.map((ct) => (
+                                        <Badge key={`fct-${ct}`} variant="secondary" className="text-xs gap-1 font-normal bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200">
+                                            <Building2 className="h-3 w-3" />
+                                            <span>{ct}</span>
+                                        </Badge>
+                                    ))}
+
+                                    {selectedCountries.length === 0 && selectedStates.length === 0 && selectedCities.length === 0 && (
+                                        <span className="text-xs text-muted-foreground italic">No locations configured yet. Click "Configure Locations" to set destinations.</span>
                                     )}
                                 </div>
-                            )}
+                            </div>
+
+                            <LocationSelectionModal
+                                open={locationModalOpen}
+                                onOpenChange={setLocationModalOpen}
+                                value={{
+                                    type: locationType,
+                                    countries: selectedCountries,
+                                    states: selectedStates,
+                                    cities: selectedCities,
+                                }}
+                                onChange={handleLocationModalChange}
+                            />
 
                             <FormField
                                 control={form.control}
@@ -1029,8 +969,8 @@ export function NormalPackageForm({
                     <DialogHeader>
                         <DialogTitle>{editingPaymentTemplate ? "Edit Payment Structure Template" : "Create Payment Structure Template"}</DialogTitle>
                     </DialogHeader>
-                    <PaymentStructureForm 
-                        initialData={editingPaymentTemplate} 
+                    <PaymentStructureForm
+                        initialData={editingPaymentTemplate}
                         onSuccess={async (newT: any) => {
                             await loadTemplates();
                             setPaymentDialogOpen(false);
@@ -1050,8 +990,8 @@ export function NormalPackageForm({
                     <DialogHeader>
                         <DialogTitle>{editingCancellationTemplate ? "Edit Cancellation Tier Template" : "Create Cancellation Tier Template"}</DialogTitle>
                     </DialogHeader>
-                    <CancellationTierForm 
-                        initialData={editingCancellationTemplate} 
+                    <CancellationTierForm
+                        initialData={editingCancellationTemplate}
                         onSuccess={async (newT: any) => {
                             await loadTemplates();
                             setCancellationDialogOpen(false);
