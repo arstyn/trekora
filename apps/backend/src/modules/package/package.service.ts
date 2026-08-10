@@ -341,33 +341,59 @@ export class PackageService {
   async findOne(id: string): Promise<Package> {
     const pkg = await this.packageRepository.findOne({
       where: { id },
-      relations: [
-        'inclusions',
-        'exclusions',
-        'paymentStructure',
-        'cancellationStructure',
-        'cancellationPolicy',
-        'mealsBreakdown',
-        'transportationOptions',
-        'packageLocation',
-        'packageTiers',
-        'additionalCosts',
-        'itinerary',
-        'documentRequirements',
-        'preTripChecklist',
-      ],
-      order: {
-        paymentStructure: {
-          order: 'ASC',
-        },
-      },
     });
     if (!pkg) throw new NotFoundException('Package not found');
 
     if (pkg.status === 'edited' && pkg.draftContent) {
       // Merge draft content into the package data for the UI
       Object.assign(pkg, pkg.draftContent);
+      return pkg;
     }
+
+    const [
+      inclusions,
+      exclusions,
+      paymentStructure,
+      cancellationStructure,
+      cancellationPolicy,
+      mealsBreakdown,
+      transportationOptions,
+      packageLocation,
+      packageTiers,
+      additionalCosts,
+      itinerary,
+      documentRequirements,
+      preTripChecklist,
+    ] = await Promise.all([
+      this.inclusionRepository.find({ where: { packageId: id } }),
+      this.exclusionRepository.find({ where: { packageId: id } }),
+      this.paymentMilestoneRepository.find({ where: { packageId: id }, order: { order: 'ASC' } }),
+      this.cancellationTierRepository.find({ where: { packageId: id } }),
+      this.cancellationPolicyRepository.find({ where: { packageId: id } }),
+      this.mealsBreakdownRepository.findOne({ where: { packageId: id } }),
+      this.transportationOptionRepository.find({ where: { packageId: id } }),
+      this.packageLocationRepository.findOne({ where: { packageId: id } }),
+      this.packageTierRepository.find({ where: { packageId: id } }),
+      this.additionalCostRepository.find({ where: { packageId: id } }),
+      this.itineraryDayRepository.find({ where: { packageId: id }, order: { day: 'ASC' } }),
+      this.documentRequirementRepository.find({ where: { packageId: id } }),
+      this.checklistItemRepository.find({ where: { packageId: id } }),
+    ]);
+
+    pkg.inclusions = inclusions as any;
+    pkg.exclusions = exclusions as any;
+    pkg.paymentStructure = paymentStructure;
+    pkg.cancellationStructure = cancellationStructure;
+    pkg.cancellationPolicy = cancellationPolicy;
+    pkg.mealsBreakdown = mealsBreakdown || undefined;
+    pkg.transportationOptions = transportationOptions;
+    pkg.packageLocation = packageLocation || undefined;
+    pkg.packageTiers = packageTiers;
+    pkg.additionalCosts = additionalCosts;
+    pkg.itinerary = itinerary;
+    pkg.documentRequirements = documentRequirements;
+    pkg.preTripChecklist = preTripChecklist;
+
     return pkg;
   }
 
