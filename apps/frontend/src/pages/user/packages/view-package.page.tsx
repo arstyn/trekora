@@ -950,68 +950,104 @@ export default function ViewPackagePage() {
                                                     <span className="font-bold text-primary">₹{(basicData as any)?.groundTransportationCost}</span>
                                                 </div>
                                             )}
-                                            {logistics?.transportation && logistics.transportation.length > 0 ? (
-                                                <div className="grid grid-cols-1 gap-4">
-                                                    {logistics.transportation.map((transport: any, index: number) => (
-                                                        <div key={index} className="p-4 border rounded-lg">
-                                                            <div className="flex justify-between items-center mb-4">
-                                                                <h4 className="font-semibold text-lg">
-                                                                    {transport?.title || "Transportation Option"}
-                                                                </h4>
-                                                                <div className="text-right">
-                                                                    <span className="text-sm text-muted-foreground block">Option Cost</span>
-                                                                    <span className="font-bold text-primary">₹{transport?.cost || 0}</span>
-                                                                </div>
-                                                            </div>
+                                            {(() => {
+                                                let transportationList: any[] = [];
+                                                if (Array.isArray(logistics?.transportation)) {
+                                                    transportationList = logistics.transportation;
+                                                } else if (typeof logistics?.transportation === "string") {
+                                                    try {
+                                                        const parsed = JSON.parse(logistics.transportation);
+                                                        if (Array.isArray(parsed)) {
+                                                            transportationList = parsed;
+                                                        }
+                                                    } catch (e) {
+                                                        console.error("Failed to parse transportation string", e);
+                                                    }
+                                                }
 
-                                                            {transport?.segments && transport.segments.length > 0 ? (
-                                                                <div className="space-y-3 mt-2">
-                                                                    <h5 className="text-sm font-medium text-muted-foreground">Journey Segments</h5>
-                                                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                                                        {transport.segments.map((seg: any, sIdx: number) => (
-                                                                            <div key={sIdx} className="bg-secondary/5 border p-3 rounded-md text-sm relative">
-                                                                                <div className="flex justify-between items-center border-b border-primary/10 pb-2 mb-2">
-                                                                                    <span className="font-semibold capitalize flex items-center gap-1.5">
-                                                                                        {seg.mode === 'flight' && '✈️ '}
-                                                                                        {seg.mode === 'train' && '🚆 '}
-                                                                                        {seg.mode === 'bus' && '🚌 '}
-                                                                                        {seg.mode}
-                                                                                    </span>
-                                                                                    {seg.mode === 'train' && seg.coachType && seg.coachType !== 'none' && (
-                                                                                        <Badge variant="secondary" className="text-[10px] h-5">{seg.coachType}</Badge>
-                                                                                    )}
-                                                                                </div>
-                                                                                <div className="flex justify-between items-center">
-                                                                                    <div className="flex flex-col">
-                                                                                        <span className="font-medium text-foreground">{seg.from || 'Origin'}</span>
-                                                                                        <span className="text-xs text-muted-foreground">{seg.departureTime || '-'}</span>
-                                                                                    </div>
-                                                                                    <div className="flex flex-col items-center justify-center px-2 opacity-50">
-                                                                                        <span className="text-[10px]">{seg.number || 'No/ID'}</span>
-                                                                                        <span className="text-xs">→</span>
-                                                                                    </div>
-                                                                                    <div className="flex flex-col text-right">
-                                                                                        <span className="font-medium text-foreground">{seg.to || 'Dest'}</span>
-                                                                                        <span className="text-xs text-muted-foreground">{seg.arrivalTime || '-'}</span>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="text-sm text-muted-foreground bg-secondary/5 p-3 rounded-md mt-2">
-                                                                    {transport?.details || "No details provided"}
-                                                                </div>
-                                                            )}
+                                                if (transportationList.length === 0) {
+                                                    return (
+                                                        <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                                                            <p>No transportation options have been provided yet.</p>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
-                                                    <p>No transportation options have been provided yet.</p>
-                                                </div>
-                                            )}
+                                                    );
+                                                }
+
+                                                return (
+                                                    <div className="grid grid-cols-1 gap-4">
+                                                        {transportationList.map((transport: any, index: number) => {
+                                                            let segmentsList: any[] = [];
+                                                            if (Array.isArray(transport?.segments)) {
+                                                                segmentsList = transport.segments;
+                                                            } else if (typeof transport?.segments === "string") {
+                                                                try {
+                                                                    const parsedSeg = JSON.parse(transport.segments);
+                                                                    if (Array.isArray(parsedSeg)) {
+                                                                        segmentsList = parsedSeg;
+                                                                    }
+                                                                } catch (e) {
+                                                                    console.error("Failed to parse segments string", e);
+                                                                }
+                                                            }
+
+                                                            return (
+                                                                <div key={index} className="p-4 border rounded-lg">
+                                                                    <div className="flex justify-between items-center mb-4">
+                                                                        <h4 className="font-semibold text-lg">
+                                                                            {transport?.title || "Transportation Option"}
+                                                                        </h4>
+                                                                        <div className="text-right">
+                                                                            <span className="text-sm text-muted-foreground block">Option Cost</span>
+                                                                            <span className="font-bold text-primary">₹{transport?.cost || 0}</span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {segmentsList.length > 0 ? (
+                                                                        <div className="space-y-3 mt-2">
+                                                                            <h5 className="text-sm font-medium text-muted-foreground">Journey Segments</h5>
+                                                                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                                                                {segmentsList.map((seg: any, sIdx: number) => (
+                                                                                    <div key={sIdx} className="bg-secondary/5 border p-3 rounded-md text-sm relative">
+                                                                                        <div className="flex justify-between items-center border-b border-primary/10 pb-2 mb-2">
+                                                                                            <span className="font-semibold capitalize flex items-center gap-1.5">
+                                                                                                {seg.mode === 'flight' && '✈️ '}
+                                                                                                {seg.mode === 'train' && '🚆 '}
+                                                                                                {seg.mode === 'bus' && '🚌 '}
+                                                                                                {seg.mode}
+                                                                                            </span>
+                                                                                            {seg.mode === 'train' && seg.coachType && seg.coachType !== 'none' && (
+                                                                                                <Badge variant="secondary" className="text-[10px] h-5">{seg.coachType}</Badge>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="flex justify-between items-center">
+                                                                                            <div className="flex flex-col">
+                                                                                                <span className="font-medium text-foreground">{seg.from || 'Origin'}</span>
+                                                                                                <span className="text-xs text-muted-foreground">{seg.departureTime || '-'}</span>
+                                                                                            </div>
+                                                                                            <div className="flex flex-col items-center justify-center px-2 opacity-50">
+                                                                                                <span className="text-[10px]">{seg.number || 'No/ID'}</span>
+                                                                                                <span className="text-xs">→</span>
+                                                                                            </div>
+                                                                                            <div className="flex flex-col text-right">
+                                                                                                <span className="font-medium text-foreground">{seg.to || 'Dest'}</span>
+                                                                                                <span className="text-xs text-muted-foreground">{seg.arrivalTime || '-'}</span>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="text-sm text-muted-foreground bg-secondary/5 p-3 rounded-md mt-2">
+                                                                            {transport?.details || "No details provided"}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </CardContent>
                                 </Card>

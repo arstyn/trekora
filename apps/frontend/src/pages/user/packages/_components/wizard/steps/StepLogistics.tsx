@@ -92,7 +92,7 @@ function TransportationSegmentList({ control, index }: { control: any; index: nu
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-xs">Mode</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value || "flight"}>
+                                    <Select onValueChange={field.onChange} value={field.value || "flight"}>
                                         <FormControl>
                                             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         </FormControl>
@@ -195,7 +195,7 @@ function TransportationSegmentList({ control, index }: { control: any; index: nu
                                     return (
                                         <FormItem>
                                             <FormLabel className="text-xs">Coach Type (Train only)</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                                            <Select onValueChange={field.onChange} value={field.value || "none"}>
                                                 <FormControl>
                                                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 </FormControl>

@@ -264,6 +264,63 @@ export function PackageForm({
                 })) : [];
             }
 
+            if (backendData.transportation !== undefined) {
+                let transData = backendData.transportation;
+                if (typeof transData === "string") {
+                    try {
+                        transData = JSON.parse(transData);
+                    } catch {
+                        transData = [];
+                    }
+                }
+                if (Array.isArray(transData)) {
+                    transformed.transportation = transData.map((t: any) => {
+                        let segs = t.segments;
+                        if (typeof segs === "string") {
+                            try {
+                                segs = JSON.parse(segs);
+                            } catch {
+                                segs = [];
+                            }
+                        }
+                        return {
+                            ...t,
+                            id: t.id || crypto.randomUUID(),
+                            title: t.title || "",
+                            cost: parseFloat(t.cost?.toString() ?? "0"),
+                            segments: Array.isArray(segs) ? segs : [],
+                        };
+                    });
+                } else {
+                    transformed.transportation = [];
+                }
+            }
+
+            if (backendData.groundTransportationCost !== undefined) {
+                transformed.groundTransportationCost = parseFloat(
+                    backendData.groundTransportationCost?.toString() ?? "0",
+                );
+            }
+
+            if (backendData.mealsBreakdown !== undefined) {
+                let mealsData = backendData.mealsBreakdown;
+                if (typeof mealsData === "string") {
+                    try {
+                        mealsData = JSON.parse(mealsData);
+                    } catch {
+                        mealsData = {};
+                    }
+                }
+                if (mealsData && typeof mealsData === "object") {
+                    transformed.mealsBreakdown = {
+                        breakfast: Array.isArray(mealsData.breakfast) ? mealsData.breakfast : [],
+                        lunch: Array.isArray(mealsData.lunch) ? mealsData.lunch : [],
+                        dinner: Array.isArray(mealsData.dinner) ? mealsData.dinner : [],
+                        mealsCost: parseFloat(mealsData.mealsCost?.toString() ?? "0"),
+                    };
+                }
+            }
+
             if (backendData.packageLocation === null) {
                 delete transformed.packageLocation;
             }
