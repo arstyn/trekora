@@ -154,7 +154,7 @@ export class Package {
     cascade: true,
     nullable: true,
   })
-  mealsBreakdown: MealsBreakdown;
+  mealsBreakdown?: MealsBreakdown;
 
   @OneToMany(() => TransportationOption, (t) => t.package, {
     cascade: true,
@@ -178,7 +178,7 @@ export class Package {
     cascade: true,
     nullable: true,
   })
-  packageLocation: PackageLocation;
+  packageLocation?: PackageLocation;
 
   @OneToMany(() => ItineraryDay, (itinerary) => itinerary.package, {
     cascade: true,
