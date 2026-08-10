@@ -507,16 +507,39 @@ export class PackageService {
     const pkg = await this.packageRepository.findOne({ where: { id } });
     if (!pkg) throw new NotFoundException('Package not found');
 
+    const parseIfString = (val: any) => {
+      if (typeof val === 'string') {
+        try {
+          return JSON.parse(val);
+        } catch {
+          return val;
+        }
+      }
+      return val;
+    };
+
     if (pkg.status === 'edited' && pkg.draftContent) {
       const draft = pkg.draftContent as any;
-      const parseIfString = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
 
-      let transportation = draft.transportationOptions ? parseIfString(draft.transportationOptions) : null;
+      let transportation = draft.transportationOptions
+        ? parseIfString(draft.transportationOptions)
+        : draft.transportation
+        ? parseIfString(draft.transportation)
+        : null;
+
+      if (Array.isArray(transportation)) {
+        transportation = transportation.map((t: any) => ({
+          ...t,
+          segments: parseIfString(t.segments),
+        }));
+      }
 
       return {
         transportation: transportation,
         mealsBreakdown: draft.mealsBreakdown ? parseIfString(draft.mealsBreakdown) : null,
         packageLocation: draft.packageLocation ? parseIfString(draft.packageLocation) : null,
+        packageTiers: draft.packageTiers ? parseIfString(draft.packageTiers) : null,
+        additionalCosts: draft.additionalCosts ? parseIfString(draft.additionalCosts) : null,
       };
     }
 
@@ -530,8 +553,13 @@ export class PackageService {
       ],
     );
 
+    const parsedTransportationOptions = transportationOptions.map((t: any) => ({
+      ...t,
+      segments: parseIfString(t.segments),
+    }));
+
     return {
-      transportation: transportationOptions,
+      transportation: parsedTransportationOptions,
       mealsBreakdown,
       packageLocation,
       packageTiers,
