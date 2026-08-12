@@ -1,4 +1,5 @@
 import DataTableFooter from "@/components/data-table-footer";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
 	TableBody,
@@ -17,25 +19,22 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
+import BookingService from "@/services/booking.service";
+import type { BookingStatus, IBookingListItem } from "@/types/booking.types";
 import {
+	AlertCircle,
 	Calendar,
-	DollarSign,
 	Edit,
 	Eye,
 	Loader2,
 	MoreHorizontal,
 	Search,
-	Users,
-	AlertCircle,
-	XCircle,
 	Trash2,
+	Users,
+	XCircle
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import BookingService from "@/services/booking.service";
-import type { IBookingListItem, BookingStatus } from "@/types/booking.types";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 
 interface BookingListProps {
@@ -143,21 +142,6 @@ export function BookingList({ status }: BookingListProps) {
 				return <Badge className="bg-blue-100 text-blue-800">Completed</Badge>;
 			default:
 				return <Badge variant="secondary">{status}</Badge>;
-		}
-	};
-
-	const getPaymentStatus = (advancePaid: number, totalAmount: number) => {
-		const paymentStatus = BookingService.getPaymentStatus(advancePaid, totalAmount);
-
-		switch (paymentStatus) {
-			case "none":
-				return <Badge variant="destructive">No Payment</Badge>;
-			case "partial":
-				return <Badge variant="secondary">Partial Payment</Badge>;
-			case "full":
-				return <Badge className="bg-green-100 text-green-800">Fully Paid</Badge>;
-			default:
-				return <Badge variant="secondary">Unknown</Badge>;
 		}
 	};
 
@@ -283,7 +267,6 @@ export function BookingList({ status }: BookingListProps) {
 									<TableCell>
 										<div className="space-y-1">
 											<div className="flex items-center gap-1 text-sm">
-												<DollarSign className="w-3 h-3" />
 												{BookingService.formatCurrency(
 													booking.advancePaid
 												)}
@@ -292,10 +275,6 @@ export function BookingList({ status }: BookingListProps) {
 													booking.totalAmount
 												)}
 											</div>
-											{getPaymentStatus(
-												booking.advancePaid,
-												booking.totalAmount
-											)}
 										</div>
 									</TableCell>
 									<TableCell>{getStatusBadge(booking.status)}</TableCell>
@@ -338,7 +317,7 @@ export function BookingList({ status }: BookingListProps) {
 													</NavLink>
 												</DropdownMenuItem>
 												{booking.status !== 'cancelled' && (
-													<DropdownMenuItem 
+													<DropdownMenuItem
 														className="text-amber-600 focus:text-amber-600"
 														onClick={() => handleCancelBooking(booking.id)}
 													>
@@ -346,7 +325,7 @@ export function BookingList({ status }: BookingListProps) {
 														Cancel Booking
 													</DropdownMenuItem>
 												)}
-												<DropdownMenuItem 
+												<DropdownMenuItem
 													className="text-destructive focus:text-destructive"
 													onClick={() => handleDeleteBooking(booking.id)}
 												>

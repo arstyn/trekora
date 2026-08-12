@@ -80,6 +80,11 @@ export class CreateBookingDto {
   discountAmount?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  adjustmentAmount?: number;
+
+  @IsOptional()
   @IsString()
   specialRequests?: string;
 
@@ -158,6 +163,11 @@ export class UpdateBookingDto {
   discountAmount?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  adjustmentAmount?: number;
+
+  @IsOptional()
   @IsEnum(BookingStatus)
   status?: BookingStatus;
 
@@ -197,6 +207,7 @@ export class BookingSummaryDto {
   numberOfCustomers: number;
   totalAmount: number;
   discountAmount?: number;
+  adjustmentAmount?: number;
   advancePaid: number;
   balanceAmount: number;
   status: BookingStatus;
@@ -252,6 +263,7 @@ export class BookingResponseDto {
   numberOfCustomers: number;
   totalAmount: number;
   discountAmount?: number;
+  adjustmentAmount?: number;
   advancePaid: number;
   balanceAmount: number;
   status: BookingStatus;

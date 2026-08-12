@@ -80,6 +80,7 @@ export interface ICreateBookingFormData {
     customers: ICustomer[];
     totalAmount: number;
     discountAmount: number;
+    adjustmentAmount: number;
     advanceAmount: number;
     paymentMethod: PaymentMethod | "";
     paymentReference: string;
@@ -139,6 +140,7 @@ export function CreateBookingDialog({
         customers: [],
         totalAmount: 0,
         discountAmount: 0,
+        adjustmentAmount: 0,
         advanceAmount: 0,
         paymentMethod: "",
         paymentReference: "",
@@ -479,7 +481,7 @@ export function CreateBookingDialog({
                 advanceAmount: newAdvanceAmount,
             };
         });
-    }, [selectedPackage, formData.totalAmount, formData.discountAmount, formData.isPaymentOverridden]);
+    }, [selectedPackage, formData.totalAmount, formData.discountAmount, formData.adjustmentAmount, formData.isPaymentOverridden]);
 
     const loadAvailableBatches = async (packageId: string) => {
         try {
@@ -497,7 +499,8 @@ export function CreateBookingDialog({
         isCommon: boolean,
         selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
         currentCustomers: ICustomer[],
-        discount: number = formData.discountAmount || 0
+        discount: number = formData.discountAmount || 0,
+        adjustment: number = formData.adjustmentAmount || 0
     ) => {
         const pkg = packages.find((p) => p.id === pkgId);
         if (!pkg) return 0;
@@ -534,7 +537,7 @@ export function CreateBookingDialog({
             }
         });
 
-        return Math.max(0, total - discount);
+        return Math.max(0, total + adjustment - discount);
     };
 
     const calculateBaseTotal = (
@@ -544,7 +547,7 @@ export function CreateBookingDialog({
         selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
         currentCustomers: ICustomer[]
     ) => {
-        return calculateTotalAmount(pkgId, commonTierId, isCommon, selections, currentCustomers, 0);
+        return calculateTotalAmount(pkgId, commonTierId, isCommon, selections, currentCustomers, 0, 0);
     };
 
     const handleCustomerSelect = (customer: ICustomer) => {
@@ -725,6 +728,7 @@ export function CreateBookingDialog({
                 customerIds,
                 totalAmount: formData.totalAmount,
                 discountAmount: formData.discountAmount || 0,
+                adjustmentAmount: formData.adjustmentAmount || 0,
                 specialRequests: formData.specialRequests,
                 isCommonTier: formData.isCommonTier,
                 customerSelections: Object.entries(formData.customerSelections).map(([customerId, selection]) => ({
@@ -800,6 +804,7 @@ export function CreateBookingDialog({
             customers: [],
             totalAmount: 0,
             discountAmount: 0,
+            adjustmentAmount: 0,
             advanceAmount: 0,
             paymentMethod: "",
             paymentReference: "",
@@ -1851,12 +1856,14 @@ export function CreateBookingDialog({
                                                                     onChange={(e) => {
                                                                         const raw = e.target.value;
                                                                         const val = raw === "" ? 0 : Math.max(0, Number(raw) || 0);
-                                                                        const newTotal = Math.max(0, baseTotal - val);
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            discountAmount: val,
-                                                                            totalAmount: newTotal,
-                                                                        }));
+                                                                        setFormData((prev) => {
+                                                                            const newTotal = Math.max(0, baseTotal + (prev.adjustmentAmount || 0) - val);
+                                                                            return {
+                                                                                ...prev,
+                                                                                discountAmount: val,
+                                                                                totalAmount: newTotal,
+                                                                            };
+                                                                        });
                                                                     }}
                                                                     placeholder="Enter group discount in ₹..."
                                                                     className="h-10 max-w-xs bg-background font-semibold"
@@ -1873,12 +1880,14 @@ export function CreateBookingDialog({
                                                                         const raw = e.target.value;
                                                                         const pct = raw === "" ? 0 : Math.max(0, Math.min(100, Number(raw) || 0));
                                                                         const val = Math.round((baseTotal * pct) / 100);
-                                                                        const newTotal = Math.max(0, baseTotal - val);
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            discountAmount: val,
-                                                                            totalAmount: newTotal,
-                                                                        }));
+                                                                        setFormData((prev) => {
+                                                                            const newTotal = Math.max(0, baseTotal + (prev.adjustmentAmount || 0) - val);
+                                                                            return {
+                                                                                ...prev,
+                                                                                discountAmount: val,
+                                                                                totalAmount: newTotal,
+                                                                            };
+                                                                        });
                                                                     }}
                                                                     placeholder="Enter group discount in %..."
                                                                     className="h-10 max-w-xs bg-background font-semibold"
@@ -1909,12 +1918,14 @@ export function CreateBookingDialog({
                                                                         } else {
                                                                             totalDisc = Math.round((baseTotal * val) / 100);
                                                                         }
-                                                                        const newTotal = Math.max(0, baseTotal - totalDisc);
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            discountAmount: totalDisc,
-                                                                            totalAmount: newTotal,
-                                                                        }));
+                                                                        setFormData((prev) => {
+                                                                            const newTotal = Math.max(0, baseTotal + (prev.adjustmentAmount || 0) - totalDisc);
+                                                                            return {
+                                                                                ...prev,
+                                                                                discountAmount: totalDisc,
+                                                                                totalAmount: newTotal,
+                                                                            };
+                                                                        });
                                                                     }}
                                                                     placeholder={discountInputType === "amount" ? "Enter discount per passenger (₹)..." : "Enter discount per passenger (%)..."}
                                                                     className="h-10 max-w-xs bg-background font-semibold"
@@ -1962,6 +1973,55 @@ export function CreateBookingDialog({
                                                 </div>
                                             );
                                         })()}
+
+                                        {/* Adjustment Section */}
+                                        <div className="p-4 rounded-xl border bg-card space-y-4">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+                                                <div>
+                                                    <Label className="text-sm font-semibold flex items-center gap-1.5">
+                                                        <Plus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                                        Additional Charges / Rounding
+                                                    </Label>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        Add any additional adjustment amount or overpayment.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <Input
+                                                    id="adjustmentAmount"
+                                                    type="number"
+                                                    min="0"
+                                                    value={formData.adjustmentAmount || ""}
+                                                    onChange={(e) => {
+                                                        const raw = e.target.value;
+                                                        const val = raw === "" ? 0 : Math.max(0, Number(raw) || 0);
+                                                        const baseTotal = calculateBaseTotal(
+                                                            formData.packageId,
+                                                            formData.packageTierId,
+                                                            formData.isCommonTier,
+                                                            formData.customerSelections,
+                                                            formData.customers
+                                                        );
+                                                        setFormData((prev) => {
+                                                            const newTotal = Math.max(0, baseTotal + val - (prev.discountAmount || 0));
+                                                            return {
+                                                                ...prev,
+                                                                adjustmentAmount: val,
+                                                                totalAmount: newTotal,
+                                                            };
+                                                        });
+                                                    }}
+                                                    placeholder="Enter adjustment amount in ₹..."
+                                                    className="h-10 max-w-xs bg-background font-semibold"
+                                                />
+                                                {formData.adjustmentAmount > 0 && (
+                                                    <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/40 py-1.5 px-2.5">
+                                                        + {BookingService.formatCurrency(formData.adjustmentAmount)} Adjustment
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </div>
 
                                         {/* Expected Payment Structure Reference */}
                                         {paymentStructure.length > 0 && (
