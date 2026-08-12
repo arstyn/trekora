@@ -234,7 +234,7 @@ export default function PaymentsPage() {
 
 			{/* Overdue Payments Alert */}
 			{loading.overdue ? (
-				<Card className="border-yellow-200 bg-yellow-50">
+				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<Loader2 className="w-5 h-5 animate-spin" />

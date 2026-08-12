@@ -21,6 +21,8 @@ import axiosInstance from "@/lib/axios";
 import { History, RotateCw, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
+import DataTableFooter from "@/components/data-table-footer";
 
 interface IActivityLog {
     id: string;
@@ -34,16 +36,47 @@ interface IActivityLog {
 }
 
 export default function ActivityLogsPage() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialPage = parseInt(searchParams.get("page") || "1", 10);
+    const initialLimit = parseInt(searchParams.get("limit") || "20", 10);
+
     const [logs, setLogs] = useState<IActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [actionFilter, setActionFilter] = useState("all");
+    const [pagination, setPagination] = useState({
+        page: initialPage,
+        limit: initialLimit,
+        total: 0,
+        totalPages: 0,
+    });
 
-    const fetchLogs = async () => {
+    const fetchLogs = async (page: number, search: string, action: string, customLimit?: number) => {
         setLoading(true);
         try {
-            const res = await axiosInstance.get<IActivityLog[]>("/activity-log");
-            setLogs(res.data);
+            const currentLimit = customLimit ?? pagination.limit;
+            const res = await axiosInstance.get("/activity-log", {
+                params: {
+                    page,
+                    limit: currentLimit,
+                    search,
+                    action,
+                }
+            });
+            
+            if (res.data && res.data.pagination) {
+                setLogs(res.data.data);
+                setPagination(res.data.pagination);
+            } else if (Array.isArray(res.data)) {
+                // Fallback if backend wasn't updated
+                setLogs(res.data);
+                setPagination({
+                    page: 1,
+                    limit: currentLimit,
+                    total: res.data.length,
+                    totalPages: 1,
+                });
+            }
         } catch (error) {
             console.error("Failed to fetch logs:", error);
             toast.error("Failed to load activity logs");
@@ -52,9 +85,39 @@ export default function ActivityLogsPage() {
         }
     };
 
+    // Debounced search fetching
     useEffect(() => {
-        fetchLogs();
-    }, []);
+        const handler = setTimeout(() => {
+            fetchLogs(1, searchTerm, actionFilter);
+        }, 300);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchTerm, actionFilter]);
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= pagination.totalPages) {
+            setPagination((prev) => ({ ...prev, page: newPage }));
+            setSearchParams((prev) => {
+                if (newPage === 1) prev.delete("page");
+                else prev.set("page", newPage.toString());
+                return prev;
+            });
+            fetchLogs(newPage, searchTerm, actionFilter, pagination.limit);
+        }
+    };
+
+    const handleLimitChange = (newLimit: number) => {
+        setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }));
+        setSearchParams((prev) => {
+            if (newLimit === 20) prev.delete("limit");
+            else prev.set("limit", newLimit.toString());
+            prev.delete("page");
+            return prev;
+        });
+        fetchLogs(1, searchTerm, actionFilter, newLimit);
+    };
 
     const getActionBadge = (action: string) => {
         switch (action) {
@@ -75,16 +138,7 @@ export default function ActivityLogsPage() {
         }
     };
 
-    const filteredLogs = logs.filter((log) => {
-        const matchesSearch =
-            log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.performedBy?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.performedBy?.email.toLowerCase().includes(searchTerm.toLowerCase());
-
-        const matchesAction = actionFilter === "all" || log.action === actionFilter;
-
-        return matchesSearch && matchesAction;
-    });
+    // Filtering is now handled on the server
 
     return (
         <div className="space-y-6 px-6 py-5">
@@ -126,7 +180,7 @@ export default function ActivityLogsPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="gap-2 self-start md:self-auto">
+                        <Button variant="outline" size="sm" onClick={() => fetchLogs(pagination.page, searchTerm, actionFilter, pagination.limit)} disabled={loading} className="gap-2 self-start md:self-auto">
                             <RotateCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
@@ -153,14 +207,14 @@ export default function ActivityLogsPage() {
                                             <TableCell className="text-right"><div className="h-4 bg-muted rounded w-1/2 ml-auto" /></TableCell>
                                         </TableRow>
                                     ))
-                                ) : filteredLogs.length === 0 ? (
+                                ) : logs.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
                                             No activity logs found matching the filters.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredLogs.map((log) => (
+                                    logs.map((log) => (
                                         <TableRow key={log.id}>
                                             <TableCell>
                                                 {log.performedBy ? (
@@ -188,6 +242,19 @@ export default function ActivityLogsPage() {
                             </TableBody>
                         </Table>
                     </div>
+                    {!loading && pagination.total > 0 && (
+                        <div className="mt-4">
+                            <DataTableFooter
+                                page={pagination.page}
+                                limit={pagination.limit}
+                                total={pagination.total}
+                                totalPages={pagination.totalPages}
+                                onPageChange={handlePageChange}
+                                onLimitChange={handleLimitChange}
+                                entityName="activity logs"
+                            />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

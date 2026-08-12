@@ -1,4 +1,4 @@
-import { Controller, Get, Request, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Request, UseGuards, Param, Query } from '@nestjs/common';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../auth/guard/permission.guard';
 import { RequirePermission } from '../auth/decorator/require-permission.decorator';
@@ -13,8 +13,22 @@ export class ActivityLogController {
 
   @Get()
   @RequirePermission('employee', 'manage')
-  async findAll(@Request() req: ApiRequestJWT): Promise<ActivityLog[]> {
-    return this.activityLogService.findAll(req.user.organizationId);
+  async findAll(
+    @Request() req: ApiRequestJWT,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('action') action?: string,
+  ) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '20', 10);
+    return this.activityLogService.findAll(
+      req.user.organizationId,
+      pageNum,
+      limitNum,
+      search,
+      action,
+    );
   }
 
   @Get('employee/:employeeId')
