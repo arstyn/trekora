@@ -4,22 +4,51 @@ import axiosInstance from "@/lib/axios";
 import type { ICustomer } from "@/types/customer.type";
 import { PlusCircle, Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import CustomerList from "./_components/customer-list";
 import EnhancedCustomerForm from "./_components/enhanced-customer-form";
 import { ViewCustomerDialog } from "./_components/view-customer-dialog";
 
 export default function CustomerManagement() {
-	const navigate = useNavigate();
 	const location = useLocation();
+	const [searchParams, setSearchParams] = useSearchParams();
 
 	const [customers, setCustomers] = useState<ICustomer[]>([]);
 	const [searchQuery, setSearchQuery] = useState("");
+
+	const page = parseInt(searchParams.get("page") || "1", 10);
+	const setPage = (newPage: number) => {
+		setSearchParams((prev) => {
+			if (newPage === 1) {
+				prev.delete("page");
+			} else {
+				prev.set("page", newPage.toString());
+			}
+			return prev;
+		});
+	};
+
+	const limit = parseInt(searchParams.get("limit") || "20", 10);
+	const setLimit = (newLimit: number) => {
+		setSearchParams((prev) => {
+			if (newLimit === 20) {
+				prev.delete("limit");
+			} else {
+				prev.set("limit", newLimit.toString());
+			}
+			return prev;
+		});
+	};
+	const [total, setTotal] = useState(0);
 	const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
 	const [isAddingCustomer, setIsAddingCustomer] = useState(false);
 	const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
+
+	useEffect(() => {
+		setPage(1);
+	}, [searchQuery]);
 
 	useEffect(() => {
 		const fetchCustomers = async () => {
@@ -29,16 +58,25 @@ export default function CustomerManagement() {
 					customers: ICustomer[];
 					hasMore: boolean;
 					total: number;
-				}>("/customers");
+				}>("/customers", {
+					params: {
+						limit,
+						offset: (page - 1) * limit,
+						search: searchQuery || undefined,
+					},
+				});
 				if (res && res.data) {
 					setCustomers(res.data.customers);
+					setTotal(res.data.total);
 				}
 			} finally {
 				setIsLoading(false);
 			}
 		};
-		fetchCustomers();
-	}, []);
+
+		const timeoutId = setTimeout(fetchCustomers, 300);
+		return () => clearTimeout(timeoutId);
+	}, [page, limit, searchQuery]);
 
 	useEffect(() => {
 		const searchParams = new URLSearchParams(location.search);
@@ -57,15 +95,6 @@ export default function CustomerManagement() {
 			setIsViewDialogOpen(false);
 		}
 	}, [location.search, customers, isEditDialogOpen]);
-
-	const filteredCustomers = customers.filter(
-		(customer) =>
-			customer.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			customer.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			customer.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			customer.passportNumber?.toLowerCase().includes(searchQuery.toLowerCase())
-	);
 
 	const handleAddCustomer = async (newCustomer: ICustomer) => {
 		// The enhanced form handles the API call internally
@@ -93,7 +122,12 @@ export default function CustomerManagement() {
 	};
 
 	const handleCustomerClick = (customer: ICustomer) => {
-		navigate(`?selected=${customer.id}`);
+		setSearchParams((prev) => {
+			if (customer.id) {
+				prev.set("selected", customer.id);
+			}
+			return prev;
+		});
 	};
 
 	const handleEditCustomer = (customer: ICustomer) => {
@@ -122,7 +156,12 @@ export default function CustomerManagement() {
 			</div>
 
 			<CustomerList
-				customers={filteredCustomers}
+				customers={customers}
+				total={total}
+				page={page}
+				limit={limit}
+				onPageChange={setPage}
+				onLimitChange={setLimit}
 				isLoading={isLoading}
 				onDelete={handleDeleteCustomer}
 				onCustomerClick={handleCustomerClick}
@@ -141,7 +180,10 @@ export default function CustomerManagement() {
 				onOpenChange={(open) => {
 					setIsViewDialogOpen(open);
 					if (!open) {
-						navigate("?");
+						setSearchParams((prev) => {
+							prev.delete("selected");
+							return prev;
+						});
 					}
 				}}
 				customer={selectedCustomer}
@@ -156,7 +198,10 @@ export default function CustomerManagement() {
 					onCancel={() => {
 						setIsEditDialogOpen(false);
 						setSelectedCustomer(null);
-						navigate("?");
+						setSearchParams((prev) => {
+							prev.delete("selected");
+							return prev;
+						});
 					}}
 				/>
 			)}

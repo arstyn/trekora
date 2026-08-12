@@ -37,18 +37,24 @@ import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { toast } from "sonner";
 
+import { useSearchParams } from "react-router-dom";
+
 interface BookingListProps {
 	status: "all" | "pending" | "confirmed" | "cancelled" | "completed";
 }
 
 export function BookingList({ status }: BookingListProps) {
+	const [searchParams, setSearchParams] = useSearchParams();
+	const initialPage = parseInt(searchParams.get("page") || "1", 10);
+	const initialLimit = parseInt(searchParams.get("limit") || "20", 10);
+
 	const [searchTerm, setSearchTerm] = useState("");
 	const [bookings, setBookings] = useState<IBookingListItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [pagination, setPagination] = useState({
-		page: 1,
-		limit: 10,
+		page: initialPage,
+		limit: initialLimit,
 		total: 0,
 		totalPages: 0,
 	});
@@ -99,12 +105,24 @@ export function BookingList({ status }: BookingListProps) {
 
 	const handlePageChange = (newPage: number) => {
 		if (newPage >= 1 && newPage <= pagination.totalPages) {
+			setPagination((prev) => ({ ...prev, page: newPage }));
+			setSearchParams((prev) => {
+				if (newPage === 1) prev.delete("page");
+				else prev.set("page", newPage.toString());
+				return prev;
+			});
 			loadBookings(newPage, searchTerm, pagination.limit);
 		}
 	};
 
 	const handleLimitChange = (newLimit: number) => {
 		setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }));
+		setSearchParams((prev) => {
+			if (newLimit === 20) prev.delete("limit");
+			else prev.set("limit", newLimit.toString());
+			prev.delete("page");
+			return prev;
+		});
 		loadBookings(1, searchTerm, newLimit);
 	};
 

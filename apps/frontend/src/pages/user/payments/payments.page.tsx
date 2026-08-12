@@ -1,5 +1,4 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,9 +16,9 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
 import { AddPaymentDialog } from "./_components/add-payment-dialog";
 import { PaymentList } from "./_components/payment-list";
+import { RecentPaymentsSlider } from "./_components/recent-payments-slider";
 
 export default function PaymentsPage() {
 	const [addPaymentDialogOpen, setAddPaymentDialogOpen] = useState(false);
@@ -102,52 +101,6 @@ export default function PaymentsPage() {
 		}).format(amount);
 	};
 
-	const getStatusBadge = (status: string) => {
-		switch (status.toLowerCase()) {
-			case "completed":
-				return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
-			case "pending":
-				return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-			case "failed":
-				return <Badge className="bg-red-100 text-red-800">Failed</Badge>;
-			case "refunded":
-				return <Badge className="bg-blue-100 text-blue-800">Refunded</Badge>;
-			default:
-				return <Badge variant="secondary">{status}</Badge>;
-		}
-	};
-
-	const getPaymentTypeBadge = (type: string) => {
-		switch (type.toLowerCase()) {
-			case "advance":
-				return (
-					<Badge variant="outline" className="bg-blue-50 text-blue-700">
-						Advance
-					</Badge>
-				);
-			case "balance":
-				return (
-					<Badge variant="outline" className="bg-green-50 text-green-700">
-						Balance
-					</Badge>
-				);
-			case "partial":
-				return (
-					<Badge variant="outline" className="bg-orange-50 text-orange-700">
-						Partial
-					</Badge>
-				);
-			case "refund":
-				return (
-					<Badge variant="outline" className="bg-red-50 text-red-700">
-						Refund
-					</Badge>
-				);
-			default:
-				return <Badge variant="outline">{type}</Badge>;
-		}
-	};
-
 	return (
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex justify-between items-center">
@@ -171,7 +124,9 @@ export default function PaymentsPage() {
 			)}
 
 			{/* Dashboard Stats */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+				<RecentPaymentsSlider payments={recentPayments} loading={loading.recent} />
+
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
@@ -328,96 +283,6 @@ export default function PaymentsPage() {
 				</Card>
 			) : null}
 
-			{/* Recent Payments */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Recent Payments</CardTitle>
-				</CardHeader>
-				<CardContent>
-					{loading.recent ? (
-						<div className="space-y-4">
-							{[...Array(3)].map((_, i) => (
-								<div
-									key={i}
-									className="flex items-center justify-between p-4 border rounded-lg"
-								>
-									<div className="flex-1">
-										<div className="flex items-center gap-2 mb-2">
-											<Skeleton className="h-5 w-32" />
-											<Skeleton className="h-5 w-16" />
-											<Skeleton className="h-5 w-16" />
-										</div>
-										<Skeleton className="h-4 w-48 mb-2" />
-										<div className="flex items-center gap-4">
-											<Skeleton className="h-4 w-20" />
-											<Skeleton className="h-4 w-24" />
-											<Skeleton className="h-4 w-20" />
-										</div>
-									</div>
-									<Skeleton className="h-9 w-24" />
-								</div>
-							))}
-						</div>
-					) : recentPayments.length > 0 ? (
-						<div className="space-y-4">
-							{recentPayments.map((payment) => (
-								<div
-									key={payment.id}
-									className="flex items-center justify-between p-4 border rounded-lg"
-								>
-									<div className="flex-1">
-										<div className="flex items-center gap-2 mb-2">
-											<h3 className="font-semibold">
-												{payment.paymentNumber} -{" "}
-												{payment.booking.customer.name}
-											</h3>
-											{getStatusBadge(payment.status)}
-											{getPaymentTypeBadge(payment.paymentType)}
-										</div>
-										<p className="text-sm text-muted-foreground mb-2">
-											{payment.booking.package.name} •{" "}
-											{payment.paymentMethod.replace("_", " ")}
-										</p>
-										<div className="flex items-center gap-4">
-											<span className="text-sm">
-												Amount: {formatCurrency(payment.amount)}
-											</span>
-											{payment.paymentReference && (
-												<span className="text-sm text-muted-foreground">
-													Ref: {payment.paymentReference}
-												</span>
-											)}
-											<span className="text-sm text-muted-foreground">
-												Date:{" "}
-												{new Date(
-													payment.paymentDate
-												).toLocaleDateString()}
-											</span>
-										</div>
-									</div>
-									<NavLink to={`/payments/${payment.id}`}>
-										<Button variant="outline" size="sm">
-											View Details
-										</Button>
-									</NavLink>
-								</div>
-							))}
-						</div>
-					) : (
-						<div className="flex flex-col items-center justify-center py-8">
-							<div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
-								<CreditCard className="h-8 w-8 text-primary" />
-							</div>
-							<h3 className="text-lg font-semibold text-primary mb-1">
-								No recent payments
-							</h3>
-							<p className="text-muted-foreground text-sm">
-								Payments will appear here once processed.
-							</p>
-						</div>
-					)}
-				</CardContent>
-			</Card>
 
 			{/* Payment Tabs */}
 			<Tabs defaultValue="all" className="space-y-4">
