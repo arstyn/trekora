@@ -27,12 +27,44 @@ export class ActivityLogService {
     return this.activityLogRepository.save(log);
   }
 
-  async findAll(organizationId: string): Promise<ActivityLog[]> {
-    return this.activityLogRepository.find({
-      where: { organizationId },
-      relations: ['performedBy'],
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(
+    organizationId: string,
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+    action?: string,
+  ) {
+    const query = this.activityLogRepository
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.performedBy', 'performedBy')
+      .where('log.organizationId = :organizationId', { organizationId });
+
+    if (action && action !== 'all') {
+      query.andWhere('log.action = :action', { action });
+    }
+
+    if (search) {
+      query.andWhere(
+        '(LOWER(log.details) LIKE :search OR LOWER(performedBy.name) LIKE :search OR LOWER(performedBy.email) LIKE :search)',
+        { search: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    const [data, total] = await query
+      .orderBy('log.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
   }
 
   async findByEmployee(organizationId: string, employeeId: string): Promise<ActivityLog[]> {
