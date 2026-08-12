@@ -46,7 +46,7 @@ import {
     UserPlus,
 } from "lucide-react";
 import { useLayoutEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ActivateDialog } from "./_components/activate-modal";
 import { DeactivateDialog } from "./_components/deactivate-dialog";
@@ -75,6 +75,24 @@ export function EmployeesPage() {
 
     const [currentTab, setCurrentTab] = useState<"active" | "archived">("active");
     const [isLoading, setIsLoading] = useState(true);
+
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [pagination, setPagination] = useState({
+        pageIndex: parseInt(searchParams.get("page") || "1", 10) - 1,
+        pageSize: parseInt(searchParams.get("limit") || "20", 10),
+    });
+
+    useLayoutEffect(() => {
+        setSearchParams((prev) => {
+            if (pagination.pageSize === 20) prev.delete("limit");
+            else prev.set("limit", pagination.pageSize.toString());
+            
+            if (pagination.pageIndex === 0) prev.delete("page");
+            else prev.set("page", (pagination.pageIndex + 1).toString());
+            
+            return prev;
+        });
+    }, [pagination, setSearchParams]);
 
     const getEmployees = async (showArchived = false, showLoading = true) => {
         try {
@@ -330,9 +348,11 @@ export function EmployeesPage() {
         getSortedRowModel: getSortedRowModel(),
         onColumnFiltersChange: setColumnFilters,
         getFilteredRowModel: getFilteredRowModel(),
+        onPaginationChange: setPagination,
         state: {
             sorting,
             columnFilters,
+            pagination,
         },
     });
 

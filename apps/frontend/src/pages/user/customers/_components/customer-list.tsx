@@ -33,9 +33,8 @@ import {
     type SortingState,
     flexRender,
     getCoreRowModel,
-    getPaginationRowModel,
     getSortedRowModel,
-    useReactTable,
+    useReactTable
 } from "@tanstack/react-table";
 import { MoreHorizontal, Trash2, Users } from "lucide-react";
 import { useState } from "react";
@@ -43,6 +42,11 @@ import { useNavigate } from "react-router-dom";
 
 interface CustomerListProps {
     customers: ICustomer[];
+    total: number;
+    page: number;
+    limit: number;
+    onPageChange: (page: number) => void;
+    onLimitChange: (limit: number) => void;
     isLoading?: boolean;
     onDelete: (customerId: string) => void;
     onCustomerClick: (customer: ICustomer) => void;
@@ -50,6 +54,11 @@ interface CustomerListProps {
 
 export default function CustomerList({
     customers,
+    total,
+    page,
+    limit,
+    onPageChange,
+    onLimitChange,
     isLoading,
     onDelete,
     onCustomerClick,
@@ -76,7 +85,7 @@ export default function CustomerList({
                         className="w-8 h-8 rounded-full object-cover"
                     />
 
-                    <span 
+                    <span
                         className="font-medium text-primary hover:underline cursor-pointer flex items-center gap-1.5"
                         onClick={(e) => {
                             e.stopPropagation();
@@ -168,11 +177,34 @@ export default function CustomerList({
         data: customers,
         columns,
         getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
+        manualPagination: true,
+        pageCount: Math.ceil(total / limit),
+        rowCount: total,
+        onPaginationChange: (updater) => {
+            if (typeof updater === "function") {
+                const newState = updater({
+                    pageIndex: page - 1,
+                    pageSize: limit,
+                });
+                onPageChange(newState.pageIndex + 1);
+                if (newState.pageSize !== limit) {
+                    onLimitChange(newState.pageSize);
+                }
+            } else {
+                onPageChange(updater.pageIndex + 1);
+                if (updater.pageSize !== limit) {
+                    onLimitChange(updater.pageSize);
+                }
+            }
+        },
         onSortingChange: setSorting,
         getSortedRowModel: getSortedRowModel(),
         state: {
             sorting,
+            pagination: {
+                pageIndex: page - 1,
+                pageSize: limit,
+            },
         },
     });
 

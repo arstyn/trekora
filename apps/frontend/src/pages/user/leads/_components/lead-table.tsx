@@ -30,7 +30,8 @@ import {
 } from "@tanstack/react-table";
 import { MoreHorizontal, Users, Building, User } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
 import { LeadStatusBadge } from "./lead-status-badge";
 
 interface LeadTableProps {
@@ -42,6 +43,23 @@ interface LeadTableProps {
 
 export function LeadTable({ leads, isLoading, onStatusChange, onLeadClick }: LeadTableProps) {
 	const [sorting, setSorting] = useState<SortingState>([]);
+	const [searchParams, setSearchParams] = useSearchParams();
+	const [pagination, setPagination] = useState({
+		pageIndex: parseInt(searchParams.get("page") || "1", 10) - 1,
+		pageSize: parseInt(searchParams.get("limit") || "20", 10),
+	});
+
+	useEffect(() => {
+		setSearchParams((prev) => {
+			if (pagination.pageSize === 20) prev.delete("limit");
+			else prev.set("limit", pagination.pageSize.toString());
+			
+			if (pagination.pageIndex === 0) prev.delete("page");
+			else prev.set("page", (pagination.pageIndex + 1).toString());
+			
+			return prev;
+		});
+	}, [pagination, setSearchParams]);
 
 	const columns: ColumnDef<ILead>[] = [
 		{
@@ -189,8 +207,10 @@ export function LeadTable({ leads, isLoading, onStatusChange, onLeadClick }: Lea
 		getPaginationRowModel: getPaginationRowModel(),
 		onSortingChange: setSorting,
 		getSortedRowModel: getSortedRowModel(),
+		onPaginationChange: setPagination,
 		state: {
 			sorting,
+			pagination,
 		},
 	});
 
