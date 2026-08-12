@@ -102,6 +102,7 @@ export interface IBooking {
     numberOfCustomers: number;
     totalAmount: number;
     discountAmount?: number;
+    adjustmentAmount?: number;
     advancePaid: number;
     balanceAmount: number;
     status: BookingStatus;
@@ -125,6 +126,7 @@ export interface IBookingListItem {
     numberOfCustomers: number;
     totalAmount: number;
     discountAmount?: number;
+    adjustmentAmount?: number;
     advancePaid: number;
     balanceAmount: number;
     status: BookingStatus;
@@ -145,6 +147,7 @@ export interface ICreateBookingRequest {
     customerIds: string[];
     totalAmount: number;
     discountAmount?: number;
+    adjustmentAmount?: number;
     specialRequests?: string;
     initialPayment?: Omit<IBookingPayment, "id" | "status">;
     isCommonTier?: boolean;

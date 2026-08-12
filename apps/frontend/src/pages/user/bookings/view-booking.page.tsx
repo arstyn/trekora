@@ -518,6 +518,22 @@ export default function BookingDetailsPage() {
                                         {BookingService.formatCurrency(booking.totalAmount)}
                                     </p>
                                 </div>
+                                {(booking.discountAmount ?? 0) > 0 && (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground">Discount Applied</p>
+                                        <p className="font-bold text-sm text-emerald-600">
+                                            - {BookingService.formatCurrency(booking.discountAmount ?? 0)}
+                                        </p>
+                                    </div>
+                                )}
+                                {(booking.adjustmentAmount ?? 0) > 0 && (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground">Additional Charges / Rounding</p>
+                                        <p className="font-bold text-sm text-amber-600">
+                                            + {BookingService.formatCurrency(booking.adjustmentAmount ?? 0)}
+                                        </p>
+                                    </div>
+                                )}
                                 <div>
                                     <p className="text-[10px] text-muted-foreground">Total Paid</p>
                                     <p className="font-bold text-sm text-emerald-600">
