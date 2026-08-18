@@ -190,6 +190,8 @@ export function StepFinance({
         );
     };
 
+
+
     const totalPayments = (form.watch("paymentStructure") || []).reduce(
         (sum, milestone) => sum + (milestone.amount || 0),
         0,
@@ -1031,6 +1033,11 @@ export function StepFinance({
                             <Plus className="w-4 h-4" /> Add Note
                         </Button>
                     </div>
+                    {newPolicyPoint.trim().length > 0 && (
+                        <p className="text-[11px] text-amber-600 font-medium">
+                            ⚠️ You have typed a guideline note. Remember to click "Add Note" to save it.
+                        </p>
+                    )}
                     <div className="space-y-2">
                         {(form.watch("cancellationPolicy") || []).map(
                             (point, index) => (

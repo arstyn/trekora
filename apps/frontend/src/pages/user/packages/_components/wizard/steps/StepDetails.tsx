@@ -58,6 +58,8 @@ export function StepDetails({
         );
     };
 
+
+
     return (
         <div className="space-y-6">
             {/* Inclusions Card */}
@@ -97,6 +99,11 @@ export function StepDetails({
                             <Plus className="w-4 h-4" /> Add
                         </Button>
                     </div>
+                    {newInclusion.trim().length > 0 && (
+                        <p className="text-[11px] text-amber-600 font-medium">
+                            ⚠️ You have typed an inclusion. Remember to click "+ Add" to save it.
+                        </p>
+                    )}
                     <div className="space-y-2">
                         {(form.watch("inclusions") || []).map((item, index) => (
                             <div key={index} className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-xs">
@@ -161,6 +168,11 @@ export function StepDetails({
                             <Plus className="w-4 h-4" /> Add
                         </Button>
                     </div>
+                    {newExclusion.trim().length > 0 && (
+                        <p className="text-[11px] text-amber-600 font-medium">
+                            ⚠️ You have typed an exclusion. Remember to click "+ Add" to save it.
+                        </p>
+                    )}
                     <div className="space-y-2">
                         {(form.watch("exclusions") || []).map((item, index) => (
                             <div key={index} className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 text-xs">
