@@ -296,6 +296,8 @@ export function StepLogistics({
         );
     };
 
+
+
     return (
         <div className="space-y-6">
             {/* Meals Breakdown Card */}
@@ -383,6 +385,11 @@ export function StepLogistics({
                                     <Plus className="w-4 h-4" /> Add
                                 </Button>
                             </div>
+                            {newMealItem.type === type && newMealItem.value.trim().length > 0 && (
+                                <p className="text-[11px] text-amber-600 font-medium">
+                                    ⚠️ You have typed a menu item. Remember to click "+ Add" to save it.
+                                </p>
+                            )}
                             <div className="flex flex-wrap gap-1.5">
                                 {(
                                     form.watch(`mealsBreakdown.${type}`) || []
