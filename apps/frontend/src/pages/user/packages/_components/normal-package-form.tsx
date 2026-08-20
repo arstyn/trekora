@@ -379,7 +379,7 @@ export function NormalPackageForm({
     }
 
     return (
-        <div className="w-full space-y-8 py-6 px-0">
+        <div className="w-full space-y-8 p-4 md:p-6">
             <Form {...form}>
                 <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
                     <div className="flex justify-between items-center pb-4 border-b">
