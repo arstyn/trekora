@@ -805,11 +805,60 @@ export default function PaymentDetailsPage() {
                         </CardHeader>
                         <CardContent>
                             {receiptFiles.length > 0 ? (
-                                <div className="space-y-2">
+                                <div className="space-y-4">
                                     {receiptFiles.map((file) => {
                                         const FileIcon = getFileIcon(
                                             file.filename,
                                         );
+                                        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.filename);
+
+                                        const handleDownload = () => {
+                                            const link = document.createElement("a");
+                                            link.href = getFileUrl(file.url);
+                                            link.download = file.filename;
+                                            link.target = "_blank";
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                        };
+
+                                        if (isImage) {
+                                            return (
+                                                <div key={file.id} className="relative group rounded-xl overflow-hidden border">
+                                                    <img 
+                                                        src={getFileUrl(file.url)} 
+                                                        alt={file.filename} 
+                                                        className="w-full h-auto max-h-[400px] object-contain bg-muted/20 transition-transform duration-300 group-hover:scale-[1.02]"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                                                        <div className="text-white text-sm font-medium mb-2 truncate max-w-[80%] px-2 py-1 bg-black/40 rounded-md">
+                                                            {file.filename}
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <Button size="icon" variant="secondary" onClick={() => window.open(getFileUrl(file.url), "_blank")}>
+                                                                <Eye className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button size="icon" variant="secondary" onClick={handleDownload}>
+                                                                <Download className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="destructive"
+                                                                onClick={() => handleDeleteReceiptFile(file.id)}
+                                                                disabled={actionLoading[`deleteFile_${file.id}`]}
+                                                            >
+                                                                {actionLoading[`deleteFile_${file.id}`] ? (
+                                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                                ) : (
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                )}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
                                         return (
                                             <div
                                                 key={file.id}
@@ -835,9 +884,7 @@ export default function PaymentDetailsPage() {
                                                         variant="ghost"
                                                         onClick={() =>
                                                             window.open(
-                                                                getFileUrl(
-                                                                    file.url,
-                                                                ),
+                                                                getFileUrl(file.url),
                                                                 "_blank",
                                                             )
                                                         }
@@ -847,28 +894,7 @@ export default function PaymentDetailsPage() {
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() => {
-                                                            // For download, we can also trigger a download attribute
-                                                            const link =
-                                                                document.createElement(
-                                                                    "a",
-                                                                );
-                                                            link.href =
-                                                                getFileUrl(
-                                                                    file.url,
-                                                                );
-                                                            link.download =
-                                                                file.filename;
-                                                            link.target =
-                                                                "_blank";
-                                                            document.body.appendChild(
-                                                                link,
-                                                            );
-                                                            link.click();
-                                                            document.body.removeChild(
-                                                                link,
-                                                            );
-                                                        }}
+                                                        onClick={handleDownload}
                                                     >
                                                         <Download className="w-4 h-4" />
                                                     </Button>
@@ -876,19 +902,11 @@ export default function PaymentDetailsPage() {
                                                         size="sm"
                                                         variant="ghost"
                                                         onClick={() =>
-                                                            handleDeleteReceiptFile(
-                                                                file.id,
-                                                            )
+                                                            handleDeleteReceiptFile(file.id)
                                                         }
-                                                        disabled={
-                                                            actionLoading[
-                                                                `deleteFile_${file.id}`
-                                                            ]
-                                                        }
+                                                        disabled={actionLoading[`deleteFile_${file.id}`]}
                                                     >
-                                                        {actionLoading[
-                                                            `deleteFile_${file.id}`
-                                                        ] ? (
+                                                        {actionLoading[`deleteFile_${file.id}`] ? (
                                                             <Loader2 className="w-4 h-4 animate-spin" />
                                                         ) : (
                                                             <Trash2 className="w-4 h-4" />

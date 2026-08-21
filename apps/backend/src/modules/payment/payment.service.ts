@@ -659,7 +659,21 @@ export class PaymentService {
     const payment = await this.paymentRepository.findOne({
       where: { id: paymentId },
     });
-    return payment?.receiptFilePath ? [payment.receiptFilePath] : [];
+    
+    if (!payment?.receiptFilePath) return [];
+    
+    // Extract a filename from the path
+    const urlParts = payment.receiptFilePath.split('/');
+    const filename = urlParts[urlParts.length - 1] || 'receipt';
+    
+    return [
+      {
+        id: payment.id, // using payment id as file id since there's only one receipt
+        filename,
+        url: payment.receiptFilePath,
+        createdAt: payment.createdAt,
+      }
+    ];
   }
 
   /**
