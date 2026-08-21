@@ -101,11 +101,11 @@ export function ViewLeadDialog({
 
             if (lead.status === "qualified" || lead.status === "converted") {
                 try {
-                    const res = await axiosInstance.get<IPackages[]>(
+                    const res = await axiosInstance.get<{ packages: IPackages[] }>(
                         "/packages"
                     );
                     setPackages(
-                        res.data.filter((pkg) => pkg.status === "published")
+                        res.data.packages.filter((pkg) => pkg.status === "published")
                     );
                 } catch (error) {
                     console.error("Failed to fetch packages:", error);

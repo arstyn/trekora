@@ -171,8 +171,35 @@ export class BookingService {
         return response.data;
     }
 
-    static async getPackages(): Promise<IPackage[]> {
-        const response = await axiosInstance.get("/packages?status=published");
+    static async getPackages(params?: {
+        limit?: number;
+        offset?: number;
+        search?: string;
+        status?: string;
+    }): Promise<{
+        packages: IPackage[];
+        total: number;
+        hasMore: boolean;
+    }> {
+        const queryParams = new URLSearchParams();
+
+        if (params?.status) {
+            queryParams.append("status", params.status);
+        } else {
+            queryParams.append("status", "published");
+        }
+        
+        if (params?.limit) {
+            queryParams.append("limit", params.limit.toString());
+        }
+        if (params?.offset) {
+            queryParams.append("offset", params.offset.toString());
+        }
+        if (params?.search) {
+            queryParams.append("search", params.search);
+        }
+
+        const response = await axiosInstance.get(`/packages?${queryParams.toString()}`);
         return response.data;
     }
 
@@ -210,7 +237,7 @@ export class BookingService {
             offset?: number;
         },
     ): Promise<{
-        data: ICustomer[];
+        customers: ICustomer[];
         total: number;
         hasMore: boolean;
     }> {

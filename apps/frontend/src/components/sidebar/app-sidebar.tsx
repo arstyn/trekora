@@ -105,7 +105,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             try {
                 const res = await axiosInstance.get<any[]>("/auth/user-organizations");
                 if (res) {
-                    console.log(res.data);
                     setOrganizations(res.data);
                 }
             } catch (error) {

@@ -24,6 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -113,6 +114,7 @@ export function CreateBookingDialog({
     const [packages, setPackages] = useState<IPackage[]>([]);
     const [customers, setCustomers] = useState<ICustomer[]>([]);
     const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
+    const [loadingBatches, setLoadingBatches] = useState(false);
     const [loadingData, setLoadingData] = useState(false);
     const [customerSearch, setCustomerSearch] = useState("");
     const [customerMode, setCustomerMode] = useState<"select" | "create">("select");
@@ -327,7 +329,7 @@ export function CreateBookingDialog({
                 BookingService.getPackages(),
                 BookingService.getCustomers({ limit: 10, offset: 0 }),
             ]);
-            setPackages(packagesData);
+            setPackages(packagesData.packages || []);
             setCustomers(customersData.customers);
             setCustomerPagination({
                 offset: 10,
@@ -359,7 +361,7 @@ export function CreateBookingDialog({
             });
 
             if (reset) {
-                setCustomers(results.data);
+                setCustomers(results.customers || []);
                 setCustomerPagination({
                     offset: 10,
                     limit: 10,
@@ -367,7 +369,7 @@ export function CreateBookingDialog({
                     total: results.total,
                 });
             } else {
-                setCustomers((prev) => [...prev, ...results.data]);
+                setCustomers((prev) => [...prev, ...(results.customers || [])]);
                 setCustomerPagination((prev) => ({
                     ...prev,
                     offset: prev.offset + 10,
@@ -485,11 +487,14 @@ export function CreateBookingDialog({
 
     const loadAvailableBatches = async (packageId: string) => {
         try {
+            setLoadingBatches(true);
             const batches = await BookingService.getAvailableBatches(packageId);
             setAvailableBatches(batches);
         } catch (err) {
             console.error("Error loading batches:", err);
             setError("Failed to load available batches.");
+        } finally {
+            setLoadingBatches(false);
         }
     };
 
@@ -1073,7 +1078,28 @@ export function CreateBookingDialog({
 
                                                 <div className="space-y-4 pt-2">
                                                     <Label className="text-sm font-semibold">2. Select Travel Batch</Label>
-                                                    {availableBatches.length > 0 ? (
+                                                    {loadingBatches ? (
+                                                        <div className="grid gap-3 grid-cols-1">
+                                                            {[1, 2, 3].map((i) => (
+                                                                <div key={`batch-skeleton-${i}`} className="p-4 border rounded-xl flex items-center justify-between bg-card">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <Skeleton className="h-4 w-4 rounded-full" />
+                                                                        <div className="space-y-2">
+                                                                            <Skeleton className="h-3 w-20" />
+                                                                            <Skeleton className="h-4 w-32" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="space-y-1.5 flex flex-col items-end">
+                                                                            <Skeleton className="h-3 w-16" />
+                                                                            <Skeleton className="h-4 w-12" />
+                                                                        </div>
+                                                                        <Skeleton className="w-5 h-5 rounded-full" />
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : availableBatches.length > 0 ? (
                                                         <div className="grid gap-3 grid-cols-1">
                                                             {availableBatches.map((batch) => {
                                                                 const availableSeats = getAvailableSeats(batch);
@@ -1133,33 +1159,33 @@ export function CreateBookingDialog({
                                 {/* STEP 2: TRAVELERS & PRICING SELECTION */}
                                 {step === 2 && (
                                     <div className="space-y-6">
-                                         {formData.customers.some(c => c.isBlacklisted) && (
-                                             <div className="relative overflow-hidden rounded-xl border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-red-950/20 to-background p-4 shadow-md space-y-3 dark:border-rose-800/40">
-                                                 <div className="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-wider">
-                                                     <ShieldAlert className="w-4 h-4 text-rose-500 animate-pulse" />
-                                                     <span>Warning: Blacklisted Customer Selected</span>
-                                                 </div>
-                                                 <div className="space-y-2">
-                                                     {formData.customers.filter(c => c.isBlacklisted).map((c, bIdx) => (
-                                                         <div key={c.id || `bl-${bIdx}`} className="p-3 bg-background/70 border border-rose-500/20 rounded-lg text-xs space-y-1">
-                                                             <div className="flex items-center justify-between font-bold text-foreground">
-                                                                 <span>{c.firstName} {c.lastName}</span>
-                                                                 <Badge variant="destructive" className="text-[10px] px-2 py-0.5 bg-rose-500/20 text-rose-400 border border-rose-500/30">Blacklisted</Badge>
-                                                             </div>
-                                                             <p className="text-muted-foreground">
-                                                                 Reason: <span className="font-semibold text-rose-300">{c.blacklistedReason || "No description provided"}</span>
-                                                             </p>
-                                                             {c.blacklistedBy && (
-                                                                 <p className="text-[11px] text-muted-foreground/80">
-                                                                     Blacklisted by: {[c.blacklistedBy.firstName, c.blacklistedBy.lastName].filter(Boolean).join(" ") || c.blacklistedBy.email}
-                                                                     {c.blacklistedAt && ` on ${new Date(c.blacklistedAt).toLocaleDateString()}`}
-                                                                 </p>
-                                                             )}
-                                                         </div>
-                                                     ))}
-                                                 </div>
-                                             </div>
-                                         )}
+                                        {formData.customers.some(c => c.isBlacklisted) && (
+                                            <div className="relative overflow-hidden rounded-xl border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-red-950/20 to-background p-4 shadow-md space-y-3 dark:border-rose-800/40">
+                                                <div className="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-wider">
+                                                    <ShieldAlert className="w-4 h-4 text-rose-500 animate-pulse" />
+                                                    <span>Warning: Blacklisted Customer Selected</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {formData.customers.filter(c => c.isBlacklisted).map((c, bIdx) => (
+                                                        <div key={c.id || `bl-${bIdx}`} className="p-3 bg-background/70 border border-rose-500/20 rounded-lg text-xs space-y-1">
+                                                            <div className="flex items-center justify-between font-bold text-foreground">
+                                                                <span>{c.firstName} {c.lastName}</span>
+                                                                <Badge variant="destructive" className="text-[10px] px-2 py-0.5 bg-rose-500/20 text-rose-400 border border-rose-500/30">Blacklisted</Badge>
+                                                            </div>
+                                                            <p className="text-muted-foreground">
+                                                                Reason: <span className="font-semibold text-rose-300">{c.blacklistedReason || "No description provided"}</span>
+                                                            </p>
+                                                            {c.blacklistedBy && (
+                                                                <p className="text-[11px] text-muted-foreground/80">
+                                                                    Blacklisted by: {[c.blacklistedBy.firstName, c.blacklistedBy.lastName].filter(Boolean).join(" ") || c.blacklistedBy.email}
+                                                                    {c.blacklistedAt && ` on ${new Date(c.blacklistedAt).toLocaleDateString()}`}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="space-y-4">
                                             <div className="space-y-2">
                                                 <div className="flex justify-end">
