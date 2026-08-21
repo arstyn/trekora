@@ -191,6 +191,7 @@ export class EmployeeService {
   }
   // Get a single employee by ID
   async findOneWithEmail(email: string): Promise<Employee | null> {
+    if (email) email = email.toLowerCase();
     const employee = await this.employeeRepository.findOne({
       where: { email },
     });

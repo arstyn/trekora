@@ -23,6 +23,7 @@ export class UserService {
 
   // Find all users
   async findOneWithEmail(email: string): Promise<User | null> {
+    if (email) email = email.toLowerCase();
     return await this.userRepository.findOne({
       where: { email },
     });

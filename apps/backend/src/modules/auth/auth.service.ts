@@ -93,6 +93,7 @@ export class AuthService {
 
   // OTP functionality
   async sendOtp(email: string) {
+    email = email.toLowerCase();
     const existingUser = await this.userService.findOneWithEmail(email);
     if (existingUser && existingUser.isActive) {
       throw new HttpException('Email already exists and is active. Please login.', HttpStatus.BAD_REQUEST);
@@ -134,6 +135,7 @@ export class AuthService {
   }
 
   async verifyOtp(email: string, otp: string) {
+    email = email.toLowerCase();
     const otpRepo = this.dataSource.getRepository(Otp);
     const otpRecord = await otpRepo.findOne({ where: { email } });
     
@@ -154,6 +156,7 @@ export class AuthService {
 
   // Signup functionality
   async signup(userData: SignupFormDTO): Promise<ILoginResponse> {
+    if (userData.email) userData.email = userData.email.toLowerCase();
     if (userData.otpToken) {
       try {
         const payload = this.jwtService.verify(userData.otpToken, { secret: process.env.JWT_ACCESS_SECRET || 'secret' });
@@ -331,6 +334,7 @@ export class AuthService {
   // Login functionality
   // Login functionality
   async login(email: string, otp: string): Promise<ILoginResponse> {
+    email = email.toLowerCase();
     const user = await this.userService.findOneWithEmail(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
@@ -383,6 +387,7 @@ export class AuthService {
 
   // Login Send OTP functionality
   async loginSendOtp(email: string) {
+    email = email.toLowerCase();
     const user = await this.userService.findOneWithEmail(email);
     if (!user) {
       throw new HttpException('User not found. Please register.', HttpStatus.NOT_FOUND);
@@ -500,6 +505,7 @@ export class AuthService {
   }
 
   async resendActivation(email: string) {
+    email = email.toLowerCase();
     const employee = await this.employeeService.findOneWithEmail(email);
 
     if (!employee) {
@@ -569,7 +575,8 @@ export class AuthService {
       throw new UnauthorizedException('No user from google');
     }
 
-    const { email, firstName, lastName } = req.user;
+    const { firstName, lastName } = req.user;
+    const email = req.user.email?.toLowerCase();
 
     let user = await this.userService.findOneWithEmail(email);
 
