@@ -174,7 +174,8 @@ export function CreateBatchDialog({
                     axiosInstance.get(`/employee`),
                 ]);
 
-                setPackages(packagesRes.data);
+                const packagesData = Array.isArray(packagesRes.data) ? packagesRes.data : (packagesRes.data?.packages || []);
+                setPackages(packagesData);
                 setEmployees(employeesRes.data);
             } catch (error: unknown) {
                 if (error instanceof Error) {
@@ -522,82 +523,84 @@ export function CreateBatchDialog({
                                         <div className="space-y-6">
                                             <div>
                                                 <h4 className="text-sm font-semibold text-foreground mb-4">Set Batch Schedule</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {/* Start Date */}
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="startDate" className="text-xs font-bold text-muted-foreground uppercase">Start Date *</Label>
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    className={`w-full justify-start text-left font-normal h-10 ${!formData.startDate ? "text-muted-foreground" : ""} ${errors.startDate ? "border-destructive" : ""}`}
-                                                                >
-                                                                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                                                                    {formData.startDate && !isNaN(new Date(formData.startDate).getTime()) ? (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="dateRange" className="text-xs font-bold text-muted-foreground uppercase">Batch Schedule *</Label>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant="outline"
+                                                                className={`w-full justify-start text-left font-normal h-10 ${(!formData.startDate && !formData.endDate) ? "text-muted-foreground" : ""} ${(errors.startDate || errors.endDate) ? "border-destructive" : ""}`}
+                                                            >
+                                                                <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                                                                {formData.startDate ? (
+                                                                    formData.endDate ? (
+                                                                        <>
+                                                                            {format(new Date(formData.startDate), "MMM dd, yyyy")} -{" "}
+                                                                            {format(new Date(formData.endDate), "MMM dd, yyyy")}
+                                                                            {selectedPackage?.days && (
+                                                                                <span className="ml-2 text-xs text-muted-foreground font-medium">
+                                                                                    ({selectedPackage.days} days)
+                                                                                </span>
+                                                                            )}
+                                                                        </>
+                                                                    ) : (
                                                                         format(new Date(formData.startDate), "MMM dd, yyyy")
-                                                                    ) : (
-                                                                        <span>Select start date</span>
-                                                                    )}
-                                                                </Button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-0" align="start">
-                                                                <CalendarComponent
-                                                                    mode="single"
-                                                                    selected={formData.startDate ? new Date(formData.startDate) : undefined}
-                                                                    onSelect={(date) => {
-                                                                        if (date) {
+                                                                    )
+                                                                ) : (
+                                                                    <span>Select batch dates</span>
+                                                                )}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0" align="start">
+                                                            <CalendarComponent
+                                                                mode="range"
+                                                                showOutsideDays={false}
+                                                                selected={{
+                                                                    from: formData.startDate ? new Date(formData.startDate) : undefined,
+                                                                    to: formData.endDate ? new Date(formData.endDate) : undefined
+                                                                }}
+                                                                onSelect={(range: any, selectedDay: Date) => {
+                                                                    if (selectedPackage?.days) {
+                                                                        const date = selectedDay;
+                                                                        const year = date.getFullYear();
+                                                                        const month = String(date.getMonth() + 1).padStart(2, "0");
+                                                                        const day = String(date.getDate()).padStart(2, "0");
+                                                                        setFormData(prev => ({ ...prev, startDate: `${year}-${month}-${day}` }));
+                                                                        if (errors.startDate) setErrors(prev => ({ ...prev, startDate: "" }));
+                                                                    } else {
+                                                                        if (range?.from) {
+                                                                            const date = range.from;
                                                                             const year = date.getFullYear();
                                                                             const month = String(date.getMonth() + 1).padStart(2, "0");
                                                                             const day = String(date.getDate()).padStart(2, "0");
-                                                                            const localDateString = `${year}-${month}-${day}`;
-                                                                            setFormData(prev => ({ ...prev, startDate: localDateString }));
+                                                                            setFormData(prev => ({ ...prev, startDate: `${year}-${month}-${day}` }));
                                                                             if (errors.startDate) setErrors(prev => ({ ...prev, startDate: "" }));
+                                                                            
+                                                                            if (range.to) {
+                                                                                const toDate = range.to;
+                                                                                const toYear = toDate.getFullYear();
+                                                                                const toMonth = String(toDate.getMonth() + 1).padStart(2, "0");
+                                                                                const toDay = String(toDate.getDate()).padStart(2, "0");
+                                                                                setFormData(prev => ({ ...prev, endDate: `${toYear}-${toMonth}-${toDay}` }));
+                                                                                if (errors.endDate) setErrors(prev => ({ ...prev, endDate: "" }));
+                                                                            } else {
+                                                                                setFormData(prev => ({ ...prev, endDate: "" }));
+                                                                            }
+                                                                        } else {
+                                                                            setFormData(prev => ({ ...prev, startDate: "", endDate: "" }));
                                                                         }
-                                                                    }}
-                                                                    disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
-                                                                />
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                        {errors.startDate && <p className="text-xs text-destructive font-medium">{errors.startDate}</p>}
-                                                    </div>
-
-                                                    {/* End Date */}
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="endDate" className="text-xs font-bold text-muted-foreground uppercase">End Date *</Label>
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    className={`w-full justify-start text-left font-normal h-10 ${!formData.endDate ? "text-muted-foreground" : ""} ${errors.endDate ? "border-destructive" : ""}`}
-                                                                >
-                                                                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                                                                    {formData.endDate && !isNaN(new Date(formData.endDate).getTime()) ? (
-                                                                        format(new Date(formData.endDate), "MMM dd, yyyy")
-                                                                    ) : (
-                                                                        <span>Select end date</span>
-                                                                    )}
-                                                                </Button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-0" align="start">
-                                                                <CalendarComponent
-                                                                    mode="single"
-                                                                    selected={formData.endDate ? new Date(formData.endDate) : undefined}
-                                                                    onSelect={(date) => {
-                                                                        if (date) {
-                                                                            const year = date.getFullYear();
-                                                                            const month = String(date.getMonth() + 1).padStart(2, "0");
-                                                                            const day = String(date.getDate()).padStart(2, "0");
-                                                                            const localDateString = `${year}-${month}-${day}`;
-                                                                            setFormData(prev => ({ ...prev, endDate: localDateString }));
-                                                                            if (errors.endDate) setErrors(prev => ({ ...prev, endDate: "" }));
-                                                                        }
-                                                                    }}
-                                                                    disabled={formData.startDate ? { before: new Date(formData.startDate) } : undefined}
-                                                                />
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                        {errors.endDate && <p className="text-xs text-destructive font-medium">{errors.endDate}</p>}
-                                                    </div>
+                                                                    }
+                                                                }}
+                                                                disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
+                                                                numberOfMonths={2}
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    {(errors.startDate || errors.endDate) && (
+                                                        <p className="text-xs text-destructive font-medium">
+                                                            {errors.startDate || errors.endDate}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
 
