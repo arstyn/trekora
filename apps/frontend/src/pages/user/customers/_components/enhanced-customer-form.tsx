@@ -628,6 +628,12 @@ export default function EnhancedCustomerForm({
                                                     <PopoverContent className="w-auto p-0" align="start">
                                                         <Calendar
                                                             mode="single"
+                                                            captionLayout="dropdown"
+                                                            defaultMonth={
+                                                                formData.dateOfBirth
+                                                                    ? parseLocalYYYYMMDD(formData.dateOfBirth)
+                                                                    : new Date(2000, 0, 1)
+                                                            }
                                                             selected={
                                                                 formData.dateOfBirth
                                                                     ? parseLocalYYYYMMDD(formData.dateOfBirth)
