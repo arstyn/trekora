@@ -443,40 +443,48 @@ export function ViewCustomerDialog({
                     )} */}
 
                     {/* Relatives */}
-                    {customer.relatives && customer.relatives.length > 0 && (
-                        <div className="space-y-4">
-                            <h4 className="text-lg font-semibold text-primary mt-5">
-                                Relatives
-                            </h4>
-                            <div className="space-y-3">
-                                {customer.relatives.map((relative, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="border rounded-lg p-3 space-y-2"
-                                    >
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <Detail
-                                                label="Name"
-                                                value={relative.name}
-                                            />
-                                            <Detail
-                                                label="Relation"
-                                                value={relative.relation}
-                                            />
-                                            <Detail
-                                                label="Phone"
-                                                value={relative.phone}
-                                            />
-                                            <Detail
-                                                label="Address"
-                                                value={relative.address}
-                                            />
+                    {(() => {
+                        const parsedRelatives = typeof customer.relatives === 'string' 
+                            ? JSON.parse(customer.relatives) 
+                            : customer.relatives;
+                            
+                        if (!parsedRelatives || parsedRelatives.length === 0) return null;
+                        
+                        return (
+                            <div className="space-y-4">
+                                <h4 className="text-lg font-semibold text-primary mt-5">
+                                    Relatives
+                                </h4>
+                                <div className="space-y-3">
+                                    {parsedRelatives.map((relative: any, idx: number) => (
+                                        <div
+                                            key={idx}
+                                            className="border rounded-lg p-3 space-y-2"
+                                        >
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <Detail
+                                                    label="Name"
+                                                    value={relative.name}
+                                                />
+                                                <Detail
+                                                    label="Relation"
+                                                    value={relative.relation}
+                                                />
+                                                <Detail
+                                                    label="Phone"
+                                                    value={relative.phone}
+                                                />
+                                                <Detail
+                                                    label="Address"
+                                                    value={relative.address}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {/* Additional Notes */}
                     {customer.notes && (

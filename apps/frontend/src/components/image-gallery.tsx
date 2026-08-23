@@ -7,9 +7,22 @@ interface ImageGalleryProps {
 }
 
 export function ImageGallery({ images, onImageClick }: ImageGalleryProps) {
+    let parsedImages: string[] = [];
+    if (typeof images === 'string') {
+        try {
+            parsedImages = JSON.parse(images);
+        } catch (e) {
+            parsedImages = [images];
+        }
+    } else if (Array.isArray(images)) {
+        parsedImages = images;
+    }
+
+    if (!parsedImages || parsedImages.length === 0) return null;
+
     return (
         <div className="flex flex-wrap gap-2">
-            {images.map((image, index) => (
+            {parsedImages.map((image, index) => (
                 <div
                     key={index}
                     className="relative group cursor-pointer"

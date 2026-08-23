@@ -91,9 +91,13 @@ export default function EnhancedCustomerForm({
         return customer ? { ...defaults, ...customer } : defaults;
     });
 
-    const [relatives, setRelatives] = useState<IRelative[]>(
-        formData.relatives || [],
-    );
+    const [relatives, setRelatives] = useState<IRelative[]>(() => {
+        if (!formData.relatives) return [];
+        if (typeof formData.relatives === 'string') {
+            try { return JSON.parse(formData.relatives); } catch { return []; }
+        }
+        return formData.relatives;
+    });
     const [files, setFiles] = useState<{ [key: string]: File[] }>({});
     const [filePreviews, setFilePreviews] = useState<{
         [key: string]: string[];
