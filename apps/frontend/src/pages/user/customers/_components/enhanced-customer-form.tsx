@@ -42,6 +42,7 @@ import type React from "react";
 import { useState } from "react";
 import { countries } from "./countries";
 import { SearchableSelect } from "@/components/searchable-select";
+import { PhoneInput } from "@/components/phone-input";
 
 interface EnhancedCustomerFormProps {
     customer?: ICustomer;
@@ -338,9 +339,7 @@ export default function EnhancedCustomerForm({
             }
 
             if (Array.isArray(value)) {
-                value.forEach((item, index) => {
-                    formDataToSubmit.append(`${key}[${index}]`, item);
-                });
+                formDataToSubmit.append(key, JSON.stringify(value));
             } else {
                 formDataToSubmit.append(key, value.toString());
             }
@@ -353,9 +352,9 @@ export default function EnhancedCustomerForm({
                     formDataToSubmit.append("profilePhoto", urls[0]);
                 }
             } else {
-                urls.forEach((url, index) => {
-                    formDataToSubmit.append(`${fieldName}[${index}]`, url);
-                });
+                if (urls.length > 0) {
+                    formDataToSubmit.append(fieldName, JSON.stringify(urls));
+                }
             }
         });
 
@@ -368,21 +367,9 @@ export default function EnhancedCustomerForm({
                 relative.address.trim() !== "",
         );
 
-        validRelatives.forEach((relative, index) => {
-            formDataToSubmit.append(`relatives[${index}][name]`, relative.name);
-            formDataToSubmit.append(
-                `relatives[${index}][relation]`,
-                relative.relation,
-            );
-            formDataToSubmit.append(
-                `relatives[${index}][phone]`,
-                relative.phone,
-            );
-            formDataToSubmit.append(
-                `relatives[${index}][address]`,
-                relative.address,
-            );
-        });
+        if (validRelatives.length > 0) {
+            formDataToSubmit.append("relatives", JSON.stringify(validRelatives));
+        }
 
         // Add files with proper field names
         Object.entries(files).forEach(([fieldName, fileArray]) => {
@@ -687,11 +674,11 @@ export default function EnhancedCustomerForm({
                                                     <Label htmlFor="phone" className="text-sm font-medium">
                                                         Phone Number
                                                     </Label>
-                                                    <Input
+                                                    <PhoneInput
                                                         id="phone"
                                                         name="phone"
-                                                        value={formData.phone}
-                                                        onChange={handleChange}
+                                                        value={formData.phone || ""}
+                                                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                                                         className="h-9"
                                                     />
                                                 </div>
@@ -700,11 +687,11 @@ export default function EnhancedCustomerForm({
                                                 <Label htmlFor="alternativePhone" className="text-sm font-medium">
                                                     Alternative Phone
                                                 </Label>
-                                                <Input
+                                                <PhoneInput
                                                     id="alternativePhone"
                                                     name="alternativePhone"
-                                                    value={formData.alternativePhone}
-                                                    onChange={handleChange}
+                                                    value={formData.alternativePhone || ""}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, alternativePhone: e.target.value }))}
                                                     className="h-9"
                                                 />
                                             </div>
@@ -833,11 +820,11 @@ export default function EnhancedCustomerForm({
                                                         <Label htmlFor="emergencyContactPhone" className="text-sm font-medium">
                                                             Contact Phone
                                                         </Label>
-                                                        <Input
+                                                        <PhoneInput
                                                             id="emergencyContactPhone"
                                                             name="emergencyContactPhone"
-                                                            value={formData.emergencyContactPhone}
-                                                            onChange={handleChange}
+                                                            value={formData.emergencyContactPhone || ""}
+                                                            onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactPhone: e.target.value }))}
                                                             className="h-9"
                                                         />
                                                     </div>
@@ -892,7 +879,7 @@ export default function EnhancedCustomerForm({
                                                     </Label>
                                                     <SearchableSelect
                                                         options={countries}
-                                                        value={formData.passportCountry || ""}
+                                                        value={formData.passportCountry || "India"}
                                                         onChange={(val) => handleSelectChange("passportCountry", val)}
                                                         placeholder="Select Country"
                                                         searchPlaceholder="Search Country..."
@@ -1123,8 +1110,10 @@ export default function EnhancedCustomerForm({
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label className="text-sm font-medium">Phone</Label>
-                                                                <Input
-                                                                    value={relative.phone}
+                                                                <PhoneInput
+                                                                    id={`relative-phone-${idx}`}
+                                                                    name={`relative-phone-${idx}`}
+                                                                    value={relative.phone || ""}
                                                                     onChange={(e) => updateRelative(idx, "phone", e.target.value)}
                                                                     className="h-9"
                                                                 />
@@ -1225,22 +1214,9 @@ export default function EnhancedCustomerForm({
                             {error && (
                                 <p className="text-sm text-destructive font-medium mb-3 text-center md:text-left">{error}</p>
                             )}
-                            <div className="grid grid-cols-3 items-center w-full">
-                                {/* Left: Cancel */}
-                                <div className="flex justify-start">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={onCancel}
-                                        className="h-9 px-4"
-                                        disabled={isLoading}
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-
-                                {/* Center: Back & Next */}
-                                <div className="flex justify-center gap-2">
+                            <div className="flex justify-between items-center w-full">
+                                {/* Left: Back & Next */}
+                                <div className="flex gap-2">
                                     {step > 1 && (
                                         <Button
                                             type="button"
@@ -1267,7 +1243,7 @@ export default function EnhancedCustomerForm({
                                 </div>
 
                                 {/* Right: Save/Submit */}
-                                <div className="flex justify-end">
+                                <div className="flex justify-end gap-2">
                                     {step < 4 ? (
                                         <Button
                                             type="button"

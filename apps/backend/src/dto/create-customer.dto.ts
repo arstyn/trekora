@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsDateString,
@@ -28,6 +28,17 @@ export class RelativeDto {
   @IsString({ message: 'Relative address must be a valid text' })
   address: string;
 }
+
+const safeParseJson = (value: any) => {
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+};
 
 export class CreateCustomerDto {
   // Personal Details
@@ -119,6 +130,7 @@ export class CreateCustomerDto {
   passportCountry?: string;
 
   @IsOptional()
+  @Transform(({ value }) => safeParseJson(value))
   @IsArray({ message: 'Passport photos must be an array' })
   @IsString({ each: true, message: 'Each passport photo must be a valid URL' })
   passportPhotos?: string[];
@@ -129,6 +141,7 @@ export class CreateCustomerDto {
   voterId?: string;
 
   @IsOptional()
+  @Transform(({ value }) => safeParseJson(value))
   @IsArray({ message: 'Voter ID photos must be an array' })
   @IsString({ each: true, message: 'Each voter ID photo must be a valid URL' })
   voterIdPhotos?: string[];
@@ -138,12 +151,14 @@ export class CreateCustomerDto {
   aadhaarId?: string;
 
   @IsOptional()
+  @Transform(({ value }) => safeParseJson(value))
   @IsArray({ message: 'Aadhaar ID photos must be an array' })
   @IsString({ each: true, message: 'Each Aadhaar ID photo must be a valid URL' })
   aadhaarIdPhotos?: string[];
 
   // Relatives Information
   @IsOptional()
+  @Transform(({ value }) => safeParseJson(value))
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RelativeDto)
