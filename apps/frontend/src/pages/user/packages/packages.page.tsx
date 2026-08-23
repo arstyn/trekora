@@ -37,6 +37,11 @@ import { PackageCreateModal } from "./_components/package-create-modal";
 export default function Packages() {
     const navigate = useNavigate();
     const [packages, setPackages] = useState<IPackages[]>([]);
+    const [totalPackages, setTotalPackages] = useState(0);
+    const [hasMore, setHasMore] = useState(false);
+    const [page, setPage] = useState(1);
+    const limit = 20;
+
     const [error, setError] = useState<string>();
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -66,8 +71,10 @@ export default function Packages() {
         const getPackages = async () => {
             try {
                 setIsLoading(true);
-                const res = await axiosInstance.get<IPackages[]>("/packages");
-                setPackages(res.data);
+                const res = await axiosInstance.get<{ packages: IPackages[], total: number, hasMore: boolean }>(`/packages?limit=${limit}&offset=${(page - 1) * limit}`);
+                setPackages(res.data.packages || []);
+                setTotalPackages(res.data.total || 0);
+                setHasMore(res.data.hasMore || false);
             } catch (error) {
                 if (error instanceof Error) {
                     setError(error.message);
@@ -80,7 +87,7 @@ export default function Packages() {
         };
 
         getPackages();
-    }, []);
+    }, [page, limit]);
 
     if (error) {
         return (
@@ -112,7 +119,7 @@ export default function Packages() {
                                         <Skeleton className="h-8 w-16 mt-1" />
                                     ) : (
                                         <p className="text-2xl font-bold">
-                                            {packages.length}
+                                            {totalPackages}
                                         </p>
                                     )}
                                 </div>
@@ -128,7 +135,7 @@ export default function Packages() {
                                 </div>
                                 <div className="ml-4">
                                     <p className="text-sm font-medium">
-                                        Published
+                                        Active Display
                                     </p>
                                     {isLoading ? (
                                         <Skeleton className="h-8 w-16 mt-1" />
@@ -157,7 +164,7 @@ export default function Packages() {
                                 </div>
                                 <div className="ml-4">
                                     <p className="text-sm font-medium">
-                                        Drafts
+                                        Drafts Display
                                     </p>
                                     {isLoading ? (
                                         <Skeleton className="h-8 w-16 mt-1" />
@@ -346,6 +353,33 @@ export default function Packages() {
                                 </CardContent>
                             </Card>
                         ))}
+                    </div>
+                )}
+                
+                {/* Pagination Controls */}
+                {!isLoading && totalPackages > 0 && (
+                    <div className="flex items-center justify-between py-6">
+                        <div className="text-sm text-muted-foreground">
+                            Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalPackages)} of {totalPackages} packages
+                        </div>
+                        <div className="flex space-x-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                                disabled={page === 1}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage((prev) => prev + 1)}
+                                disabled={!hasMore}
+                            >
+                                Next
+                            </Button>
+                        </div>
                     </div>
                 )}
             </main>

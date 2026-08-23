@@ -12,6 +12,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PhoneInput } from "@/components/phone-input";
 import axiosInstance from "@/lib/axios";
 import type { ILead } from "@/types/lead/lead.entity";
 import { leadSchema, type LeadFormDTO } from "@/types/lead/lead.schema";
@@ -109,8 +110,8 @@ export function LeadForm({
 	useEffect(() => {
 		const fetchPackages = async () => {
 			try {
-				const res = await axiosInstance.get<IPackages[]>("/packages");
-				setPackages(res.data.filter((pkg) => pkg.status === "published"));
+				const res = await axiosInstance.get<{ packages: IPackages[] }>("/packages");
+				setPackages(res.data.packages.filter((pkg) => pkg.status === "published"));
 			} catch (error) {
 				console.error("Failed to fetch packages:", error);
 				toast.error("Failed to load packages");
@@ -400,7 +401,7 @@ export function LeadForm({
 											name="phone"
 											control={control}
 											render={({ field }) => (
-												<Input id="phone" placeholder="Phone number" {...field} value={field.value ?? ""} />
+												<PhoneInput id="phone" placeholder="+1 234 567 890" {...field} value={field.value ?? ""} />
 											)}
 										/>
 									</div>
@@ -453,7 +454,7 @@ export function LeadForm({
 										name="phone"
 										control={control}
 										render={({ field }) => (
-											<Input id="phone" placeholder="Phone number" {...field} value={field.value ?? ""} />
+											<PhoneInput id="phone" placeholder="+1 234 567 890" {...field} value={field.value ?? ""} />
 										)}
 									/>
 								</div>

@@ -5,26 +5,25 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import { Employee, EmployeeStatus } from 'src/database/entity/employee.entity';
 import { Organization } from 'src/database/entity/organization.entity';
 import { Otp } from 'src/database/entity/otp.entity';
 import { UserInvite } from 'src/database/entity/user-invite.entity';
-import { User } from 'src/database/entity/user.entity';
 import { UserOrganization } from 'src/database/entity/user-organization.entity';
+import { User } from 'src/database/entity/user.entity';
 import { ILoginResponse } from 'src/dto/auth.types';
+import { CompleteOnboardingDto } from 'src/dto/complete-onboarding.dto';
 import { SignupFormDTO } from 'src/dto/signup.schema';
 import { DataSource } from 'typeorm';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 import { EmployeeService } from '../employee/employee.service';
 import { MailerService } from '../mailer/mailer.service';
+import { seedDefaultTemplates } from '../organization/seed-templates.helper';
 import { PermissionSetService } from '../permission/permission-set.service';
 import { UserInviteService } from '../user-invite/user-invite.service';
 import { UserService } from '../user/user.service';
-import { ActivityLogService } from '../activity-log/activity-log.service';
-import { CompleteOnboardingDto } from 'src/dto/complete-onboarding.dto';
-import { randomUUID } from 'crypto';
-import { seedDefaultTemplates } from '../organization/seed-templates.helper';
 
 @Injectable()
 export class AuthService {
@@ -37,7 +36,7 @@ export class AuthService {
     private readonly mailerService: MailerService,
     private readonly permissionSetService: PermissionSetService,
     private readonly activityLogService: ActivityLogService,
-  ) {}
+  ) { }
 
   private async generateAccessToken(
     userId: string,
@@ -73,7 +72,7 @@ export class AuthService {
       if (!user) {
         throw new UnauthorizedException('Invalid refresh token');
       }
-      
+
       const orgId = user.lastAccessedOrganizationId || payload.organizationId;
 
       if (!orgId) {
@@ -93,6 +92,7 @@ export class AuthService {
 
   // OTP functionality
   async sendOtp(email: string) {
+    email = email.toLowerCase();
     const existingUser = await this.userService.findOneWithEmail(email);
     if (existingUser && existingUser.isActive) {
       throw new HttpException('Email already exists and is active. Please login.', HttpStatus.BAD_REQUEST);
@@ -103,7 +103,7 @@ export class AuthService {
 
     const otpRepo = this.dataSource.getRepository(Otp);
     let otpRecord = await otpRepo.findOne({ where: { email } });
-    
+
     if (otpRecord) {
       otpRecord.otp = otpValue;
       otpRecord.expiresAt = expiresAt;
@@ -116,7 +116,7 @@ export class AuthService {
         isVerified: false
       });
     }
-    
+
     await otpRepo.save(otpRecord);
 
     await this.mailerService.sendMail({
@@ -134,13 +134,14 @@ export class AuthService {
   }
 
   async verifyOtp(email: string, otp: string) {
+    email = email.toLowerCase();
     const otpRepo = this.dataSource.getRepository(Otp);
     const otpRecord = await otpRepo.findOne({ where: { email } });
-    
+
     if (!otpRecord) throw new HttpException('OTP not found', HttpStatus.BAD_REQUEST);
     if (otpRecord.otp !== otp) throw new HttpException('Invalid OTP', HttpStatus.BAD_REQUEST);
     if (new Date() > otpRecord.expiresAt) throw new HttpException('OTP expired', HttpStatus.BAD_REQUEST);
-    
+
     otpRecord.isVerified = true;
     await otpRepo.save(otpRecord);
 
@@ -148,12 +149,13 @@ export class AuthService {
       { email, isVerified: true },
       { secret: process.env.JWT_ACCESS_SECRET || 'secret', expiresIn: '30m' }
     );
-    
+
     return { success: true, otpToken };
   }
 
   // Signup functionality
   async signup(userData: SignupFormDTO): Promise<ILoginResponse> {
+    if (userData.email) userData.email = userData.email.toLowerCase();
     if (userData.otpToken) {
       try {
         const payload = this.jwtService.verify(userData.otpToken, { secret: process.env.JWT_ACCESS_SECRET || 'secret' });
@@ -164,11 +166,11 @@ export class AuthService {
         throw new UnauthorizedException('Invalid or expired OTP token');
       }
     } else {
-       // Allow without token for backward compatibility or force based on requirement
-       // It's better to force it if we want OTP strictly
-       // But wait, what if Google Auth? Google Auth skips this entirely.
-       // So we can mandate it.
-       // throw new UnauthorizedException('OTP token required');
+      // Allow without token for backward compatibility or force based on requirement
+      // It's better to force it if we want OTP strictly
+      // But wait, what if Google Auth? Google Auth skips this entirely.
+      // So we can mandate it.
+      // throw new UnauthorizedException('OTP token required');
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -331,6 +333,7 @@ export class AuthService {
   // Login functionality
   // Login functionality
   async login(email: string, otp: string): Promise<ILoginResponse> {
+    email = email.toLowerCase();
     const user = await this.userService.findOneWithEmail(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
@@ -354,11 +357,11 @@ export class AuthService {
     // Verify OTP
     const otpRepo = this.dataSource.getRepository(Otp);
     const otpRecord = await otpRepo.findOne({ where: { email } });
-    
+
     if (!otpRecord) throw new UnauthorizedException('Invalid or expired OTP');
     if (otpRecord.otp !== otp) throw new UnauthorizedException('Invalid or expired OTP');
     if (new Date() > otpRecord.expiresAt) throw new UnauthorizedException('Invalid or expired OTP');
-    
+
     // Mark OTP as verified/used
     otpRecord.isVerified = true;
     await otpRepo.save(otpRecord);
@@ -383,6 +386,7 @@ export class AuthService {
 
   // Login Send OTP functionality
   async loginSendOtp(email: string) {
+    email = email.toLowerCase();
     const user = await this.userService.findOneWithEmail(email);
     if (!user) {
       throw new HttpException('User not found. Please register.', HttpStatus.NOT_FOUND);
@@ -396,7 +400,7 @@ export class AuthService {
 
     const otpRepo = this.dataSource.getRepository(Otp);
     let otpRecord = await otpRepo.findOne({ where: { email } });
-    
+
     if (otpRecord) {
       otpRecord.otp = otpValue;
       otpRecord.expiresAt = expiresAt;
@@ -409,7 +413,7 @@ export class AuthService {
         isVerified: false
       });
     }
-    
+
     await otpRepo.save(otpRecord);
 
     await this.mailerService.sendMail({
@@ -500,6 +504,7 @@ export class AuthService {
   }
 
   async resendActivation(email: string) {
+    email = email.toLowerCase();
     const employee = await this.employeeService.findOneWithEmail(email);
 
     if (!employee) {
@@ -569,7 +574,8 @@ export class AuthService {
       throw new UnauthorizedException('No user from google');
     }
 
-    const { email, firstName, lastName } = req.user;
+    const { firstName, lastName } = req.user;
+    const email = req.user.email?.toLowerCase();
 
     let user = await this.userService.findOneWithEmail(email);
 
@@ -824,7 +830,7 @@ export class AuthService {
         }
       }
 
-      // 3. Mark user as onboarded (already updated in step 1 user details update)
+      // 3. Mark user as on-boarded (already updated in step 1 user details update)
 
       await queryRunner.commitTransaction();
       return { message: 'Onboarding completed successfully' };

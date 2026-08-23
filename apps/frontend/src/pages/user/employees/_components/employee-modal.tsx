@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/phone-input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -628,7 +629,7 @@ export function EmployeeModal({
 															<FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="john.doe@company.com" {...field} /></FormControl><FormMessage /></FormItem>
 														)} />
 														<FormField control={form.control} name="phone" render={({ field }) => (
-															<FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="+1234567890" {...field} /></FormControl><FormMessage /></FormItem>
+															<FormItem><FormLabel>Phone Number</FormLabel><FormControl><PhoneInput placeholder="+1 234 567 890" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
 														)} />
 													</div>
 													<FormField control={form.control} name="address" render={({ field }) => (

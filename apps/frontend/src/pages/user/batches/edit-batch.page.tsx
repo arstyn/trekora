@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Popover,
     PopoverContent,
@@ -29,6 +30,7 @@ export default function EditBatchPage() {
     const navigate = useNavigate();
     const [packages, setPackages] = useState<IPackages[]>([]);
     const [employees, setEmployees] = useState<IEmployee[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const [formData, setFormData] = useState({
         packageId: "",
@@ -91,6 +93,7 @@ export default function EditBatchPage() {
 
     useLayoutEffect(() => {
         const getData = async () => {
+            setLoading(true);
             try {
                 const [batchRes, packagesRes, employeesRes] = await Promise.all(
                     [
@@ -109,11 +112,70 @@ export default function EditBatchPage() {
                 } else {
                     toast.error("Failed to load data");
                 }
+            } finally {
+                setLoading(false);
             }
         };
 
         getData();
     }, [id]);
+
+    if (loading) {
+        return (
+            <div className="container mx-auto p-6 space-y-6">
+                <div className="flex items-center gap-4">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-72" />
+                    </div>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-40" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-9 w-full" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-20" />
+                                <Skeleton className="h-9 w-full" />
+                            </div>
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-20" />
+                                <Skeleton className="h-9 w-full" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-9 w-full" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-48" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Skeleton className="h-16 w-full" />
+                            <Skeleton className="h-16 w-full" />
+                        </div>
+                        <Skeleton className="h-24 w-full" />
+                    </CardContent>
+                </Card>
+
+                <div className="flex justify-end gap-2">
+                    <Skeleton className="h-9 w-24" />
+                    <Skeleton className="h-9 w-32" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto p-6 space-y-6">

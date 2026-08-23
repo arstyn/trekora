@@ -37,8 +37,14 @@ export class PackageController {
 
   @Get()
   @RequirePermission('package', 'read')
-  findAll(@Request() req: ApiRequestJWT, @Query('status') status?: string) {
-    return this.packageService.findAll(req.user.organizationId, status);
+  findAll(
+    @Request() req: ApiRequestJWT,
+    @Query('status') status?: string,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+    @Query('search') search?: string,
+  ) {
+    return this.packageService.findAll(req.user.organizationId, status, limit, offset, search);
   }
 
   @Get(':id')

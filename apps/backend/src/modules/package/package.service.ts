@@ -21,7 +21,7 @@ import { PackageTier } from 'src/database/entity/package-related/package-tiers.e
 import { PaymentMilestone } from 'src/database/entity/package-related/payment-milestones.entity';
 import { TransportationOption } from 'src/database/entity/package-related/transportation-options.entity';
 import { PackageFormData } from 'src/dto/package.schema';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, ILike, Repository } from 'typeorm';
 import { CancellationPolicy } from '../../database/entity/package-related/cancellation-policies.entity';
 import { Package } from '../../database/entity/package-related/package.entity';
 import { UploadService } from '../upload/upload.service';
@@ -302,15 +302,24 @@ export class PackageService {
     }
   }
 
-  async findAll(organizationId: string, status?: string): Promise<Package[]> {
-    let query: { organizationId: string; status?: string } = {
+  async findAll(organizationId: string, status?: string, limit?: number, offset?: number, search?: string): Promise<{ packages: Package[], total: number, hasMore: boolean }> {
+    let whereQuery: any = {
       organizationId,
     };
+    
     if (status) {
-      query.status = status;
+      whereQuery.status = status;
     }
-    const res = await this.packageRepository.find({
-      where: query,
+    
+    if (search) {
+      whereQuery = [
+        { ...whereQuery, name: ILike(`%${search}%`) },
+        { ...whereQuery, destination: ILike(`%${search}%`) },
+      ];
+    }
+    
+    const [packages, total] = await this.packageRepository.findAndCount({
+      where: whereQuery,
       select: [
         'id',
         'name',
@@ -333,9 +342,13 @@ export class PackageService {
           order: 'ASC',
         },
       },
+      take: limit ? Number(limit) : undefined,
+      skip: offset ? Number(offset) : undefined,
     });
 
-    return res;
+    const hasMore = offset !== undefined && limit !== undefined ? offset + packages.length < total : false;
+
+    return { packages, total, hasMore };
   }
 
   async findOne(id: string): Promise<Package> {
