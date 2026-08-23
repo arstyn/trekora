@@ -890,12 +890,12 @@ export default function EnhancedCustomerForm({
                                                     <Label htmlFor="passportCountry" className="text-sm font-medium">
                                                         Issuing Country
                                                     </Label>
-                                                    <Input
-                                                        id="passportCountry"
-                                                        name="passportCountry"
-                                                        value={formData.passportCountry}
-                                                        onChange={handleChange}
-                                                        className="h-9"
+                                                    <SearchableSelect
+                                                        options={countries}
+                                                        value={formData.passportCountry || ""}
+                                                        onChange={(val) => handleSelectChange("passportCountry", val)}
+                                                        placeholder="Select Country"
+                                                        searchPlaceholder="Search Country..."
                                                     />
                                                 </div>
                                             </div>
