@@ -163,6 +163,37 @@ export function CreateBookingDialog({
     const paymentStructure = selectedPackage?.paymentStructure || [];
     const selectedBatch = availableBatches.find((b) => b.id === formData.batchId);
 
+    const getTierPrices = (tier: any) => {
+        const batchTier = selectedBatch?.batchTiers?.find((bt: any) => bt.packageTierId === tier.id);
+        const activeTier = batchTier || tier;
+
+        const baseAdultCost = Number(tier.adultCost || 0);
+        const baseChildCost = tier.childCostType === 'percentage'
+            ? baseAdultCost * (Number(tier.childCostValue || 0) / 100)
+            : Number(tier.childCostValue || 0);
+        const baseInfantCost = tier.infantCostType === 'percentage'
+            ? baseAdultCost * (Number(tier.infantCostValue || 0) / 100)
+            : Number(tier.infantCostValue || 0);
+
+        const adultCost = Number(activeTier.adultCost || 0);
+        const childCost = activeTier.childCostType === 'percentage'
+            ? adultCost * (Number(activeTier.childCostValue || 0) / 100)
+            : Number(activeTier.childCostValue || 0);
+        const infantCost = activeTier.infantCostType === 'percentage'
+            ? adultCost * (Number(activeTier.infantCostValue || 0) / 100)
+            : Number(activeTier.infantCostValue || 0);
+
+        return {
+            isCustom: !!batchTier,
+            baseAdultCost,
+            baseChildCost,
+            baseInfantCost,
+            adultCost,
+            childCost,
+            infantCost,
+        };
+    };
+
     const checkPassportStatus = (customer: ICustomer) => {
         if (!selectedPackage || selectedPackage.packageLocation?.type !== 'international') {
             return { hasWarning: false, isMissingDetails: false, isExpirySoon: false };
@@ -511,6 +542,7 @@ export function CreateBookingDialog({
         if (!pkg) return 0;
 
         let total = 0;
+        const selectedBatch = availableBatches.find(b => b.id === formData.batchId);
 
         currentCustomers.forEach(customer => {
             const custId = customer.id || customer.email || customer.phone || customer.firstName;
@@ -519,7 +551,10 @@ export function CreateBookingDialog({
             const ageCategory = selection.ageCategory || 'adult';
 
             if (pkg.packageTiers && effectiveTierId) {
-                const tier = pkg.packageTiers.find((t) => t.id === effectiveTierId);
+                const packageTier = pkg.packageTiers.find((t) => t.id === effectiveTierId);
+                const batchTier = selectedBatch?.batchTiers?.find((t: any) => t.packageTierId === effectiveTierId);
+                const tier = batchTier || packageTier;
+                
                 if (tier) {
                     const adultCost = Number(tier.adultCost || 0);
 
@@ -1377,20 +1412,23 @@ export function CreateBookingDialog({
                                                         {selectedPackage.packageTiers.length === 1 ? (
                                                             (() => {
                                                                 const tier = selectedPackage.packageTiers[0];
-                                                                const adultCost = Number(tier.adultCost || 0);
-                                                                const childCost = tier.childCostType === 'percentage'
-                                                                    ? adultCost * (Number(tier.childCostValue || 0) / 100)
-                                                                    : Number(tier.childCostValue || 0);
-                                                                const infantCost = tier.infantCostType === 'percentage'
-                                                                    ? adultCost * (Number(tier.infantCostValue || 0) / 100)
-                                                                    : Number(tier.infantCostValue || 0);
+                                                                const { isCustom, baseAdultCost, baseChildCost, baseInfantCost, adultCost, childCost, infantCost } = getTierPrices(tier);
                                                                 return (
                                                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3.5 bg-background border rounded-xl gap-3">
                                                                         <span className="font-semibold text-sm text-foreground">{tier.name}</span>
                                                                         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                                                                            <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-500" /> {BookingService.formatCurrency(adultCost)}</span>
-                                                                            <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-slate-500" /> {BookingService.formatCurrency(childCost)}</span>
-                                                                            <span className="flex items-center gap-1.5"><Baby className="w-4 h-4 text-slate-500" /> {BookingService.formatCurrency(infantCost)}</span>
+                                                                            <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-500" /> 
+                                                                                {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
+                                                                                <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
+                                                                            </span>
+                                                                            <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-slate-500" /> 
+                                                                                {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
+                                                                                <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
+                                                                            </span>
+                                                                            <span className="flex items-center gap-1.5"><Baby className="w-4 h-4 text-slate-500" /> 
+                                                                                {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
+                                                                                <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
+                                                                            </span>
                                                                         </div>
                                                                     </div>
                                                                 );
@@ -1405,24 +1443,25 @@ export function CreateBookingDialog({
                                                                 </SelectTrigger>
                                                                 <SelectContent>
                                                                     {selectedPackage.packageTiers.map(tier => {
-                                                                        const adultCost = Number(tier.adultCost || 0);
-
-                                                                        const childCost = tier.childCostType === 'percentage'
-                                                                            ? adultCost * (Number(tier.childCostValue || 0) / 100)
-                                                                            : Number(tier.childCostValue || 0);
-
-                                                                        const infantCost = tier.infantCostType === 'percentage'
-                                                                            ? adultCost * (Number(tier.infantCostValue || 0) / 100)
-                                                                            : Number(tier.infantCostValue || 0);
+                                                                        const { isCustom, baseAdultCost, baseChildCost, baseInfantCost, adultCost, childCost, infantCost } = getTierPrices(tier);
 
                                                                         return (
                                                                             <SelectItem key={tier.id} value={tier.id!}>
                                                                                 <span className="flex items-center gap-3">
                                                                                     <span className="font-semibold">{tier.name}</span>
                                                                                     <span className="text-muted-foreground">|</span>
-                                                                                    <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> {BookingService.formatCurrency(adultCost)}</span>
-                                                                                    <span className="flex items-center gap-1"><PersonStanding className="w-3.5 h-3.5" /> {BookingService.formatCurrency(childCost)}</span>
-                                                                                    <span className="flex items-center gap-1"><Baby className="w-3.5 h-3.5" /> {BookingService.formatCurrency(infantCost)}</span>
+                                                                                    <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> 
+                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
+                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
+                                                                                    </span>
+                                                                                    <span className="flex items-center gap-1"><PersonStanding className="w-3.5 h-3.5" /> 
+                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
+                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
+                                                                                    </span>
+                                                                                    <span className="flex items-center gap-1"><Baby className="w-3.5 h-3.5" /> 
+                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
+                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
+                                                                                    </span>
                                                                                 </span>
                                                                             </SelectItem>
                                                                         );
@@ -1478,24 +1517,25 @@ export function CreateBookingDialog({
                                                                                 </SelectTrigger>
                                                                                 <SelectContent>
                                                                                     {selectedPackage.packageTiers.map(tier => {
-                                                                                        const adultCost = Number(tier.adultCost || 0);
-
-                                                                                        const childCost = tier.childCostType === 'percentage'
-                                                                                            ? adultCost * (Number(tier.childCostValue || 0) / 100)
-                                                                                            : Number(tier.childCostValue || 0);
-
-                                                                                        const infantCost = tier.infantCostType === 'percentage'
-                                                                                            ? adultCost * (Number(tier.infantCostValue || 0) / 100)
-                                                                                            : Number(tier.infantCostValue || 0);
+                                                                                        const { isCustom, baseAdultCost, baseChildCost, baseInfantCost, adultCost, childCost, infantCost } = getTierPrices(tier);
 
                                                                                         return (
                                                                                             <SelectItem key={tier.id} value={tier.id!}>
                                                                                                 <span className="flex items-center gap-2">
                                                                                                     <span className="font-semibold">{tier.name}</span>
                                                                                                     <span className="text-muted-foreground">|</span>
-                                                                                                    <span className="flex items-center gap-0.5"><User className="w-3 h-3 text-slate-500" /> {BookingService.formatCurrency(adultCost)}</span>
-                                                                                                    <span className="flex items-center gap-0.5"><PersonStanding className="w-3 h-3 text-slate-500" /> {BookingService.formatCurrency(childCost)}</span>
-                                                                                                    <span className="flex items-center gap-0.5"><Baby className="w-3 h-3 text-slate-500" /> {BookingService.formatCurrency(infantCost)}</span>
+                                                                                                    <span className="flex items-center gap-0.5"><User className="w-3 h-3 text-slate-500" /> 
+                                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
+                                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
+                                                                                                    </span>
+                                                                                                    <span className="flex items-center gap-0.5"><PersonStanding className="w-3 h-3 text-slate-500" /> 
+                                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
+                                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
+                                                                                                    </span>
+                                                                                                    <span className="flex items-center gap-0.5"><Baby className="w-3 h-3 text-slate-500" /> 
+                                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
+                                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
+                                                                                                    </span>
                                                                                                 </span>
                                                                                             </SelectItem>
                                                                                         );
@@ -1746,17 +1786,13 @@ export function CreateBookingDialog({
 
                                                             let cost = 0;
                                                             if (tier) {
-                                                                const adultCost = Number(tier.adultCost || 0);
+                                                                const { adultCost, childCost, infantCost } = getTierPrices(tier);
                                                                 if (ageCategory === 'adult') {
                                                                     cost = adultCost;
                                                                 } else if (ageCategory === 'child') {
-                                                                    cost = tier.childCostType === 'percentage'
-                                                                        ? adultCost * (Number(tier.childCostValue || 0) / 100)
-                                                                        : Number(tier.childCostValue || 0);
+                                                                    cost = childCost;
                                                                 } else if (ageCategory === 'infant') {
-                                                                    cost = tier.infantCostType === 'percentage'
-                                                                        ? adultCost * (Number(tier.infantCostValue || 0) / 100)
-                                                                        : Number(tier.infantCostValue || 0);
+                                                                    cost = infantCost;
                                                                 }
                                                             }
 

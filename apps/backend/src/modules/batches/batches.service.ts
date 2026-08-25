@@ -43,7 +43,7 @@ export class BatchesService {
   }
 
   async create(data: CreateBatchDto, organizationId: string, userId: string): Promise<Batch> {
-    const { packageId, coordinators, ignoreConflicts, ...rest } = data;
+    const { packageId, coordinators, ignoreConflicts, customTierPrices, ...rest } = data;
 
     if (!ignoreConflicts) {
       const conflicts = await this.checkConflicts(
@@ -75,6 +75,13 @@ export class BatchesService {
       status: BatchStatus.UPCOMING,
     });
 
+    if (customTierPrices && customTierPrices.length > 0) {
+      batch.batchTiers = customTierPrices.map((tierPrice) => ({
+        ...tierPrice,
+        batch: batch,
+      })) as any[];
+    }
+
     const savedBatch = await this.batchRepo.save(batch);
     await this.logAction(savedBatch.id, userId, 'create', null, savedBatch);
     return savedBatch;
@@ -91,6 +98,7 @@ export class BatchesService {
       .createQueryBuilder('batch')
       .leftJoinAndSelect('batch.package', 'package')
       .leftJoinAndSelect('package.packageTiers', 'packageTiers')
+      .leftJoinAndSelect('batch.batchTiers', 'batchTiers')
       .leftJoinAndSelect('batch.coordinators', 'coordinators')
       .where('batch.organizationId = :organizationId', { organizationId });
 
@@ -191,6 +199,7 @@ export class BatchesService {
         'package',
         'package.packageTiers',
         'package.transportationOptions',
+        'batchTiers',
         'coordinators',
         'bookings',
         'bookings.bookingCustomers',
@@ -215,11 +224,11 @@ export class BatchesService {
   }
 
   async update(id: string, data: UpdateBatchDto, userId: string): Promise<Batch> {
-    const { coordinators, ...rest } = data;
+    const { coordinators, customTierPrices, ...rest } = data;
 
     const existingBatch = await this.batchRepo.findOne({
       where: { id },
-      relations: ['coordinators'],
+      relations: ['coordinators', 'batchTiers'],
     });
 
     if (!existingBatch) throw new NotFoundException('Batch not found');
@@ -253,6 +262,13 @@ export class BatchesService {
         updateData.coordinators = coordinatorsData;
         previousData.coordinatorIds = existingIds;
       }
+    }
+
+    if (customTierPrices) {
+      updateData.batchTiers = customTierPrices.map((tierPrice) => ({
+        ...tierPrice,
+        batchId: id,
+      })) as any[];
     }
 
     if (Object.keys(updateData).length > 0) {
