@@ -281,12 +281,25 @@ export function CreateBookingDialog({
         if (currentStep === 1) {
             if (!formData.packageId) newErrors.packageId = "Please select a tour package";
             if (!formData.batchId) newErrors.batchId = "Please select a batch";
+            
+            if (formData.isCommonTier && !formData.packageTierId && selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0) {
+                newErrors.packageTierId = "Please select a package price tier";
+            }
         }
 
         if (currentStep === 2) {
             if (formData.customers.length === 0) {
                 newErrors.customers = "Please select at least one customer";
             } else {
+                if (!formData.isCommonTier && selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0) {
+                    const missingTier = formData.customers.some(c => {
+                        const selection = formData.customerSelections[c.id || ''];
+                        return !selection || !selection.tierId;
+                    });
+                    if (missingTier) {
+                        newErrors.customerTiers = "Please select a package price tier for all travelers";
+                    }
+                }
                 if (selectedPackage?.packageLocation?.type === 'international') {
                     const pendingWarnings = formData.customers.some(c => {
                         const status = checkPassportStatus(c);
@@ -320,6 +333,10 @@ export function CreateBookingDialog({
         }
 
         if (currentStep === 3) {
+            const paymentStructure = selectedPackage?.paymentStructure || [];
+            if (paymentStructure.length > 0 && !formData.paymentStructureId) {
+                newErrors.paymentStructureId = "Please select a payment structure (milestone)";
+            }
             if (formData.advanceAmount > 0 && !formData.paymentMethod) {
                 newErrors.paymentMethod = "Please select a payment method for advance payment";
             }
@@ -691,6 +708,9 @@ export function CreateBookingDialog({
     };
 
     const handleTierSelect = (tierId: string) => {
+        if (errors.packageTierId) {
+            setErrors((prev) => ({ ...prev, packageTierId: "" }));
+        }
         setFormData((prev) => {
             const newSelections = { ...prev.customerSelections };
             prev.customers.forEach(c => {
@@ -1253,6 +1273,7 @@ export function CreateBookingDialog({
                                                             </Button>
                                                         </div>
                                                         {errors.customers && <p className="text-xs text-destructive mt-1 font-medium">{errors.customers}</p>}
+                                                        {errors.customerTiers && <p className="text-xs text-destructive mt-1 font-medium">{errors.customerTiers}</p>}
                                                         {errors.passport && (
                                                             <Alert variant="destructive" className="mt-2 py-2">
                                                                 <AlertCircle className="h-4 w-4" />
@@ -1469,6 +1490,7 @@ export function CreateBookingDialog({
                                                                 </SelectContent>
                                                             </Select>
                                                         )}
+                                                        {errors.packageTierId && <p className="text-xs text-destructive mt-1 font-medium">{errors.packageTierId}</p>}
                                                     </div>
                                                 )}
 
@@ -1501,6 +1523,7 @@ export function CreateBookingDialog({
                                                                             <Select
                                                                                 value={selection.tierId}
                                                                                 onValueChange={(val) => {
+                                                                                    if (errors.customerTiers) setErrors(prev => ({ ...prev, customerTiers: "" }));
                                                                                     setFormData(prev => {
                                                                                         const customerKey = c.id || '';
                                                                                         const newSelections = { ...prev.customerSelections, [customerKey]: { ...selection, tierId: val } };
@@ -2108,6 +2131,7 @@ export function CreateBookingDialog({
                                                             <div
                                                                 key={milestone.id || idx}
                                                                 onClick={() => {
+                                                                    if (errors.paymentStructureId) setErrors(prev => ({ ...prev, paymentStructureId: "" }));
                                                                     setFormData((prev) => ({
                                                                         ...prev,
                                                                         paymentStructureId: milestone.id || "",
@@ -2136,6 +2160,7 @@ export function CreateBookingDialog({
                                                         );
                                                     })}
                                                 </div>
+                                                {errors.paymentStructureId && <p className="text-xs text-destructive mt-1 font-medium">{errors.paymentStructureId}</p>}
                                             </div>
                                         )}
 

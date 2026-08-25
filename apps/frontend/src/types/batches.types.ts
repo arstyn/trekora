@@ -19,6 +19,7 @@ export interface IBatches {
     customers?: IBatchCustomer[];
     bookings?: IBooking[];
     fillRate?: number;
+    batchTiers?: any[];
 }
 
 export interface IBatchStats {
