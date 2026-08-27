@@ -411,13 +411,13 @@ export class PackageService {
   }
 
 
-  async findBasicInfo(id: string) {
+  async findBasicInfo(id: string, live = false) {
     const pkg = await this.packageRepository.findOne({
       where: { id },
     });
     if (!pkg) throw new NotFoundException('Package not found');
 
-    if (pkg.status === 'edited' && pkg.draftContent) {
+    if (!live && pkg.status === 'edited' && pkg.draftContent) {
       const draft = pkg.draftContent as any;
       Object.assign(pkg, draft);
 
@@ -437,11 +437,11 @@ export class PackageService {
     };
   }
 
-  async findDetails(id: string) {
+  async findDetails(id: string, live = false) {
     const pkg = await this.packageRepository.findOne({ where: { id } });
     if (!pkg) throw new NotFoundException('Package not found');
 
-    if (pkg.status === 'edited' && pkg.draftContent) {
+    if (!live && pkg.status === 'edited' && pkg.draftContent) {
       const draft = pkg.draftContent as any;
       const parseIfString = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
 
@@ -462,11 +462,11 @@ export class PackageService {
     };
   }
 
-  async findItinerary(id: string) {
+  async findItinerary(id: string, live = false) {
     const pkg = await this.packageRepository.findOne({ where: { id } });
     if (!pkg) throw new NotFoundException('Package not found');
 
-    if (pkg.status === 'edited' && pkg.draftContent && (pkg.draftContent as any).itinerary) {
+    if (!live && pkg.status === 'edited' && pkg.draftContent && (pkg.draftContent as any).itinerary) {
       const itinerary = (pkg.draftContent as any).itinerary;
       return typeof itinerary === 'string' ? JSON.parse(itinerary) : itinerary;
     }
@@ -478,11 +478,11 @@ export class PackageService {
     return itinerary;
   }
 
-  async findPaymentsAndCancellation(id: string) {
+  async findPaymentsAndCancellation(id: string, live = false) {
     const pkg = await this.packageRepository.findOne({ where: { id } });
     if (!pkg) throw new NotFoundException('Package not found');
 
-    if (pkg.status === 'edited' && pkg.draftContent) {
+    if (!live && pkg.status === 'edited' && pkg.draftContent) {
       const draft = pkg.draftContent as any;
       const parseIfString = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
 
@@ -513,11 +513,11 @@ export class PackageService {
     };
   }
 
-  async findRequirements(id: string) {
+  async findRequirements(id: string, live = false) {
     const pkg = await this.packageRepository.findOne({ where: { id } });
     if (!pkg) throw new NotFoundException('Package not found');
 
-    if (pkg.status === 'edited' && pkg.draftContent) {
+    if (!live && pkg.status === 'edited' && pkg.draftContent) {
       const draft = pkg.draftContent as any;
       const parseIfString = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
 
@@ -542,7 +542,7 @@ export class PackageService {
     };
   }
 
-  async findLogistics(id: string) {
+  async findLogistics(id: string, live = false) {
     const pkg = await this.packageRepository.findOne({ where: { id } });
     if (!pkg) throw new NotFoundException('Package not found');
 
@@ -557,7 +557,7 @@ export class PackageService {
       return val;
     };
 
-    if (pkg.status === 'edited' && pkg.draftContent) {
+    if (!live && pkg.status === 'edited' && pkg.draftContent) {
       const draft = pkg.draftContent as any;
 
       let transportation = draft.transportationOptions
