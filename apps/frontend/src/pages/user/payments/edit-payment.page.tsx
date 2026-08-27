@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { TypableDatePicker } from "@/components/ui/typable-date-picker";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -611,11 +612,10 @@ export default function EditPaymentPage() {
 
 								<div>
 									<Label htmlFor="paymentDate">Payment Date *</Label>
-									<Input
+									<TypableDatePicker
 										id="paymentDate"
-										type="date"
 										value={formData.paymentDate}
-										onChange={(e) => handleInputChange("paymentDate", e.target.value)}
+										onChange={(val) => handleInputChange("paymentDate", val)}
 										disabled={isReadOnly}
 										required
 									/>
