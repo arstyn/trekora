@@ -19,6 +19,8 @@ import {
     User,
 } from "lucide-react";
 
+import { format, isValid } from "date-fns";
+
 interface CustomerModalProps {
     customer: ICustomer;
     batchId: string;
@@ -34,12 +36,10 @@ export function CustomerModal({
 }: CustomerModalProps) {
     if (!customer) return null;
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return "N/A";
+        const d = new Date(dateString);
+        return isValid(d) ? format(d, "dd-MM-yyyy") : "N/A";
     };
 
     const getAge = (dateOfBirth: string) => {

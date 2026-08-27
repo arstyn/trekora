@@ -396,10 +396,9 @@ export default function BatchDetailsPage() {
                                             Start Date
                                         </p>
                                         <p className="font-medium">
-                                            {batch &&
-                                                new Date(
-                                                    batch.startDate,
-                                                ).toLocaleDateString()}
+                                            {batch?.startDate
+                                                ? format(new Date(batch.startDate), "dd-MM-yyyy")
+                                                : "N/A"}
                                         </p>
                                     </div>
                                 </div>
@@ -410,10 +409,9 @@ export default function BatchDetailsPage() {
                                             End Date
                                         </p>
                                         <p className="font-medium">
-                                            {batch &&
-                                                new Date(
-                                                    batch.endDate,
-                                                ).toLocaleDateString()}
+                                            {batch?.endDate
+                                                ? format(new Date(batch.endDate), "dd-MM-yyyy")
+                                                : "N/A"}
                                         </p>
                                     </div>
                                 </div>
@@ -679,7 +677,7 @@ export default function BatchDetailsPage() {
                                                 <TableCell>
                                                     <div className="flex flex-col">
                                                         <span className="text-sm font-medium">
-                                                            {expiryDate.toLocaleDateString()}
+                                                            {format(expiryDate, "dd-MM-yyyy")}
                                                         </span>
                                                         <span className="text-xs text-rose-500 font-semibold">
                                                             {remainingText}
@@ -1529,7 +1527,7 @@ export default function BatchDetailsPage() {
                                             <time className="text-[10px] font-black text-muted-foreground whitespace-nowrap bg-muted px-2 py-1 rounded-lg border border-muted-foreground/10">
                                                 {format(
                                                     new Date(log.createdAt),
-                                                    "MMM d, yyyy • HH:mm",
+                                                    "dd-MM-yyyy • HH:mm",
                                                 )}
                                             </time>
                                         </div>
