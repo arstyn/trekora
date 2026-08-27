@@ -360,18 +360,23 @@ export default function EditBookingPage() {
 												{customer.firstName} {customer.lastName}
 											</p>
 										</div>
-										<div>
-											<Label className="text-sm font-medium">
-												Email
-											</Label>
-											<p className="text-sm">{customer.email}</p>
-										</div>
-										<div>
-											<Label className="text-sm font-medium">
-												Phone
-											</Label>
-											<p className="text-sm">{customer.phone}</p>
-										</div>
+										{!(customer.email && customer.email.trim()) && !(customer.phone && customer.phone.trim()) ? (
+											<div>
+												<Label className="text-sm font-medium">Contact Info</Label>
+												<p className="text-sm text-muted-foreground italic">N/A</p>
+											</div>
+										) : (
+											<>
+												<div>
+													<Label className="text-sm font-medium">Email</Label>
+													<p className="text-sm">{customer.email && customer.email.trim() ? customer.email : <span className="text-muted-foreground italic">N/A</span>}</p>
+												</div>
+												<div>
+													<Label className="text-sm font-medium">Phone</Label>
+													<p className="text-sm">{customer.phone && customer.phone.trim() ? customer.phone : <span className="text-muted-foreground italic">N/A</span>}</p>
+												</div>
+											</>
+										)}
 									</div>
 									{(customer.specialRequests ||
 										customer.medicalConditions ||

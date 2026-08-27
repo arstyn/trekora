@@ -649,7 +649,7 @@ export function BookingModal({
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {customer.email}
+                                                    {customer.email || customer.phone || "N/A"}
                                                 </p>
                                             </div>
                                             {booking.status !== 'cancelled' && booking.customers.length > 1 && (

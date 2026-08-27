@@ -278,6 +278,28 @@ export default function BookingDetailsPage() {
         );
     };
 
+    const renderTravelerContactInfo = (email?: string | null, phone?: string | null) => {
+        const hasEmail = Boolean(email && email.trim());
+        const hasPhone = Boolean(phone && phone.trim());
+
+        if (!hasEmail && !hasPhone) {
+            return <span className="text-xs text-muted-foreground italic">N/A</span>;
+        }
+
+        return (
+            <div className="space-y-0.5 text-xs text-muted-foreground">
+                <p className="flex items-center gap-1">
+                    <Mail className="w-3 h-3 shrink-0" />
+                    {hasEmail ? email : <span className="italic">N/A</span>}
+                </p>
+                <p className="flex items-center gap-1">
+                    <Phone className="w-3 h-3 shrink-0" />
+                    {hasPhone ? phone : <span className="italic">N/A</span>}
+                </p>
+            </div>
+        );
+    };
+
     if (loading) {
         return (
             <div className="flex h-[80vh] items-center justify-center">
@@ -692,10 +714,7 @@ export default function BookingDetailsPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="space-y-0.5 text-xs text-muted-foreground">
-                                            <p className="flex items-center gap-1"><Mail className="w-3 h-3" /> {customer.email}</p>
-                                            <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {customer.phone}</p>
-                                        </div>
+                                        {renderTravelerContactInfo(customer.email, customer.phone)}
                                     </TableCell>
                                     <TableCell>
                                         <p className="text-xs text-muted-foreground line-clamp-1 max-w-[250px]" title={customer.specialRequests || ""}>
