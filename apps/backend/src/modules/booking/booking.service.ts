@@ -633,7 +633,7 @@ export class BookingService {
   ): Promise<BookingResponseDto> {
     const booking = await this.bookingRepository.findOne({
       where: { id },
-      relations: ['bookingCustomers', 'batch'],
+      relations: ['bookingCustomers', 'batch', 'batch.batchTiers'],
     });
 
     if (!booking) {
@@ -943,7 +943,7 @@ export class BookingService {
   ): Promise<BookingResponseDto> {
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
-      relations: ['bookingCustomers', 'batch'],
+      relations: ['bookingCustomers', 'batch', 'batch.batchTiers'],
     });
 
     if (!booking) {
@@ -979,8 +979,9 @@ export class BookingService {
         relations: ['packageTiers'],
       });
       if (packageEntity) {
-        const tier = packageEntity.packageTiers?.find(t => t.id === booking.packageTierId) || packageEntity.packageTiers?.[0];
-        const adultPrice = tier ? Number(tier.adultCost || 0) : 0;
+        const packageTier = packageEntity.packageTiers?.find(t => t.id === booking.packageTierId) || packageEntity.packageTiers?.[0];
+        const batchTier = booking.batch?.batchTiers?.find(bt => bt.packageTierId === packageTier?.id);
+        const adultPrice = batchTier ? Number(batchTier.adultCost || 0) : (packageTier ? Number(packageTier.adultCost || 0) : 0);
         booking.totalAmount = adultPrice * booking.numberOfCustomers;
         booking.balanceAmount = booking.totalAmount - booking.advancePaid;
       }
@@ -1034,7 +1035,7 @@ export class BookingService {
 
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
-      relations: ['bookingCustomers', 'batch'],
+      relations: ['bookingCustomers', 'batch', 'batch.batchTiers'],
     });
 
     if (!booking) {
@@ -1091,8 +1092,9 @@ export class BookingService {
       });
 
       if (packageEntity) {
-        const tier = packageEntity.packageTiers?.find(t => t.id === booking.packageTierId) || packageEntity.packageTiers?.[0];
-        const adultPrice = tier ? Number(tier.adultCost || 0) : 0;
+        const packageTier = packageEntity.packageTiers?.find(t => t.id === booking.packageTierId) || packageEntity.packageTiers?.[0];
+        const batchTier = booking.batch?.batchTiers?.find(bt => bt.packageTierId === packageTier?.id);
+        const adultPrice = batchTier ? Number(batchTier.adultCost || 0) : (packageTier ? Number(packageTier.adultCost || 0) : 0);
         booking.totalAmount = adultPrice * booking.numberOfCustomers;
         booking.balanceAmount = booking.totalAmount - booking.advancePaid;
       }
