@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CloudUpload, ImageIcon, X } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { CloudUpload, Eye, ImageIcon, X } from "lucide-react";
 import React, { useRef, useState } from "react";
 
 interface FileUploaderProps {
@@ -26,6 +27,7 @@ export function FileUploader({
     isCircular = false,
 }: FileUploaderProps) {
     const [isDragging, setIsDragging] = useState(false);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -77,17 +79,19 @@ export function FileUploader({
     const existingUrls = value.filter((v): v is string => typeof v === "string");
     const newFiles = value.filter((v): v is File => v instanceof File);
 
-    // Create local preview URLs for the new files
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+    const [newPreviews, setNewPreviews] = React.useState<string[]>([]);
+
+    // Clean up and generate preview URLs safely
+    React.useEffect(() => {
+        const urls = newFiles.map((file) => URL.createObjectURL(file));
+        setNewPreviews(urls);
+        return () => {
+            urls.forEach((url) => URL.revokeObjectURL(url));
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [newFiles.map(f => f.name + f.size).join(",")]);
 
     const totalCount = existingUrls.length + newFiles.length;
-
-    // Clean up preview URLs when component un-mounts
-    React.useEffect(() => {
-        return () => {
-            newPreviews.forEach((url) => URL.revokeObjectURL(url));
-        };
-    }, [newFiles]);
 
     if (isCircular) {
         const hasImage = totalCount > 0;
@@ -200,10 +204,18 @@ export function FileUploader({
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-1">
                     {/* Existing Files */}
                     {existingUrls.map((url, idx) => (
-                        <div key={`existing-${idx}`} className="relative group rounded-lg overflow-hidden border bg-muted aspect-video flex items-center justify-center shadow-sm">
+                        <div key={`existing-${idx}`} className="relative group rounded-lg overflow-hidden border bg-muted aspect-video flex items-center justify-center shadow-sm cursor-pointer" onClick={() => setPreviewImage(url)}>
                             <img src={url} alt="Uploaded" className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                 <Badge variant="secondary" className="absolute top-1.5 left-1.5 text-[9px] px-1 py-0.5">Existing</Badge>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-full shadow pointer-events-none"
+                                >
+                                    <Eye className="h-4 w-4" />
+                                </Button>
                                 <Button
                                     type="button"
                                     variant="destructive"
@@ -222,7 +234,15 @@ export function FileUploader({
 
                     {/* New Files */}
                     {newFiles.map((file, idx) => (
-                        <div key={`new-${idx}`} className="relative group rounded-lg overflow-hidden border bg-muted aspect-video flex items-center justify-center shadow-sm">
+                        <div 
+                            key={`new-${idx}`} 
+                            className={`relative group rounded-lg overflow-hidden border bg-muted aspect-video flex items-center justify-center shadow-sm ${file.type.startsWith("image/") ? "cursor-pointer" : ""}`}
+                            onClick={() => {
+                                if (file.type.startsWith("image/")) {
+                                    setPreviewImage(newPreviews[idx]);
+                                }
+                            }}
+                        >
                             {file.type.startsWith("image/") ? (
                                 <img src={newPreviews[idx]} alt="Uploaded" className="w-full h-full object-cover" />
                             ) : (
@@ -233,6 +253,16 @@ export function FileUploader({
                             )}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                 <Badge variant="default" className="absolute top-1.5 left-1.5 text-[9px] px-1 py-0.5 bg-primary">New</Badge>
+                                {file.type.startsWith("image/") && (
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-full shadow pointer-events-none"
+                                    >
+                                        <Eye className="h-4 w-4" />
+                                    </Button>
+                                )}
                                 <Button
                                     type="button"
                                     variant="destructive"
@@ -250,6 +280,15 @@ export function FileUploader({
                     ))}
                 </div>
             )}
+
+            <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+                <DialogContent className="max-w-4xl p-0 overflow-hidden border-none bg-transparent shadow-none [&>button]:text-white [&>button]:bg-black/50 [&>button]:hover:bg-black/70 [&>button]:rounded-full [&>button]:p-2 flex items-center justify-center min-h-[50vh]">
+                    <DialogTitle className="sr-only">Image Preview</DialogTitle>
+                    {previewImage && (
+                        <img src={previewImage} alt="Preview" className="w-full max-h-[85vh] object-contain rounded-md" />
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

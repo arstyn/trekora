@@ -590,28 +590,39 @@ export default function ViewCustomerPage() {
                                 <Users className="w-3.5 h-3.5 text-primary" />
                                 Associated Relatives
                             </h4>
-                            {customer.relatives && customer.relatives.length > 0 ? (
-                                <div className="space-y-3">
-                                    {customer.relatives.map((relative, idx) => (
-                                        <div key={idx} className="border p-3 rounded-md bg-muted/30 space-y-2 text-xs">
-                                            <div className="flex justify-between items-center font-bold">
-                                                <p>{relative.name}</p>
-                                                <Badge variant="outline" className="capitalize text-[10px] bg-white">
-                                                    {relative.relation}
-                                                </Badge>
+                            {(() => {
+                                let parsedRelatives = customer.relatives;
+                                if (typeof customer.relatives === 'string') {
+                                    try {
+                                        parsedRelatives = JSON.parse(customer.relatives);
+                                    } catch (e) {
+                                        parsedRelatives = [];
+                                    }
+                                }
+                                
+                                return parsedRelatives && parsedRelatives.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {parsedRelatives.map((relative: any, idx: number) => (
+                                            <div key={idx} className="border p-3 rounded-md bg-muted/30 space-y-2 text-xs">
+                                                <div className="flex justify-between items-center font-bold">
+                                                    <p>{relative.name}</p>
+                                                    <Badge variant="outline" className="capitalize text-[10px] bg-white">
+                                                        {relative.relation}
+                                                    </Badge>
+                                                </div>
+                                                <div className="text-muted-foreground space-y-1">
+                                                    <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {relative.phone || "—"}</p>
+                                                    <p className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {relative.address || "—"}</p>
+                                                </div>
                                             </div>
-                                            <div className="text-muted-foreground space-y-1">
-                                                <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {relative.phone || "—"}</p>
-                                                <p className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {relative.address || "—"}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-6 text-sm text-muted-foreground">
-                                    No relatives associated
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 text-sm text-muted-foreground">
+                                        No relatives associated
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </CardContent>
                 </Card>

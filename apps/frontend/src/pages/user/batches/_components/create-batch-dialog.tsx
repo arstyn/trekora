@@ -72,6 +72,8 @@ export function CreateBatchDialog({
         coordinators: [] as IEmployee[],
     });
     const [changeSeats, setChangeSeats] = useState(false);
+    const [changeTierPrices, setChangeTierPrices] = useState(false);
+    const [customTierPrices, setCustomTierPrices] = useState<any[]>([]);
 
     const selectedPackage = packages.find((p) => p.id === formData.packageId);
 
@@ -236,6 +238,21 @@ export function CreateBatchDialog({
             ...prev,
             packageId: pkg.id,
         }));
+        
+        if (pkg.packageTiers) {
+            setCustomTierPrices(pkg.packageTiers.map(tier => ({
+                packageTierId: tier.id,
+                name: tier.name || "Standard",
+                adultCost: tier.adultCost,
+                childCostType: tier.childCostType,
+                childCostValue: tier.childCostValue,
+                infantCostType: tier.infantCostType,
+                infantCostValue: tier.infantCostValue,
+            })));
+        } else {
+            setCustomTierPrices([]);
+        }
+
         if (errors.packageId) {
             setErrors((prev) => {
                 const newErrors = { ...prev };
@@ -283,6 +300,8 @@ export function CreateBatchDialog({
             coordinators: [],
         });
         setChangeSeats(false);
+        setChangeTierPrices(false);
+        setCustomTierPrices([]);
         setErrors({});
         setPackageSearch("");
         setCoordinatorSearch("");
@@ -310,6 +329,7 @@ export function CreateBatchDialog({
                 seatChangeReason: changeSeats ? formData.seatChangeReason : undefined,
                 coordinators: formData.coordinators.map((c) => c.id),
                 ignoreConflicts: ignoredWarnings,
+                customTierPrices: changeTierPrices ? customTierPrices : undefined,
             };
             await axiosInstance.post(`/batches`, payload);
 
@@ -666,6 +686,75 @@ export function CreateBatchDialog({
                                                             />
                                                             {errors.seatChangeReason && <p className="text-xs text-destructive font-medium">{errors.seatChangeReason}</p>}
                                                         </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="border-t pt-5">
+                                                <h4 className="text-sm font-semibold text-foreground mb-4">Pricing Management</h4>
+
+                                                <div className="flex items-center justify-between border rounded-xl p-4 bg-muted/10">
+                                                    <div className="space-y-0.5">
+                                                        <Label htmlFor="changeTierPrices" className="text-sm font-semibold cursor-pointer">Custom Tier Pricing</Label>
+                                                        <p className="text-xs text-muted-foreground">Allows overriding the default pricing defined in the tour package.</p>
+                                                    </div>
+                                                    <Switch
+                                                        id="changeTierPrices"
+                                                        checked={changeTierPrices}
+                                                        onCheckedChange={(checked) => {
+                                                            setChangeTierPrices(checked);
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {changeTierPrices && (
+                                                    <div className="mt-4 space-y-4">
+                                                        {customTierPrices.map((tier, index) => (
+                                                            <div key={tier.packageTierId} className="p-4 border rounded-xl bg-card">
+                                                                <h5 className="text-xs font-bold uppercase mb-3 text-muted-foreground">{tier.name} Tier</h5>
+                                                                <div className="grid grid-cols-3 gap-4">
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-xs">Adult Price (₹)</Label>
+                                                                        <Input
+                                                                            type="number"
+                                                                            value={tier.adultCost || ""}
+                                                                            onChange={(e) => {
+                                                                                const newTiers = [...customTierPrices];
+                                                                                newTiers[index].adultCost = parseFloat(e.target.value);
+                                                                                setCustomTierPrices(newTiers);
+                                                                            }}
+                                                                            className="h-9"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-xs">Child Price (₹)</Label>
+                                                                        <Input
+                                                                            type="number"
+                                                                            value={tier.childCostValue || ""}
+                                                                            onChange={(e) => {
+                                                                                const newTiers = [...customTierPrices];
+                                                                                newTiers[index].childCostValue = parseFloat(e.target.value);
+                                                                                setCustomTierPrices(newTiers);
+                                                                            }}
+                                                                            className="h-9"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-xs">Infant Price (₹)</Label>
+                                                                        <Input
+                                                                            type="number"
+                                                                            value={tier.infantCostValue || ""}
+                                                                            onChange={(e) => {
+                                                                                const newTiers = [...customTierPrices];
+                                                                                newTiers[index].infantCostValue = parseFloat(e.target.value);
+                                                                                setCustomTierPrices(newTiers);
+                                                                            }}
+                                                                            className="h-9"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 )}
                                             </div>

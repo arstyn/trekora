@@ -19,6 +19,7 @@ import {
     RotateCcw,
     Trash2,
 } from "lucide-react";
+import { useMemo } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 interface StepReviewProps {
@@ -30,6 +31,7 @@ interface StepReviewProps {
     onUnpublish: () => void;
     isLoading?: boolean;
     packageData?: IPackages | null;
+    initialPackageData?: IPackages | null;
 }
 
 export function StepReview({
@@ -41,81 +43,248 @@ export function StepReview({
     onUnpublish,
     isLoading,
     packageData,
+    initialPackageData,
 }: StepReviewProps) {
     const values = form.getValues();
 
     const getChanges = () => {
-        if (!packageData) return [];
-        const changes: { field: string; from: any; to: any }[] = [];
+        const compareTarget = initialPackageData || packageData;
+        if (!compareTarget) return [];
+
+        type DiffType = 'add' | 'remove' | 'info';
+        type DiffLine = { type: DiffType; text: string };
+        const changes: { field: string; diffs: DiffLine[] }[] = [];
+
+        const safeParse = (val: any) => {
+            if (typeof val === 'string') {
+                try {
+                    return JSON.parse(val);
+                } catch {
+                    return val;
+                }
+            }
+            return val;
+        };
+
+        const cleanObject = (obj: any): any => {
+            if (Array.isArray(obj)) return obj.map(cleanObject);
+            if (typeof obj === 'object' && obj !== null) {
+                const cleaned: any = {};
+                for (const key in obj) {
+                    if (
+                        !["id", "packageId", "createdAt", "updatedAt", "createdById", "organizationId"].includes(key) &&
+                        obj[key] !== null && obj[key] !== undefined && obj[key] !== ""
+                    ) {
+                        let val = obj[key];
+                        if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))) {
+                            val = safeParse(val);
+                        }
+                        if (typeof val === 'string' && !isNaN(Number(val)) && val.trim() !== '') {
+                            val = Number(val);
+                        }
+                        cleaned[key] = cleanObject(val);
+                    }
+                }
+                return cleaned;
+            }
+            if (typeof obj === 'string' && !isNaN(Number(obj)) && obj.trim() !== '') {
+                return Number(obj);
+            }
+            return obj;
+        };
+
+        const formatVal = (v: any) => {
+            if (v === undefined || v === null || v === "") return "None";
+            if (typeof v === "boolean") return v ? "Yes" : "No";
+            if (Array.isArray(v)) {
+                if (v.length === 0) return "None";
+                if (v.every(item => typeof item === 'string' || typeof item === 'number')) return v.join(", ");
+                return `${v.length} items`;
+            }
+            if (typeof v !== 'object') return String(v);
+            return "Object";
+        };
+
+        const formatObjectSummary = (obj: any) => {
+            if (!obj) return "None";
+            return Object.entries(obj)
+                .filter(([_, v]) => v !== undefined && v !== null && v !== "")
+                .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${formatVal(v)}`)
+                .join(', ');
+        };
 
         const compareSimple = (key: keyof PackageFormData, label: string) => {
             const current = values[key];
-            let original = (packageData as any)[key];
+            let original = safeParse((compareTarget as any)[key]);
 
-            // Normalize
-            if (key === "maxGuests") original = Number(original) || 0;
+            if (key === "maxGuests" || key === "days" || key === "nights") {
+                original = Number(original) || 0;
+            }
 
             if (current !== original && original !== undefined) {
-                // Ignore if both are empty-ish
                 if (!current && !original) return;
-                changes.push({ field: label, from: original, to: current });
+                changes.push({
+                    field: label,
+                    diffs: [
+                        { type: 'remove', text: String(original || "Empty") },
+                        { type: 'add', text: String(current || "Empty") }
+                    ]
+                });
             }
         };
 
         const compareArray = (key: keyof PackageFormData, label: string) => {
-            const current = Array.isArray(values[key]) ? (values[key] as any[]) : [];
-            let originalRaw = (packageData as any)[key];
+            let current = Array.isArray(values[key]) ? (values[key] as any[]) : [];
+            let originalRaw = safeParse((compareTarget as any)[key]);
             let original: any[] = [];
 
             if (key === "inclusions" || key === "exclusions") {
                 original = Array.isArray(originalRaw) ?
-                    originalRaw.map((item) =>
-                        typeof item === "object" && item !== null ? item.item : item,
-                    ) : [];
+                    originalRaw.map((item) => typeof item === "object" && item !== null ? item.item : item) : [];
             } else if (key === "cancellationPolicy") {
                 original = Array.isArray(originalRaw) ?
-                    originalRaw.map((item) =>
-                        typeof item === "object" && item !== null ? item.text : item,
-                    ) : [];
+                    originalRaw.map((item) => typeof item === "object" && item !== null ? item.text : item) : [];
             } else {
                 original = Array.isArray(originalRaw) ? originalRaw : [];
             }
 
-            if (JSON.stringify(current) !== JSON.stringify(original)) {
-                changes.push({
-                    field: label,
-                    from: `${original.length} items`,
-                    to: `${current.length} items`,
-                });
+            const cleanedCurrent = cleanObject(current);
+            const cleanedOriginal = cleanObject(original);
+
+            if (JSON.stringify(cleanedCurrent) !== JSON.stringify(cleanedOriginal)) {
+                const diffs: DiffLine[] = [];
+
+                if (
+                    (current.length > 0 && typeof current[0] === 'string') ||
+                    (original.length > 0 && typeof original[0] === 'string')
+                ) {
+                    const added = current.filter(x => !original.includes(x));
+                    const removed = original.filter(x => !current.includes(x));
+
+                    removed.forEach(r => diffs.push({ type: 'remove', text: String(r) }));
+                    added.forEach(a => diffs.push({ type: 'add', text: String(a) }));
+                } else {
+                    if (cleanedCurrent.length !== cleanedOriginal.length) {
+                        diffs.push({ type: 'info', text: `Count changed (${cleanedOriginal.length} → ${cleanedCurrent.length})` });
+                    }
+
+                    const maxLen = Math.max(cleanedCurrent.length, cleanedOriginal.length);
+                    for (let i = 0; i < maxLen; i++) {
+                        const origObj = cleanedOriginal[i];
+                        const currObj = cleanedCurrent[i];
+
+                        if (!origObj && currObj) {
+                            diffs.push({ type: 'add', text: `Item ${i + 1}: ${formatObjectSummary(currObj)}` });
+                        } else if (origObj && !currObj) {
+                            diffs.push({ type: 'remove', text: `Item ${i + 1}: ${formatObjectSummary(origObj)}` });
+                        } else if (JSON.stringify(origObj) !== JSON.stringify(currObj)) {
+                            const allKeys = new Set([...Object.keys(currObj || {}), ...Object.keys(origObj || {})]);
+                            for (const k of allKeys) {
+                                const oVal = (origObj || {})[k];
+                                const cVal = (currObj || {})[k];
+                                if (JSON.stringify(oVal) !== JSON.stringify(cVal)) {
+                                    const keyName = k.charAt(0).toUpperCase() + k.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                                    diffs.push({ type: 'remove', text: `Item ${i + 1} [${keyName}]: ${formatVal(oVal)}` });
+                                    diffs.push({ type: 'add', text: `Item ${i + 1} [${keyName}]: ${formatVal(cVal)}` });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (diffs.length > 0) {
+                    changes.push({ field: label, diffs });
+                }
             }
         };
 
         const compareItinerary = () => {
             const current = values.itinerary || [];
-            const original = packageData.itinerary || [];
-            if (current.length !== original.length) {
-                changes.push({
-                    field: "Itinerary",
-                    from: `${original.length} Days`,
-                    to: `${current.length} Days`,
-                });
-            } else {
-                // Deep check for changes in existing days
-                const changed = current.some((day, idx) => {
-                    const orig = original[idx];
-                    return (
-                        day.title !== orig.title ||
-                        day.description !== orig.description ||
-                        JSON.stringify(day.activities) !==
-                            JSON.stringify(orig.activities)
-                    );
-                });
-                if (changed) {
-                    changes.push({
-                        field: "Itinerary Details",
-                        from: "Original",
-                        to: "Modified",
-                    });
+            let originalRaw = safeParse(compareTarget.itinerary);
+            const original = Array.isArray(originalRaw) ? originalRaw : [];
+
+            const cleanedCurrent = cleanObject(current);
+            const cleanedOriginal = cleanObject(original);
+
+            const stripImages = (days: any[]) => days.map(day => {
+                const { images, ...rest } = day;
+                return rest;
+            });
+
+            const currentNoImages = stripImages(cleanedCurrent);
+            const originalNoImages = stripImages(cleanedOriginal);
+
+            if (JSON.stringify(currentNoImages) !== JSON.stringify(originalNoImages)) {
+                const diffs: DiffLine[] = [];
+                if (currentNoImages.length !== originalNoImages.length) {
+                    diffs.push({ type: 'info', text: `Count changed (${originalNoImages.length} → ${currentNoImages.length})` });
+                }
+
+                const maxLen = Math.max(currentNoImages.length, originalNoImages.length);
+                for (let i = 0; i < maxLen; i++) {
+                    const origObj = originalNoImages[i];
+                    const currObj = currentNoImages[i];
+
+                    if (!origObj && currObj) {
+                        diffs.push({ type: 'add', text: `Day ${i + 1}: Added` });
+                    } else if (origObj && !currObj) {
+                        diffs.push({ type: 'remove', text: `Day ${i + 1}: Removed` });
+                    } else if (JSON.stringify(origObj) !== JSON.stringify(currObj)) {
+                        const allKeys = new Set([...Object.keys(currObj || {}), ...Object.keys(origObj || {})]);
+                        for (const k of allKeys) {
+                            const oVal = (origObj || {})[k];
+                            const cVal = (currObj || {})[k];
+                            if (JSON.stringify(oVal) !== JSON.stringify(cVal)) {
+                                const keyName = k.charAt(0).toUpperCase() + k.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                                diffs.push({ type: 'remove', text: `Day ${i + 1} [${keyName}]: ${formatVal(oVal)}` });
+                                diffs.push({ type: 'add', text: `Day ${i + 1} [${keyName}]: ${formatVal(cVal)}` });
+                            }
+                        }
+                    }
+                }
+
+                if (diffs.length > 0) {
+                    changes.push({ field: "Itinerary Details", diffs });
+                }
+            }
+        };
+
+        const compareObject = (key: keyof PackageFormData, label: string) => {
+            const current = values[key];
+            let originalRaw = safeParse((packageData as any)[key]);
+
+            const cleanedCurrent = cleanObject(current) || (Array.isArray(current) ? [] : {});
+            const cleanedOriginal = cleanObject(originalRaw) || (Array.isArray(originalRaw) ? [] : {});
+
+            if (JSON.stringify(cleanedCurrent) !== JSON.stringify(cleanedOriginal)) {
+                const diffs: DiffLine[] = [];
+
+                if (Array.isArray(cleanedCurrent) && Array.isArray(cleanedOriginal)) {
+                    if (cleanedCurrent.length !== cleanedOriginal.length) {
+                        diffs.push({ type: 'info', text: `Count changed (${cleanedOriginal.length} → ${cleanedCurrent.length})` });
+                    }
+                    const maxLen = Math.max(cleanedCurrent.length, cleanedOriginal.length);
+                    for (let i = 0; i < maxLen; i++) {
+                        if (JSON.stringify(cleanedCurrent[i]) !== JSON.stringify(cleanedOriginal[i])) {
+                            diffs.push({ type: 'info', text: `Modified item: ${i + 1}` });
+                        }
+                    }
+                } else {
+                    const allKeys = new Set([...Object.keys(cleanedCurrent), ...Object.keys(cleanedOriginal)]);
+                    for (const k of allKeys) {
+                        const origVal = cleanedOriginal[k];
+                        const currVal = cleanedCurrent[k];
+
+                        if (JSON.stringify(origVal) !== JSON.stringify(currVal)) {
+                            const keyName = k.charAt(0).toUpperCase() + k.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                            diffs.push({ type: 'remove', text: `[${keyName}]: ${formatVal(origVal)}` });
+                            diffs.push({ type: 'add', text: `[${keyName}]: ${formatVal(currVal)}` });
+                        }
+                    }
+                }
+
+                if (diffs.length > 0) {
+                    changes.push({ field: label, diffs });
                 }
             }
         };
@@ -140,29 +309,14 @@ export function StepReview({
 
         compareItinerary();
 
-        // Object types
-        const compareObject = (key: keyof PackageFormData, label: string) => {
-            const current = values[key];
-            const original = (packageData as any)[key];
-            if (JSON.stringify(current) !== JSON.stringify(original)) {
-                changes.push({
-                    field: label,
-                    from: "Original",
-                    to: "Modified",
-                });
-            }
-        };
-
-        compareObject("packageLocation", "Location");
-        compareObject("transportation", "Transportation");
-        compareObject("mealsBreakdown", "Meals Breakdown");
+        const logisticsKeys = ["mealsBreakdown", "transportation", "packageLocation"];
+        logisticsKeys.forEach((k) => compareObject(k as keyof PackageFormData, k.charAt(0).toUpperCase() + k.slice(1).replace(/([A-Z])/g, ' $1').trim()));
 
         return changes;
     };
 
-    const pendingChanges = getChanges();
+    const pendingChanges = useMemo(() => getChanges(), [values, initialPackageData, packageData]);
 
-    // Basic validation for review
     const issues: {
         field: string;
         message: string;
@@ -218,13 +372,11 @@ export function StepReview({
 
     return (
         <div className="space-y-6">
-            {/* Status Banner */}
             <Card
-                className={`shadow-xs border rounded-2xl ${
-                    hasErrors
+                className={`shadow-xs border rounded-2xl ${hasErrors
                         ? "border-rose-500/30 bg-rose-500/5"
                         : "border-emerald-500/30 bg-emerald-500/5"
-                }`}
+                    }`}
             >
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2.5 text-base font-bold">
@@ -247,11 +399,10 @@ export function StepReview({
                             {issues.map((issue, idx) => (
                                 <div
                                     key={idx}
-                                    className={`flex items-start gap-3 p-3 rounded-xl border text-xs ${
-                                        issue.severity === "error"
+                                    className={`flex items-start gap-3 p-3 rounded-xl border text-xs ${issue.severity === "error"
                                             ? "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300"
                                             : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                                    }`}
+                                        }`}
                                 >
                                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                                     <div>
@@ -281,10 +432,9 @@ export function StepReview({
                 </CardContent>
             </Card>
 
-            {/* Pending Changes Block */}
             {pendingChanges.length > 0 && (
-                <Card className="shadow-xs border border-amber-500/30 bg-amber-500/5 rounded-2xl">
-                    <CardHeader>
+                <Card className="shadow-xs border border-amber-500/30 bg-amber-500/5 rounded-2xl overflow-hidden">
+                    <CardHeader className="border-b border-amber-500/10 pb-4">
                         <CardTitle className="text-amber-700 dark:text-amber-400 text-base font-bold flex items-center gap-2">
                             <FileEdit className="w-4 h-4" />
                             Pending Changes Summary
@@ -293,24 +443,36 @@ export function StepReview({
                             The following modifications will be published live to the catalog.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 gap-2">
+                    <CardContent className="p-6">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                             {pendingChanges.map((change, idx) => (
                                 <div
                                     key={idx}
-                                    className="flex items-center justify-between text-xs p-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10"
+                                    className="flex flex-col rounded-xl border border-amber-500/20 bg-background shadow-sm overflow-hidden"
                                 >
-                                    <span className="font-semibold text-amber-800 dark:text-amber-300">
-                                        {change.field}
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground line-through truncate max-w-[140px] text-[11px]">
-                                            {String(change.from || "Empty")}
+                                    <div className="flex items-center gap-2 bg-amber-500/10 px-4 py-2 border-b border-amber-500/20">
+                                        <FileEdit className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                        <span className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                                            {change.field}
                                         </span>
-                                        <span className="text-muted-foreground text-[10px]">→</span>
-                                        <span className="text-amber-700 dark:text-amber-300 font-bold truncate max-w-[140px]">
-                                            {String(change.to || "Empty")}
-                                        </span>
+                                    </div>
+                                    <div className="flex flex-col text-xs font-mono">
+                                        {change.diffs.map((diff, i) => (
+                                            <div
+                                                key={i}
+                                                className={`flex items-start px-4 py-2 border-b last:border-b-0 border-border/50 ${diff.type === 'add' ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300' :
+                                                        diff.type === 'remove' ? 'bg-rose-500/10 text-rose-800 dark:text-rose-300' :
+                                                            'bg-muted/30 text-muted-foreground'
+                                                    }`}
+                                            >
+                                                <span className="w-5 shrink-0 select-none opacity-50 font-bold">
+                                                    {diff.type === 'add' ? '+' : diff.type === 'remove' ? '-' : 'i'}
+                                                </span>
+                                                <span className={`break-words whitespace-pre-wrap ${diff.type === 'remove' ? 'line-through opacity-70' : ''}`}>
+                                                    {diff.text}
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             ))}
@@ -319,7 +481,6 @@ export function StepReview({
                 </Card>
             )}
 
-            {/* Stats Summary Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="shadow-xs border rounded-2xl">
                     <CardHeader>
@@ -363,14 +524,13 @@ export function StepReview({
                                     packageData?.status === "published"
                                         ? "default"
                                         : packageData?.status === "edited"
-                                          ? "outline"
-                                          : "secondary"
+                                            ? "outline"
+                                            : "secondary"
                                 }
-                                className={`capitalize text-xs font-semibold rounded-md ${
-                                    packageData?.status === "edited"
+                                className={`capitalize text-xs font-semibold rounded-md ${packageData?.status === "edited"
                                         ? "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/40"
                                         : ""
-                                }`}
+                                    }`}
                             >
                                 {packageData?.status || "Draft"}
                             </Badge>
@@ -448,31 +608,31 @@ export function StepReview({
 
                     {(packageData?.status === "published" ||
                         packageData?.status === "edited") && (
-                        <>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onUnpublish}
-                                disabled={isLoading}
-                                className="rounded-xl text-xs font-semibold gap-1.5 border-orange-500/30 text-orange-600 hover:bg-orange-500/10"
-                            >
-                                <RotateCcw className="w-4 h-4" />
-                                {packageData?.status === "edited"
-                                    ? "Discard Changes"
-                                    : "Unpublish"}
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onArchive}
-                                disabled={isLoading}
-                                className="rounded-xl text-xs font-semibold gap-1.5"
-                            >
-                                <Archive className="w-4 h-4" />
-                                Archive
-                            </Button>
-                        </>
-                    )}
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onUnpublish}
+                                    disabled={isLoading}
+                                    className="rounded-xl text-xs font-semibold gap-1.5 border-orange-500/30 text-orange-600 hover:bg-orange-500/10"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                    {packageData?.status === "edited"
+                                        ? "Discard Changes"
+                                        : "Unpublish"}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onArchive}
+                                    disabled={isLoading}
+                                    className="rounded-xl text-xs font-semibold gap-1.5"
+                                >
+                                    <Archive className="w-4 h-4" />
+                                    Archive
+                                </Button>
+                            </>
+                        )}
 
                     {packageData?.status === "archived" && (
                         <Button
@@ -508,23 +668,27 @@ export function StepReview({
                     {(packageData?.status === "draft" ||
                         packageData?.status === "published" ||
                         packageData?.status === "edited") && (
-                        <Button
-                            type="button"
-                            onClick={onPublish}
-                            disabled={isLoading || hasErrors}
-                            className="rounded-xl px-6 text-xs font-semibold gap-1.5 bg-primary hover:bg-primary/90"
-                        >
-                            {isLoading ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <Rocket className="w-4 h-4" />
-                            )}
-                            {packageData?.status === "published" ||
-                            packageData?.status === "edited"
-                                ? "Publish Changes"
-                                : "Publish Now"}
-                        </Button>
-                    )}
+                            <Button
+                                type="button"
+                                onClick={onPublish}
+                                disabled={
+                                    isLoading ||
+                                    hasErrors ||
+                                    (packageData?.status === "published" && pendingChanges.length === 0)
+                                }
+                                className="rounded-xl px-6 text-xs font-semibold gap-1.5 bg-primary hover:bg-primary/90"
+                            >
+                                {isLoading ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Rocket className="w-4 h-4" />
+                                )}
+                                {packageData?.status === "published" ||
+                                    packageData?.status === "edited"
+                                    ? "Publish Changes"
+                                    : "Publish Now"}
+                            </Button>
+                        )}
                 </div>
             </div>
         </div>

@@ -157,6 +157,7 @@ export function PackageForm({
         Record<number, string[]>
     >({});
     const [packageData, setPackageData] = useState<IPackages | null>(null);
+    const [initialPackageData, setInitialPackageData] = useState<IPackages | null>(null);
 
     const form = useForm<PackageFormData>({
         resolver: zodResolver(packageFormSchema),
@@ -367,13 +368,41 @@ export function PackageForm({
 
                     setLoadedSections((prev) => new Set(prev).add(section));
 
+                    const newData = section === "itinerary" && Array.isArray(res.data)
+                        ? { itinerary: res.data }
+                        : res.data;
+
                     setPackageData(
-                        (prev) =>
-                            ({
+                        (prev) => {
+                            return {
                                 ...(prev || {}),
-                                ...res.data,
-                            }) as IPackages,
+                                ...newData,
+                            } as IPackages;
+                        }
                     );
+                    
+                    // Fetch the live/catalog version to compare pending changes against
+                    try {
+                        const liveRes = await axiosInstance.get<any>(
+                            `/packages/${packageId}/${section}?live=true`,
+                        );
+                        if (liveRes.data) {
+                            const liveData = section === "itinerary" && Array.isArray(liveRes.data)
+                                ? { itinerary: liveRes.data }
+                                : liveRes.data;
+                                
+                            setInitialPackageData(
+                                (prev) => {
+                                    return {
+                                        ...(prev || {}),
+                                        ...liveData,
+                                    } as IPackages;
+                                }
+                            );
+                        }
+                    } catch (e) {
+                        console.error(`Failed to load live ${section} data:`, e);
+                    }
                 }
             } catch (error) {
                 console.error(`Failed to load ${section} data:`, error);
@@ -647,8 +676,9 @@ export function PackageForm({
                         ? "Changes discarded successfully"
                         : "Package unpublished and moved to draft",
                 );
-                setPackageData(response.data);
-                form.setValue("status", newStatus);
+                
+                // Force a hard reload to completely reset local form state and re-fetch all clean data
+                window.location.reload();
             }
         } catch (error) {
             toast.error("Failed to unpublish package");
@@ -833,6 +863,7 @@ export function PackageForm({
                             onUnpublish={handleUnpublish}
                             isLoading={isSaving}
                             packageData={packageData}
+                            initialPackageData={initialPackageData}
                         />
                     )}
                 </form>

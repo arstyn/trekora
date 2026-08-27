@@ -53,33 +53,33 @@ export class PackageController {
   }
 
   @Get(':id/basic')
-  findBasic(@Param('id') id: string) {
-    return this.packageService.findBasicInfo(id);
+  findBasic(@Param('id') id: string, @Query('live') live?: string) {
+    return this.packageService.findBasicInfo(id, live === 'true');
   }
 
   @Get(':id/details')
-  findDetails(@Param('id') id: string) {
-    return this.packageService.findDetails(id);
+  findDetails(@Param('id') id: string, @Query('live') live?: string) {
+    return this.packageService.findDetails(id, live === 'true');
   }
 
   @Get(':id/itinerary')
-  findItinerary(@Param('id') id: string) {
-    return this.packageService.findItinerary(id);
+  findItinerary(@Param('id') id: string, @Query('live') live?: string) {
+    return this.packageService.findItinerary(id, live === 'true');
   }
 
   @Get(':id/payments-cancellation')
-  findPaymentsAndCancellation(@Param('id') id: string) {
-    return this.packageService.findPaymentsAndCancellation(id);
+  findPaymentsAndCancellation(@Param('id') id: string, @Query('live') live?: string) {
+    return this.packageService.findPaymentsAndCancellation(id, live === 'true');
   }
 
   @Get(':id/requirements')
-  findRequirements(@Param('id') id: string) {
-    return this.packageService.findRequirements(id);
+  findRequirements(@Param('id') id: string, @Query('live') live?: string) {
+    return this.packageService.findRequirements(id, live === 'true');
   }
 
   @Get(':id/logistics')
-  findLogistics(@Param('id') id: string) {
-    return this.packageService.findLogistics(id);
+  findLogistics(@Param('id') id: string, @Query('live') live?: string) {
+    return this.packageService.findLogistics(id, live === 'true');
   }
 
   @Patch(':id')
