@@ -14,7 +14,8 @@ import {
   BookingPayment,
   PaymentStatus,
 } from 'src/database/entity/booking-payment.entity';
-import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
+import { Agent, CommissionType } from 'src/database/entity/agent.entity';
+import { Booking, BookingStatus, AgentPayoutStatus } from 'src/database/entity/booking.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
 import {
@@ -121,6 +122,33 @@ export class BookingService {
       const advancePaid = createBookingDto.initialPayment?.amount || 0;
       const balanceAmount = createBookingDto.totalAmount - advancePaid;
 
+      // Handle agent & commission calculation if agentId is provided
+      let agentCommissionType = createBookingDto.agentCommissionType;
+      let agentCommissionValue = createBookingDto.agentCommissionValue;
+      let agentCommissionAmount = createBookingDto.agentCommissionAmount;
+
+      if (createBookingDto.agentId) {
+        const agent = await queryRunner.manager.findOne(Agent, {
+          where: { id: createBookingDto.agentId, organizationId },
+        });
+        if (agent) {
+          agentCommissionType = agentCommissionType || agent.commissionType;
+          agentCommissionValue =
+            agentCommissionValue !== undefined
+              ? agentCommissionValue
+              : Number(agent.commissionValue || 0);
+
+          if (agentCommissionAmount === undefined || agentCommissionAmount === null) {
+            if (agentCommissionType === CommissionType.PERCENTAGE) {
+              agentCommissionAmount =
+                (createBookingDto.totalAmount * agentCommissionValue) / 100;
+            } else {
+              agentCommissionAmount = agentCommissionValue;
+            }
+          }
+        }
+      }
+
       // Create booking
       const booking = queryRunner.manager.create(Booking, {
         bookingNumber,
@@ -140,6 +168,11 @@ export class BookingService {
         paymentStructureId: createBookingDto.paymentStructureId,
         isPaymentOverridden: createBookingDto.isPaymentOverridden || false,
         paymentOverrideReason: createBookingDto.paymentOverrideReason,
+        agentId: createBookingDto.agentId,
+        agentCommissionType,
+        agentCommissionValue,
+        agentCommissionAmount: agentCommissionAmount || 0,
+        agentPayoutStatus: createBookingDto.agentPayoutStatus || AgentPayoutStatus.PENDING,
         createdById: userId,
         organizationId,
       });
@@ -546,6 +579,7 @@ export class BookingService {
         'documents',
         'currentWorkflow',
         'currentWorkflow.steps',
+        'agent',
       ],
     });
 
@@ -586,6 +620,20 @@ export class BookingService {
       balanceAmount: booking.balanceAmount,
       status: booking.status,
       specialRequests: booking.specialRequests,
+      agentId: booking.agentId,
+      agent: booking.agent
+        ? {
+            id: booking.agent.id,
+            name: booking.agent.name,
+            agencyName: booking.agent.agencyName,
+            email: booking.agent.email,
+            phone: booking.agent.phone,
+          }
+        : null,
+      agentCommissionType: booking.agentCommissionType,
+      agentCommissionValue: booking.agentCommissionValue,
+      agentCommissionAmount: booking.agentCommissionAmount,
+      agentPayoutStatus: booking.agentPayoutStatus,
       customers: booking.bookingCustomers ? booking.bookingCustomers.map(
         (bc): BookingCustomerResponseDto => {
           const customer = bc.customer;

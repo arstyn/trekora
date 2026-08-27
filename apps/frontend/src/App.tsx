@@ -64,6 +64,10 @@ import PermissionSetsPage from "./pages/user/permissions/permission-sets.page";
 import PermissionsPage from "./pages/user/permissions/permissions.page";
 import SettingsPage from "./pages/user/settings/settings.page";
 import TodosPage from "./pages/user/todos/todos.page";
+import AgentsPage from "./pages/user/agents/agents.page";
+import CreateAgentPage from "./pages/user/agents/create-agent.page";
+import EditAgentPage from "./pages/user/agents/edit-agent.page";
+import ViewAgentPage from "./pages/user/agents/view-agent.page";
 
 function AuthenticatedApp() {
     // Add your dashboard and other protected routes here
@@ -138,6 +142,10 @@ function AuthenticatedApp() {
                         element={<EditPaymentPage />}
                     />
                     <Route path="/import" element={<ImportPage />} />
+                    <Route path="/agents" element={<AgentsPage />} />
+                    <Route path="/agents/create" element={<CreateAgentPage />} />
+                    <Route path="/agents/edit/:id" element={<EditAgentPage />} />
+                    <Route path="/agents/:id" element={<ViewAgentPage />} />
                     <Route path="/todos" element={<TodosPage />} />
                     <Route path="/defaults/meals" element={<MealsPage />} />
                     <Route path="/defaults/meals/create" element={<CreateMealPage />} />

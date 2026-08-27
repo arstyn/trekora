@@ -38,6 +38,9 @@ import type {
     IPackage,
     PaymentMethod,
 } from "@/types/booking.types";
+import AgentService from "@/services/agent.service";
+import type { IAgent } from "@/types/agent.types";
+import { AgentStatus, CommissionType } from "@/types/agent.types";
 import {
     AlertCircle,
     ArrowLeft,
@@ -56,6 +59,7 @@ import {
     ShieldAlert,
     Tag,
     User,
+    UserCheck,
     UserPlus,
     Users,
     X
@@ -97,6 +101,7 @@ export interface ICreateBookingFormData {
     paymentOverrideReason: string;
     batchBlockId?: string;
     overrideCapacityLimit: boolean;
+    agentId?: string;
 }
 
 export function CreateBookingDialog({
@@ -363,6 +368,8 @@ export function CreateBookingDialog({
         setError(null);
     };
 
+    const [agents, setAgents] = useState<IAgent[]>([]);
+
     // Load initial data when dialog opens
     useEffect(() => {
         if (open) {
@@ -370,16 +377,18 @@ export function CreateBookingDialog({
         }
     }, [open]);
 
-    // Load packages and customers when dialog opens
+    // Load packages, customers, and active agents when dialog opens
     const loadInitialData = async () => {
         try {
             setLoadingData(true);
-            const [packagesData, customersData] = await Promise.all([
+            const [packagesData, customersData, agentsData] = await Promise.all([
                 BookingService.getPackages(),
                 BookingService.getCustomers({ limit: 10, offset: 0 }),
+                AgentService.getAllAgents({ status: AgentStatus.ACTIVE }).catch(() => []),
             ]);
             setPackages(packagesData.packages || []);
             setCustomers(customersData.customers);
+            setAgents(agentsData || []);
             setCustomerPagination({
                 offset: 10,
                 limit: 10,
@@ -802,6 +811,7 @@ export function CreateBookingDialog({
                 paymentOverrideReason: formData.paymentOverrideReason || undefined,
                 batchBlockId: formData.batchBlockId || undefined,
                 overrideCapacityLimit: formData.overrideCapacityLimit,
+                agentId: formData.agentId || undefined,
                 initialPayment:
                     formData.advanceAmount > 0
                         ? {
@@ -2106,6 +2116,78 @@ export function CreateBookingDialog({
                                                         + {BookingService.formatCurrency(formData.adjustmentAmount)} Adjustment
                                                     </Badge>
                                                 )}
+                                            </div>
+                                        </div>
+
+                                        {/* Referring Agent Selection & Commission Preview */}
+                                        <div className="p-4 rounded-xl border bg-card space-y-4">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+                                                <div>
+                                                    <Label className="text-sm font-semibold flex items-center gap-1.5">
+                                                        <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                                        Referring Agent / Commission (Optional)
+                                                    </Label>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        Assign an external agent who referred this customer to track commission earnings.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="agentSelect" className="text-xs font-medium">Select Agent</Label>
+                                                    <Select
+                                                        value={formData.agentId || "none"}
+                                                        onValueChange={(val) =>
+                                                            setFormData((prev) => ({
+                                                                ...prev,
+                                                                agentId: val === "none" ? undefined : val,
+                                                            }))
+                                                        }
+                                                    >
+                                                        <SelectTrigger id="agentSelect" className="bg-background">
+                                                            <SelectValue placeholder="No Agent (Direct Booking)" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">No Agent (Direct Booking)</SelectItem>
+                                                            {agents.map((agent) => (
+                                                                <SelectItem key={agent.id} value={agent.id}>
+                                                                    {agent.name} {agent.agencyName ? `(${agent.agencyName})` : ""} — {agent.commissionType === CommissionType.PERCENTAGE ? `${agent.commissionValue}%` : `₹${agent.commissionValue} flat`}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {/* Live Commission Calculation Preview */}
+                                                {(() => {
+                                                    const selectedAgent = agents.find((a) => a.id === formData.agentId);
+                                                    if (!selectedAgent) return null;
+
+                                                    const calcCommission =
+                                                        selectedAgent.commissionType === CommissionType.PERCENTAGE
+                                                            ? (formData.totalAmount * Number(selectedAgent.commissionValue || 0)) / 100
+                                                            : Number(selectedAgent.commissionValue || 0);
+
+                                                    return (
+                                                        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg space-y-1">
+                                                            <div className="flex items-center justify-between text-xs font-semibold text-blue-900 dark:text-blue-300">
+                                                                <span>Agent Commission Preview</span>
+                                                                <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300">
+                                                                    {selectedAgent.commissionType === CommissionType.PERCENTAGE
+                                                                        ? `${selectedAgent.commissionValue}% of Total`
+                                                                        : `Flat ₹${selectedAgent.commissionValue}`}
+                                                                </Badge>
+                                                            </div>
+                                                            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                                                {BookingService.formatCurrency(calcCommission)}
+                                                            </div>
+                                                            <p className="text-[10px] text-muted-foreground">
+                                                                Status will default to Pending until payout is settled.
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
 

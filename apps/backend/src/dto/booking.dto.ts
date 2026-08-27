@@ -11,7 +11,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
-import { BookingStatus } from 'src/database/entity/booking.entity';
+import { AgentPayoutStatus, BookingStatus } from 'src/database/entity/booking.entity';
+import { CommissionType } from 'src/database/entity/agent.entity';
 
 export class CustomerSelectionDto {
   @IsUUID()
@@ -125,6 +126,28 @@ export class CreateBookingDto {
   @IsOptional()
   @IsBoolean()
   overrideCapacityLimit?: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  agentId?: string;
+
+  @IsOptional()
+  @IsEnum(CommissionType)
+  agentCommissionType?: CommissionType;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  agentCommissionValue?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  agentCommissionAmount?: number;
+
+  @IsOptional()
+  @IsEnum(AgentPayoutStatus)
+  agentPayoutStatus?: AgentPayoutStatus;
 }
 
 export class AddTravelersDto {
@@ -177,6 +200,28 @@ export class UpdateBookingDto {
 
   @IsOptional()
   additionalDetails?: Record<string, any>;
+
+  @IsOptional()
+  @IsUUID()
+  agentId?: string;
+
+  @IsOptional()
+  @IsEnum(CommissionType)
+  agentCommissionType?: CommissionType;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  agentCommissionValue?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  agentCommissionAmount?: number;
+
+  @IsOptional()
+  @IsEnum(AgentPayoutStatus)
+  agentPayoutStatus?: AgentPayoutStatus;
 }
 
 export class BookingStatsDto {
@@ -213,6 +258,10 @@ export class BookingSummaryDto {
   status: BookingStatus;
   createdAt: Date;
   createdBy?: CreatedByDto | null;
+  agentId?: string;
+  agentName?: string;
+  agentCommissionAmount?: number;
+  agentPayoutStatus?: AgentPayoutStatus;
 }
 
 export class BookingCustomerResponseDto {
@@ -268,6 +317,18 @@ export class BookingResponseDto {
   balanceAmount: number;
   status: BookingStatus;
   specialRequests?: string;
+  agentId?: string;
+  agent?: {
+    id: string;
+    name: string;
+    agencyName?: string;
+    email?: string;
+    phone?: string;
+  } | null;
+  agentCommissionType?: CommissionType;
+  agentCommissionValue?: number;
+  agentCommissionAmount?: number;
+  agentPayoutStatus?: AgentPayoutStatus;
 
   payments: {
     id: string;

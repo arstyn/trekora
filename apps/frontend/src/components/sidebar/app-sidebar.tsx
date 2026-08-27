@@ -35,6 +35,7 @@ import {
     Shield,
     ShieldCheck,
     Tickets,
+    UserCheck,
     UsersIcon,
     Loader2,
 } from "lucide-react";
@@ -221,6 +222,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     },
                 ]
                 : []),
+            {
+                name: "Agents",
+                url: "/agents",
+                icon: UserCheck,
+            },
             ...(canReadPayments
                 ? [
                     {
