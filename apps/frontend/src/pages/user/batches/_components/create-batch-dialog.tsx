@@ -69,7 +69,6 @@ export function CreateBatchDialog({
         endDate: "",
         totalSeats: "",
         seatChangeReason: "",
-        seatChangeReason: "",
         coordinators: [] as IEmployee[],
     });
     const [changeSeats, setChangeSeats] = useState(false);
