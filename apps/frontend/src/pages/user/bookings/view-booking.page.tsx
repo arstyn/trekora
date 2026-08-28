@@ -108,11 +108,11 @@ export default function BookingDetailsPage() {
         }
     }, []);
 
-    const fetchBookingDetails = useCallback(async () => {
+    const fetchBookingDetails = useCallback(async (showLoading = true) => {
         if (!id) return;
 
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             setError(null);
             const bookingData = await BookingService.getBookingById(id);
             setBooking(bookingData);
@@ -123,7 +123,7 @@ export default function BookingDetailsPage() {
                 (err as Error)?.message || "Failed to load booking details.",
             );
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     }, [id, fetchBookingLogs]);
 
