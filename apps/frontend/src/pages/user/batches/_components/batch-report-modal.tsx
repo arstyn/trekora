@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import BookingService from "@/services/booking.service";
 import type { IBatches } from "@/types/batches.types";
+import { format } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -193,7 +194,7 @@ export function BatchReportModal({
         <body>
             <h1>Batch Report: ${batch.package?.name || "Batch Details"}</h1>
             <div style="font-size: 11px; color: #6b7280; margin-bottom: 20px;">
-                Generated on: ${new Date().toLocaleString()} | Trip Dates: ${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}
+                Generated on: ${new Date().toLocaleString()} | Trip Dates: ${batch.startDate ? format(new Date(batch.startDate), "dd-MM-yyyy") : "N/A"} - ${batch.endDate ? format(new Date(batch.endDate), "dd-MM-yyyy") : "N/A"}
             </div>
         `;
 
@@ -203,11 +204,11 @@ export function BatchReportModal({
             <div class="grid">
                 <div>
                     <div class="label">Start Date</div>
-                    <div class="value">${new Date(batch.startDate).toLocaleDateString()}</div>
+                    <div class="value">${batch.startDate ? format(new Date(batch.startDate), "dd-MM-yyyy") : "N/A"}</div>
                 </div>
                 <div>
                     <div class="label">End Date</div>
-                    <div class="value">${new Date(batch.endDate).toLocaleDateString()}</div>
+                    <div class="value">${batch.endDate ? format(new Date(batch.endDate), "dd-MM-yyyy") : "N/A"}</div>
                 </div>
                 <div>
                     <div class="label">Capacity & Load</div>
