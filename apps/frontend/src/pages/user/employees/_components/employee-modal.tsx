@@ -27,6 +27,7 @@ import { PhoneInput } from "@/components/phone-input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { format, parse, isValid } from "date-fns";
 import {
 	Select,
 	SelectContent,
@@ -39,7 +40,6 @@ import { PermissionService } from "@/services/permission.service";
 import type { IEmployee } from "@/types/employee.types";
 import type { PermissionSet } from "@/types/permission.types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
 import { Briefcase, CalendarIcon, ChevronDown, ChevronRight, FileText, History, Mail, ShieldAlert, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -137,6 +137,14 @@ export function EmployeeModal({
 	const [showAllLogs, setShowAllLogs] = useState(false);
 
 	const [step, setStep] = useState(1);
+	const [dobInput, setDobInput] = useState("");
+	const [joinDateInput, setJoinDateInput] = useState("");
+	const formatDateInput = (raw: string) => {
+		const digits = raw.replace(/\D/g, "").slice(0, 8); // strip non-digits, max DDMMYYYY
+		if (digits.length > 4) return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+		if (digits.length > 2) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+		return digits;
+	};
 
 	const validateStep = async (currentStep: number) => {
 		if (currentStep === 1) {
@@ -204,6 +212,16 @@ export function EmployeeModal({
 					managerId: employee.managerId ?? "",
 					branchId: employee.branchId ?? "",
 				});
+				if (employee?.dateOfBirth) {
+					setDobInput(format(new Date(employee.dateOfBirth), "dd/MM/yyyy"));
+				} else {
+					setDobInput("");
+				}
+				if (employee?.joinDate) {
+					setJoinDateInput(format(new Date(employee.joinDate), "dd/MM/yyyy"));
+				} else {
+					setJoinDateInput("");
+				}
 				loadPermissionSets();
 				if (mode === "view") {
 					loadLogs();
@@ -218,6 +236,8 @@ export function EmployeeModal({
 					additional_info: "", maritalStatus: undefined, verificationDocumentType: "",
 					emergencyContacts: [], managerId: "", branchId: ""
 				});
+				setDobInput("")
+				setJoinDateInput("");
 				loadPermissionSets();
 			}
 		} else {
@@ -591,14 +611,72 @@ export function EmployeeModal({
 														)} />
 													</div>
 													<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-														<FormField control={form.control} name="dateOfBirth" render={({ field }) => (
-															<FormItem className="flex flex-col"><FormLabel>Date of Birth</FormLabel><Popover modal={false}><PopoverTrigger asChild><FormControl><Button type="button" variant={"outline"} className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}>
-																{field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-																<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-															</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-																	<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
-																</PopoverContent></Popover><FormMessage /></FormItem>
-														)} />
+														<FormField
+															control={form.control}
+															name="dateOfBirth"
+															render={({ field }) => (
+																<FormItem>
+																	<FormLabel>Date of Birth</FormLabel>
+
+																	<Popover modal={false}>
+																		<div className="relative">
+																			<FormControl>
+																				<Input
+																					placeholder="DD/MM/YYYY"
+																					maxLength={10}
+																					inputMode="numeric"
+																					value={dobInput}
+																					onChange={(e) => {
+																						const formatted = formatDateInput(e.target.value);
+																						setDobInput(formatted);
+
+																						if (formatted.length === 10) {
+																							const parsed = parse(formatted, "dd/MM/yyyy", new Date());
+																							if (isValid(parsed)) field.onChange(parsed);
+																						} else {
+																							field.onChange(undefined);
+																						}
+																					}}
+																				/>
+																			</FormControl>
+
+																			<PopoverTrigger asChild>
+																				<Button
+																					type="button"
+																					variant="ghost"
+																					size="icon"
+																					className="absolute right-1 top-1/2 -translate-y-1/2"
+																				>
+																					<CalendarIcon className="h-4 w-4" />
+																				</Button>
+																			</PopoverTrigger>
+																		</div>
+
+																		<PopoverContent className="w-auto p-0">
+																			<Calendar
+																				mode="single"
+																				selected={field.value}
+																				onSelect={(date) => {
+																					field.onChange(date);
+
+																					if (date) {
+																						setDobInput(format(date, "dd/MM/yyyy"));
+																					} else {
+																						setDobInput("");
+																					}
+																				}}
+																				disabled={[
+																					{ after: new Date() },
+																					{ before: new Date("1900-01-01") },
+																				]}
+																			/>
+																		</PopoverContent>
+																	</Popover>
+
+																	<FormMessage />
+																</FormItem>
+															)}
+														/>
 														<FormField control={form.control} name="nationality" render={({ field }) => (
 															<FormItem><FormLabel>Nationality</FormLabel><FormControl>
 																<Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -666,19 +744,130 @@ export function EmployeeModal({
 																</Select>
 															</FormControl><FormMessage /></FormItem>
 														)} />
-														<FormField control={form.control} name="joinDate" render={({ field }) => (
-															<FormItem className="flex flex-col"><FormLabel>Join Date</FormLabel><Popover modal={false}><PopoverTrigger asChild><FormControl><Button type="button" variant={"outline"} className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}>
-																{field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-																<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-															</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-																	<Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]} />
-																</PopoverContent></Popover><FormMessage /></FormItem>
-														)} />
+														<FormField
+															control={form.control}
+															name="joinDate"
+															render={({ field }) => (
+																<FormItem>
+																	<FormLabel>Join Date</FormLabel>
+
+																	<Popover modal={false}>
+																		<div className="relative">
+																			<FormControl>
+																				<Input
+																					placeholder="DD/MM/YYYY"
+																					maxLength={10}
+																					inputMode="numeric"
+																					value={joinDateInput}
+																					onChange={(e) => {
+																						const formatted = formatDateInput(e.target.value);
+																						setJoinDateInput(formatted);
+
+																						if (formatted.length === 10) {
+																							const parsed = parse(formatted, "dd/MM/yyyy", new Date());
+																							if (isValid(parsed)) field.onChange(parsed);
+																						} else {
+																							field.onChange(undefined);
+																						}
+																					}}
+																				/>	
+																			</FormControl>
+
+																			<PopoverTrigger asChild>
+																				<Button
+																					type="button"
+																					variant="ghost"
+																					size="icon"
+																					className="absolute right-1 top-1/2 -translate-y-1/2"
+																				>
+																					<CalendarIcon className="h-4 w-4" />
+																				</Button>
+																			</PopoverTrigger>
+																		</div>
+
+																		<PopoverContent className="w-auto p-0">
+																			<Calendar
+																				mode="single"
+																				selected={field.value}
+																				onSelect={(date) => {
+																					field.onChange(date);
+																					if (date) {
+																						setJoinDateInput(format(date, "dd/MM/yyyy"));
+																					} else {
+																						setJoinDateInput("");
+																					}
+																				}}
+																				disabled={[{ after: new Date() }, { before: new Date("1900-01-01") }]}
+																			/>
+																		</PopoverContent>
+																	</Popover>
+
+																	<FormMessage />
+																</FormItem>
+															)}
+														/>
+
 													</div>
 													{form.watch("experience") === "Other" && (
-														<FormField control={form.control} name="customExperience" render={({ field }) => (
-															<FormItem><FormLabel>Custom Experience</FormLabel><FormControl><Input placeholder="Enter custom experience" {...field} /></FormControl><FormMessage /></FormItem>
-														)} />
+														<FormField
+															control={form.control}
+															name="joinDate"
+															render={({ field }) => (
+																<FormItem>
+																	<FormLabel>Join Date</FormLabel>
+
+																	<Popover modal={false}>
+																		<div className="relative">
+																			<FormControl>
+																				<Input
+																					placeholder="DD/MM/YYYY"
+																					value={joinDateInput}
+																					onChange={(e) => {
+																						const value = e.target.value;
+																						setJoinDateInput(value);
+
+																						const parsed = parse(value, "dd/MM/yyyy", new Date());
+
+																						if (isValid(parsed)) {
+																							field.onChange(parsed);
+																						}
+																					}}
+																				/>
+																			</FormControl>
+
+																			<PopoverTrigger asChild>
+																				<Button
+																					type="button"
+																					variant="ghost"
+																					size="icon"
+																					className="absolute right-1 top-1/2 -translate-y-1/2"
+																				>
+																					<CalendarIcon className="h-4 w-4" />
+																				</Button>
+																			</PopoverTrigger>
+																		</div>
+
+																		<PopoverContent className="w-auto p-0">
+																			<Calendar
+																				mode="single"
+																				selected={field.value}
+																				onSelect={(date) => {
+																					field.onChange(date);
+																					if (date) {
+																						setJoinDateInput(format(date, "dd/MM/yyyy"));
+																					} else {
+																						setJoinDateInput("");
+																					}
+																				}}
+																				disabled={[{ after: new Date() }]}
+																			/>
+																		</PopoverContent>
+																	</Popover>
+
+																	<FormMessage />
+																</FormItem>
+															)}
+														/>
 													)}
 													<FormField control={form.control} name="additional_info" render={({ field }) => (
 														<FormItem><FormLabel>Additional Info</FormLabel><FormControl><Input placeholder="Additional Information" {...field} /></FormControl><FormMessage /></FormItem>

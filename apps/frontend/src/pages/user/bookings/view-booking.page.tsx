@@ -9,6 +9,7 @@ import {
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -473,29 +474,47 @@ export default function BookingDetailsPage() {
 
                         {/* Primary Booker details */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                <User className="w-3.5 h-3.5 text-blue-600" />
-                                Primary Contact Info
-                            </h4>
-                            <div className="flex flex-col gap-3 text-xs pl-1">
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Contact Name</p>
-                                    <p className="font-semibold text-sm">
-                                        {booking.primaryCustomer.firstName} {booking.primaryCustomer.lastName}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Email Address</p>
-                                    <p className="font-semibold text-sm overflow-hidden text-ellipsis max-w-[200px]" title={booking.primaryCustomer.email || ""}>
-                                        {displayVal(booking.primaryCustomer.email)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Phone Number</p>
-                                    <p className="font-bold text-sm">{displayVal(booking.primaryCustomer.phone)}</p>
-                                </div>
-                            </div>
-                        </div>
+    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        <User className="w-3.5 h-3.5 text-blue-600" />
+        Primary Contact Info
+    </h4>
+
+    <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div>
+                <p className="text-[10px] text-muted-foreground">Contact Name</p>
+                <p className="font-semibold text-sm">
+                    {booking.primaryCustomer.firstName}{" "}
+                    {booking.primaryCustomer.lastName}
+                </p>
+            </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div>
+                <p className="text-[10px] text-muted-foreground">Email Address</p>
+                <p
+                    className="font-semibold text-sm overflow-hidden text-ellipsis max-w-[200px]"
+                    title={booking.primaryCustomer.email || ""}
+                >
+                    {displayVal(booking.primaryCustomer.email)}
+                </p>
+            </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+            <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div>
+                <p className="text-[10px] text-muted-foreground">Phone Number</p>
+                <p className="font-bold text-sm">
+                    {displayVal(booking.primaryCustomer.phone)}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
                     </CardContent>
                 </Card>
 

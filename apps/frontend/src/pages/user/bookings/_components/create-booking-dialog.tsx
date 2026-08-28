@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import EnhancedCustomerForm from "@/pages/user/customers/_components/enhanced-customer-form";
+import { TypableDatePicker } from "@/components/ui/typable-date-picker";
 import BookingService from "@/services/booking.service";
 import type { IBatches } from "@/types/batches.types";
 import type {
@@ -2278,14 +2279,13 @@ export function CreateBookingDialog({
                                                         </div>
                                                         <div className="space-y-2">
                                                             <Label htmlFor="paymentDate" className="text-xs font-bold text-muted-foreground">Payment Date</Label>
-                                                            <Input
+                                                            <TypableDatePicker
                                                                 id="paymentDate"
-                                                                type="date"
                                                                 value={formData.paymentDate}
-                                                                onChange={(e) =>
+                                                                onChange={(val) =>
                                                                     setFormData((prev) => ({
                                                                         ...prev,
-                                                                        paymentDate: e.target.value,
+                                                                        paymentDate: val,
                                                                     }))
                                                                 }
                                                                 className="h-10 bg-background"
