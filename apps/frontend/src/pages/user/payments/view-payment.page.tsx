@@ -57,8 +57,7 @@ export default function PaymentDetailsPage() {
             const fullBooking = await BookingService.getBookingById(paymentData.booking.id);
             await InvoiceService.generateAndDownloadInvoice(
                 fullBooking,
-                user?.organization?.name,
-                user?.organization?.domain
+                user?.organization
             );
         } catch (err) {
             console.error("Error generating invoice:", err);
