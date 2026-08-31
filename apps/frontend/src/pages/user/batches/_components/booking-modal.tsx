@@ -427,8 +427,7 @@ export function BookingModal({
                                         onClick={() =>
                                             InvoiceService.generateAndDownloadInvoice(
                                                 booking,
-                                                user?.organization?.name,
-                                                user?.organization?.domain,
+                                                user?.organization,
                                             )
                                         }
                                         disabled={

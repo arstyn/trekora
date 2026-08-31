@@ -244,7 +244,7 @@ export default function BookingDetailsPage() {
 
         try {
             setIsGeneratingInvoice(true);
-            await InvoiceService.generateAndDownloadInvoice(booking, user?.organization?.name, user?.organization?.domain);
+            await InvoiceService.generateAndDownloadInvoice(booking, user?.organization);
         } catch (err) {
             console.error("Error generating invoice:", err);
             alert((err as Error).message || "Failed to generate invoice");

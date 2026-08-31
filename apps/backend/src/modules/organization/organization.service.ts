@@ -5,6 +5,7 @@ import { User } from 'src/database/entity/user.entity';
 import { Repository } from 'typeorm';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { seedDefaultTemplates } from './seed-templates.helper';
+import { UploadService } from '../upload/upload.service';
 
 @Injectable()
 export class OrganizationService {
@@ -13,6 +14,7 @@ export class OrganizationService {
     private readonly organizationRepository: Repository<Organization>,
     @Inject(forwardRef(() => ActivityLogService))
     private readonly activityLogService: ActivityLogService,
+    private readonly uploadService: UploadService,
   ) { }
 
   // Create a new organization
@@ -50,13 +52,32 @@ export class OrganizationService {
   // Update a organization by ID
   async update(
     id: string,
-    updateData: Partial<Organization>,
+    updateData: any,
     userId?: string,
+    sealFile?: Express.Multer.File,
   ): Promise<Organization | null> {
     const existingOrg = await this.findOne(id);
     const previousDays = existingOrg?.defaultBlockDays ?? 3;
 
-    await this.organizationRepository.update(id, updateData);
+    const payload: Partial<Organization> = { ...updateData };
+
+    if (sealFile) {
+      const sealUrl = await this.uploadService.uploadSingle(sealFile, 'organization-seals');
+      payload.invoiceSeal = sealUrl;
+    }
+
+    if (payload.invoiceFields && typeof payload.invoiceFields === 'string') {
+      try {
+        payload.invoiceFields = JSON.parse(payload.invoiceFields);
+      } catch (err) {
+        console.error('Failed to parse invoiceFields JSON:', err);
+      }
+    }
+
+    // Clean up temporary form file fields
+    delete (payload as any).seal;
+
+    await this.organizationRepository.update(id, payload);
     const updatedOrg = await this.findOne(id);
 
     if (

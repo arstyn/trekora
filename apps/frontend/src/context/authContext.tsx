@@ -24,7 +24,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 			const token = await getAccessToken();
 			if (token) {
 				const res = await axiosInstance.get("/employee/profile");
-				setUser(res.data?.user || null);
+				if (res.data && res.data.user) {
+					setUser({
+						...res.data.user,
+						organization: res.data.organization,
+						branch: res.data.branch,
+					});
+				} else {
+					setUser(null);
+				}
 				setIsAuthenticated(true);
 				setIsBackendDown(false);
 			} else {

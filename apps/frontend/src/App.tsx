@@ -63,6 +63,7 @@ import PaymentDetailsPage from "./pages/user/payments/view-payment.page";
 import PermissionSetsPage from "./pages/user/permissions/permission-sets.page";
 import PermissionsPage from "./pages/user/permissions/permissions.page";
 import SettingsPage from "./pages/user/settings/settings.page";
+import InvoiceSettingsPage from "./pages/user/settings/invoice-settings.page";
 import TodosPage from "./pages/user/todos/todos.page";
 
 function AuthenticatedApp() {
@@ -89,6 +90,7 @@ function AuthenticatedApp() {
                     <Route path="/customers" element={<CustomerManagement />} />
                     <Route path="/customers/:id" element={<ViewCustomerPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/settings/invoice" element={<InvoiceSettingsPage />} />
                     <Route
                         path="/permission-sets"
                         element={<PermissionSetsPage />}
