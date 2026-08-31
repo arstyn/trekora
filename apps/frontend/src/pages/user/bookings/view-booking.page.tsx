@@ -9,6 +9,7 @@ import {
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -107,11 +108,11 @@ export default function BookingDetailsPage() {
         }
     }, []);
 
-    const fetchBookingDetails = useCallback(async () => {
+    const fetchBookingDetails = useCallback(async (showLoading = true) => {
         if (!id) return;
 
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             setError(null);
             const bookingData = await BookingService.getBookingById(id);
             setBooking(bookingData);
@@ -122,7 +123,7 @@ export default function BookingDetailsPage() {
                 (err as Error)?.message || "Failed to load booking details.",
             );
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     }, [id, fetchBookingLogs]);
 
@@ -243,7 +244,7 @@ export default function BookingDetailsPage() {
 
         try {
             setIsGeneratingInvoice(true);
-            await InvoiceService.generateAndDownloadInvoice(booking, user?.organization?.name, user?.organization?.domain);
+            await InvoiceService.generateAndDownloadInvoice(booking, user?.organization);
         } catch (err) {
             console.error("Error generating invoice:", err);
             alert((err as Error).message || "Failed to generate invoice");
@@ -274,6 +275,28 @@ export default function BookingDetailsPage() {
             value
         ) : (
             <span className="text-muted-foreground italic">N/A</span>
+        );
+    };
+
+    const renderTravelerContactInfo = (email?: string | null, phone?: string | null) => {
+        const hasEmail = Boolean(email && email.trim());
+        const hasPhone = Boolean(phone && phone.trim());
+
+        if (!hasEmail && !hasPhone) {
+            return <span className="text-xs text-muted-foreground italic">N/A</span>;
+        }
+
+        return (
+            <div className="space-y-0.5 text-xs text-muted-foreground">
+                <p className="flex items-center gap-1">
+                    <Mail className="w-3 h-3 shrink-0" />
+                    {hasEmail ? email : <span className="italic">N/A</span>}
+                </p>
+                <p className="flex items-center gap-1">
+                    <Phone className="w-3 h-3 shrink-0" />
+                    {hasPhone ? phone : <span className="italic">N/A</span>}
+                </p>
+            </div>
         );
     };
 
@@ -473,29 +496,47 @@ export default function BookingDetailsPage() {
 
                         {/* Primary Booker details */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                <User className="w-3.5 h-3.5 text-blue-600" />
-                                Primary Contact Info
-                            </h4>
-                            <div className="flex flex-col gap-3 text-xs pl-1">
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Contact Name</p>
-                                    <p className="font-semibold text-sm">
-                                        {booking.primaryCustomer.firstName} {booking.primaryCustomer.lastName}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Email Address</p>
-                                    <p className="font-semibold text-sm overflow-hidden text-ellipsis max-w-[200px]" title={booking.primaryCustomer.email || ""}>
-                                        {displayVal(booking.primaryCustomer.email)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Phone Number</p>
-                                    <p className="font-bold text-sm">{displayVal(booking.primaryCustomer.phone)}</p>
-                                </div>
-                            </div>
-                        </div>
+    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        <User className="w-3.5 h-3.5 text-blue-600" />
+        Primary Contact Info
+    </h4>
+
+    <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div>
+                <p className="text-[10px] text-muted-foreground">Contact Name</p>
+                <p className="font-semibold text-sm">
+                    {booking.primaryCustomer.firstName}{" "}
+                    {booking.primaryCustomer.lastName}
+                </p>
+            </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div>
+                <p className="text-[10px] text-muted-foreground">Email Address</p>
+                <p
+                    className="font-semibold text-sm overflow-hidden text-ellipsis max-w-[200px]"
+                    title={booking.primaryCustomer.email || ""}
+                >
+                    {displayVal(booking.primaryCustomer.email)}
+                </p>
+            </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+            <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div>
+                <p className="text-[10px] text-muted-foreground">Phone Number</p>
+                <p className="font-bold text-sm">
+                    {displayVal(booking.primaryCustomer.phone)}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
                     </CardContent>
                 </Card>
 
@@ -673,10 +714,7 @@ export default function BookingDetailsPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="space-y-0.5 text-xs text-muted-foreground">
-                                            <p className="flex items-center gap-1"><Mail className="w-3 h-3" /> {customer.email}</p>
-                                            <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {customer.phone}</p>
-                                        </div>
+                                        {renderTravelerContactInfo(customer.email, customer.phone)}
                                     </TableCell>
                                     <TableCell>
                                         <p className="text-xs text-muted-foreground line-clamp-1 max-w-[250px]" title={customer.specialRequests || ""}>

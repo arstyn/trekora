@@ -9,6 +9,7 @@ import {
     DialogTitle
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TypableDatePicker } from "@/components/ui/typable-date-picker";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -596,14 +597,13 @@ export function AddPaymentDialog({
 
                                                 <div className="space-y-2">
                                                     <Label htmlFor="paymentDate" className="text-xs font-bold text-muted-foreground">Payment Date *</Label>
-                                                    <Input
+                                                    <TypableDatePicker
                                                         id="paymentDate"
-                                                        type="date"
                                                         value={formData.paymentDate}
-                                                        onChange={(e) =>
+                                                        onChange={(val) =>
                                                             setFormData((prev) => ({
                                                                 ...prev,
-                                                                paymentDate: e.target.value,
+                                                                paymentDate: val,
                                                             }))
                                                         }
                                                         className="h-10"

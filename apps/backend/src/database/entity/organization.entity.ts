@@ -40,6 +40,15 @@ export class Organization {
   @Column({ type: 'int', default: 3, name: 'default_block_days' })
   defaultBlockDays: number;
 
+  @Column({ type: 'varchar', default: '#2563eb', name: 'invoice_color' })
+  invoiceColor: string;
+
+  @Column({ type: 'varchar', nullable: true, name: 'invoice_seal' })
+  invoiceSeal: string | null;
+
+  @Column({ type: 'jsonb', nullable: true, name: 'invoice_fields' })
+  invoiceFields: any | null;
+
   @OneToMany(() => UserOrganization, (userOrg) => userOrg.organization)
   userOrganizations: UserOrganization[];
 }

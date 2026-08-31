@@ -1,6 +1,5 @@
 import { FileUploader } from "@/components/file-uploader";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import {
     Dialog,
@@ -10,11 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Select,
@@ -31,7 +25,6 @@ import { getAllStates, getDistricts } from "india-state-district";
 import {
     ArrowLeft,
     ArrowRight,
-    CalendarIcon,
     ChevronRight,
     Image as ImageIcon,
     Loader2,
@@ -43,6 +36,7 @@ import { useState } from "react";
 import { countries } from "./countries";
 import { SearchableSelect } from "@/components/searchable-select";
 import { PhoneInput } from "@/components/phone-input";
+import { TypableDatePicker, parseDateString } from "@/components/ui/typable-date-picker";
 
 interface EnhancedCustomerFormProps {
     customer?: ICustomer;
@@ -129,22 +123,8 @@ export default function EnhancedCustomerForm({
         : [];
 
 
-    const parseLocalYYYYMMDD = (dateStr: string | undefined): Date | undefined => {
-        if (!dateStr) return undefined;
-        const parts = dateStr.split("-");
-        if (parts.length !== 3) return undefined;
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1; // 0-indexed
-        const day = parseInt(parts[2], 10);
-        return new Date(year, month, day);
-    };
-
-    const toLocalYYYYMMDD = (date: Date): string => {
-        return format(date, "yyyy-MM-dd");
-    };
-
     const formatLocalString = (dateStr: string | undefined, formatStr: string = "PPP"): string => {
-        const parsed = parseLocalYYYYMMDD(dateStr);
+        const parsed = parseDateString(dateStr);
         if (!parsed) return "Select date";
         return format(parsed, formatStr);
     };
@@ -603,49 +583,15 @@ export default function EnhancedCustomerForm({
                                                 <Label className="text-sm font-medium mb-1">
                                                     Date of Birth
                                                 </Label>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            className="h-9 justify-start text-left font-normal w-full"
-                                                        >
-                                                            <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                            {formData.dateOfBirth
-                                                                ? formatLocalString(formData.dateOfBirth, "PPP")
-                                                                : "Select date"}
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                        <Calendar
-                                                            mode="single"
-                                                            captionLayout="dropdown"
-                                                            defaultMonth={
-                                                                formData.dateOfBirth
-                                                                    ? parseLocalYYYYMMDD(formData.dateOfBirth)
-                                                                    : new Date(2000, 0, 1)
-                                                            }
-                                                            selected={
-                                                                formData.dateOfBirth
-                                                                    ? parseLocalYYYYMMDD(formData.dateOfBirth)
-                                                                    : undefined
-                                                            }
-                                                            onSelect={(date) => {
-                                                                if (date) {
-                                                                    setFormData({
-                                                                        ...formData,
-                                                                        dateOfBirth: toLocalYYYYMMDD(date),
-                                                                    });
-                                                                }
-                                                            }}
-                                                            disabled={[
-                                                                { after: new Date() },
-                                                                { before: new Date("1900-01-01") }
-                                                            ]}
-                                                            initialFocus
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
+                                                <TypableDatePicker
+                                                    value={formData.dateOfBirth}
+                                                    onChange={(val) => setFormData({ ...formData, dateOfBirth: val })}
+                                                    placeholder="DD-MM-YYYY"
+                                                    disabledDates={[
+                                                        { after: new Date() },
+                                                        { before: new Date("1900-01-01") }
+                                                    ]}
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -896,83 +842,26 @@ export default function EnhancedCustomerForm({
                                                     <Label className="text-sm font-medium mb-1">
                                                         Issue Date
                                                     </Label>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                className="h-9 justify-start text-left font-normal w-full"
-                                                            >
-                                                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                                {formData.passportIssueDate
-                                                                    ? formatLocalString(formData.passportIssueDate, "PPP")
-                                                                    : "Select date"}
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0" align="start">
-                                                            <Calendar
-                                                                mode="single"
-                                                                selected={
-                                                                    formData.passportIssueDate
-                                                                        ? parseLocalYYYYMMDD(formData.passportIssueDate)
-                                                                        : undefined
-                                                                }
-                                                                onSelect={(date) => {
-                                                                    if (date) {
-                                                                        setFormData({
-                                                                            ...formData,
-                                                                            passportIssueDate: toLocalYYYYMMDD(date),
-                                                                        });
-                                                                    }
-                                                                }}
-                                                                disabled={[
-                                                                    { after: new Date() },
-                                                                    { before: new Date("1900-01-01") }
-                                                                ]}
-                                                                initialFocus
-                                                            />
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                    <TypableDatePicker
+                                                        value={formData.passportIssueDate}
+                                                        onChange={(val) => setFormData({ ...formData, passportIssueDate: val })}
+                                                        placeholder="DD-MM-YYYY"
+                                                        disabledDates={[
+                                                            { after: new Date() },
+                                                            { before: new Date("1900-01-01") }
+                                                        ]}
+                                                    />
                                                 </div>
 
                                                 <div className="space-y-2 flex flex-col">
                                                     <Label className="text-sm font-medium mb-1">
                                                         Expiry Date
                                                     </Label>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                className="h-9 justify-start text-left font-normal w-full"
-                                                            >
-                                                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                                {formData.passportExpiryDate
-                                                                    ? formatLocalString(formData.passportExpiryDate, "PPP")
-                                                                    : "Select date"}
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0" align="start">
-                                                            <Calendar
-                                                                mode="single"
-                                                                selected={
-                                                                    formData.passportExpiryDate
-                                                                        ? parseLocalYYYYMMDD(formData.passportExpiryDate)
-                                                                        : undefined
-                                                                }
-                                                                onSelect={(date) => {
-                                                                    if (date) {
-                                                                        setFormData({
-                                                                            ...formData,
-                                                                            passportExpiryDate: toLocalYYYYMMDD(date),
-                                                                        });
-                                                                    }
-                                                                }}
-                                                                disabled={{ before: new Date() }}
-                                                                initialFocus
-                                                            />
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                    <TypableDatePicker
+                                                        value={formData.passportExpiryDate}
+                                                        onChange={(val) => setFormData({ ...formData, passportExpiryDate: val })}
+                                                        placeholder="DD-MM-YYYY"
+                                                    />
                                                 </div>
                                             </div>
 

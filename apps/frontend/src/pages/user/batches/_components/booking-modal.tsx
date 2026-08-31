@@ -427,8 +427,7 @@ export function BookingModal({
                                         onClick={() =>
                                             InvoiceService.generateAndDownloadInvoice(
                                                 booking,
-                                                user?.organization?.name,
-                                                user?.organization?.domain,
+                                                user?.organization,
                                             )
                                         }
                                         disabled={
@@ -649,7 +648,7 @@ export function BookingModal({
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {customer.email}
+                                                    {customer.email || customer.phone || "N/A"}
                                                 </p>
                                             </div>
                                             {booking.status !== 'cancelled' && booking.customers.length > 1 && (

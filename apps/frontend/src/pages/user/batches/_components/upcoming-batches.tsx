@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import axiosInstance from "@/lib/axios";
 import type { IBatches } from "@/types/batches.types";
+import { format } from "date-fns";
 import { Calendar, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -109,9 +110,10 @@ export function UpcomingBatches({ refreshKey }: UpcomingBatchesProps) {
 														<div className="flex items-center gap-1">
 															<Calendar className="w-3 h-3" />
 															<span>
-																{new Date(
-																	batch.startDate
-																).toLocaleDateString()}
+																{format(
+																	new Date(batch.startDate),
+																	"dd-MM-yyyy"
+																)}
 															</span>
 														</div>
 													</Badge>

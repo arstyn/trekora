@@ -8,7 +8,10 @@ import {
   Put,
   Request,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Organization } from 'src/database/entity/organization.entity';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import { AuthGuard } from 'src/modules/auth/guard/auth.guard';
@@ -46,13 +49,22 @@ export class OrganizationController {
   }
 
   // Update a organization by ID
+  // Update a organization by ID
   @Put(':id')
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'seal', maxCount: 1 }]))
   async update(
     @Request() req: ApiRequestJWT,
     @Param('id') id: string,
-    @Body() updateData: Partial<Organization>,
+    @Body() updateData: any,
+    @UploadedFiles() files?: { seal?: Express.Multer.File[] },
   ): Promise<Organization | null> {
-    return await this.organizationService.update(id, updateData, req.user?.userId);
+    const sealFile = files?.seal?.[0] || null;
+    return await this.organizationService.update(
+      id,
+      updateData,
+      req.user?.userId,
+      sealFile || undefined,
+    );
   }
 
   // Delete a organization by ID

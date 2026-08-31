@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -12,6 +13,7 @@ import {
     FormField,
     FormItem,
     FormLabel,
+    FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,9 +24,18 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import type { PackageFormData } from "@/types/package.schema";
-import { ArrowLeft, ArrowRight, CheckSquare, FileText, Plus, Trash2 } from "lucide-react";
+import {
+    AlertTriangle,
+    ArrowLeft,
+    ArrowRight,
+    CheckSquare,
+    FileText,
+    Plus,
+    Trash2,
+} from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
+import { toast } from "sonner";
 
 interface StepRequirementsProps {
     form: UseFormReturn<PackageFormData>;
@@ -57,8 +68,63 @@ export function StepRequirements({
         name: "preTripChecklist",
     });
 
+    const handleNextWithValidation = () => {
+        const docReqs = form.getValues("documentRequirements") || [];
+        const checklist = form.getValues("preTripChecklist") || [];
+
+        let hasError = false;
+
+        // Validate document requirements names
+        docReqs.forEach((doc, idx) => {
+            if (!doc.name || !doc.name.trim()) {
+                form.setError(`documentRequirements.${idx}.name`, {
+                    type: "manual",
+                    message: "Document name is required",
+                });
+                hasError = true;
+            }
+        });
+
+        // Validate pre-trip checklist task names
+        checklist.forEach((item, idx) => {
+            if (!item.task || !item.task.trim()) {
+                form.setError(`preTripChecklist.${idx}.task`, {
+                    type: "manual",
+                    message: "Task name is required",
+                });
+                hasError = true;
+            }
+        });
+
+        if (hasError) {
+            toast.warning(
+                "Please fill in all required document and checklist item names before proceeding.",
+            );
+            return;
+        }
+
+        onNext();
+    };
+
     return (
         <div className="space-y-6">
+            {/* Warning Alert Banner for Missing Items */}
+            {(documentFields.length === 0 || checklistFields.length === 0) && (
+                <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-300 rounded-2xl shadow-xs">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <AlertTitle className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                        Requirements & Checklist Notice
+                    </AlertTitle>
+                    <AlertDescription className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed mt-0.5">
+                        {documentFields.length === 0 && checklistFields.length === 0
+                            ? "No document requirements or pre-trip checklist items have been added. Adding document requirements and checklist tasks is strongly recommended to ensure smooth traveler onboarding."
+                            : documentFields.length === 0
+                            ? "No document requirements specified. Adding required documents (e.g. Passport, Visa) helps ensure travelers upload necessary documentation."
+                            : "No pre-trip checklist items added. Adding checklist tasks helps streamline pre-trip operations and verification."}
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Document Requirements Card */}
             <Card className="shadow-xs border rounded-2xl">
                 <CardHeader className="border-b">
@@ -118,10 +184,17 @@ export function StepRequirements({
                                     name={`documentRequirements.${index}.name`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-medium">Document Name</FormLabel>
+                                            <FormLabel className="text-xs font-medium">
+                                                Document Name <span className="text-rose-500">*</span>
+                                            </FormLabel>
                                             <FormControl>
-                                                <Input className="rounded-xl h-10 text-xs" placeholder="e.g., Passport (6 months validity)" {...field} />
+                                                <Input
+                                                    className="rounded-xl h-10 text-xs"
+                                                    placeholder="e.g., Passport (6 months validity)"
+                                                    {...field}
+                                                />
                                             </FormControl>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -148,6 +221,7 @@ export function StepRequirements({
                                                     <SelectItem value="children">Children Only</SelectItem>
                                                 </SelectContent>
                                             </Select>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -161,6 +235,7 @@ export function StepRequirements({
                                         <FormControl>
                                             <Input className="rounded-xl h-10 text-xs" placeholder="e.g. Scanned copy of front and back page" {...field} />
                                         </FormControl>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -251,7 +326,9 @@ export function StepRequirements({
                                     name={`preTripChecklist.${index}.task`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-medium">Task Name</FormLabel>
+                                            <FormLabel className="text-xs font-medium">
+                                                Task Name <span className="text-rose-500">*</span>
+                                            </FormLabel>
                                             <FormControl>
                                                 <Input
                                                     className="rounded-xl h-10 text-xs"
@@ -259,6 +336,7 @@ export function StepRequirements({
                                                     {...field}
                                                 />
                                             </FormControl>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -284,6 +362,7 @@ export function StepRequirements({
                                                     <SelectItem value="communication">Communication</SelectItem>
                                                 </SelectContent>
                                             </Select>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -309,6 +388,7 @@ export function StepRequirements({
                                                     <SelectItem value="individual">Individual (Per Traveler)</SelectItem>
                                                 </SelectContent>
                                             </Select>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -328,6 +408,7 @@ export function StepRequirements({
                                                     className="rounded-xl h-10 font-mono text-xs"
                                                 />
                                             </FormControl>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -345,6 +426,7 @@ export function StepRequirements({
                                                 placeholder="Enter task details..."
                                             />
                                         </FormControl>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -372,7 +454,7 @@ export function StepRequirements({
                 </Button>
                 <Button
                     type="button"
-                    onClick={onNext}
+                    onClick={handleNextWithValidation}
                     disabled={isLoading}
                     className="rounded-xl px-6 gap-2 text-xs font-semibold"
                 >
