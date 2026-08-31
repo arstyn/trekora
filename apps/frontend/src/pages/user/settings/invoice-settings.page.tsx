@@ -34,6 +34,8 @@ interface InvoiceFieldsConfig {
     showPaymentHistory: boolean;
     showBalanceDue: boolean;
     showFooter: boolean;
+    sealAlign?: "left" | "center" | "right";
+    sealOffset?: number;
     customTerms?: string;
     layoutOrder?: string[];
 }
@@ -64,6 +66,8 @@ export default function InvoiceSettingsPage() {
         showPaymentHistory: true,
         showBalanceDue: true,
         showFooter: true,
+        sealAlign: "right",
+        sealOffset: 0,
         customTerms: "",
         layoutOrder: ["billing", "tripDetails", "itemsTable", "seal", "totals", "payments", "terms"],
     });
@@ -123,6 +127,8 @@ export default function InvoiceSettingsPage() {
                                 showPaymentHistory: fields.showPaymentHistory !== false,
                                 showBalanceDue: fields.showBalanceDue !== false,
                                 showFooter: fields.showFooter !== false,
+                                sealAlign: fields.sealAlign || "right",
+                                sealOffset: fields.sealOffset !== undefined ? fields.sealOffset : 0,
                                 customTerms: fields.customTerms || "",
                                 layoutOrder: loadedOrder,
                             });
@@ -244,7 +250,7 @@ export default function InvoiceSettingsPage() {
         setDraggedId(id);
     };
 
-    const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    const handleDragOver = (e: React.DragEvent, _targetId?: string) => {
         e.preventDefault();
     };
 
@@ -642,7 +648,7 @@ export default function InvoiceSettingsPage() {
                             )}
 
                             {/* Dynamically ordered layout sections */}
-                            {layoutOrder.map((sectionId, idx) => {
+                            {layoutOrder.map((sectionId) => {
                                 if (sectionId === "billing" && invoiceFields.showBillingTo) {
                                     return (
                                         <div
