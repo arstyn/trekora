@@ -54,6 +54,7 @@ import {
     Plus,
     Search,
     ShieldAlert,
+    Sparkles,
     Tag,
     User,
     UserPlus,
@@ -63,6 +64,8 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { BatchOffersService } from "@/services/batch-offers.service";
+import type { IBatchOffer } from "@/types/batch-offers.types";
 
 interface CreateBookingDialogProps {
     open: boolean;
@@ -78,10 +81,12 @@ export interface ICreateBookingFormData {
     packageId: string;
     packageTierId: string;
     batchId: string;
+    batchOfferId?: string;
     numberOfCustomers: number;
     customers: ICustomer[];
     totalAmount: number;
     discountAmount: number;
+    specialOfferDiscount: number;
     adjustmentAmount: number;
     advanceAmount: number;
     paymentMethod: PaymentMethod | "";
@@ -134,15 +139,18 @@ export function CreateBookingDialog({
     const [customerExistingBookings, setCustomerExistingBookings] = useState<Record<string, any[]>>({});
     const [discountInputType, setDiscountInputType] = useState<"amount" | "percentage">("amount");
     const [perPassengerDiscountValue, setPerPassengerDiscountValue] = useState<number>(0);
+    const [batchOffers, setBatchOffers] = useState<IBatchOffer[]>([]);
 
     const [formData, setFormData] = useState<ICreateBookingFormData>({
         packageId: preselectedPackageId || "",
         packageTierId: "",
         batchId: preselectedBatchId || "",
+        batchOfferId: "",
         numberOfCustomers: 0,
         customers: [],
         totalAmount: 0,
         discountAmount: 0,
+        specialOfferDiscount: 0,
         adjustmentAmount: 0,
         advanceAmount: 0,
         paymentMethod: "",
@@ -493,6 +501,29 @@ export function CreateBookingDialog({
         }
     }, [formData.packageId]);
 
+    const loadBatchOffers = async (batchId: string) => {
+        if (!batchId) {
+            setBatchOffers([]);
+            return;
+        }
+        try {
+            const offers = await BatchOffersService.getActiveBatchOffers(batchId);
+            setBatchOffers(offers);
+        } catch (err) {
+            console.error("Error loading batch offers:", err);
+            setBatchOffers([]);
+        }
+    };
+
+    // Load batch offers when batch is selected
+    useEffect(() => {
+        if (formData.batchId) {
+            loadBatchOffers(formData.batchId);
+        } else {
+            setBatchOffers([]);
+        }
+    }, [formData.batchId]);
+
     // Sync default milestone and advance amount when selected package or total amount changes
     useEffect(() => {
         if (!selectedPackage) return;
@@ -547,6 +578,28 @@ export function CreateBookingDialog({
         }
     };
 
+    const computeSpecialOfferDiscount = (
+        offer: IBatchOffer | null | undefined,
+        baseTotal: number,
+        customerCount: number
+    ) => {
+        if (!offer || customerCount < offer.minTravelers) return 0;
+        let disc = 0;
+        if (offer.discountType === "percentage") {
+            disc = Math.round((baseTotal * Number(offer.discountValue)) / 100);
+            if (offer.maxDiscountCap && disc > Number(offer.maxDiscountCap)) {
+                disc = Number(offer.maxDiscountCap);
+            }
+        } else {
+            if (offer.discountScope === "passenger") {
+                disc = Number(offer.discountValue) * customerCount;
+            } else {
+                disc = Number(offer.discountValue);
+            }
+        }
+        return Math.min(disc, baseTotal);
+    };
+
     const calculateTotalAmount = (
         pkgId: string,
         commonTierId: string,
@@ -554,6 +607,7 @@ export function CreateBookingDialog({
         selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
         currentCustomers: ICustomer[],
         discount: number = formData.discountAmount || 0,
+        specialDiscount: number = formData.specialOfferDiscount || 0,
         adjustment: number = formData.adjustmentAmount || 0
     ) => {
         const pkg = packages.find((p) => p.id === pkgId);
@@ -595,7 +649,7 @@ export function CreateBookingDialog({
             }
         });
 
-        return Math.max(0, total + adjustment - discount);
+        return Math.max(0, total + adjustment - discount - specialDiscount);
     };
 
     const calculateBaseTotal = (
@@ -605,7 +659,7 @@ export function CreateBookingDialog({
         selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
         currentCustomers: ICustomer[]
     ) => {
-        return calculateTotalAmount(pkgId, commonTierId, isCommon, selections, currentCustomers, 0, 0);
+        return calculateTotalAmount(pkgId, commonTierId, isCommon, selections, currentCustomers, 0, 0, 0);
     };
 
     const handleCustomerSelect = (customer: ICustomer) => {
@@ -786,9 +840,11 @@ export function CreateBookingDialog({
                 packageId: formData.packageId,
                 packageTierId: formData.packageTierId || undefined,
                 batchId: formData.batchId,
+                batchOfferId: formData.batchOfferId || undefined,
                 customerIds,
                 totalAmount: formData.totalAmount,
                 discountAmount: formData.discountAmount || 0,
+                specialOfferDiscount: formData.specialOfferDiscount || 0,
                 adjustmentAmount: formData.adjustmentAmount || 0,
                 specialRequests: formData.specialRequests,
                 isCommonTier: formData.isCommonTier,
@@ -861,10 +917,12 @@ export function CreateBookingDialog({
             packageId: "",
             packageTierId: "",
             batchId: "",
+            batchOfferId: "",
             numberOfCustomers: 0,
             customers: [],
             totalAmount: 0,
             discountAmount: 0,
+            specialOfferDiscount: 0,
             adjustmentAmount: 0,
             advanceAmount: 0,
             paymentMethod: "",
@@ -1835,6 +1893,168 @@ export function CreateBookingDialog({
                                             )}
                                         </div>
 
+                                        {/* Batch Special Offers & Discounts Section */}
+                                        {(() => {
+                                            const baseTotal = calculateBaseTotal(
+                                                formData.packageId,
+                                                formData.packageTierId,
+                                                formData.isCommonTier,
+                                                formData.customerSelections,
+                                                formData.customers
+                                            );
+                                            const travelerCount = formData.customers.length || 1;
+
+                                            if (batchOffers.length === 0) return null;
+
+                                            return (
+                                                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/10 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <Sparkles className="w-5 h-5 text-amber-500" />
+                                                            <div>
+                                                                <Label className="text-sm font-bold text-foreground">
+                                                                    Special Offers Available for this Batch
+                                                                </Label>
+                                                                <p className="text-[11px] text-muted-foreground">
+                                                                    Select a promotional or group-based offer to apply automatically.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        {formData.batchOfferId && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-xs text-muted-foreground hover:text-foreground h-7"
+                                                                onClick={() => {
+                                                                    setFormData((prev) => {
+                                                                        const newTotal = Math.max(
+                                                                            0,
+                                                                            baseTotal + (prev.adjustmentAmount || 0) - (prev.discountAmount || 0)
+                                                                        );
+                                                                        return {
+                                                                            ...prev,
+                                                                            batchOfferId: "",
+                                                                            specialOfferDiscount: 0,
+                                                                            totalAmount: newTotal,
+                                                                        };
+                                                                    });
+                                                                }}
+                                                            >
+                                                                Clear Offer
+                                                            </Button>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                                                        {batchOffers.map((offer) => {
+                                                            const isSelected = formData.batchOfferId === offer.id;
+                                                            const isEligible = travelerCount >= offer.minTravelers;
+                                                            const offerSavings = computeSpecialOfferDiscount(offer, baseTotal, travelerCount);
+
+                                                            return (
+                                                                <div
+                                                                    key={offer.id}
+                                                                    onClick={() => {
+                                                                        if (!isEligible) {
+                                                                            toast.error(
+                                                                                `This offer requires at least ${offer.minTravelers} travelers (currently ${travelerCount}).`
+                                                                            );
+                                                                            return;
+                                                                        }
+
+                                                                        if (isSelected) {
+                                                                            // Deselect
+                                                                            setFormData((prev) => {
+                                                                                const newTotal = Math.max(
+                                                                                    0,
+                                                                                    baseTotal + (prev.adjustmentAmount || 0) - (prev.discountAmount || 0)
+                                                                                );
+                                                                                return {
+                                                                                    ...prev,
+                                                                                    batchOfferId: "",
+                                                                                    specialOfferDiscount: 0,
+                                                                                    totalAmount: newTotal,
+                                                                                };
+                                                                            });
+                                                                        } else {
+                                                                            // Select
+                                                                            setFormData((prev) => {
+                                                                                const newTotal = Math.max(
+                                                                                    0,
+                                                                                    baseTotal + (prev.adjustmentAmount || 0) - (prev.discountAmount || 0) - offerSavings
+                                                                                );
+                                                                                return {
+                                                                                    ...prev,
+                                                                                    batchOfferId: offer.id,
+                                                                                    specialOfferDiscount: offerSavings,
+                                                                                    totalAmount: newTotal,
+                                                                                };
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                    className={cn(
+                                                                        "p-3 rounded-lg border transition-all cursor-pointer relative flex flex-col justify-between gap-2",
+                                                                        isSelected
+                                                                            ? "border-amber-500 bg-amber-500/10 shadow-xs"
+                                                                            : isEligible
+                                                                            ? "bg-background hover:border-amber-400/60"
+                                                                            : "bg-muted/40 opacity-60 cursor-not-allowed"
+                                                                    )}
+                                                                >
+                                                                    <div className="flex items-start justify-between gap-2">
+                                                                        <div className="space-y-0.5">
+                                                                            <p className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                                                                                <Tag className="w-3.5 h-3.5 text-amber-500" />
+                                                                                {offer.name}
+                                                                            </p>
+                                                                            {offer.description && (
+                                                                                <p className="text-[10px] text-muted-foreground line-clamp-1">
+                                                                                    {offer.description}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                        <Badge
+                                                                            variant={isSelected ? "default" : "secondary"}
+                                                                            className={cn(
+                                                                                "text-[10px] font-mono",
+                                                                                isSelected ? "bg-amber-600 hover:bg-amber-600 text-white" : ""
+                                                                            )}
+                                                                        >
+                                                                            {offer.discountMode === "range" && offer.minDiscountValue !== undefined && offer.minDiscountValue !== null
+                                                                                ? offer.discountType === "percentage"
+                                                                                    ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}% OFF`
+                                                                                    : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")} OFF`
+                                                                                : offer.discountType === "percentage"
+                                                                                ? `${offer.discountValue}% OFF`
+                                                                                : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
+                                                                        </Badge>
+                                                                    </div>
+
+                                                                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/50">
+                                                                        <span className="text-muted-foreground">
+                                                                            {offer.minTravelers > 1 ? `Min ${offer.minTravelers} travelers` : "All bookings"}
+                                                                            {offer.discountScope === "passenger" ? " • Per Pax" : " • Total"}
+                                                                        </span>
+                                                                        {isEligible ? (
+                                                                            <span className="font-bold text-amber-600 dark:text-amber-400">
+                                                                                {offer.discountMode === "range" ? "Save up to " : "Save "}
+                                                                                {BookingService.formatCurrency(offerSavings)}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-destructive font-medium text-[10px]">
+                                                                                Needs {offer.minTravelers - travelerCount} more pax
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
                                         {/* Discount Section */}
                                         {(() => {
                                             const baseTotal = calculateBaseTotal(
@@ -2460,18 +2680,55 @@ export function CreateBookingDialog({
                                     <div className="space-y-2 pt-2 border-t">
                                         <h4 className="text-xs font-bold text-muted-foreground uppercase">Pricing Breakdown</h4>
                                         <div className="space-y-2 p-3 rounded-xl border bg-background">
-                                            <div className="flex justify-between text-xs text-muted-foreground">
-                                                <span>Total Price:</span>
-                                                <span className="font-semibold text-foreground">{BookingService.formatCurrency(formData.totalAmount)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs text-muted-foreground">
-                                                <span>Paid Advance:</span>
-                                                <span className="font-semibold text-foreground">{BookingService.formatCurrency(formData.advanceAmount)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs border-t pt-2 font-bold text-foreground">
-                                                <span>Remaining Balance:</span>
-                                                <span className="text-primary">{BookingService.formatCurrency(Math.max(0, formData.totalAmount - formData.advanceAmount))}</span>
-                                            </div>
+                                            {(() => {
+                                                const baseTotal = calculateBaseTotal(
+                                                    formData.packageId,
+                                                    formData.packageTierId,
+                                                    formData.isCommonTier,
+                                                    formData.customerSelections,
+                                                    formData.customers
+                                                );
+                                                return (
+                                                    <>
+                                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                                            <span>Base Price:</span>
+                                                            <span className="font-medium text-foreground">{BookingService.formatCurrency(baseTotal)}</span>
+                                                        </div>
+                                                        {formData.specialOfferDiscount > 0 && (
+                                                            <div className="flex justify-between text-xs text-amber-600 font-semibold">
+                                                                <span className="flex items-center gap-1">
+                                                                    <Sparkles className="w-3 h-3" /> Special Offer:
+                                                                </span>
+                                                                <span>- {BookingService.formatCurrency(formData.specialOfferDiscount)}</span>
+                                                            </div>
+                                                        )}
+                                                        {formData.discountAmount > 0 && (
+                                                            <div className="flex justify-between text-xs text-emerald-600 font-semibold">
+                                                                <span>Manual Discount:</span>
+                                                                <span>- {BookingService.formatCurrency(formData.discountAmount)}</span>
+                                                            </div>
+                                                        )}
+                                                        {(formData.adjustmentAmount || 0) > 0 && (
+                                                            <div className="flex justify-between text-xs text-blue-600 font-semibold">
+                                                                <span>Adjustments:</span>
+                                                                <span>+ {BookingService.formatCurrency(formData.adjustmentAmount)}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex justify-between text-xs border-t pt-2 font-bold text-foreground">
+                                                            <span>Total Price:</span>
+                                                            <span className="font-semibold text-foreground">{BookingService.formatCurrency(formData.totalAmount)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                                            <span>Paid Advance:</span>
+                                                            <span className="font-semibold text-foreground">{BookingService.formatCurrency(formData.advanceAmount)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs border-t pt-2 font-bold text-foreground">
+                                                            <span>Remaining Balance:</span>
+                                                            <span className="text-primary">{BookingService.formatCurrency(Math.max(0, formData.totalAmount - formData.advanceAmount))}</span>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 </div>

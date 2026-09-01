@@ -12,6 +12,7 @@ import { BatchBlocksModule } from './modules/batch-blocks/batch-blocks.module';
 import { BatchesModule } from './modules/batches/batches.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { BranchModule } from './modules/branch/branch.module';
+import { BatchOffersModule } from './modules/batch-offers/batch-offers.module';
 import { CancellationTiersModule } from './modules/cancellation-tiers/cancellation-tiers.module';
 import { CustomerModule } from './modules/customer/customer.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -77,8 +78,10 @@ import { SettingsModule } from './modules/settings/settings.module';
     PaymentStructuresModule,
     CancellationTiersModule,
     BatchBlocksModule,
+    BatchOffersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule { }
+

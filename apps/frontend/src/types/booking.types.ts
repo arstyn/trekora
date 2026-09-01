@@ -99,9 +99,21 @@ export interface IBooking {
     primaryCustomer: ICustomer;
     package: IPackage;
     batch: IBatch;
+    batchOfferId?: string | null;
+    batchOffer?: {
+        id: string;
+        name: string;
+        discountType: 'percentage' | 'flat';
+        discountMode?: 'fixed' | 'range';
+        discountValue: number;
+        minDiscountValue?: number | null;
+        maxDiscountValue?: number | null;
+        discountScope: 'passenger' | 'booking';
+    } | null;
     numberOfCustomers: number;
     totalAmount: number;
     discountAmount?: number;
+    specialOfferDiscount?: number;
     adjustmentAmount?: number;
     advancePaid: number;
     balanceAmount: number;
@@ -123,9 +135,11 @@ export interface IBookingListItem {
     customerEmail: string;
     packageName: string;
     batchStartDate: string;
+    batchOfferId?: string | null;
     numberOfCustomers: number;
     totalAmount: number;
     discountAmount?: number;
+    specialOfferDiscount?: number;
     adjustmentAmount?: number;
     advancePaid: number;
     balanceAmount: number;
@@ -144,9 +158,11 @@ export interface ICreateBookingRequest {
     packageId: string;
     packageTierId?: string;
     batchId: string;
+    batchOfferId?: string;
     customerIds: string[];
     totalAmount: number;
     discountAmount?: number;
+    specialOfferDiscount?: number;
     adjustmentAmount?: number;
     specialRequests?: string;
     initialPayment?: Omit<IBookingPayment, "id" | "status">;

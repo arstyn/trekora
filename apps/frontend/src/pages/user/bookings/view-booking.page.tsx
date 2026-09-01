@@ -66,6 +66,7 @@ import {
     MoreVertical,
     Phone,
     Plus,
+    Sparkles,
     Trash2,
     User,
     Users,
@@ -559,9 +560,20 @@ export default function BookingDetailsPage() {
                                         {BookingService.formatCurrency(booking.totalAmount)}
                                     </p>
                                 </div>
+                                {(booking.specialOfferDiscount ?? 0) > 0 && (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <Sparkles className="w-3 h-3 text-amber-500" />
+                                            Special Offer {booking.batchOffer?.name ? `(${booking.batchOffer.name})` : ''}
+                                        </p>
+                                        <p className="font-bold text-sm text-amber-600">
+                                            - {BookingService.formatCurrency(booking.specialOfferDiscount ?? 0)}
+                                        </p>
+                                    </div>
+                                )}
                                 {(booking.discountAmount ?? 0) > 0 && (
                                     <div>
-                                        <p className="text-[10px] text-muted-foreground">Discount Applied</p>
+                                        <p className="text-[10px] text-muted-foreground">Manual Discount</p>
                                         <p className="font-bold text-sm text-emerald-600">
                                             - {BookingService.formatCurrency(booking.discountAmount ?? 0)}
                                         </p>

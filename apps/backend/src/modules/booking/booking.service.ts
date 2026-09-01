@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { BatchBlock, BatchBlockStatus } from 'src/database/entity/batch-block.entity';
 import { BatchLog } from 'src/database/entity/batch-log.entity';
 import { Batch } from 'src/database/entity/batch.entity';
+import { BatchOffer } from 'src/database/entity/batch-offer.entity';
 import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { BookingLog } from 'src/database/entity/booking-log.entity';
@@ -114,6 +115,37 @@ export class BookingService {
         );
       }
 
+      // Validate Batch Special Offer if applied
+      let batchOfferId: string | null = null;
+      let specialOfferDiscount = 0;
+      if (createBookingDto.batchOfferId) {
+        const offer = await queryRunner.manager.findOne(BatchOffer, {
+          where: {
+            id: createBookingDto.batchOfferId,
+            batchId: batch.id,
+            organizationId,
+            isActive: true,
+          },
+        });
+        if (!offer) {
+          throw new BadRequestException('Selected batch special offer is invalid or inactive');
+        }
+        const now = new Date();
+        if (offer.validFrom && new Date(offer.validFrom) > now) {
+          throw new BadRequestException('Selected batch special offer is not active yet');
+        }
+        if (offer.validUntil && new Date(offer.validUntil) < now) {
+          throw new BadRequestException('Selected batch special offer has expired');
+        }
+        if (createBookingDto.customerIds.length < offer.minTravelers) {
+          throw new BadRequestException(
+            `Special offer requires at least ${offer.minTravelers} travelers`,
+          );
+        }
+        batchOfferId = offer.id;
+        specialOfferDiscount = createBookingDto.specialOfferDiscount || 0;
+      }
+
       // Generate unique booking number
       const bookingNumber = await this.generateBookingNumber(organizationId);
 
@@ -128,9 +160,11 @@ export class BookingService {
         packageId: createBookingDto.packageId,
         packageTierId: createBookingDto.packageTierId,
         batchId: createBookingDto.batchId,
+        batchOfferId,
         numberOfCustomers: createBookingDto.customerIds.length,
         totalAmount: createBookingDto.totalAmount,
         discountAmount: createBookingDto.discountAmount || 0,
+        specialOfferDiscount,
         adjustmentAmount: createBookingDto.adjustmentAmount || 0,
         advancePaid,
         balanceAmount,
@@ -373,6 +407,8 @@ export class BookingService {
         numberOfCustomers: booking.numberOfCustomers,
         totalAmount: booking.totalAmount,
         discountAmount: booking.discountAmount || 0,
+        specialOfferDiscount: booking.specialOfferDiscount || 0,
+        batchOfferId: booking.batchOfferId || null,
         adjustmentAmount: booking.adjustmentAmount || 0,
         advancePaid: booking.advancePaid,
         balanceAmount: booking.balanceAmount,
@@ -418,6 +454,8 @@ export class BookingService {
       numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
       discountAmount: booking.discountAmount || 0,
+      specialOfferDiscount: booking.specialOfferDiscount || 0,
+      batchOfferId: booking.batchOfferId || null,
       adjustmentAmount: booking.adjustmentAmount || 0,
       advancePaid: booking.advancePaid,
       balanceAmount: booking.balanceAmount,
@@ -463,6 +501,8 @@ export class BookingService {
       numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
       discountAmount: booking.discountAmount || 0,
+      specialOfferDiscount: booking.specialOfferDiscount || 0,
+      batchOfferId: booking.batchOfferId || null,
       adjustmentAmount: booking.adjustmentAmount || 0,
       advancePaid: booking.advancePaid,
       balanceAmount: booking.balanceAmount,
@@ -542,6 +582,7 @@ export class BookingService {
         'package',
         'package.packageTiers',
         'batch',
+        'batchOffer',
         'payments',
         'documents',
         'currentWorkflow',
@@ -578,9 +619,22 @@ export class BookingService {
         totalSeats: booking.batch.totalSeats,
         bookedSeats: booking.batch.bookedSeats,
       },
+      batchOffer: booking.batchOffer
+        ? {
+            id: booking.batchOffer.id,
+            name: booking.batchOffer.name,
+            discountType: booking.batchOffer.discountType,
+            discountMode: booking.batchOffer.discountMode,
+            discountValue: Number(booking.batchOffer.discountValue),
+            minDiscountValue: booking.batchOffer.minDiscountValue !== null ? Number(booking.batchOffer.minDiscountValue) : null,
+            maxDiscountValue: booking.batchOffer.maxDiscountValue !== null ? Number(booking.batchOffer.maxDiscountValue) : null,
+            discountScope: booking.batchOffer.discountScope,
+          }
+        : null,
       numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
       discountAmount: booking.discountAmount || 0,
+      specialOfferDiscount: booking.specialOfferDiscount || 0,
       adjustmentAmount: booking.adjustmentAmount || 0,
       advancePaid: booking.advancePaid,
       balanceAmount: booking.balanceAmount,

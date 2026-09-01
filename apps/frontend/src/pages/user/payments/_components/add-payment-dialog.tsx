@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { debounce } from "@/lib/utils";
+import BookingService from "@/services/booking.service";
 import PaymentService from "@/services/payment.service";
 import type {
     BookingForPayment,
@@ -37,12 +38,14 @@ interface AddPaymentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onPaymentAdded?: () => void;
+    initialBookingId?: string;
 }
 
 export function AddPaymentDialog({
     open,
     onOpenChange,
     onPaymentAdded,
+    initialBookingId,
 }: AddPaymentDialogProps) {
     const [formData, setFormData] = useState({
         bookingId: "",
@@ -287,12 +290,73 @@ export function AddPaymentDialog({
         setValidationErrors({});
     };
 
-    // Reset form when dialog closes
+    // Reset form when dialog closes or load initial booking when opened with initialBookingId
     useEffect(() => {
         if (!open) {
             resetForm();
+            return;
         }
-    }, [open]);
+
+        if (initialBookingId) {
+            const loadInitialBooking = async () => {
+                try {
+                    setLoading((prev) => ({ ...prev, bookings: true }));
+                    const booking = await BookingService.getBookingById(initialBookingId);
+                    if (booking) {
+                        const primaryCust = booking.primaryCustomer || booking.customers?.[0];
+                        const customerName = primaryCust
+                            ? `${primaryCust.firstName || ""} ${primaryCust.lastName || ""}`.trim()
+                            : "Unknown Customer";
+
+                        const bookingItem: BookingForPayment = {
+                            id: booking.id,
+                            bookingNumber: booking.bookingNumber,
+                            customer: {
+                                id: primaryCust?.id || "",
+                                name: customerName,
+                                email: primaryCust?.email || "",
+                                phone: primaryCust?.phone || "",
+                            },
+                            package: {
+                                id: booking.package?.id || "",
+                                name: booking.package?.name || "Unknown Package",
+                                destination: booking.package?.destination,
+                            },
+                            totalAmount: Number(booking.totalAmount) || 0,
+                            advancePaid: Number(booking.advancePaid) || 0,
+                            balanceAmount: Number(booking.balanceAmount) || 0,
+                        };
+
+                        setBookings((prev) => {
+                            const exists = prev.some((b) => b.id === bookingItem.id);
+                            return exists ? prev : [bookingItem, ...prev];
+                        });
+
+                        setFormData((prev) => ({
+                            ...prev,
+                            bookingId: bookingItem.id,
+                            amount:
+                                bookingItem.balanceAmount > 0
+                                    ? String(bookingItem.balanceAmount)
+                                    : prev.amount,
+                            paymentType:
+                                bookingItem.advancePaid === 0
+                                    ? PaymentType.ADVANCE
+                                    : bookingItem.balanceAmount > 0
+                                    ? PaymentType.BALANCE
+                                    : prev.paymentType,
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Failed to load initial booking:", err);
+                } finally {
+                    setLoading((prev) => ({ ...prev, bookings: false }));
+                }
+            };
+
+            loadInitialBooking();
+        }
+    }, [open, initialBookingId]);
 
     // Live calculation for balance updates
     const currentPaymentAmount = Number(formData.amount) || 0;

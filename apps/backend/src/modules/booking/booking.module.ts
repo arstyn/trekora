@@ -9,6 +9,7 @@ import { Batch } from 'src/database/entity/batch.entity';
 import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
 import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { BookingLog } from 'src/database/entity/booking-log.entity';
+import { BatchOffer } from 'src/database/entity/batch-offer.entity';
 import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
 import { JwtModule } from '@nestjs/jwt';
@@ -26,6 +27,7 @@ import { WorkflowModule } from '../workflow/workflow.module';
       Customer,
       Package,
       Batch,
+      BatchOffer,
       ChecklistItem,
       BookingLog,
     ]),

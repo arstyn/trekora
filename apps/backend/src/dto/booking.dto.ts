@@ -120,6 +120,15 @@ export class CreateBookingDto {
 
   @IsOptional()
   @IsUUID()
+  batchOfferId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  specialOfferDiscount?: number;
+
+  @IsOptional()
+  @IsUUID()
   batchBlockId?: string;
 
   @IsOptional()
@@ -165,6 +174,15 @@ export class UpdateBookingDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  specialOfferDiscount?: number;
+
+  @IsOptional()
+  @IsUUID()
+  batchOfferId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   adjustmentAmount?: number;
 
   @IsOptional()
@@ -204,9 +222,11 @@ export class BookingSummaryDto {
   packageName: string;
   batchId?: string;
   batchStartDate: Date;
+  batchOfferId?: string | null;
   numberOfCustomers: number;
   totalAmount: number;
   discountAmount?: number;
+  specialOfferDiscount?: number;
   adjustmentAmount?: number;
   advancePaid: number;
   balanceAmount: number;
@@ -260,9 +280,20 @@ export class BookingResponseDto {
     totalSeats: number;
     bookedSeats: number;
   };
+  batchOffer?: {
+    id: string;
+    name: string;
+    discountType: string;
+    discountMode?: string;
+    discountValue: number;
+    minDiscountValue?: number | null;
+    maxDiscountValue?: number | null;
+    discountScope: string;
+  } | null;
   numberOfCustomers: number;
   totalAmount: number;
   discountAmount?: number;
+  specialOfferDiscount?: number;
   adjustmentAmount?: number;
   advancePaid: number;
   balanceAmount: number;

@@ -11,6 +11,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Batch } from './batch.entity';
+import { BatchOffer } from './batch-offer.entity';
 import { Customer } from './customer.entity';
 import { Organization } from './organization.entity';
 import { Package } from './package-related/package.entity';
@@ -66,6 +67,13 @@ export class Booking {
   @JoinColumn({ name: 'batch_id' })
   batch: Batch;
 
+  @Column({ type: 'uuid', name: 'batch_offer_id', nullable: true })
+  batchOfferId: string | null;
+
+  @ManyToOne(() => BatchOffer, { nullable: true, eager: true })
+  @JoinColumn({ name: 'batch_offer_id' })
+  batchOffer: BatchOffer | null;
+
   @Column({ name: 'number_of_customers' })
   numberOfCustomers: number;
 
@@ -79,6 +87,14 @@ export class Booking {
     default: 0,
   })
   discountAmount: number;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    name: 'special_offer_discount',
+    default: 0,
+  })
+  specialOfferDiscount: number;
 
   @Column('decimal', {
     precision: 10,

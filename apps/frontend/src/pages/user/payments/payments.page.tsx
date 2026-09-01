@@ -16,12 +16,15 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AddPaymentDialog } from "./_components/add-payment-dialog";
 import { PaymentList } from "./_components/payment-list";
 import { RecentPaymentsSlider } from "./_components/recent-payments-slider";
 
 export default function PaymentsPage() {
+	const [searchParams, setSearchParams] = useSearchParams();
 	const [addPaymentDialogOpen, setAddPaymentDialogOpen] = useState(false);
+	const [selectedBookingId, setSelectedBookingId] = useState<string | undefined>(undefined);
 	const [dashboardStats, setDashboardStats] = useState<PaymentStats | null>(null);
 	const [recentPayments, setRecentPayments] = useState<Payment[]>([]);
 	const [overduePayments, setOverduePayments] = useState<OverduePayment[]>([]);
@@ -32,6 +35,32 @@ export default function PaymentsPage() {
 	});
 	const [error, setError] = useState<string | null>(null);
 	const { toast } = useToast();
+
+	// Check search params for addNew and bookingId
+	useEffect(() => {
+		const addNew = searchParams.get("addNew") === "true";
+		const bookingId = searchParams.get("bookingId");
+
+		if (addNew || bookingId) {
+			if (bookingId) {
+				setSelectedBookingId(bookingId);
+			}
+			setAddPaymentDialogOpen(true);
+		}
+	}, [searchParams]);
+
+	const handleDialogChange = (open: boolean) => {
+		setAddPaymentDialogOpen(open);
+		if (!open) {
+			setSelectedBookingId(undefined);
+			setSearchParams((prev) => {
+				const next = new URLSearchParams(prev);
+				next.delete("addNew");
+				next.delete("bookingId");
+				return next;
+			});
+		}
+	};
 
 	// Load dashboard data
 	useEffect(() => {
@@ -110,7 +139,12 @@ export default function PaymentsPage() {
 						Track and manage all tour package payments
 					</p>
 				</div>
-				<Button onClick={() => setAddPaymentDialogOpen(true)}>
+				<Button
+					onClick={() => {
+						setSelectedBookingId(undefined);
+						setAddPaymentDialogOpen(true);
+					}}
+				>
 					<Plus className="w-4 h-4 mr-2" />
 					Add Payment
 				</Button>
@@ -320,8 +354,9 @@ export default function PaymentsPage() {
 
 			<AddPaymentDialog
 				open={addPaymentDialogOpen}
-				onOpenChange={setAddPaymentDialogOpen}
+				onOpenChange={handleDialogChange}
 				onPaymentAdded={handlePaymentAdded}
+				initialBookingId={selectedBookingId}
 			/>
 		</div>
 	);
