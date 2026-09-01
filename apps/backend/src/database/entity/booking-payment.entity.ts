@@ -4,11 +4,14 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Booking } from './booking.entity';
 import { User } from './user.entity';
+import { Customer } from './customer.entity';
+import { BookingPaymentAllocation } from './booking-payment-allocation.entity';
 
 export enum PaymentType {
   ADVANCE = 'advance',
@@ -84,6 +87,25 @@ export class BookingPayment {
   @Column({ type: 'jsonb', nullable: true, name: 'payment_details' })
   paymentDetails: Record<string, any>;
 
+  @Column({ name: 'is_passenger_split', default: false })
+  isPassengerSplit: boolean;
+
+  @Column({ nullable: true, name: 'payer_name' })
+  payerName: string;
+
+  @Column({ type: 'uuid', nullable: true, name: 'payer_customer_id' })
+  payerCustomerId: string;
+
+  @ManyToOne(() => Customer, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'payer_customer_id' })
+  payerCustomer: Customer;
+
+  @OneToMany(() => BookingPaymentAllocation, (allocation) => allocation.payment, {
+    cascade: true,
+    eager: true,
+  })
+  allocations: BookingPaymentAllocation[];
+
   @Column({ type: 'uuid', name: 'booking_id' })
   bookingId: string;
 
@@ -106,3 +128,4 @@ export class BookingPayment {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
+

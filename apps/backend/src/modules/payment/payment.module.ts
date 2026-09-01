@@ -3,6 +3,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Batch } from 'src/database/entity/batch.entity';
 import { BookingPayment } from 'src/database/entity/booking-payment.entity';
+import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
+import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { Booking } from 'src/database/entity/booking.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
@@ -15,6 +17,8 @@ import { PaymentService } from './payment.service';
   imports: [
     TypeOrmModule.forFeature([
       BookingPayment,
+      BookingPaymentAllocation,
+      BookingCustomer,
       Booking,
       Customer,
       Package,
@@ -29,3 +33,4 @@ import { PaymentService } from './payment.service';
   exports: [PaymentService],
 })
 export class PaymentModule {}
+

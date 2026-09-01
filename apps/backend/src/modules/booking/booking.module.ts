@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from 'src/database/entity/booking.entity';
 import { BookingPayment } from 'src/database/entity/booking-payment.entity';
+import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
@@ -22,6 +23,7 @@ import { WorkflowModule } from '../workflow/workflow.module';
     TypeOrmModule.forFeature([
       Booking,
       BookingPayment,
+      BookingPaymentAllocation,
       BookingDocument,
       BookingCustomer,
       Customer,
@@ -41,3 +43,4 @@ import { WorkflowModule } from '../workflow/workflow.module';
   exports: [BookingService],
 })
 export class BookingModule {}
+

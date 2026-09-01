@@ -50,7 +50,24 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsString()
   receiptFilePath?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPassengerSplit?: boolean;
+
+  @IsOptional()
+  @IsString()
+  payerName?: string;
+
+  @IsOptional()
+  @IsUUID()
+  payerCustomerId?: string;
+
+  @IsOptional()
+  @IsArray()
+  allocations?: any[];
 }
+
 
 export class CreateBookingDto {
   @IsUUID()
@@ -236,7 +253,8 @@ export class BookingSummaryDto {
 }
 
 export class BookingCustomerResponseDto {
-  id: string;
+  id: string; // customerId
+  bookingCustomerId?: string;
   firstName: string;
   lastName?: string;
   middleName?: string;
@@ -252,6 +270,23 @@ export class BookingCustomerResponseDto {
   specialRequests?: string;
   medicalConditions?: string;
   dietaryRestrictions?: string;
+  packageTierId?: string;
+  packageTierName?: string;
+  ageCategory?: 'adult' | 'child' | 'infant';
+  calculatedShare?: number;
+  paidAmount?: number;
+  balanceAmount?: number;
+  paymentStatus?: 'paid' | 'partial' | 'unpaid';
+}
+
+export class BookingPaymentAllocationResponseDto {
+  id: string;
+  bookingCustomerId: string;
+  customerId?: string;
+  customerName: string;
+  customerEmail?: string;
+  amount: number;
+  notes?: string;
 }
 
 export class BookingResponseDto {
@@ -310,9 +345,14 @@ export class BookingResponseDto {
     transactionId?: string;
     notes?: string;
     receiptFilePath?: string;
+    isPassengerSplit?: boolean;
+    payerName?: string;
+    payerCustomerId?: string;
+    allocations?: BookingPaymentAllocationResponseDto[];
   }[];
   currentWorkflowId?: string;
   currentWorkflow?: any;
   createdAt: Date;
   updatedAt: Date;
 }
+

@@ -22,6 +22,7 @@ import {
     Loader2,
     Trash2,
     Upload,
+    Users,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { NavLink, useParams } from "react-router-dom";
@@ -584,6 +585,44 @@ export default function PaymentDetailsPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Passenger Allocations & Payer Details Card */}
+                    {(paymentData.isPassengerSplit || paymentData.payerName) && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-primary" />
+                                    Payer & Passenger Allocations
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {paymentData.payerName && (
+                                    <div className="flex justify-between items-center pb-3 border-b">
+                                        <span className="font-medium text-muted-foreground">Paid By:</span>
+                                        <span className="font-bold text-foreground">{paymentData.payerName}</span>
+                                    </div>
+                                )}
+                                {paymentData.allocations && paymentData.allocations.length > 0 && (
+                                    <div className="space-y-2">
+                                        <span className="text-xs font-bold text-muted-foreground uppercase">
+                                            Allocated to Travelers:
+                                        </span>
+                                        <div className="rounded-lg border divide-y bg-background">
+                                            {paymentData.allocations.map((alloc) => (
+                                                <div key={alloc.id || alloc.bookingCustomerId} className="p-3 flex justify-between items-center text-sm">
+                                                    <div>
+                                                        <p className="font-semibold text-foreground">{alloc.customerName || "Passenger"}</p>
+                                                        {alloc.notes && <p className="text-xs text-muted-foreground">{alloc.notes}</p>}
+                                                    </div>
+                                                    <span className="font-bold text-primary">{formatCurrency(alloc.amount)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Customer Information */}
                     <Card>

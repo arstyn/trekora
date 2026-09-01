@@ -9,12 +9,16 @@ import {
   PaymentStatus,
   PaymentType,
 } from 'src/database/entity/booking-payment.entity';
+import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
+import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
 import {
+  BookingCustomerPaymentSummaryDto,
   BookingForPaymentDto,
   BookingSearchDto,
   CreatePaymentDto,
   OverduePaymentDto,
+  PaymentAllocationResponseDto,
   PaymentFilterDto,
   PaymentListResponseDto,
   PaymentResponseDto,
@@ -29,10 +33,88 @@ export class PaymentService {
   constructor(
     @InjectRepository(BookingPayment)
     private paymentRepository: Repository<BookingPayment>,
+    @InjectRepository(BookingPaymentAllocation)
+    private paymentAllocationRepository: Repository<BookingPaymentAllocation>,
+    @InjectRepository(BookingCustomer)
+    private bookingCustomerRepository: Repository<BookingCustomer>,
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
     private uploadService: UploadService,
   ) {}
+
+  private calculatePassengerSummary(
+    booking: Booking,
+    allocationsByCustomer: Map<string, number>,
+  ): BookingCustomerPaymentSummaryDto[] {
+    if (!booking.bookingCustomers || booking.bookingCustomers.length === 0) {
+      return [];
+    }
+
+    const count = booking.bookingCustomers.length;
+    const bookingTotal = Number(booking.totalAmount || 0);
+
+    const rawCosts = booking.bookingCustomers.map((bc) => {
+      const tier = bc.packageTier;
+      let cost = 0;
+      if (tier) {
+        const adultCost = Number(tier.adultCost || 0);
+        if (bc.ageCategory === 'adult' || !bc.ageCategory) {
+          cost = adultCost;
+        } else if (bc.ageCategory === 'child') {
+          cost =
+            tier.childCostType === 'percentage'
+              ? adultCost * (Number(tier.childCostValue || 0) / 100)
+              : Number(tier.childCostValue || 0);
+        } else if (bc.ageCategory === 'infant') {
+          cost =
+            tier.infantCostType === 'percentage'
+              ? adultCost * (Number(tier.infantCostValue || 0) / 100)
+              : Number(tier.infantCostValue || 0);
+        }
+      }
+      return cost;
+    });
+
+    const totalRawCost = rawCosts.reduce((sum, c) => sum + c, 0);
+
+    return booking.bookingCustomers.map((bc, index) => {
+      let calculatedShare: number;
+      if (totalRawCost > 0) {
+        calculatedShare =
+          Math.round(((rawCosts[index] / totalRawCost) * bookingTotal) * 100) /
+          100;
+      } else {
+        calculatedShare = Math.round((bookingTotal / count) * 100) / 100;
+      }
+
+      const paidAmount = allocationsByCustomer.get(bc.id) || 0;
+      const balanceAmount = Math.max(0, calculatedShare - paidAmount);
+      let status: 'paid' | 'partial' | 'unpaid' = 'unpaid';
+      if (paidAmount >= calculatedShare && calculatedShare > 0) {
+        status = 'paid';
+      } else if (paidAmount > 0) {
+        status = 'partial';
+      }
+
+      const customerName = bc.customer
+        ? `${bc.customer.firstName} ${bc.customer.lastName || ''}`.trim()
+        : 'Passenger';
+
+      return {
+        id: bc.id,
+        customerId: bc.customerId,
+        name: customerName,
+        email: bc.customer?.email || '',
+        phone: bc.customer?.phone || '',
+        ageCategory: bc.ageCategory || 'adult',
+        tierName: bc.packageTier?.name || '',
+        calculatedShare,
+        paidAmount,
+        balanceAmount,
+        status,
+      };
+    });
+  }
 
   async searchBookingsForPayment(
     searchDto: BookingSearchDto,
@@ -44,6 +126,12 @@ export class PaymentService {
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.customer', 'customer')
       .leftJoinAndSelect('booking.package', 'package')
+      .leftJoinAndSelect('booking.packageTier', 'packageTier')
+      .leftJoinAndSelect('booking.bookingCustomers', 'bookingCustomers')
+      .leftJoinAndSelect('bookingCustomers.customer', 'passengerCustomer')
+      .leftJoinAndSelect('bookingCustomers.packageTier', 'passengerTier')
+      .leftJoinAndSelect('booking.payments', 'payments')
+      .leftJoinAndSelect('payments.allocations', 'allocations')
       .where('booking.organizationId = :organizationId', { organizationId })
       .andWhere('booking.balanceAmount > 0')
       .andWhere('booking.status != :cancelledStatus', {
@@ -62,23 +150,50 @@ export class PaymentService {
 
     const [bookings, total] = await query.getManyAndCount();
 
-    const data = bookings.map((booking) => ({
-      id: booking.id,
-      bookingNumber: booking.bookingNumber,
-      customer: {
-        id: booking.customer.id,
-        name: booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
-        email: booking.customer.email || '',
-      },
-      package: {
-        id: booking.package.id,
-        name: booking.package.name,
-        destination: booking.package.destination,
-      },
-      totalAmount: booking.totalAmount,
-      advancePaid: booking.advancePaid,
-      balanceAmount: booking.balanceAmount,
-    }));
+    const data = bookings.map((booking) => {
+      const allocationsByCustomer = new Map<string, number>();
+      if (booking.payments) {
+        for (const p of booking.payments) {
+          if (p.status === PaymentStatus.COMPLETED && p.allocations) {
+            for (const alloc of p.allocations) {
+              const current =
+                allocationsByCustomer.get(alloc.bookingCustomerId) || 0;
+              allocationsByCustomer.set(
+                alloc.bookingCustomerId,
+                current + Number(alloc.amount),
+              );
+            }
+          }
+        }
+      }
+
+      const customers = this.calculatePassengerSummary(
+        booking,
+        allocationsByCustomer,
+      );
+
+      return {
+        id: booking.id,
+        bookingNumber: booking.bookingNumber,
+        customer: {
+          id: booking.customer.id,
+          name: `${booking.customer.firstName} ${booking.customer.lastName || ''}`.trim(),
+          email: booking.customer.email || '',
+        },
+        package: {
+          id: booking.package.id,
+          name: booking.package.name,
+          destination: booking.package.destination,
+        },
+        totalAmount: Number(booking.totalAmount),
+        advancePaid: Number(booking.advancePaid),
+        balanceAmount: Number(booking.balanceAmount),
+        discountAmount: Number(booking.discountAmount || 0),
+        specialOfferDiscount: Number(booking.specialOfferDiscount || 0),
+        adjustmentAmount: Number(booking.adjustmentAmount || 0),
+        customers,
+      };
+    });
 
     return { data, total };
   }
@@ -94,7 +209,7 @@ export class PaymentService {
         id: createPaymentDto.bookingId,
         organizationId,
       },
-      relations: ['customer', 'package', 'batch'],
+      relations: ['customer', 'package', 'batch', 'bookingCustomers'],
     });
 
     if (!booking) {
@@ -107,6 +222,38 @@ export class PaymentService {
       if (createPaymentDto.amount > maxAmount) {
         throw new BadRequestException(
           `Payment amount cannot exceed balance amount of ${maxAmount}`,
+        );
+      }
+    }
+
+    const isPassengerSplit = !!createPaymentDto.isPassengerSplit;
+    if (
+      isPassengerSplit &&
+      createPaymentDto.allocations &&
+      createPaymentDto.allocations.length > 0
+    ) {
+      const bookingCustomerIds = new Set(
+        booking.bookingCustomers?.map((bc) => bc.id) || [],
+      );
+
+      for (const alloc of createPaymentDto.allocations) {
+        if (!bookingCustomerIds.has(alloc.bookingCustomerId)) {
+          throw new BadRequestException(
+            `Invalid passenger allocation: traveler not found in this booking`,
+          );
+        }
+      }
+
+      const totalAllocated = createPaymentDto.allocations.reduce(
+        (sum, a) => sum + Number(a.amount || 0),
+        0,
+      );
+
+      if (
+        Math.abs(totalAllocated - Number(createPaymentDto.amount)) > 0.01
+      ) {
+        throw new BadRequestException(
+          `Sum of passenger allocations (${totalAllocated}) must match payment amount (${createPaymentDto.amount})`,
         );
       }
     }
@@ -126,12 +273,36 @@ export class PaymentService {
       notes: createPaymentDto.notes,
       receiptFilePath: createPaymentDto.receiptFilePath,
       paymentDetails: createPaymentDto.paymentDetails,
+      isPassengerSplit,
+      payerName: createPaymentDto.payerName || null,
+      payerCustomerId: createPaymentDto.payerCustomerId || null,
       bookingId: createPaymentDto.bookingId,
       recordedById: userId,
       status: PaymentStatus.PENDING,
-    });
+    } as any) as unknown as BookingPayment;
 
     const savedPayment = await this.paymentRepository.save(payment);
+
+
+
+
+
+    // Save allocations if present
+    if (
+      isPassengerSplit &&
+      createPaymentDto.allocations &&
+      createPaymentDto.allocations.length > 0
+    ) {
+      const allocations = createPaymentDto.allocations.map((alloc) =>
+        this.paymentAllocationRepository.create({
+          paymentId: savedPayment.id,
+          bookingCustomerId: alloc.bookingCustomerId,
+          amount: alloc.amount,
+          notes: alloc.notes,
+        }),
+      );
+      await this.paymentAllocationRepository.save(allocations);
+    }
 
     // Update booking amounts if payment is completed
     if (
@@ -149,6 +320,7 @@ export class PaymentService {
 
     return this.findOne(savedPayment.id, organizationId);
   }
+
 
   async findAll(
     filterDto: PaymentFilterDto,
@@ -174,6 +346,10 @@ export class PaymentService {
       .leftJoinAndSelect('booking.package', 'package')
       .leftJoinAndSelect('booking.batch', 'batch')
       .leftJoinAndSelect('payment.recordedBy', 'recordedBy')
+      .leftJoinAndSelect('payment.allocations', 'allocations')
+      .leftJoinAndSelect('allocations.bookingCustomer', 'allocBookingCustomer')
+      .leftJoinAndSelect('allocBookingCustomer.customer', 'allocCustomer')
+      .leftJoinAndSelect('payment.payerCustomer', 'payerCustomer')
       .where('booking.organizationId = :organizationId', { organizationId });
 
     // Apply filters
@@ -200,7 +376,7 @@ export class PaymentService {
 
     if (search) {
       query.andWhere(
-        '(customer.name ILIKE :search OR booking.bookingNumber ILIKE :search OR payment.paymentReference ILIKE :search OR payment.transactionId ILIKE :search)',
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR booking.bookingNumber ILIKE :search OR payment.paymentReference ILIKE :search OR payment.transactionId ILIKE :search OR payment.payerName ILIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -264,6 +440,10 @@ export class PaymentService {
       .leftJoinAndSelect('booking.package', 'package')
       .leftJoinAndSelect('booking.batch', 'batch')
       .leftJoinAndSelect('payment.recordedBy', 'recordedBy')
+      .leftJoinAndSelect('payment.allocations', 'allocations')
+      .leftJoinAndSelect('allocations.bookingCustomer', 'allocBookingCustomer')
+      .leftJoinAndSelect('allocBookingCustomer.customer', 'allocCustomer')
+      .leftJoinAndSelect('payment.payerCustomer', 'payerCustomer')
       .where('booking.organizationId = :organizationId', { organizationId })
       .andWhere('payment.recordedById IN (:...teamUserIds)', { teamUserIds });
 
@@ -291,7 +471,7 @@ export class PaymentService {
 
     if (search) {
       query.andWhere(
-        '(customer.name ILIKE :search OR booking.bookingNumber ILIKE :search OR payment.paymentReference ILIKE :search OR payment.transactionId ILIKE :search)',
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR booking.bookingNumber ILIKE :search OR payment.paymentReference ILIKE :search OR payment.transactionId ILIKE :search OR payment.payerName ILIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -331,6 +511,10 @@ export class PaymentService {
         'booking.package',
         'booking.batch',
         'recordedBy',
+        'allocations',
+        'allocations.bookingCustomer',
+        'allocations.bookingCustomer.customer',
+        'payerCustomer',
       ],
     });
 
@@ -357,7 +541,7 @@ export class PaymentService {
   ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
-      relations: ['booking'],
+      relations: ['booking', 'allocations'],
     });
 
     if (!payment || payment.booking.organizationId !== organizationId) {
@@ -382,7 +566,27 @@ export class PaymentService {
       }
     }
 
-    await this.paymentRepository.update(id, updatePaymentDto);
+    const { allocations, ...paymentFields } = updatePaymentDto;
+
+    if (Object.keys(paymentFields).length > 0) {
+      await this.paymentRepository.update(id, paymentFields);
+    }
+
+    if (allocations !== undefined) {
+      await this.paymentAllocationRepository.delete({ paymentId: id });
+      if (allocations && allocations.length > 0) {
+        const newAllocations = allocations.map((alloc) =>
+          this.paymentAllocationRepository.create({
+            paymentId: id,
+            bookingCustomerId: alloc.bookingCustomerId,
+            amount: alloc.amount,
+            notes: alloc.notes,
+          }),
+        );
+        await this.paymentAllocationRepository.save(newAllocations);
+      }
+    }
+
     return this.findOne(id, organizationId);
   }
 
@@ -462,57 +666,55 @@ export class PaymentService {
     ]);
 
     return {
-      totalPayments: parseInt(totalResult.count) || 0,
-      totalAmount: parseFloat(totalResult.sum) || 0,
-      pendingPayments: parseInt(pendingResult.count) || 0,
-      pendingAmount: parseFloat(pendingResult.sum) || 0,
-      completedPayments: parseInt(completedResult.count) || 0,
-      completedAmount: parseFloat(completedResult.sum) || 0,
-      failedPayments: parseInt(failedResult.count) || 0,
-      failedAmount: parseFloat(failedResult.sum) || 0,
-      refundedPayments: parseInt(refundedResult.count) || 0,
-      refundedAmount: parseFloat(refundedResult.sum) || 0,
-      archivedPayments: parseInt(archivedResult.count) || 0,
-      archivedAmount: parseFloat(archivedResult.sum) || 0,
+      totalPayments: parseInt(totalResult?.count || '0'),
+      totalAmount: parseFloat(totalResult?.sum || '0'),
+      pendingPayments: parseInt(pendingResult?.count || '0'),
+      pendingAmount: parseFloat(pendingResult?.sum || '0'),
+      completedPayments: parseInt(completedResult?.count || '0'),
+      completedAmount: parseFloat(completedResult?.sum || '0'),
+      failedPayments: parseInt(failedResult?.count || '0'),
+      failedAmount: parseFloat(failedResult?.sum || '0'),
+      refundedPayments: parseInt(refundedResult?.count || '0'),
+      refundedAmount: parseFloat(refundedResult?.sum || '0'),
+      archivedPayments: parseInt(archivedResult?.count || '0'),
+      archivedAmount: parseFloat(archivedResult?.sum || '0'),
     };
   }
 
   async getOverduePayments(
     organizationId: string,
   ): Promise<OverduePaymentDto[]> {
-    const bookings = await this.bookingRepository
-      .createQueryBuilder('booking')
+    const today = new Date();
+
+    const query = this.paymentRepository
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.booking', 'booking')
       .leftJoinAndSelect('booking.customer', 'customer')
       .leftJoinAndSelect('booking.package', 'package')
-      .leftJoinAndSelect('booking.batch', 'batch')
       .where('booking.organizationId = :organizationId', { organizationId })
-      .andWhere('booking.balanceAmount > 0')
-      .andWhere('booking.status != :cancelledStatus', {
-        cancelledStatus: BookingStatus.CANCELLED,
-      })
-      .andWhere('batch.startDate < :currentDate', { currentDate: new Date() })
-      .getMany();
+      .andWhere('payment.status = :status', { status: PaymentStatus.PENDING })
+      .andWhere('payment.paymentDate < :today', { today });
 
-    return bookings
-      .map((booking) => {
-        const daysOverdue = Math.floor(
-          (new Date().getTime() - booking.batch.startDate.getTime()) /
-            (1000 * 3600 * 24),
-        );
+    const payments = await query.getMany();
 
-        return {
-          bookingId: booking.id,
-          bookingNumber: booking.bookingNumber,
-          customerName:
-            booking.customer.firstName + ' ' + (booking.customer.lastName || ''),
-          customerEmail: booking.customer.email || '',
-          packageName: booking.package.name,
-          dueAmount: booking.balanceAmount,
-          dueDate: booking.batch.startDate,
-          daysOverdue,
-        };
-      })
-      .filter((payment) => payment.daysOverdue > 0);
+    return payments.map((payment) => {
+      const paymentDate = new Date(payment.paymentDate);
+      const daysOverdue = Math.floor(
+        (today.getTime() - paymentDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      return {
+        bookingId: payment.booking.id,
+        bookingNumber: payment.booking.bookingNumber,
+        customerName:
+          payment.booking.customer.firstName + ' ' + (payment.booking.customer.lastName || ''),
+        customerEmail: payment.booking.customer.email || '',
+        packageName: payment.booking.package.name,
+        dueAmount: payment.amount,
+        dueDate: payment.paymentDate,
+        daysOverdue: Math.max(0, daysOverdue),
+      };
+    });
   }
 
   async markAsCompleted(
@@ -528,27 +730,24 @@ export class PaymentService {
       throw new NotFoundException('Payment not found or access denied');
     }
 
-    if (payment.status !== PaymentStatus.PENDING) {
-      throw new BadRequestException(
-        'Only pending payments can be marked as completed',
-      );
+    if (payment.status === PaymentStatus.COMPLETED) {
+      throw new BadRequestException('Payment is already completed');
     }
 
-    // Update booking amounts
-    const booking = payment.booking;
-    const newAdvancePaid =
-      parseFloat(booking.advancePaid.toString()) +
-      parseFloat(payment.amount.toString());
-    const newBalanceAmount =
-      parseFloat(booking.totalAmount.toString()) - newAdvancePaid;
+    payment.status = PaymentStatus.COMPLETED;
+    await this.paymentRepository.save(payment);
 
-    await Promise.all([
-      this.paymentRepository.update(id, { status: PaymentStatus.COMPLETED }),
-      this.bookingRepository.update(booking.id, {
+    // Update booking balance and advance amounts
+    if (payment.paymentType !== PaymentType.REFUND) {
+      const booking = payment.booking;
+      const newAdvancePaid = Number(booking.advancePaid) + Number(payment.amount);
+      const newBalanceAmount = Number(booking.totalAmount) - newAdvancePaid;
+
+      await this.bookingRepository.update(booking.id, {
         advancePaid: newAdvancePaid,
         balanceAmount: newBalanceAmount,
-      }),
-    ]);
+      });
+    }
 
     return this.findOne(id, organizationId);
   }
@@ -566,7 +765,28 @@ export class PaymentService {
       throw new NotFoundException('Payment not found or access denied');
     }
 
-    await this.paymentRepository.update(id, { status: PaymentStatus.FAILED });
+    payment.status = PaymentStatus.FAILED;
+    await this.paymentRepository.save(payment);
+
+    return this.findOne(id, organizationId);
+  }
+
+  async markAsRefunded(
+    id: string,
+    organizationId: string,
+  ): Promise<PaymentResponseDto> {
+    const payment = await this.paymentRepository.findOne({
+      where: { id },
+      relations: ['booking'],
+    });
+
+    if (!payment || payment.booking.organizationId !== organizationId) {
+      throw new NotFoundException('Payment not found or access denied');
+    }
+
+    payment.status = PaymentStatus.REFUNDED;
+    await this.paymentRepository.save(payment);
+
     return this.findOne(id, organizationId);
   }
 
@@ -583,13 +803,9 @@ export class PaymentService {
       throw new NotFoundException('Payment not found or access denied');
     }
 
-    if (payment.status === PaymentStatus.PENDING) {
-      throw new BadRequestException(
-        'Cannot archive pending payments. Complete or fail them first.',
-      );
-    }
+    payment.status = PaymentStatus.ARCHIVED;
+    await this.paymentRepository.save(payment);
 
-    await this.paymentRepository.update(id, { status: PaymentStatus.ARCHIVED });
     return this.findOne(id, organizationId);
   }
 
@@ -684,7 +900,6 @@ export class PaymentService {
     fileId: string,
     organizationId: string,
   ): Promise<{ deleted: boolean }> {
-    // Verify payment exists and user has access
     const payment = await this.paymentRepository.findOne({
       where: { id: paymentId },
     });
@@ -692,13 +907,30 @@ export class PaymentService {
       throw new NotFoundException('Payment not found');
     }
 
-    // As URLs strings, we just remove the string value from receiptFilePath
     payment.receiptFilePath = '';
     await this.paymentRepository.save(payment);
     return { deleted: true };
   }
 
   private transformToResponseDto(payment: BookingPayment): PaymentResponseDto {
+    const allocations: PaymentAllocationResponseDto[] = payment.allocations
+      ? payment.allocations.map((alloc) => {
+          const cust = alloc.bookingCustomer?.customer;
+          const customerName = cust
+            ? `${cust.firstName} ${cust.lastName || ''}`.trim()
+            : 'Passenger';
+          return {
+            id: alloc.id,
+            bookingCustomerId: alloc.bookingCustomerId,
+            customerId: cust?.id,
+            customerName,
+            customerEmail: cust?.email || '',
+            amount: Number(alloc.amount),
+            notes: alloc.notes,
+          };
+        })
+      : [];
+
     return {
       id: payment.id,
       paymentNumber: payment.paymentNumber,
@@ -712,6 +944,14 @@ export class PaymentService {
       notes: payment.notes,
       receiptFilePath: payment.receiptFilePath,
       paymentDetails: payment.paymentDetails,
+      isPassengerSplit: payment.isPassengerSplit || false,
+      payerName:
+        payment.payerName ||
+        (payment.payerCustomer
+          ? `${payment.payerCustomer.firstName} ${payment.payerCustomer.lastName || ''}`.trim()
+          : undefined),
+      payerCustomerId: payment.payerCustomerId,
+      allocations,
 
       booking: {
         id: payment.booking.id,
@@ -746,10 +986,10 @@ export class PaymentService {
       },
 
       recordedBy: {
-        id: payment.recordedBy.id,
-        firstName: payment.recordedBy.name?.split(' ')[0] || '',
-        lastName: payment.recordedBy.name?.split(' ')[1] || '',
-        email: payment.recordedBy.email,
+        id: payment.recordedBy?.id || '',
+        firstName: payment.recordedBy?.name?.split(' ')[0] || '',
+        lastName: payment.recordedBy?.name?.split(' ')[1] || '',
+        email: payment.recordedBy?.email || '',
       },
 
       createdAt: payment.createdAt,

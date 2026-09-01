@@ -77,6 +77,30 @@ export interface FileManager {
     updatedAt: string;
 }
 
+export interface PassengerPaymentAllocation {
+    id?: string;
+    bookingCustomerId: string;
+    customerId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    amount: number;
+    notes?: string;
+}
+
+export interface BookingCustomerPaymentSummary {
+    id: string; // bookingCustomerId
+    customerId: string;
+    name: string;
+    email: string;
+    phone?: string;
+    ageCategory: string;
+    tierName?: string;
+    calculatedShare: number;
+    paidAmount: number;
+    balanceAmount: number;
+    status: "paid" | "partial" | "unpaid";
+}
+
 // Payment interface
 export interface Payment {
     id: string;
@@ -90,6 +114,10 @@ export interface Payment {
     paymentDate: string;
     notes?: string;
     receiptFilePath?: string;
+    isPassengerSplit?: boolean;
+    payerName?: string;
+    payerCustomerId?: string;
+    allocations?: PassengerPaymentAllocation[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     paymentDetails?: Record<string, any>;
     booking: Booking;
@@ -134,6 +162,10 @@ export interface BookingForPayment {
     totalAmount: number;
     advancePaid: number;
     balanceAmount: number;
+    discountAmount?: number;
+    specialOfferDiscount?: number;
+    adjustmentAmount?: number;
+    customers?: BookingCustomerPaymentSummary[];
 }
 
 // API response types
@@ -163,6 +195,10 @@ export interface CreatePaymentDto {
     paymentDate: string;
     notes?: string;
     receiptFilePath?: string;
+    isPassengerSplit?: boolean;
+    payerName?: string;
+    payerCustomerId?: string;
+    allocations?: PassengerPaymentAllocation[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     paymentDetails?: Record<string, any>;
 }
@@ -177,6 +213,10 @@ export interface UpdatePaymentDto {
     paymentDate?: string;
     notes?: string;
     receiptFilePath?: string;
+    isPassengerSplit?: boolean;
+    payerName?: string;
+    payerCustomerId?: string;
+    allocations?: PassengerPaymentAllocation[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     paymentDetails?: Record<string, any>;
 }
@@ -208,6 +248,10 @@ export interface AddPaymentFormData {
     paymentDate: string;
     paymentScreenshot: File | null;
     notes: string;
+    isPassengerSplit: boolean;
+    payerName: string;
+    payerCustomerId: string;
+    allocations: Record<string, number>; // key: bookingCustomerId -> amount
 }
 
 export interface EditPaymentFormData extends Omit<
@@ -217,3 +261,4 @@ export interface EditPaymentFormData extends Omit<
     status: string;
     transactionId: string;
 }
+

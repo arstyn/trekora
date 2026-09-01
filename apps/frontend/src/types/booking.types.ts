@@ -12,6 +12,16 @@ export type PaymentMethod =
 
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 
+export interface IBookingPaymentAllocation {
+    id?: string;
+    bookingCustomerId: string;
+    customerId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    amount: number;
+    notes?: string;
+}
+
 export interface IBookingPayment {
     id?: string;
     amount: number;
@@ -23,10 +33,15 @@ export interface IBookingPayment {
     notes?: string;
     filePath?: string;
     receiptFilePath?: string;
+    isPassengerSplit?: boolean;
+    payerName?: string;
+    payerCustomerId?: string;
+    allocations?: IBookingPaymentAllocation[];
 }
 
 export interface ICustomer {
     id?: string;
+    bookingCustomerId?: string;
     firstName: string;
     lastName?: string;
     middleName?: string;
@@ -59,9 +74,17 @@ export interface ICustomer {
         lastName?: string;
         email?: string;
     };
+    packageTierId?: string;
+    packageTierName?: string;
+    ageCategory?: 'adult' | 'child' | 'infant';
+    calculatedShare?: number;
+    paidAmount?: number;
+    balanceAmount?: number;
+    paymentStatus?: 'paid' | 'partial' | 'unpaid';
     createdAt?: string;
     updatedAt?: string;
 }
+
 
 import type { PackageTier, IPaymentStructure, PackageLocation } from "./package.schema";
 
