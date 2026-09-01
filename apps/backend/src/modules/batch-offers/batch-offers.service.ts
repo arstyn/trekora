@@ -80,10 +80,6 @@ export class BatchOffersService {
 
     const now = new Date();
     query.andWhere(
-      '(offer.validFrom IS NULL OR offer.validFrom <= :now)',
-      { now },
-    );
-    query.andWhere(
       '(offer.validUntil IS NULL OR offer.validUntil >= :now)',
       { now },
     );

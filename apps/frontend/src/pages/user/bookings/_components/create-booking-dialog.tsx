@@ -140,6 +140,7 @@ export function CreateBookingDialog({
     const [discountInputType, setDiscountInputType] = useState<"amount" | "percentage">("amount");
     const [perPassengerDiscountValue, setPerPassengerDiscountValue] = useState<number>(0);
     const [batchOffers, setBatchOffers] = useState<IBatchOffer[]>([]);
+    const [customOfferValues, setCustomOfferValues] = useState<Record<string, number>>({});
 
     const [formData, setFormData] = useState<ICreateBookingFormData>({
         packageId: preselectedPackageId || "",
@@ -353,6 +354,17 @@ export function CreateBookingDialog({
             if (selectedBatch && formData.customers.length > availableSeats && !formData.overrideCapacityLimit) {
                 newErrors.capacity = `Selected travelers (${formData.customers.length}) exceed batch capacity (${availableSeats} seats left). Check override option to submit.`;
             }
+            if (formData.batchOfferId) {
+                const selectedOffer = batchOffers.find(o => o.id === formData.batchOfferId);
+                if (selectedOffer && selectedOffer.discountMode === "range") {
+                    const enteredVal = customOfferValues[selectedOffer.id] ?? Number(selectedOffer.maxDiscountValue ?? selectedOffer.discountValue);
+                    const min = Number(selectedOffer.minDiscountValue || 0);
+                    const max = Number(selectedOffer.maxDiscountValue || 0);
+                    if (enteredVal < min || enteredVal > max) {
+                        newErrors.specialOffer = `Special offer discount must be between ${min} and ${max}.`;
+                    }
+                }
+            }
         }
 
         setErrors(newErrors);
@@ -394,6 +406,27 @@ export function CreateBookingDialog({
                 hasMore: customersData.hasMore,
                 total: customersData.total,
             });
+
+            if (preselectedBatchId) {
+                // Resolve package for preselected batch if not provided
+                for (const pkg of packagesData.packages || []) {
+                    try {
+                        const batches = await BookingService.getAvailableBatches(pkg.id);
+                        if (batches.some(b => b.id === preselectedBatchId)) {
+                            setFormData(prev => ({
+                                ...prev,
+                                packageId: pkg.id,
+                                batchId: preselectedBatchId,
+                            }));
+                            setAvailableBatches(batches);
+                            loadBatchOffers(preselectedBatchId);
+                            break;
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+            }
         } catch (err) {
             console.error("Error loading initial data:", err);
             setError("Failed to load data. Please try again.");
@@ -581,23 +614,59 @@ export function CreateBookingDialog({
     const computeSpecialOfferDiscount = (
         offer: IBatchOffer | null | undefined,
         baseTotal: number,
-        customerCount: number
+        customerCount: number,
+        customValue?: number
     ) => {
         if (!offer || customerCount < offer.minTravelers) return 0;
+        let rateOrAmount = Number(offer.discountValue);
+        if (offer.discountMode === "range") {
+            if (customValue !== undefined && customValue !== null) {
+                rateOrAmount = customValue;
+            } else if (customOfferValues[offer.id] !== undefined) {
+                rateOrAmount = customOfferValues[offer.id];
+            } else if (offer.maxDiscountValue !== null && offer.maxDiscountValue !== undefined) {
+                rateOrAmount = Number(offer.maxDiscountValue);
+            }
+        }
         let disc = 0;
         if (offer.discountType === "percentage") {
-            disc = Math.round((baseTotal * Number(offer.discountValue)) / 100);
+            disc = Math.round((baseTotal * rateOrAmount) / 100);
             if (offer.maxDiscountCap && disc > Number(offer.maxDiscountCap)) {
                 disc = Number(offer.maxDiscountCap);
             }
         } else {
             if (offer.discountScope === "passenger") {
-                disc = Number(offer.discountValue) * customerCount;
+                disc = rateOrAmount * customerCount;
             } else {
-                disc = Number(offer.discountValue);
+                disc = rateOrAmount;
             }
         }
         return Math.min(disc, baseTotal);
+    };
+
+    const handleRangeOfferValueChange = (
+        offer: IBatchOffer,
+        val: number,
+        baseTotal: number,
+        customerCount: number
+    ) => {
+        setCustomOfferValues((prev) => ({
+            ...prev,
+            [offer.id]: val,
+        }));
+
+        const newSavings = computeSpecialOfferDiscount(offer, baseTotal, customerCount, val);
+        setFormData((prev) => {
+            const newTotal = Math.max(
+                0,
+                baseTotal + (prev.adjustmentAmount || 0) - (prev.discountAmount || 0) - newSavings
+            );
+            return {
+                ...prev,
+                specialOfferDiscount: newSavings,
+                totalAmount: newTotal,
+            };
+        });
     };
 
     const calculateTotalAmount = (
@@ -1264,6 +1333,41 @@ export function CreateBookingDialog({
                                                         </div>
                                                     )}
                                                     {errors.batchId && <p className="text-xs text-destructive mt-1 font-medium">{errors.batchId}</p>}
+
+                                                    {/* Active Special Offers Notice in Step 1 */}
+                                                    {formData.batchId && batchOffers.length > 0 && (
+                                                        <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2 mt-3">
+                                                            <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
+                                                                <Sparkles className="w-4 h-4 text-amber-500" />
+                                                                <span>{batchOffers.length} Special Offer{batchOffers.length > 1 ? "s" : ""} Available for this Batch!</span>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {batchOffers.map((offer) => (
+                                                                    <Badge
+                                                                        key={offer.id}
+                                                                        className="bg-amber-600 hover:bg-amber-600 text-white font-mono text-xs flex items-center gap-1.5"
+                                                                    >
+                                                                        <Tag className="w-3 h-3" />
+                                                                        <span>{offer.name}:</span>
+                                                                        <span className="font-bold">
+                                                                            {offer.discountMode === "range" &&
+                                                                            offer.minDiscountValue !== undefined &&
+                                                                            offer.minDiscountValue !== null
+                                                                                ? offer.discountType === "percentage"
+                                                                                    ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}% OFF`
+                                                                                    : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")} OFF`
+                                                                                : offer.discountType === "percentage"
+                                                                                ? `${offer.discountValue}% OFF`
+                                                                                : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
+                                                                        </span>
+                                                                    </Badge>
+                                                                ))}
+                                                            </div>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                You will be able to apply and preview this discount in Step 3 (Payment Details).
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -2038,7 +2142,7 @@ export function CreateBookingDialog({
                                                                         </span>
                                                                         {isEligible ? (
                                                                             <span className="font-bold text-amber-600 dark:text-amber-400">
-                                                                                {offer.discountMode === "range" ? "Save up to " : "Save "}
+                                                                                {offer.discountMode === "range" ? "Applied Savings: " : "Save "}
                                                                                 {BookingService.formatCurrency(offerSavings)}
                                                                             </span>
                                                                         ) : (
@@ -2047,6 +2151,54 @@ export function CreateBookingDialog({
                                                                             </span>
                                                                         )}
                                                                     </div>
+
+                                                                    {/* Custom Range Input Field */}
+                                                                    {isSelected && offer.discountMode === "range" && (
+                                                                        <div
+                                                                            className="pt-2 border-t border-amber-500/20 space-y-1.5 mt-1"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            <div className="flex items-center justify-between text-[11px]">
+                                                                                <span className="font-semibold text-foreground">
+                                                                                    Enter Custom Discount ({offer.discountType === "percentage" ? "%" : "₹"}):
+                                                                                </span>
+                                                                                <span className="text-[10px] text-muted-foreground font-mono">
+                                                                                    Allowed: {offer.discountType === "percentage"
+                                                                                        ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}%`
+                                                                                        : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")}`}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="relative flex-1">
+                                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">
+                                                                                        {offer.discountType === "percentage" ? "%" : "₹"}
+                                                                                    </span>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        min={Number(offer.minDiscountValue || 0)}
+                                                                                        max={Number(offer.maxDiscountValue || 0)}
+                                                                                        step={offer.discountType === "percentage" ? 1 : 50}
+                                                                                        value={customOfferValues[offer.id] ?? Number(offer.maxDiscountValue ?? offer.discountValue)}
+                                                                                        onChange={(e) => {
+                                                                                            const val = parseFloat(e.target.value) || 0;
+                                                                                            handleRangeOfferValueChange(offer, val, baseTotal, travelerCount);
+                                                                                        }}
+                                                                                        className="h-8 pl-7 text-xs font-bold bg-background"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                            {customOfferValues[offer.id] !== undefined &&
+                                                                                (customOfferValues[offer.id] < Number(offer.minDiscountValue || 0) ||
+                                                                                    customOfferValues[offer.id] > Number(offer.maxDiscountValue || 0)) && (
+                                                                                <p className="text-[10px] text-destructive font-semibold">
+                                                                                    Value must be between{" "}
+                                                                                    {offer.discountType === "percentage"
+                                                                                        ? `${offer.minDiscountValue}% and ${offer.maxDiscountValue}%`
+                                                                                        : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} and ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")}`}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             );
                                                         })}
