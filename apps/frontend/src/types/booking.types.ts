@@ -14,7 +14,7 @@ export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 
 export interface IBookingPaymentAllocation {
     id?: string;
-    bookingCustomerId: string;
+    bookingCustomerId?: string;
     customerId?: string;
     customerName?: string;
     customerEmail?: string;

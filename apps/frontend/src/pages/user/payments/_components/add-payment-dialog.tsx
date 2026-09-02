@@ -41,7 +41,6 @@ import {
     Loader2,
     Plus,
     Search,
-    Sparkles,
     Split,
     Upload,
     UserCheck,
@@ -326,23 +325,27 @@ export function AddPaymentDialog({
         }));
     };
 
-    const handlePayFullBalances = () => {
-        if (!selectedBooking?.customers || selectedBooking.customers.length === 0) return;
-
+    const handleAssignFullAmountToPassenger = (targetPassengerId: string) => {
+        const totalPayment = Number(formData.amount) || 0;
         const newAllocations: Record<string, string> = {};
-        let total = 0;
+
+        if (!selectedBooking?.customers) return;
 
         selectedBooking.customers.forEach((c) => {
-            if (selectedPassengerIds.includes(c.id)) {
-                const balance = Number(c.balanceAmount || 0);
-                newAllocations[c.id] = String(balance);
-                total += balance;
+            if (c.id === targetPassengerId) {
+                const targetVal = totalPayment > 0 ? totalPayment : Number(c.balanceAmount || c.calculatedShare || 0);
+                newAllocations[c.id] = String(targetVal);
+            } else {
+                newAllocations[c.id] = "0";
             }
         });
 
+        if (!selectedPassengerIds.includes(targetPassengerId)) {
+            setSelectedPassengerIds((prev) => [...prev, targetPassengerId]);
+        }
+
         setFormData((prev) => ({
             ...prev,
-            amount: String(total),
             allocations: newAllocations,
         }));
     };
@@ -353,16 +356,9 @@ export function AddPaymentDialog({
             [passengerId]: val,
         };
 
-        // Recalculate total amount from all allocations
-        const total = Object.values(newAllocations).reduce(
-            (sum, curr) => sum + (Number(curr) || 0),
-            0
-        );
-
         setFormData((prev) => ({
             ...prev,
             allocations: newAllocations,
-            amount: total > 0 ? String(total) : prev.amount,
         }));
     };
 
@@ -373,14 +369,9 @@ export function AddPaymentDialog({
                 // Remove allocation for unselected
                 const updatedAllocations = { ...formData.allocations };
                 delete updatedAllocations[passengerId];
-                const total = Object.values(updatedAllocations).reduce(
-                    (sum, curr) => sum + (Number(curr) || 0),
-                    0
-                );
                 setFormData((p) => ({
                     ...p,
                     allocations: updatedAllocations,
-                    amount: total > 0 ? String(total) : p.amount,
                 }));
                 return next;
             } else {
@@ -388,6 +379,7 @@ export function AddPaymentDialog({
             }
         });
     };
+
 
     const validateForm = (): boolean => {
         const errors: Record<string, string> = {};
@@ -887,16 +879,6 @@ export function AddPaymentDialog({
                                                             <Split className="w-3 h-3 mr-1 text-primary" />
                                                             Split Amount Evenly
                                                         </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={handlePayFullBalances}
-                                                            className="text-xs h-7 bg-background"
-                                                        >
-                                                            <Sparkles className="w-3 h-3 mr-1 text-primary" />
-                                                            Pay Full Balances
-                                                        </Button>
                                                     </div>
                                                 </div>
 
@@ -1054,6 +1036,16 @@ export function AddPaymentDialog({
                                                                                 placeholder="0.00"
                                                                                 className="h-8 w-28 text-xs font-semibold text-right bg-background"
                                                                             />
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                disabled={!isChecked}
+                                                                                className="h-8 px-2 text-[11px] text-primary hover:bg-primary/10"
+                                                                                onClick={() => handleAssignFullAmountToPassenger(c.id)}
+                                                                            >
+                                                                                Full Share
+                                                                            </Button>
                                                                         </div>
                                                                     </div>
                                                                 );

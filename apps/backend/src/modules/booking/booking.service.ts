@@ -299,15 +299,73 @@ export class BookingService {
       // Create initial payment if provided
       if (createBookingDto.initialPayment && advancePaid > 0) {
         const paymentNumber = await this.generatePaymentNumber(organizationId);
+        const { allocations: initialAllocations, ...initialPaymentData } =
+          createBookingDto.initialPayment;
+
         const payment = queryRunner.manager.create(BookingPayment, {
-          ...createBookingDto.initialPayment,
+          ...initialPaymentData,
           paymentNumber,
           bookingId: savedBooking.id,
           recordedById: userId,
           status: PaymentStatus.COMPLETED,
+          isPassengerSplit:
+            createBookingDto.initialPayment.isPassengerSplit || false,
+          payerName: createBookingDto.initialPayment.payerName,
+          payerCustomerId: createBookingDto.initialPayment.payerCustomerId,
         });
-        await queryRunner.manager.save(payment);
+        const savedPayment = await queryRunner.manager.save(payment);
+
+        if (
+          createBookingDto.initialPayment.isPassengerSplit &&
+          initialAllocations &&
+          initialAllocations.length > 0
+        ) {
+          const bookingCustomers = await queryRunner.manager.find(
+            BookingCustomer,
+            {
+              where: { bookingId: savedBooking.id },
+            },
+          );
+          const customerIdToBookingCustomerId = new Map(
+            bookingCustomers.map((bc) => [bc.customerId, bc.id]),
+          );
+          const validBookingCustomerIds = new Set(
+            bookingCustomers.map((bc) => bc.id),
+          );
+
+          const allocations: BookingPaymentAllocation[] = initialAllocations
+            .map((alloc: any) => {
+              const targetBcId =
+                (alloc.customerId
+                  ? customerIdToBookingCustomerId.get(alloc.customerId)
+                  : undefined) ||
+                (alloc.bookingCustomerId
+                  ? customerIdToBookingCustomerId.get(alloc.bookingCustomerId)
+                  : undefined) ||
+                (alloc.bookingCustomerId &&
+                validBookingCustomerIds.has(alloc.bookingCustomerId)
+                  ? alloc.bookingCustomerId
+                  : undefined);
+
+              if (!targetBcId) return null;
+              return queryRunner.manager.create(BookingPaymentAllocation, {
+                paymentId: savedPayment.id,
+                bookingCustomerId: targetBcId,
+                amount: alloc.amount,
+                notes: alloc.notes,
+              });
+            })
+            .filter((a): a is BookingPaymentAllocation => Boolean(a));
+
+          if (allocations.length > 0) {
+            await queryRunner.manager.save(
+              BookingPaymentAllocation,
+              allocations,
+            );
+          }
+        }
       }
+
 
       let usedBlock = false;
       let blockSlots = 0;
