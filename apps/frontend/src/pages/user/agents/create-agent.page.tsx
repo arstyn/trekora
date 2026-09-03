@@ -46,13 +46,13 @@ export default function CreateAgentPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6 max-w-4xl mx-auto">
+    <div className="container mx-auto p-6 space-y-6 max-w-4xl">
       <div className="flex items-center space-x-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/agents")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Create Agent</h2>
+          <h1 className="text-3xl font-bold">Create Agent</h1>
           <p className="text-muted-foreground">
             Register a new referring agent or agency partner.
           </p>

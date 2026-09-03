@@ -1,7 +1,10 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgentService from "@/services/agent.service";
 import type { IAgent } from "@/types/agent.types";
-import { Loader2, Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AgentFormDialog } from "./_components/agent-form-dialog";
 import { AgentList } from "./_components/agent-list";
@@ -10,16 +13,19 @@ import { AgentStatsCards } from "./_components/agent-stats-cards";
 export default function AgentsPage() {
   const [agents, setAgents] = useState<IAgent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<IAgent | null>(null);
 
   const fetchAgents = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await AgentService.getAllAgents();
       setAgents(data);
-    } catch (error) {
-      console.error("Failed to fetch agents:", error);
+    } catch (err) {
+      console.error("Failed to fetch agents:", err);
+      setError("Failed to load agent directory. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -40,43 +46,87 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Agent Directory & Commissions</h2>
+          <h1 className="text-3xl font-bold">Agent Management</h1>
           <p className="text-muted-foreground">
-            Manage external agents, referral partners, commission rates, and payout statuses.
+            Manage external agents, referral partners, commission rates, and payouts
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={fetchAgents}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-          <Button onClick={handleOpenCreate} className="gap-2">
-            <Plus className="h-4 w-4" /> Add Agent
-          </Button>
-        </div>
+        <Button onClick={handleOpenCreate}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Agent
+        </Button>
       </div>
 
-      <AgentStatsCards agents={agents} />
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {error}
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-4"
+              onClick={fetchAgents}
+            >
+              Try Again
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
+      {/* Dashboard Stats */}
       {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm space-y-2">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-8 w-1/3" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          ))}
         </div>
       ) : (
-        <AgentList
-          agents={agents}
-          onRefresh={fetchAgents}
-          onOpenCreate={handleOpenCreate}
-          onOpenEdit={handleOpenEdit}
-        />
+        <AgentStatsCards agents={agents} />
       )}
+
+      {/* Agent Tabs */}
+      <Tabs defaultValue="all" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="all">All Agents</TabsTrigger>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="inactive">Inactive</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all">
+          <AgentList
+            status="all"
+            agents={agents}
+            onRefresh={fetchAgents}
+            onOpenEdit={handleOpenEdit}
+          />
+        </TabsContent>
+
+        <TabsContent value="active">
+          <AgentList
+            status="active"
+            agents={agents}
+            onRefresh={fetchAgents}
+            onOpenEdit={handleOpenEdit}
+          />
+        </TabsContent>
+
+        <TabsContent value="inactive">
+          <AgentList
+            status="inactive"
+            agents={agents}
+            onRefresh={fetchAgents}
+            onOpenEdit={handleOpenEdit}
+          />
+        </TabsContent>
+      </Tabs>
 
       <AgentFormDialog
         open={dialogOpen}
@@ -87,3 +137,4 @@ export default function AgentsPage() {
     </div>
   );
 }
+

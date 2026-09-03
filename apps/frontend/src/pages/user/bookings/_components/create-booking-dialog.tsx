@@ -39,8 +39,9 @@ import type {
     PaymentMethod,
 } from "@/types/booking.types";
 import AgentService from "@/services/agent.service";
+import { AgentSelector } from "./agent-selector";
 import type { IAgent } from "@/types/agent.types";
-import { AgentStatus, CommissionType } from "@/types/agent.types";
+import { AgentStatus } from "@/types/agent.types";
 import {
     AlertCircle,
     ArrowLeft,
@@ -102,6 +103,9 @@ export interface ICreateBookingFormData {
     batchBlockId?: string;
     overrideCapacityLimit: boolean;
     agentId?: string;
+    agentCommissionType?: "percentage" | "fixed";
+    agentCommissionValue?: number;
+    agentCommissionAmount?: number;
 }
 
 export function CreateBookingDialog({
@@ -163,6 +167,10 @@ export function CreateBookingDialog({
         paymentOverrideReason: "",
         batchBlockId: preselectedBlockId || "",
         overrideCapacityLimit: false,
+        agentId: undefined,
+        agentCommissionType: undefined,
+        agentCommissionValue: undefined,
+        agentCommissionAmount: 0,
     });
 
     const selectedPackage = packages.find((p) => p.id === formData.packageId);
@@ -812,6 +820,9 @@ export function CreateBookingDialog({
                 batchBlockId: formData.batchBlockId || undefined,
                 overrideCapacityLimit: formData.overrideCapacityLimit,
                 agentId: formData.agentId || undefined,
+                agentCommissionType: formData.agentCommissionType,
+                agentCommissionValue: formData.agentCommissionValue,
+                agentCommissionAmount: formData.agentCommissionAmount,
                 initialPayment:
                     formData.advanceAmount > 0
                         ? {
@@ -2128,67 +2139,30 @@ export function CreateBookingDialog({
                                                         Referring Agent / Commission (Optional)
                                                     </Label>
                                                     <p className="text-[11px] text-muted-foreground">
-                                                        Assign an external agent who referred this customer to track commission earnings.
+                                                        Search and assign an external agent who referred this customer to track commission earnings.
                                                     </p>
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div className="space-y-1.5">
-                                                    <Label htmlFor="agentSelect" className="text-xs font-medium">Select Agent</Label>
-                                                    <Select
-                                                        value={formData.agentId || "none"}
-                                                        onValueChange={(val) =>
-                                                            setFormData((prev) => ({
-                                                                ...prev,
-                                                                agentId: val === "none" ? undefined : val,
-                                                            }))
-                                                        }
-                                                    >
-                                                        <SelectTrigger id="agentSelect" className="bg-background">
-                                                            <SelectValue placeholder="No Agent (Direct Booking)" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="none">No Agent (Direct Booking)</SelectItem>
-                                                            {agents.map((agent) => (
-                                                                <SelectItem key={agent.id} value={agent.id}>
-                                                                    {agent.name} {agent.agencyName ? `(${agent.agencyName})` : ""} — {agent.commissionType === CommissionType.PERCENTAGE ? `${agent.commissionValue}%` : `₹${agent.commissionValue} flat`}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                {/* Live Commission Calculation Preview */}
-                                                {(() => {
-                                                    const selectedAgent = agents.find((a) => a.id === formData.agentId);
-                                                    if (!selectedAgent) return null;
-
-                                                    const calcCommission =
-                                                        selectedAgent.commissionType === CommissionType.PERCENTAGE
-                                                            ? (formData.totalAmount * Number(selectedAgent.commissionValue || 0)) / 100
-                                                            : Number(selectedAgent.commissionValue || 0);
-
-                                                    return (
-                                                        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg space-y-1">
-                                                            <div className="flex items-center justify-between text-xs font-semibold text-blue-900 dark:text-blue-300">
-                                                                <span>Agent Commission Preview</span>
-                                                                <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300">
-                                                                    {selectedAgent.commissionType === CommissionType.PERCENTAGE
-                                                                        ? `${selectedAgent.commissionValue}% of Total`
-                                                                        : `Flat ₹${selectedAgent.commissionValue}`}
-                                                                </Badge>
-                                                            </div>
-                                                            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                                                {BookingService.formatCurrency(calcCommission)}
-                                                            </div>
-                                                            <p className="text-[10px] text-muted-foreground">
-                                                                Status will default to Pending until payout is settled.
-                                                            </p>
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </div>
+                                            <AgentSelector
+                                                agents={agents}
+                                                bookingTotalAmount={formData.totalAmount}
+                                                value={{
+                                                    agentId: formData.agentId,
+                                                    commissionType: formData.agentCommissionType,
+                                                    commissionValue: formData.agentCommissionValue,
+                                                    commissionAmount: formData.agentCommissionAmount,
+                                                }}
+                                                onChange={(agentData) => {
+                                                    setFormData((prev) => ({
+                                                        ...prev,
+                                                        agentId: agentData.agentId,
+                                                        agentCommissionType: agentData.commissionType,
+                                                        agentCommissionValue: agentData.commissionValue,
+                                                        agentCommissionAmount: agentData.commissionAmount,
+                                                    }));
+                                                }}
+                                            />
                                         </div>
 
                                         {/* Expected Payment Structure Reference */}

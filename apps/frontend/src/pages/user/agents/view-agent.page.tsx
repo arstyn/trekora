@@ -84,15 +84,11 @@ export default function ViewAgentPage() {
   const getPayoutBadge = (status: AgentPayoutStatus) => {
     switch (status) {
       case AgentPayoutStatus.PAID:
-        return <Badge className="bg-emerald-600 hover:bg-emerald-700">Paid</Badge>;
+        return <Badge variant="default">Paid</Badge>;
       case AgentPayoutStatus.CANCELLED:
         return <Badge variant="secondary">Cancelled</Badge>;
       default:
-        return (
-          <Badge variant="outline" className="text-amber-600 border-amber-400 bg-amber-50 dark:bg-amber-950/30">
-            Pending
-          </Badge>
-        );
+        return <Badge variant="outline">Pending</Badge>;
     }
   };
 
@@ -116,7 +112,7 @@ export default function ViewAgentPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
+    <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center space-x-4">
@@ -129,7 +125,7 @@ export default function ViewAgentPage() {
           </Button>
           <div>
             <div className="flex items-center space-x-3">
-              <h2 className="text-3xl font-bold tracking-tight">{agent.name}</h2>
+              <h1 className="text-3xl font-bold">{agent.name}</h1>
               <Badge
                 variant={
                   agent.status === AgentStatus.ACTIVE ? "default" : "secondary"
@@ -162,7 +158,7 @@ export default function ViewAgentPage() {
 
       {/* Profile Overview Card */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="shadow-sm">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
               Contact Info
@@ -187,7 +183,7 @@ export default function ViewAgentPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
               Default Rate
@@ -206,15 +202,15 @@ export default function ViewAgentPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-emerald-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
               Total Earned
             </CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            <div className="text-2xl font-bold">
               {formatCurrency(agent.totalCommissionEarned || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -223,15 +219,15 @@ export default function ViewAgentPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-amber-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
               Pending Payout
             </CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+            <div className="text-2xl font-bold">
               {formatCurrency(agent.pendingCommissionPayout || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -242,7 +238,7 @@ export default function ViewAgentPage() {
       </div>
 
       {agent.notes && (
-        <Card className="shadow-sm bg-muted/30">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">Notes & Payment Details</CardTitle>
           </CardHeader>
@@ -255,7 +251,7 @@ export default function ViewAgentPage() {
       )}
 
       {/* Bookings Ledger Table */}
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Referred Bookings Ledger</CardTitle>
@@ -317,13 +313,13 @@ export default function ViewAgentPage() {
                       {formatCurrency(booking.totalAmount)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="font-mono text-xs">
+                      <Badge variant="outline" className="font-mono text-xs font-normal">
                         {booking.agentCommissionType === CommissionType.PERCENTAGE
                           ? `${booking.agentCommissionValue}%`
                           : `₹${booking.agentCommissionValue}`}
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-bold text-emerald-600 dark:text-emerald-400">
+                    <TableCell className="font-medium">
                       {formatCurrency(booking.agentCommissionAmount)}
                     </TableCell>
                     <TableCell>{getPayoutBadge(booking.agentPayoutStatus)}</TableCell>
@@ -365,3 +361,4 @@ export default function ViewAgentPage() {
     </div>
   );
 }
+
