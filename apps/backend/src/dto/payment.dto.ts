@@ -339,8 +339,32 @@ export class PaymentResponseDto {
     email: string;
   };
 
+  verifiedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+
+  verifiedAt?: Date | null;
+
   createdAt: Date;
   updatedAt: Date;
+}
+
+export class PaymentLogResponseDto {
+  id: string;
+  paymentId: string;
+  action: string;
+  previousData?: any;
+  newData?: any;
+  changedBy?: {
+    id: string;
+    name?: string;
+    email?: string;
+    profilePhoto?: string;
+  } | null;
+  createdAt: Date;
 }
 
 export class PaymentListResponseDto {

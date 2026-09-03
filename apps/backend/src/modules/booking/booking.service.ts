@@ -11,6 +11,7 @@ import { BatchOffer } from 'src/database/entity/batch-offer.entity';
 import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { BookingLog } from 'src/database/entity/booking-log.entity';
+import { BookingPaymentLog } from 'src/database/entity/booking-payment-log.entity';
 import {
   BookingPayment,
   PaymentStatus,
@@ -52,6 +53,8 @@ export class BookingService {
     private batchRepository: Repository<Batch>,
     @InjectRepository(BookingLog)
     private logRepository: Repository<BookingLog>,
+    @InjectRepository(BookingPaymentLog)
+    private paymentLogRepository: Repository<BookingPaymentLog>,
     private workflowService: WorkflowService,
     private dataSource: DataSource,
   ) { }
@@ -154,9 +157,9 @@ export class BookingService {
       // Generate unique booking number
       const bookingNumber = await this.generateBookingNumber(organizationId);
 
-      // Calculate balance amount
-      const advancePaid = createBookingDto.initialPayment?.amount || 0;
-      const balanceAmount = createBookingDto.totalAmount - advancePaid;
+      // Calculate balance amount - initial payment starts as pending until finance verifies it
+      const advancePaid = 0;
+      const balanceAmount = createBookingDto.totalAmount;
 
       // Create booking
       const booking = queryRunner.manager.create(Booking, {
@@ -297,7 +300,8 @@ export class BookingService {
       }
 
       // Create initial payment if provided
-      if (createBookingDto.initialPayment && advancePaid > 0) {
+      const initialAmount = createBookingDto.initialPayment?.amount || 0;
+      if (createBookingDto.initialPayment && initialAmount > 0) {
         const paymentNumber = await this.generatePaymentNumber(organizationId);
         const { allocations: initialAllocations, ...initialPaymentData } =
           createBookingDto.initialPayment;
@@ -307,13 +311,32 @@ export class BookingService {
           paymentNumber,
           bookingId: savedBooking.id,
           recordedById: userId,
-          status: PaymentStatus.COMPLETED,
+          status: PaymentStatus.PENDING,
           isPassengerSplit:
             createBookingDto.initialPayment.isPassengerSplit || false,
           payerName: createBookingDto.initialPayment.payerName,
           payerCustomerId: createBookingDto.initialPayment.payerCustomerId,
         });
         const savedPayment = await queryRunner.manager.save(payment);
+
+        // Record payment creation log
+        const initialPaymentLog = queryRunner.manager.create(BookingPaymentLog, {
+          paymentId: savedPayment.id,
+          changedById: userId,
+          action: 'created',
+          newData: {
+            paymentNumber: savedPayment.paymentNumber,
+            amount: savedPayment.amount,
+            status: savedPayment.status,
+            paymentType: savedPayment.paymentType,
+            paymentMethod: savedPayment.paymentMethod,
+            paymentReference: savedPayment.paymentReference,
+            transactionId: savedPayment.transactionId,
+            payerName: savedPayment.payerName,
+            isInitialPayment: true,
+          },
+        });
+        await queryRunner.manager.save(BookingPaymentLog, initialPaymentLog);
 
         if (
           createBookingDto.initialPayment.isPassengerSplit &&
@@ -1009,7 +1032,7 @@ export class BookingService {
       paymentNumber,
       bookingId,
       recordedById: userId,
-      status: PaymentStatus.COMPLETED,
+      status: PaymentStatus.PENDING,
       isPassengerSplit: paymentDto.isPassengerSplit || false,
       payerName: paymentDto.payerName,
       payerCustomerId: paymentDto.payerCustomerId,
@@ -1017,6 +1040,7 @@ export class BookingService {
 
     const savedPayment = await this.paymentRepository.save(payment);
 
+    // Save allocations if present
     if (
       paymentDto.isPassengerSplit &&
       paymentDto.allocations &&
@@ -1033,15 +1057,34 @@ export class BookingService {
       await this.paymentAllocationRepository.save(allocations);
     }
 
-    // Update booking advance paid and balance
-    const newAdvancePaid = Number(booking.advancePaid) + Number(paymentDto.amount);
-    const newBalanceAmount = Number(booking.totalAmount) - newAdvancePaid;
-
-
-    await this.bookingRepository.update(bookingId, {
-      advancePaid: newAdvancePaid,
-      balanceAmount: newBalanceAmount,
+    // Record payment creation log
+    const paymentLog = this.paymentLogRepository.create({
+      paymentId: savedPayment.id,
+      changedById: userId,
+      action: 'created',
+      newData: {
+        paymentNumber: savedPayment.paymentNumber,
+        amount: savedPayment.amount,
+        status: savedPayment.status,
+        paymentType: savedPayment.paymentType,
+        paymentMethod: savedPayment.paymentMethod,
+        paymentReference: savedPayment.paymentReference,
+        transactionId: savedPayment.transactionId,
+        payerName: savedPayment.payerName,
+      },
     });
+    await this.paymentLogRepository.save(paymentLog);
+
+    // Only update booking advance paid and balance if payment was already completed
+    if (savedPayment.status === PaymentStatus.COMPLETED) {
+      const newAdvancePaid = Number(booking.advancePaid) + Number(paymentDto.amount);
+      const newBalanceAmount = Number(booking.totalAmount) - newAdvancePaid;
+
+      await this.bookingRepository.update(bookingId, {
+        advancePaid: newAdvancePaid,
+        balanceAmount: newBalanceAmount,
+      });
+    }
 
     return this.findOne(bookingId);
   }

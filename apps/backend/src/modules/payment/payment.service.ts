@@ -9,6 +9,7 @@ import {
   PaymentStatus,
   PaymentType,
 } from 'src/database/entity/booking-payment.entity';
+import { BookingPaymentLog } from 'src/database/entity/booking-payment-log.entity';
 import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
 import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
@@ -21,6 +22,7 @@ import {
   PaymentAllocationResponseDto,
   PaymentFilterDto,
   PaymentListResponseDto,
+  PaymentLogResponseDto,
   PaymentResponseDto,
   PaymentStatsDto,
   UpdatePaymentDto,
@@ -33,6 +35,8 @@ export class PaymentService {
   constructor(
     @InjectRepository(BookingPayment)
     private paymentRepository: Repository<BookingPayment>,
+    @InjectRepository(BookingPaymentLog)
+    private paymentLogRepository: Repository<BookingPaymentLog>,
     @InjectRepository(BookingPaymentAllocation)
     private paymentAllocationRepository: Repository<BookingPaymentAllocation>,
     @InjectRepository(BookingCustomer)
@@ -41,6 +45,27 @@ export class PaymentService {
     private bookingRepository: Repository<Booking>,
     private uploadService: UploadService,
   ) {}
+
+  async logPaymentAction(
+    paymentId: string,
+    userId: string,
+    action: string,
+    previousData: any,
+    newData: any,
+  ): Promise<void> {
+    try {
+      const log = this.paymentLogRepository.create({
+        paymentId,
+        changedById: userId,
+        action,
+        previousData,
+        newData,
+      });
+      await this.paymentLogRepository.save(log);
+    } catch (err) {
+      console.error('Failed to log payment action:', err);
+    }
+  }
 
   private calculatePassengerSummary(
     booking: Booking,
@@ -283,6 +308,17 @@ export class PaymentService {
 
     const savedPayment = await this.paymentRepository.save(payment);
 
+    await this.logPaymentAction(savedPayment.id, userId, 'created', null, {
+      paymentNumber: savedPayment.paymentNumber,
+      amount: savedPayment.amount,
+      status: savedPayment.status,
+      paymentType: savedPayment.paymentType,
+      paymentMethod: savedPayment.paymentMethod,
+      paymentReference: savedPayment.paymentReference,
+      transactionId: savedPayment.transactionId,
+      payerName: savedPayment.payerName,
+    });
+
 
 
 
@@ -346,6 +382,7 @@ export class PaymentService {
       .leftJoinAndSelect('booking.package', 'package')
       .leftJoinAndSelect('booking.batch', 'batch')
       .leftJoinAndSelect('payment.recordedBy', 'recordedBy')
+      .leftJoinAndSelect('payment.verifiedBy', 'verifiedBy')
       .leftJoinAndSelect('payment.allocations', 'allocations')
       .leftJoinAndSelect('allocations.bookingCustomer', 'allocBookingCustomer')
       .leftJoinAndSelect('allocBookingCustomer.customer', 'allocCustomer')
@@ -440,6 +477,7 @@ export class PaymentService {
       .leftJoinAndSelect('booking.package', 'package')
       .leftJoinAndSelect('booking.batch', 'batch')
       .leftJoinAndSelect('payment.recordedBy', 'recordedBy')
+      .leftJoinAndSelect('payment.verifiedBy', 'verifiedBy')
       .leftJoinAndSelect('payment.allocations', 'allocations')
       .leftJoinAndSelect('allocations.bookingCustomer', 'allocBookingCustomer')
       .leftJoinAndSelect('allocBookingCustomer.customer', 'allocCustomer')
@@ -511,6 +549,7 @@ export class PaymentService {
         'booking.package',
         'booking.batch',
         'recordedBy',
+        'verifiedBy',
         'allocations',
         'allocations.bookingCustomer',
         'allocations.bookingCustomer.customer',
@@ -538,6 +577,7 @@ export class PaymentService {
     id: string,
     updatePaymentDto: UpdatePaymentDto,
     organizationId: string,
+    userId?: string,
   ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
@@ -585,6 +625,16 @@ export class PaymentService {
         );
         await this.paymentAllocationRepository.save(newAllocations);
       }
+    }
+
+    if (userId) {
+      await this.logPaymentAction(
+        id,
+        userId,
+        'updated',
+        null,
+        updatePaymentDto,
+      );
     }
 
     return this.findOne(id, organizationId);
@@ -720,6 +770,7 @@ export class PaymentService {
   async markAsCompleted(
     id: string,
     organizationId: string,
+    userId?: string,
   ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
@@ -734,7 +785,12 @@ export class PaymentService {
       throw new BadRequestException('Payment is already completed');
     }
 
+    const previousStatus = payment.status;
     payment.status = PaymentStatus.COMPLETED;
+    if (userId) {
+      payment.verifiedById = userId;
+    }
+    payment.verifiedAt = new Date();
     await this.paymentRepository.save(payment);
 
     // Update booking balance and advance amounts
@@ -749,12 +805,23 @@ export class PaymentService {
       });
     }
 
+    if (userId) {
+      await this.logPaymentAction(
+        id,
+        userId,
+        'verified',
+        { status: previousStatus },
+        { status: PaymentStatus.COMPLETED },
+      );
+    }
+
     return this.findOne(id, organizationId);
   }
 
   async markAsFailed(
     id: string,
     organizationId: string,
+    userId?: string,
   ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
@@ -765,8 +832,19 @@ export class PaymentService {
       throw new NotFoundException('Payment not found or access denied');
     }
 
+    const previousStatus = payment.status;
     payment.status = PaymentStatus.FAILED;
     await this.paymentRepository.save(payment);
+
+    if (userId) {
+      await this.logPaymentAction(
+        id,
+        userId,
+        'failed',
+        { status: previousStatus },
+        { status: PaymentStatus.FAILED },
+      );
+    }
 
     return this.findOne(id, organizationId);
   }
@@ -774,6 +852,7 @@ export class PaymentService {
   async markAsRefunded(
     id: string,
     organizationId: string,
+    userId?: string,
   ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
@@ -784,8 +863,19 @@ export class PaymentService {
       throw new NotFoundException('Payment not found or access denied');
     }
 
+    const previousStatus = payment.status;
     payment.status = PaymentStatus.REFUNDED;
     await this.paymentRepository.save(payment);
+
+    if (userId) {
+      await this.logPaymentAction(
+        id,
+        userId,
+        'refunded',
+        { status: previousStatus },
+        { status: PaymentStatus.REFUNDED },
+      );
+    }
 
     return this.findOne(id, organizationId);
   }
@@ -793,6 +883,7 @@ export class PaymentService {
   async markAsArchived(
     id: string,
     organizationId: string,
+    userId?: string,
   ): Promise<PaymentResponseDto> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
@@ -803,8 +894,19 @@ export class PaymentService {
       throw new NotFoundException('Payment not found or access denied');
     }
 
+    const previousStatus = payment.status;
     payment.status = PaymentStatus.ARCHIVED;
     await this.paymentRepository.save(payment);
+
+    if (userId) {
+      await this.logPaymentAction(
+        id,
+        userId,
+        'archived',
+        { status: previousStatus },
+        { status: PaymentStatus.ARCHIVED },
+      );
+    }
 
     return this.findOne(id, organizationId);
   }
@@ -816,6 +918,7 @@ export class PaymentService {
     paymentId: string,
     files: Express.Multer.File[],
     organizationId: string,
+    userId?: string,
   ): Promise<string[]> {
     // Verify payment exists and user has access
     const payment = await this.findOne(paymentId, organizationId);
@@ -844,7 +947,22 @@ export class PaymentService {
     }
 
     // Use UploadService to upload files
-    return this.uploadService.uploadMultiple(files, 'payment');
+    const result = await this.uploadService.uploadMultiple(files, 'payment');
+
+    if (userId) {
+      await this.logPaymentAction(
+        paymentId,
+        userId,
+        'receipt_uploaded',
+        null,
+        {
+          filesCount: files.length,
+          fileNames: files.map((f) => f.originalname),
+        },
+      );
+    }
+
+    return result;
   }
 
   /**
@@ -854,11 +972,13 @@ export class PaymentService {
     paymentId: string,
     file: Express.Multer.File,
     organizationId: string,
+    userId?: string,
   ): Promise<string> {
     const files = await this.uploadReceiptFiles(
       paymentId,
       [file],
       organizationId,
+      userId,
     );
     return files[0];
   }
@@ -988,13 +1108,125 @@ export class PaymentService {
       recordedBy: {
         id: payment.recordedBy?.id || '',
         firstName: payment.recordedBy?.name?.split(' ')[0] || '',
-        lastName: payment.recordedBy?.name?.split(' ')[1] || '',
+        lastName:
+          payment.recordedBy?.name?.split(' ').slice(1).join(' ') || '',
         email: payment.recordedBy?.email || '',
       },
+
+      verifiedBy: payment.verifiedBy
+        ? {
+            id: payment.verifiedBy.id,
+            firstName: payment.verifiedBy.name?.split(' ')[0] || '',
+            lastName:
+              payment.verifiedBy.name?.split(' ').slice(1).join(' ') || '',
+            email: payment.verifiedBy.email || '',
+          }
+        : null,
+
+      verifiedAt: payment.verifiedAt || null,
 
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,
     };
+  }
+
+  async getLogs(
+    paymentId: string,
+    organizationId: string,
+  ): Promise<PaymentLogResponseDto[]> {
+    const payment = await this.paymentRepository.findOne({
+      where: { id: paymentId },
+      relations: ['booking', 'recordedBy', 'verifiedBy'],
+    });
+
+    if (!payment || payment.booking?.organizationId !== organizationId) {
+      throw new NotFoundException('Payment not found or access denied');
+    }
+
+    const logs = await this.paymentLogRepository.find({
+      where: { paymentId },
+      relations: ['changedBy'],
+      order: { createdAt: 'DESC' },
+    });
+
+    if (logs.length > 0) {
+      return logs.map((log) => ({
+        id: log.id,
+        paymentId: log.paymentId,
+        action: log.action,
+        previousData: log.previousData,
+        newData: log.newData,
+        changedBy: log.changedBy
+          ? {
+              id: log.changedBy.id,
+              name: log.changedBy.name,
+              email: log.changedBy.email,
+              profilePhoto: log.changedBy.profilePhoto,
+            }
+          : null,
+        createdAt: log.createdAt,
+      }));
+    }
+
+    // Baseline synthesized logs for existing/legacy payments without log entries
+    const fallbackLogs: PaymentLogResponseDto[] = [];
+
+    // If verified / completed, add verification entry first (since ordered DESC)
+    if (
+      payment.status === PaymentStatus.COMPLETED &&
+      (payment.verifiedBy || payment.verifiedAt)
+    ) {
+      fallbackLogs.push({
+        id: `synth-verified-${payment.id}`,
+        paymentId: payment.id,
+        action: 'verified',
+        previousData: { status: PaymentStatus.PENDING },
+        newData: { status: PaymentStatus.COMPLETED },
+        changedBy: payment.verifiedBy
+          ? {
+              id: payment.verifiedBy.id,
+              name: payment.verifiedBy.name,
+              email: payment.verifiedBy.email,
+              profilePhoto: payment.verifiedBy.profilePhoto,
+            }
+          : payment.recordedBy
+          ? {
+              id: payment.recordedBy.id,
+              name: payment.recordedBy.name,
+              email: payment.recordedBy.email,
+              profilePhoto: payment.recordedBy.profilePhoto,
+            }
+          : null,
+        createdAt: payment.verifiedAt || payment.updatedAt || payment.createdAt,
+      });
+    }
+
+    // Add creation entry
+    fallbackLogs.push({
+      id: `synth-created-${payment.id}`,
+      paymentId: payment.id,
+      action: 'created',
+      previousData: null,
+      newData: {
+        paymentNumber: payment.paymentNumber,
+        amount: payment.amount,
+        status: PaymentStatus.PENDING,
+        paymentType: payment.paymentType,
+        paymentMethod: payment.paymentMethod,
+        payerName: payment.payerName,
+      },
+      changedBy: payment.recordedBy
+        ? {
+            id: payment.recordedBy.id,
+            name: payment.recordedBy.name,
+            email: payment.recordedBy.email,
+            profilePhoto: payment.recordedBy.profilePhoto,
+          }
+        : null,
+      createdAt: payment.createdAt,
+    });
+
+    return fallbackLogs;
   }
 
   private async generatePaymentNumber(organizationId: string): Promise<string> {

@@ -107,6 +107,7 @@ export class PaymentController {
       id,
       updatePaymentDto,
       req.user.organizationId,
+      req.user.userId,
     );
   }
 
@@ -124,7 +125,11 @@ export class PaymentController {
     @Param('id') id: string,
     @Request() req: ApiRequestJWT,
   ): Promise<PaymentResponseDto> {
-    return this.paymentService.markAsCompleted(id, req.user.organizationId);
+    return this.paymentService.markAsCompleted(
+      id,
+      req.user.organizationId,
+      req.user.userId,
+    );
   }
 
   @Patch(':id/fail')
@@ -132,7 +137,11 @@ export class PaymentController {
     @Param('id') id: string,
     @Request() req: ApiRequestJWT,
   ): Promise<PaymentResponseDto> {
-    return this.paymentService.markAsFailed(id, req.user.organizationId);
+    return this.paymentService.markAsFailed(
+      id,
+      req.user.organizationId,
+      req.user.userId,
+    );
   }
 
   @Patch(':id/archive')
@@ -140,7 +149,17 @@ export class PaymentController {
     @Param('id') id: string,
     @Request() req: ApiRequestJWT,
   ): Promise<PaymentResponseDto> {
-    return this.paymentService.markAsArchived(id, req.user.organizationId);
+    return this.paymentService.markAsArchived(
+      id,
+      req.user.organizationId,
+      req.user.userId,
+    );
+  }
+
+  @Get(':id/logs')
+  @RequirePermission('payment', 'read')
+  getLogs(@Param('id') id: string, @Request() req: ApiRequestJWT) {
+    return this.paymentService.getLogs(id, req.user.organizationId);
   }
 
   @Post(':id/upload-receipt')
@@ -158,6 +177,7 @@ export class PaymentController {
       id,
       file,
       req.user.organizationId,
+      req.user.userId,
     );
   }
 
@@ -176,6 +196,7 @@ export class PaymentController {
       id,
       files,
       req.user.organizationId,
+      req.user.userId,
     );
   }
 

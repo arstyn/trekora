@@ -12,6 +12,7 @@ import { Booking } from './booking.entity';
 import { User } from './user.entity';
 import { Customer } from './customer.entity';
 import { BookingPaymentAllocation } from './booking-payment-allocation.entity';
+import { BookingPaymentLog } from './booking-payment-log.entity';
 
 export enum PaymentType {
   ADVANCE = 'advance',
@@ -121,6 +122,19 @@ export class BookingPayment {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'recorded_by_id' })
   recordedBy: User;
+
+  @Column({ type: 'uuid', nullable: true, name: 'verified_by_id' })
+  verifiedById?: string;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'verified_by_id' })
+  verifiedBy?: User;
+
+  @Column({ type: 'timestamp', nullable: true, name: 'verified_at' })
+  verifiedAt?: Date;
+
+  @OneToMany(() => BookingPaymentLog, (log) => log.payment)
+  logs: BookingPaymentLog[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -9,7 +9,8 @@ import type {
   BookingSearchResponse,
   PaginationParams,
   PaymentFilters,
-  FileManager
+  FileManager,
+  PaymentLog,
 } from "@/types/payment.types";
 
 export class PaymentService {
@@ -145,6 +146,12 @@ export class PaymentService {
   // Archive payment
   static async archivePayment(id: string): Promise<Payment> {
     const response = await axiosInstance.patch(`${this.baseUrl}/${id}/archive`);
+    return response.data;
+  }
+
+  // Get audit logs for a payment
+  static async getPaymentLogs(id: string): Promise<PaymentLog[]> {
+    const response = await axiosInstance.get(`${this.baseUrl}/${id}/logs`);
     return response.data;
   }
 }

@@ -122,9 +122,30 @@ export interface Payment {
     paymentDetails?: Record<string, any>;
     booking: Booking;
     recordedBy: User;
+    verifiedById?: string;
+    verifiedBy?: User | null;
+    verifiedAt?: string | null;
     receiptFiles?: FileManager[]; // New field for file manager integration
     createdAt: string;
     updatedAt: string;
+}
+
+export interface PaymentLog {
+    id: string;
+    paymentId: string;
+    changedById: string;
+    changedBy?: {
+        id: string;
+        name?: string;
+        email?: string;
+        profilePhoto?: string;
+    } | null;
+    action: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    previousData?: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    newData?: any;
+    createdAt: string;
 }
 
 // Payment statistics
