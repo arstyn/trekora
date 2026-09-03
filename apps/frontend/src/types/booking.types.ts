@@ -142,6 +142,18 @@ export interface IBooking {
     balanceAmount: number;
     status: BookingStatus;
     specialRequests?: string;
+    agentId?: string;
+    agent?: {
+        id: string;
+        name: string;
+        agencyName?: string;
+        email?: string;
+        phone?: string;
+    } | null;
+    agentCommissionType?: "percentage" | "fixed";
+    agentCommissionValue?: number;
+    agentCommissionAmount?: number;
+    agentPayoutStatus?: "pending" | "paid" | "cancelled";
     payments: IBookingPayment[];
     documents?: any[]; // Added to support document management
     currentWorkflowId?: string;
@@ -173,6 +185,10 @@ export interface IBookingListItem {
         name: string;
         email: string;
     } | null;
+    agentId?: string;
+    agentName?: string;
+    agentCommissionAmount?: number;
+    agentPayoutStatus?: "pending" | "paid" | "cancelled";
 }
 
 // For creating new bookings
@@ -200,6 +216,11 @@ export interface ICreateBookingRequest {
     paymentOverrideReason?: string;
     batchBlockId?: string;
     overrideCapacityLimit?: boolean;
+    agentId?: string;
+    agentCommissionType?: "percentage" | "fixed";
+    agentCommissionValue?: number;
+    agentCommissionAmount?: number;
+    agentPayoutStatus?: "pending" | "paid" | "cancelled";
 }
 
 // For updating bookings
@@ -208,6 +229,11 @@ export interface IUpdateBookingRequest {
     totalAmount?: number;
     specialRequests?: string;
     customerIds?: string[];
+    agentId?: string;
+    agentCommissionType?: "percentage" | "fixed";
+    agentCommissionValue?: number;
+    agentCommissionAmount?: number;
+    agentPayoutStatus?: "pending" | "paid" | "cancelled";
 }
 
 // Dashboard statistics

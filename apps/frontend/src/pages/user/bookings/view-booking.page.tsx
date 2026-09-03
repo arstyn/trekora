@@ -69,12 +69,15 @@ import {
     Sparkles,
     Trash2,
     User,
+    UserCheck,
     Users,
     XCircle
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { PayoutDialog } from "../agents/_components/payout-dialog";
+import { AgentPayoutStatus } from "@/types/agent.types";
 
 export default function BookingDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -89,6 +92,20 @@ export default function BookingDetailsPage() {
     const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
     const [isMoving, setIsMoving] = useState(false);
     const [selectedBatchId, setSelectedBatchId] = useState<string>("");
+
+    const [payoutModal, setPayoutModal] = useState<{
+        open: boolean;
+        bookingId: string;
+        bookingNumber: string;
+        currentStatus: AgentPayoutStatus;
+        commissionAmount: number;
+    }>({
+        open: false,
+        bookingId: "",
+        bookingNumber: "",
+        currentStatus: AgentPayoutStatus.PENDING,
+        commissionAmount: 0,
+    });
 
     const fetchBookingLogs = useCallback(async () => {
         if (!id) return;
@@ -616,6 +633,69 @@ export default function BookingDetailsPage() {
                                     />
                                 </div>
                             </div>
+
+                            {/* Referring Agent & Commission Info */}
+                            {booking.agent && (
+                                <div className="space-y-3 bg-blue-50/50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 text-xs">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                                            <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                                            Referring Agent
+                                        </h4>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-6 text-[10px] px-2"
+                                            onClick={() => navigate(`/agents/${booking.agent?.id}`)}
+                                        >
+                                            View Agent
+                                        </Button>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-semibold text-foreground">{booking.agent.name}</p>
+                                            {booking.agent.agencyName && (
+                                                <p className="text-[10px] text-muted-foreground">{booking.agent.agencyName}</p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                                                {BookingService.formatCurrency(booking.agentCommissionAmount || 0)}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                ({booking.agentCommissionType === 'percentage' ? `${booking.agentCommissionValue}%` : `₹${booking.agentCommissionValue} flat`})
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between pt-1 border-t border-blue-200/60 dark:border-blue-800/60">
+                                        <span className="text-[11px] text-muted-foreground">Payout Status:</span>
+                                        <div className="flex items-center gap-2">
+                                            <Badge
+                                                variant={booking.agentPayoutStatus === 'paid' ? 'default' : 'outline'}
+                                                className={booking.agentPayoutStatus === 'paid' ? 'bg-emerald-600' : 'text-amber-600 border-amber-400'}
+                                            >
+                                                {booking.agentPayoutStatus}
+                                            </Badge>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 text-[10px] px-1.5 underline"
+                                                        onClick={() =>
+                                                            setPayoutModal({
+                                                                open: true,
+                                                                bookingId: booking.id,
+                                                                bookingNumber: booking.bookingNumber,
+                                                                currentStatus: (booking.agentPayoutStatus as AgentPayoutStatus) || AgentPayoutStatus.PENDING,
+                                                                commissionAmount: booking.agentCommissionAmount || 0,
+                                                            })
+                                                        }
+                                            >
+                                                Update
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <Separator />
@@ -1060,6 +1140,16 @@ export default function BookingDetailsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            <PayoutDialog
+                open={payoutModal.open}
+                onOpenChange={(open) => setPayoutModal((prev) => ({ ...prev, open }))}
+                bookingId={payoutModal.bookingId}
+                bookingNumber={payoutModal.bookingNumber}
+                currentStatus={payoutModal.currentStatus}
+                commissionAmount={payoutModal.commissionAmount}
+                onUpdated={fetchBookingDetails}
+            />
         </div>
     );
 }

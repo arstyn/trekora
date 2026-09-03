@@ -23,12 +23,20 @@ import { Workflow } from './workflow/workflow.entity';
 import { BookingCustomer } from './booking-customer.entity';
 import { PaymentMilestone } from './package-related/payment-milestones.entity';
 
+import { Agent, CommissionType } from './agent.entity';
+
 export enum BookingStatus {
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',
   ON_HOLD = 'on_hold',
+}
+
+export enum AgentPayoutStatus {
+  PENDING = 'pending',
+  PAID = 'paid',
+  CANCELLED = 'cancelled',
 }
 
 @Entity('bookings')
@@ -140,6 +148,49 @@ export class Booking {
 
   @Column({ type: 'text', nullable: true, name: 'payment_override_reason' })
   paymentOverrideReason: string;
+
+  @Column({ type: 'uuid', nullable: true, name: 'agent_id' })
+  agentId: string;
+
+  @ManyToOne(() => Agent, (agent) => agent.bookings, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    eager: true,
+  })
+  @JoinColumn({ name: 'agent_id' })
+  agent: Agent;
+
+  @Column({
+    type: 'enum',
+    enum: CommissionType,
+    nullable: true,
+    name: 'agent_commission_type',
+  })
+  agentCommissionType: CommissionType;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'agent_commission_value',
+  })
+  agentCommissionValue: number;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    default: 0,
+    name: 'agent_commission_amount',
+  })
+  agentCommissionAmount: number;
+
+  @Column({
+    type: 'enum',
+    enum: AgentPayoutStatus,
+    default: AgentPayoutStatus.PENDING,
+    name: 'agent_payout_status',
+  })
+  agentPayoutStatus: AgentPayoutStatus;
 
   @OneToMany(() => BookingCustomer, (bc) => bc.booking, {
     cascade: true,

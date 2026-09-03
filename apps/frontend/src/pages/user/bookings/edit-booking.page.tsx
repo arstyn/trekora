@@ -21,9 +21,13 @@ import {
 	Users,
 	Package,
 	DollarSign,
+	UserCheck,
 } from "lucide-react";
 import type React from "react";
 import BookingService from "@/services/booking.service";
+import AgentService from "@/services/agent.service";
+import type { IAgent } from "@/types/agent.types";
+import { AgentSelector } from "./_components/agent-selector";
 import type {
 	IBooking,
 	IUpdateBookingRequest,
@@ -37,6 +41,7 @@ export default function EditBookingPage() {
 	const navigate = useNavigate();
 
 	const [booking, setBooking] = useState<IBooking | null>(null);
+	const [agents, setAgents] = useState<IAgent[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -47,13 +52,35 @@ export default function EditBookingPage() {
 		specialRequests: string;
 		customerIds: string[];
 		selectedCustomers: ICustomer[];
+		agentId?: string;
+		agentCommissionType?: "percentage" | "fixed";
+		agentCommissionValue?: number;
+		agentCommissionAmount?: number;
+		agentPayoutStatus?: "pending" | "paid" | "cancelled";
 	}>({
 		status: "pending",
 		totalAmount: 0,
 		specialRequests: "",
 		customerIds: [],
 		selectedCustomers: [],
+		agentId: undefined,
+		agentCommissionType: undefined,
+		agentCommissionValue: undefined,
+		agentCommissionAmount: 0,
+		agentPayoutStatus: "pending",
 	});
+
+	useEffect(() => {
+		const loadAgents = async () => {
+			try {
+				const activeAgents = await AgentService.getAllAgents({ status: "active" });
+				setAgents(activeAgents);
+			} catch (err) {
+				console.error("Error loading agents:", err);
+			}
+		};
+		loadAgents();
+	}, []);
 
 	const loadBookingData = useCallback(async () => {
 		if (!id) return;
@@ -71,6 +98,11 @@ export default function EditBookingPage() {
 				specialRequests: bookingData.specialRequests || "",
 				customerIds: bookingData.customers.map((c) => c.id).filter((id): id is string => Boolean(id)),
 				selectedCustomers: bookingData.customers,
+				agentId: bookingData.agentId || undefined,
+				agentCommissionType: bookingData.agentCommissionType,
+				agentCommissionValue: bookingData.agentCommissionValue,
+				agentCommissionAmount: bookingData.agentCommissionAmount || 0,
+				agentPayoutStatus: bookingData.agentPayoutStatus || "pending",
 			});
 		} catch (err) {
 			console.error("Error loading booking:", err);
@@ -109,6 +141,11 @@ export default function EditBookingPage() {
 				totalAmount: formData.totalAmount,
 				specialRequests: formData.specialRequests,
 				customerIds: formData.customerIds,
+				agentId: formData.agentId || undefined,
+				agentCommissionType: formData.agentCommissionType,
+				agentCommissionValue: formData.agentCommissionValue,
+				agentCommissionAmount: formData.agentCommissionAmount,
+				agentPayoutStatus: formData.agentPayoutStatus,
 			};
 
 			const updatedBooking = await BookingService.updateBooking(id, updateData);
@@ -336,6 +373,37 @@ export default function EditBookingPage() {
 								</p>
 							</div>
 						</div>
+					</CardContent>
+				</Card>
+
+				{/* Referring Agent & Commission Card */}
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<UserCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+							Referring Agent & Commission Details
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<AgentSelector
+							agents={agents}
+							bookingTotalAmount={formData.totalAmount}
+							value={{
+								agentId: formData.agentId,
+								commissionType: formData.agentCommissionType,
+								commissionValue: formData.agentCommissionValue,
+								commissionAmount: formData.agentCommissionAmount,
+							}}
+							onChange={(agentData) => {
+								setFormData((prev) => ({
+									...prev,
+									agentId: agentData.agentId,
+									agentCommissionType: agentData.commissionType,
+									agentCommissionValue: agentData.commissionValue,
+									agentCommissionAmount: agentData.commissionAmount,
+								}));
+							}}
+						/>
 					</CardContent>
 				</Card>
 

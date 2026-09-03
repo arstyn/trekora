@@ -38,6 +38,10 @@ import type {
     IPackage,
     PaymentMethod,
 } from "@/types/booking.types";
+import AgentService from "@/services/agent.service";
+import { AgentSelector } from "./agent-selector";
+import type { IAgent } from "@/types/agent.types";
+import { AgentStatus } from "@/types/agent.types";
 import {
     AlertCircle,
     ArrowLeft,
@@ -104,6 +108,10 @@ export interface ICreateBookingFormData {
     paymentOverrideReason: string;
     batchBlockId?: string;
     overrideCapacityLimit: boolean;
+    agentId?: string;
+    agentCommissionType?: "percentage" | "fixed";
+    agentCommissionValue?: number;
+    agentCommissionAmount?: number;
     isPassengerSplit: boolean;
     payerType: string; // 'primary' | 'passenger' | 'custom'
     payerCustomerId: string;
@@ -175,6 +183,10 @@ export function CreateBookingDialog({
         paymentOverrideReason: "",
         batchBlockId: preselectedBlockId || "",
         overrideCapacityLimit: false,
+        agentId: undefined,
+        agentCommissionType: undefined,
+        agentCommissionValue: undefined,
+        agentCommissionAmount: 0,
         isPassengerSplit: false,
         payerType: "primary",
         payerCustomerId: "",
@@ -305,7 +317,7 @@ export function CreateBookingDialog({
         if (currentStep === 1) {
             if (!formData.packageId) newErrors.packageId = "Please select a tour package";
             if (!formData.batchId) newErrors.batchId = "Please select a batch";
-            
+
             if (formData.isCommonTier && !formData.packageTierId && selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0) {
                 newErrors.packageTierId = "Please select a package price tier";
             }
@@ -417,6 +429,8 @@ export function CreateBookingDialog({
         setError(null);
     };
 
+    const [agents, setAgents] = useState<IAgent[]>([]);
+
     // Load initial data when dialog opens
     useEffect(() => {
         if (open) {
@@ -424,16 +438,18 @@ export function CreateBookingDialog({
         }
     }, [open]);
 
-    // Load packages and customers when dialog opens
+    // Load packages, customers, and active agents when dialog opens
     const loadInitialData = async () => {
         try {
             setLoadingData(true);
-            const [packagesData, customersData] = await Promise.all([
+            const [packagesData, customersData, agentsData] = await Promise.all([
                 BookingService.getPackages(),
                 BookingService.getCustomers({ limit: 10, offset: 0 }),
+                AgentService.getAllAgents({ status: AgentStatus.ACTIVE }).catch(() => []),
             ]);
             setPackages(packagesData.packages || []);
             setCustomers(customersData.customers);
+            setAgents(agentsData || []);
             setCustomerPagination({
                 offset: 10,
                 limit: 10,
@@ -729,7 +745,7 @@ export function CreateBookingDialog({
                 const packageTier = pkg.packageTiers.find((t) => t.id === effectiveTierId);
                 const batchTier = selectedBatch?.batchTiers?.find((t: any) => t.packageTierId === effectiveTierId);
                 const tier = batchTier || packageTier;
-                
+
                 if (tier) {
                     const adultCost = Number(tier.adultCost || 0);
 
@@ -1112,15 +1128,15 @@ export function CreateBookingDialog({
             const initialPaymentAllocations =
                 formData.isPassengerSplit && formData.advanceAmount > 0
                     ? Object.entries(formData.allocations)
-                          .filter(
-                              ([id, amt]) =>
-                                  selectedPassengerIds.includes(id) &&
-                                  Number(amt) > 0,
-                          )
-                          .map(([customerId, amt]) => ({
-                              customerId,
-                              amount: Number(amt),
-                          }))
+                        .filter(
+                            ([id, amt]) =>
+                                selectedPassengerIds.includes(id) &&
+                                Number(amt) > 0,
+                        )
+                        .map(([customerId, amt]) => ({
+                            customerId,
+                            amount: Number(amt),
+                        }))
                     : undefined;
 
             const bookingData: ICreateBookingRequest = {
@@ -1146,6 +1162,10 @@ export function CreateBookingDialog({
                 paymentOverrideReason: formData.paymentOverrideReason || undefined,
                 batchBlockId: formData.batchBlockId || undefined,
                 overrideCapacityLimit: formData.overrideCapacityLimit,
+                agentId: formData.agentId || undefined,
+                agentCommissionType: formData.agentCommissionType,
+                agentCommissionValue: formData.agentCommissionValue,
+                agentCommissionAmount: formData.agentCommissionAmount,
                 initialPayment:
                     formData.advanceAmount > 0
                         ? {
@@ -1581,14 +1601,14 @@ export function CreateBookingDialog({
                                                                         <span>{offer.name}:</span>
                                                                         <span className="font-bold">
                                                                             {offer.discountMode === "range" &&
-                                                                            offer.minDiscountValue !== undefined &&
-                                                                            offer.minDiscountValue !== null
+                                                                                offer.minDiscountValue !== undefined &&
+                                                                                offer.minDiscountValue !== null
                                                                                 ? offer.discountType === "percentage"
                                                                                     ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}% OFF`
                                                                                     : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")} OFF`
                                                                                 : offer.discountType === "percentage"
-                                                                                ? `${offer.discountValue}% OFF`
-                                                                                : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
+                                                                                    ? `${offer.discountValue}% OFF`
+                                                                                    : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
                                                                         </span>
                                                                     </Badge>
                                                                 ))}
@@ -1831,15 +1851,15 @@ export function CreateBookingDialog({
                                                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3.5 bg-background border rounded-xl gap-3">
                                                                         <span className="font-semibold text-sm text-foreground">{tier.name}</span>
                                                                         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                                                                            <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-500" /> 
+                                                                            <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-500" />
                                                                                 {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
                                                                                 <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
                                                                             </span>
-                                                                            <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-slate-500" /> 
+                                                                            <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-slate-500" />
                                                                                 {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
                                                                                 <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
                                                                             </span>
-                                                                            <span className="flex items-center gap-1.5"><Baby className="w-4 h-4 text-slate-500" /> 
+                                                                            <span className="flex items-center gap-1.5"><Baby className="w-4 h-4 text-slate-500" />
                                                                                 {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
                                                                                 <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
                                                                             </span>
@@ -1864,15 +1884,15 @@ export function CreateBookingDialog({
                                                                                 <span className="flex items-center gap-3">
                                                                                     <span className="font-semibold">{tier.name}</span>
                                                                                     <span className="text-muted-foreground">|</span>
-                                                                                    <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> 
+                                                                                    <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />
                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
                                                                                     </span>
-                                                                                    <span className="flex items-center gap-1"><PersonStanding className="w-3.5 h-3.5" /> 
+                                                                                    <span className="flex items-center gap-1"><PersonStanding className="w-3.5 h-3.5" />
                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
                                                                                     </span>
-                                                                                    <span className="flex items-center gap-1"><Baby className="w-3.5 h-3.5" /> 
+                                                                                    <span className="flex items-center gap-1"><Baby className="w-3.5 h-3.5" />
                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
                                                                                     </span>
@@ -1940,15 +1960,15 @@ export function CreateBookingDialog({
                                                                                                 <span className="flex items-center gap-2">
                                                                                                     <span className="font-semibold">{tier.name}</span>
                                                                                                     <span className="text-muted-foreground">|</span>
-                                                                                                    <span className="flex items-center gap-0.5"><User className="w-3 h-3 text-slate-500" /> 
+                                                                                                    <span className="flex items-center gap-0.5"><User className="w-3 h-3 text-slate-500" />
                                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
                                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
                                                                                                     </span>
-                                                                                                    <span className="flex items-center gap-0.5"><PersonStanding className="w-3 h-3 text-slate-500" /> 
+                                                                                                    <span className="flex items-center gap-0.5"><PersonStanding className="w-3 h-3 text-slate-500" />
                                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
                                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
                                                                                                     </span>
-                                                                                                    <span className="flex items-center gap-0.5"><Baby className="w-3 h-3 text-slate-500" /> 
+                                                                                                    <span className="flex items-center gap-0.5"><Baby className="w-3 h-3 text-slate-500" />
                                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
                                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
                                                                                                     </span>
@@ -2332,8 +2352,8 @@ export function CreateBookingDialog({
                                                                         isSelected
                                                                             ? "border-amber-500 bg-amber-500/10 shadow-xs"
                                                                             : isEligible
-                                                                            ? "bg-background hover:border-amber-400/60"
-                                                                            : "bg-muted/40 opacity-60 cursor-not-allowed"
+                                                                                ? "bg-background hover:border-amber-400/60"
+                                                                                : "bg-muted/40 opacity-60 cursor-not-allowed"
                                                                     )}
                                                                 >
                                                                     <div className="flex items-start justify-between gap-2">
@@ -2360,8 +2380,8 @@ export function CreateBookingDialog({
                                                                                     ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}% OFF`
                                                                                     : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")} OFF`
                                                                                 : offer.discountType === "percentage"
-                                                                                ? `${offer.discountValue}% OFF`
-                                                                                : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
+                                                                                    ? `${offer.discountValue}% OFF`
+                                                                                    : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
                                                                         </Badge>
                                                                     </div>
 
@@ -2420,13 +2440,13 @@ export function CreateBookingDialog({
                                                                             {customOfferValues[offer.id] !== undefined &&
                                                                                 (customOfferValues[offer.id] < Number(offer.minDiscountValue || 0) ||
                                                                                     customOfferValues[offer.id] > Number(offer.maxDiscountValue || 0)) && (
-                                                                                <p className="text-[10px] text-destructive font-semibold">
-                                                                                    Value must be between{" "}
-                                                                                    {offer.discountType === "percentage"
-                                                                                        ? `${offer.minDiscountValue}% and ${offer.maxDiscountValue}%`
-                                                                                        : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} and ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")}`}
-                                                                                </p>
-                                                                            )}
+                                                                                    <p className="text-[10px] text-destructive font-semibold">
+                                                                                        Value must be between{" "}
+                                                                                        {offer.discountType === "percentage"
+                                                                                            ? `${offer.minDiscountValue}% and ${offer.maxDiscountValue}%`
+                                                                                            : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} and ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")}`}
+                                                                                    </p>
+                                                                                )}
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -2709,6 +2729,41 @@ export function CreateBookingDialog({
                                                     </Badge>
                                                 )}
                                             </div>
+                                        </div>
+
+                                        {/* Referring Agent Selection & Commission Preview */}
+                                        <div className="p-4 rounded-xl border bg-card space-y-4">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+                                                <div>
+                                                    <Label className="text-sm font-semibold flex items-center gap-1.5">
+                                                        <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                                        Referring Agent / Commission (Optional)
+                                                    </Label>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        Search and assign an external agent who referred this customer to track commission earnings.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <AgentSelector
+                                                agents={agents}
+                                                bookingTotalAmount={formData.totalAmount}
+                                                value={{
+                                                    agentId: formData.agentId,
+                                                    commissionType: formData.agentCommissionType,
+                                                    commissionValue: formData.agentCommissionValue,
+                                                    commissionAmount: formData.agentCommissionAmount,
+                                                }}
+                                                onChange={(agentData) => {
+                                                    setFormData((prev) => ({
+                                                        ...prev,
+                                                        agentId: agentData.agentId,
+                                                        agentCommissionType: agentData.commissionType,
+                                                        agentCommissionValue: agentData.commissionValue,
+                                                        agentCommissionAmount: agentData.commissionAmount,
+                                                    }));
+                                                }}
+                                            />
                                         </div>
 
                                         {/* Expected Payment Structure Reference */}

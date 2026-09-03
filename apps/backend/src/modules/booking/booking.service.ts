@@ -16,8 +16,9 @@ import {
   BookingPayment,
   PaymentStatus,
 } from 'src/database/entity/booking-payment.entity';
+import { Agent, CommissionType } from 'src/database/entity/agent.entity';
+import { Booking, BookingStatus, AgentPayoutStatus } from 'src/database/entity/booking.entity';
 import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
-import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
 import {
@@ -161,6 +162,33 @@ export class BookingService {
       const advancePaid = 0;
       const balanceAmount = createBookingDto.totalAmount;
 
+      // Handle agent & commission calculation if agentId is provided
+      let agentCommissionType = createBookingDto.agentCommissionType;
+      let agentCommissionValue = createBookingDto.agentCommissionValue;
+      let agentCommissionAmount = createBookingDto.agentCommissionAmount;
+
+      if (createBookingDto.agentId) {
+        const agent = await queryRunner.manager.findOne(Agent, {
+          where: { id: createBookingDto.agentId, organizationId },
+        });
+        if (agent) {
+          agentCommissionType = agentCommissionType || agent.commissionType;
+          agentCommissionValue =
+            agentCommissionValue !== undefined
+              ? agentCommissionValue
+              : Number(agent.commissionValue || 0);
+
+          if (agentCommissionAmount === undefined || agentCommissionAmount === null) {
+            if (agentCommissionType === CommissionType.PERCENTAGE) {
+              agentCommissionAmount =
+                (createBookingDto.totalAmount * agentCommissionValue) / 100;
+            } else {
+              agentCommissionAmount = agentCommissionValue;
+            }
+          }
+        }
+      }
+
       // Create booking
       const booking = queryRunner.manager.create(Booking, {
         bookingNumber,
@@ -182,6 +210,11 @@ export class BookingService {
         paymentStructureId: createBookingDto.paymentStructureId,
         isPaymentOverridden: createBookingDto.isPaymentOverridden || false,
         paymentOverrideReason: createBookingDto.paymentOverrideReason,
+        agentId: createBookingDto.agentId,
+        agentCommissionType,
+        agentCommissionValue,
+        agentCommissionAmount: agentCommissionAmount || 0,
+        agentPayoutStatus: createBookingDto.agentPayoutStatus || AgentPayoutStatus.PENDING,
         createdById: userId,
         organizationId,
       });
@@ -366,7 +399,7 @@ export class BookingService {
                   ? customerIdToBookingCustomerId.get(alloc.bookingCustomerId)
                   : undefined) ||
                 (alloc.bookingCustomerId &&
-                validBookingCustomerIds.has(alloc.bookingCustomerId)
+                  validBookingCustomerIds.has(alloc.bookingCustomerId)
                   ? alloc.bookingCustomerId
                   : undefined);
 
@@ -462,6 +495,7 @@ export class BookingService {
       .leftJoinAndSelect('booking.package', 'package')
       .leftJoinAndSelect('booking.batch', 'batch')
       .leftJoinAndSelect('booking.createdBy', 'createdBy')
+      .leftJoinAndSelect('booking.agent', 'agent')
       .where('booking.organizationId = :organizationId', { organizationId })
       .orderBy('booking.createdAt', 'DESC');
 
@@ -471,7 +505,7 @@ export class BookingService {
 
     if (search) {
       queryBuilder.andWhere(
-        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR booking.bookingNumber ILIKE :search OR package.name ILIKE :search)',
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR booking.bookingNumber ILIKE :search OR package.name ILIKE :search OR agent.name ILIKE :search OR agent.agencyName ILIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -507,6 +541,14 @@ export class BookingService {
             email: booking.createdBy.email,
           }
           : null,
+        agentId: booking.agentId,
+        agentName: booking.agent
+          ? booking.agent.agencyName
+            ? `${booking.agent.name} (${booking.agent.agencyName})`
+            : booking.agent.name
+          : null,
+        agentCommissionAmount: booking.agentCommissionAmount,
+        agentPayoutStatus: booking.agentPayoutStatus,
       }));
 
       return {
@@ -554,6 +596,14 @@ export class BookingService {
           email: booking.createdBy.email,
         }
         : null,
+      agentId: booking.agentId,
+      agentName: booking.agent
+        ? booking.agent.agencyName
+          ? `${booking.agent.name} (${booking.agent.agencyName})`
+          : booking.agent.name
+        : null,
+      agentCommissionAmount: booking.agentCommissionAmount,
+      agentPayoutStatus: booking.agentPayoutStatus,
     }));
   }
 
@@ -679,6 +729,7 @@ export class BookingService {
         'documents',
         'currentWorkflow',
         'currentWorkflow.steps',
+        'agent',
       ],
     });
 
@@ -730,51 +781,51 @@ export class BookingService {
 
     const customers = booking.bookingCustomers
       ? booking.bookingCustomers.map((bc, index): BookingCustomerResponseDto => {
-          const customer = bc.customer;
-          let calculatedShare: number;
-          if (totalRawCost > 0) {
-            calculatedShare =
-              Math.round(((rawCosts[index] / totalRawCost) * bookingTotal) * 100) /
-              100;
-          } else {
-            calculatedShare = Math.round((bookingTotal / count) * 100) / 100;
-          }
-          const paidAmount = allocationsByCustomer.get(bc.id) || 0;
-          const balanceAmount = Math.max(0, calculatedShare - paidAmount);
-          let paymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
-          if (paidAmount >= calculatedShare && calculatedShare > 0) {
-            paymentStatus = 'paid';
-          } else if (paidAmount > 0) {
-            paymentStatus = 'partial';
-          }
+        const customer = bc.customer;
+        let calculatedShare: number;
+        if (totalRawCost > 0) {
+          calculatedShare =
+            Math.round(((rawCosts[index] / totalRawCost) * bookingTotal) * 100) /
+            100;
+        } else {
+          calculatedShare = Math.round((bookingTotal / count) * 100) / 100;
+        }
+        const paidAmount = allocationsByCustomer.get(bc.id) || 0;
+        const balanceAmount = Math.max(0, calculatedShare - paidAmount);
+        let paymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
+        if (paidAmount >= calculatedShare && calculatedShare > 0) {
+          paymentStatus = 'paid';
+        } else if (paidAmount > 0) {
+          paymentStatus = 'partial';
+        }
 
-          return {
-            id: customer?.id || bc.customerId,
-            bookingCustomerId: bc.id,
-            firstName: customer?.firstName || '',
-            lastName: customer?.lastName,
-            middleName: customer?.middleName,
-            email: customer?.email,
-            phone: customer?.phone,
-            alternativePhone: customer?.alternativePhone,
-            dateOfBirth: customer?.dateOfBirth,
-            gender: customer?.gender,
-            address: customer?.address,
-            emergencyContactName: customer?.emergencyContactName,
-            emergencyContactPhone: customer?.emergencyContactPhone,
-            emergencyContactRelation: customer?.emergencyContactRelation,
-            specialRequests: customer?.specialRequests,
-            medicalConditions: customer?.medicalConditions,
-            dietaryRestrictions: customer?.dietaryRestrictions,
-            packageTierId: bc.packageTierId,
-            packageTierName: bc.packageTier?.name,
-            ageCategory: bc.ageCategory || 'adult',
-            calculatedShare,
-            paidAmount,
-            balanceAmount,
-            paymentStatus,
-          };
-        })
+        return {
+          id: customer?.id || bc.customerId,
+          bookingCustomerId: bc.id,
+          firstName: customer?.firstName || '',
+          lastName: customer?.lastName,
+          middleName: customer?.middleName,
+          email: customer?.email,
+          phone: customer?.phone,
+          alternativePhone: customer?.alternativePhone,
+          dateOfBirth: customer?.dateOfBirth,
+          gender: customer?.gender,
+          address: customer?.address,
+          emergencyContactName: customer?.emergencyContactName,
+          emergencyContactPhone: customer?.emergencyContactPhone,
+          emergencyContactRelation: customer?.emergencyContactRelation,
+          specialRequests: customer?.specialRequests,
+          medicalConditions: customer?.medicalConditions,
+          dietaryRestrictions: customer?.dietaryRestrictions,
+          packageTierId: bc.packageTierId,
+          packageTierName: bc.packageTier?.name,
+          ageCategory: bc.ageCategory || 'adult',
+          calculatedShare,
+          paidAmount,
+          balanceAmount,
+          paymentStatus,
+        };
+      })
       : [];
 
     return {
@@ -804,21 +855,21 @@ export class BookingService {
       },
       batchOffer: booking.batchOffer
         ? {
-            id: booking.batchOffer.id,
-            name: booking.batchOffer.name,
-            discountType: booking.batchOffer.discountType,
-            discountMode: booking.batchOffer.discountMode,
-            discountValue: Number(booking.batchOffer.discountValue),
-            minDiscountValue:
-              booking.batchOffer.minDiscountValue !== null
-                ? Number(booking.batchOffer.minDiscountValue)
-                : null,
-            maxDiscountValue:
-              booking.batchOffer.maxDiscountValue !== null
-                ? Number(booking.batchOffer.maxDiscountValue)
-                : null,
-            discountScope: booking.batchOffer.discountScope,
-          }
+          id: booking.batchOffer.id,
+          name: booking.batchOffer.name,
+          discountType: booking.batchOffer.discountType,
+          discountMode: booking.batchOffer.discountMode,
+          discountValue: Number(booking.batchOffer.discountValue),
+          minDiscountValue:
+            booking.batchOffer.minDiscountValue !== null
+              ? Number(booking.batchOffer.minDiscountValue)
+              : null,
+          maxDiscountValue:
+            booking.batchOffer.maxDiscountValue !== null
+              ? Number(booking.batchOffer.maxDiscountValue)
+              : null,
+          discountScope: booking.batchOffer.discountScope,
+        }
         : null,
       numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
@@ -829,39 +880,75 @@ export class BookingService {
       balanceAmount: booking.balanceAmount,
       status: booking.status,
       specialRequests: booking.specialRequests,
-      customers,
+      agentId: booking.agentId,
+      agent: booking.agent
+        ? {
+          id: booking.agent.id,
+          name: booking.agent.name,
+          agencyName: booking.agent.agencyName,
+          email: booking.agent.email,
+          phone: booking.agent.phone,
+        }
+        : null,
+      agentCommissionType: booking.agentCommissionType,
+      agentCommissionValue: booking.agentCommissionValue,
+      agentCommissionAmount: booking.agentCommissionAmount,
+      agentPayoutStatus: booking.agentPayoutStatus,
+      customers: booking.bookingCustomers ? booking.bookingCustomers.map(
+        (bc): BookingCustomerResponseDto => {
+          const customer = bc.customer;
+          return {
+            id: customer.id,
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            middleName: customer.middleName,
+            email: customer.email,
+            phone: customer.phone,
+            alternativePhone: customer.alternativePhone,
+            dateOfBirth: customer.dateOfBirth,
+            gender: customer.gender,
+            address: customer.address,
+            emergencyContactName: customer.emergencyContactName,
+            emergencyContactPhone: customer.emergencyContactPhone,
+            emergencyContactRelation: customer.emergencyContactRelation,
+            specialRequests: customer.specialRequests,
+            medicalConditions: customer.medicalConditions,
+            dietaryRestrictions: customer.dietaryRestrictions,
+          };
+        },
+      ) : [],
       payments: booking.payments
         ? booking.payments.map((payment) => ({
-            id: payment.id,
-            amount: payment.amount,
-            paymentMethod: payment.paymentMethod,
-            status: payment.status,
-            paymentDate: payment.paymentDate,
-            paymentReference: payment.paymentReference,
-            transactionId: payment.transactionId,
-            notes: payment.notes,
-            receiptFilePath: payment.receiptFilePath,
-            isPassengerSplit: payment.isPassengerSplit || false,
-            payerName:
-              payment.payerName ||
-              (payment.payerCustomer
-                ? `${payment.payerCustomer.firstName} ${payment.payerCustomer.lastName || ''}`.trim()
-                : undefined),
-            payerCustomerId: payment.payerCustomerId,
-            allocations: payment.allocations
-              ? payment.allocations.map((a) => ({
-                  id: a.id,
-                  bookingCustomerId: a.bookingCustomerId,
-                  customerId: a.bookingCustomer?.customer?.id,
-                  customerName: a.bookingCustomer?.customer
-                    ? `${a.bookingCustomer.customer.firstName} ${a.bookingCustomer.customer.lastName || ''}`.trim()
-                    : 'Passenger',
-                  customerEmail: a.bookingCustomer?.customer?.email,
-                  amount: Number(a.amount),
-                  notes: a.notes,
-                }))
-              : [],
-          }))
+          id: payment.id,
+          amount: payment.amount,
+          paymentMethod: payment.paymentMethod,
+          status: payment.status,
+          paymentDate: payment.paymentDate,
+          paymentReference: payment.paymentReference,
+          transactionId: payment.transactionId,
+          notes: payment.notes,
+          receiptFilePath: payment.receiptFilePath,
+          isPassengerSplit: payment.isPassengerSplit || false,
+          payerName:
+            payment.payerName ||
+            (payment.payerCustomer
+              ? `${payment.payerCustomer.firstName} ${payment.payerCustomer.lastName || ''}`.trim()
+              : undefined),
+          payerCustomerId: payment.payerCustomerId,
+          allocations: payment.allocations
+            ? payment.allocations.map((a) => ({
+              id: a.id,
+              bookingCustomerId: a.bookingCustomerId,
+              customerId: a.bookingCustomer?.customer?.id,
+              customerName: a.bookingCustomer?.customer
+                ? `${a.bookingCustomer.customer.firstName} ${a.bookingCustomer.customer.lastName || ''}`.trim()
+                : 'Passenger',
+              customerEmail: a.bookingCustomer?.customer?.email,
+              amount: Number(a.amount),
+              notes: a.notes,
+            }))
+            : [],
+        }))
         : [],
       currentWorkflowId: booking.currentWorkflowId,
       currentWorkflow: booking.currentWorkflow,
@@ -928,6 +1015,46 @@ export class BookingService {
 
       // Update booking
       const { customerIds, ...bookingUpdate } = updateBookingDto;
+
+      // Handle agent & commission updates
+      if ('agentId' in updateBookingDto) {
+        if (!updateBookingDto.agentId) {
+          (bookingUpdate as any).agentId = null;
+          (bookingUpdate as any).agentCommissionType = null;
+          (bookingUpdate as any).agentCommissionValue = null;
+          (bookingUpdate as any).agentCommissionAmount = 0;
+          (bookingUpdate as any).agentPayoutStatus = AgentPayoutStatus.PENDING;
+        } else {
+          let agentCommissionType = updateBookingDto.agentCommissionType;
+          let agentCommissionValue = updateBookingDto.agentCommissionValue;
+          let agentCommissionAmount = updateBookingDto.agentCommissionAmount;
+
+          if (agentCommissionAmount === undefined || agentCommissionAmount === null) {
+            const agent = await queryRunner.manager.findOne(Agent, {
+              where: { id: updateBookingDto.agentId },
+            });
+            if (agent) {
+              agentCommissionType = agentCommissionType || agent.commissionType;
+              agentCommissionValue =
+                agentCommissionValue !== undefined
+                  ? agentCommissionValue
+                  : Number(agent.commissionValue || 0);
+
+              const total = updateBookingDto.totalAmount ?? booking.totalAmount;
+              if (agentCommissionType === CommissionType.PERCENTAGE) {
+                agentCommissionAmount = (total * agentCommissionValue) / 100;
+              } else {
+                agentCommissionAmount = agentCommissionValue;
+              }
+            }
+          }
+
+          bookingUpdate.agentId = updateBookingDto.agentId;
+          bookingUpdate.agentCommissionType = agentCommissionType;
+          bookingUpdate.agentCommissionValue = agentCommissionValue;
+          bookingUpdate.agentCommissionAmount = agentCommissionAmount || 0;
+        }
+      }
 
       await queryRunner.manager.update(Booking, id, bookingUpdate);
 
