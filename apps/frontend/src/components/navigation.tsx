@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { LogoIcon } from "@/components/logo";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -9,8 +9,12 @@ export function Navigation() {
 	const [isOpen, setIsOpen] = useState(false);
 	const location = useLocation();
 
+	useEffect(() => {
+		setIsOpen(false);
+	}, [location.pathname]);
+
 	return (
-		<nav className="bg-background/80 backdrop-blur-md shadow-sm border-b sticky top-0 z-50">
+		<nav className="relative bg-background shadow-sm border-b top-0 z-50">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div className="flex justify-between items-center h-16">
 					<div className="flex items-center">
@@ -26,55 +30,50 @@ export function Navigation() {
 						<div className="ml-10 flex items-baseline space-x-8">
 							<NavLink
 								to="/"
-								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${
-									location.pathname === "/"
-										? "text-foreground font-bold"
-										: "text-muted-foreground"
-								}`}
+								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${location.pathname === "/"
+									? "text-foreground font-bold"
+									: "text-muted-foreground"
+									}`}
 							>
 								Home
 								<span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
 							</NavLink>
 							<NavLink
 								to="/about"
-								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${
-									location.pathname === "/about"
-										? "text-foreground font-bold"
-										: "text-muted-foreground"
-								}`}
+								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${location.pathname === "/about"
+									? "text-foreground font-bold"
+									: "text-muted-foreground"
+									}`}
 							>
 								About
 								<span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
 							</NavLink>
 							<NavLink
 								to="/pricing"
-								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${
-									location.pathname === "/pricing"
-										? "text-foreground font-bold"
-										: "text-muted-foreground"
-								}`}
+								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${location.pathname === "/pricing"
+									? "text-foreground font-bold"
+									: "text-muted-foreground"
+									}`}
 							>
 								Pricing
 								<span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
 							</NavLink>
 							<NavLink
 								to="/team"
-								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${
-									location.pathname === "/team"
-										? "text-foreground font-bold"
-										: "text-muted-foreground"
-								}`}
+								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${location.pathname === "/team"
+									? "text-foreground font-bold"
+									: "text-muted-foreground"
+									}`}
 							>
 								Team
 								<span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
 							</NavLink>
 							<NavLink
 								to="/contact"
-								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${
-									location.pathname === "/contact"
-										? "text-foreground font-bold"
-										: "text-muted-foreground"
-								}`}
+								className={`text-sm font-medium transition-colors relative group px-3 py-2 ${location.pathname === "/contact"
+									? "text-foreground font-bold"
+									: "text-muted-foreground"
+									}`}
 							>
 								Contact
 								<span className="absolute inset-x-0 bottom-0 h-0.5 bg-secondary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
@@ -104,7 +103,8 @@ export function Navigation() {
 						<ThemeToggle />
 						<button
 							onClick={() => setIsOpen(!isOpen)}
-							className="text-muted-foreground hover:text-foreground"
+							aria-label="Toggle navigation menu"
+							className="text-muted-foreground hover:text-foreground p-1 rounded-md"
 						>
 							{isOpen ? (
 								<X className="h-6 w-6" />
@@ -117,68 +117,87 @@ export function Navigation() {
 			</div>
 
 			{isOpen && (
-				<div className="md:hidden">
-					<div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-background/95 backdrop-blur-md border-t">
-						<NavLink
-							to="/"
-							className={`block px-3 py-2 text-base font-medium ${
-								location.pathname === "/"
-									? "text-foreground font-bold"
-									: "text-muted-foreground"
-							}`}
-						>
-							Home
-						</NavLink>
-						<NavLink
-							to="/about"
-							className={`block px-3 py-2 text-base font-medium ${
-								location.pathname === "/about"
-									? "text-foreground font-bold"
-									: "text-muted-foreground"
-							}`}
-						>
-							About
-						</NavLink>
-						<NavLink
-							to="/pricing"
-							className={`block px-3 py-2 text-base font-medium ${
-								location.pathname === "/pricing"
-									? "text-foreground font-bold"
-									: "text-muted-foreground"
-							}`}
-						>
-							Pricing
-						</NavLink>
-						<NavLink
-							to="/team"
-							className={`block px-3 py-2 text-base font-medium ${
-								location.pathname === "/team"
-									? "text-foreground font-bold"
-									: "text-muted-foreground"
-							}`}
-						>
-							Team
-						</NavLink>
-						<NavLink
-							to="/contact"
-							className={`block px-3 py-2 text-base font-medium ${
-								location.pathname === "/contact"
-									? "text-foreground font-bold"
-									: "text-muted-foreground"
-							}`}
-						>
-							Contact
-						</NavLink>
-						<div className="pt-4 pb-3 border-t border-border">
-							<div className="flex items-center px-3 space-x-3">
-								<Button variant="ghost" className="w-full">
-									Sign In
-								</Button>
-								<Button className="w-full">Get Started</Button>
+				<>
+					{/* Backdrop to close menu on outside click */}
+					<div
+						className="fixed inset-0 top-16 bg-black/20 backdrop-blur-[2px] z-40 md:hidden"
+						onClick={() => setIsOpen(false)}
+					/>
+					<div className="md:hidden absolute top-full inset-x-0 w-full bg-background/95 backdrop-blur-md border-b shadow-xl z-50 animate-in fade-in-0 slide-in-from-top-2 duration-200 max-h-[calc(100vh-4rem)] overflow-y-auto">
+						<div className="px-4 pt-2 pb-4 space-y-1 sm:px-6">
+							<NavLink
+								to="/"
+								onClick={() => setIsOpen(false)}
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${location.pathname === "/"
+									? "text-foreground font-bold bg-accent/50"
+									: "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+									}`}
+							>
+								Home
+							</NavLink>
+							<NavLink
+								to="/about"
+								onClick={() => setIsOpen(false)}
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${location.pathname === "/about"
+									? "text-foreground font-bold bg-accent/50"
+									: "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+									}`}
+							>
+								About
+							</NavLink>
+							<NavLink
+								to="/pricing"
+								onClick={() => setIsOpen(false)}
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${location.pathname === "/pricing"
+									? "text-foreground font-bold bg-accent/50"
+									: "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+									}`}
+							>
+								Pricing
+							</NavLink>
+							<NavLink
+								to="/team"
+								onClick={() => setIsOpen(false)}
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${location.pathname === "/team"
+									? "text-foreground font-bold bg-accent/50"
+									: "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+									}`}
+							>
+								Team
+							</NavLink>
+							<NavLink
+								to="/contact"
+								onClick={() => setIsOpen(false)}
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${location.pathname === "/contact"
+									? "text-foreground font-bold bg-accent/50"
+									: "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+									}`}
+							>
+								Contact
+							</NavLink>
+							<div className="pt-3 mt-2 border-t border-border">
+								<div className="grid grid-cols-2 gap-3">
+									<Button variant="outline" className="w-full" asChild>
+										<NavLink
+											to="/login"
+											onClick={() => setIsOpen(false)}
+										>
+											Sign In
+										</NavLink>
+									</Button>
+									<Button className="w-full" asChild>
+										<NavLink
+											to="/signup"
+											onClick={() => setIsOpen(false)}
+										>
+											Get Started
+										</NavLink>
+									</Button>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
+				</>
 			)}
 		</nav>
 	);
