@@ -71,6 +71,33 @@ export interface BestPerformingPackage {
 	status: string;
 }
 
+export interface DashboardActiveOffer {
+	id: string;
+	name: string;
+	description?: string | null;
+	discountType: 'percentage' | 'flat';
+	discountMode: 'fixed' | 'range';
+	discountValue: number;
+	minDiscountValue?: number | null;
+	maxDiscountValue?: number | null;
+	discountScope: 'passenger' | 'booking';
+	minTravelers: number;
+	maxDiscountCap?: number | null;
+	validFrom?: string | Date | null;
+	validUntil?: string | Date | null;
+	batchId: string;
+	batchStartDate: string | Date;
+	batchEndDate: string | Date;
+	totalSeats: number;
+	bookedSeats: number;
+	availableSeats: number;
+	packageId: string;
+	packageName: string;
+	packageThumbnail?: string | null;
+	destination?: string | null;
+	createdAt: string | Date;
+}
+
 export class DashboardService {
 	static async getDashboardStats(): Promise<DashboardStats> {
 		try {
@@ -150,6 +177,18 @@ export class DashboardService {
 			return response.data;
 		} catch (error) {
 			console.error("Error fetching best performing packages:", error);
+			throw error;
+		}
+	}
+
+	static async getActiveOffers(limit: number = 10): Promise<DashboardActiveOffer[]> {
+		try {
+			const response = await axiosInstance.get(
+				`/dashboard/active-offers?limit=${limit}`
+			);
+			return response.data;
+		} catch (error) {
+			console.error("Error fetching active offers:", error);
 			throw error;
 		}
 	}

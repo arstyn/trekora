@@ -11,7 +11,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
-import { BookingStatus } from 'src/database/entity/booking.entity';
+import { AgentPayoutStatus, BookingStatus } from 'src/database/entity/booking.entity';
+import { CommissionType } from 'src/database/entity/agent.entity';
 
 export class CustomerSelectionDto {
   @IsUUID()
@@ -50,7 +51,24 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsString()
   receiptFilePath?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPassengerSplit?: boolean;
+
+  @IsOptional()
+  @IsString()
+  payerName?: string;
+
+  @IsOptional()
+  @IsUUID()
+  payerCustomerId?: string;
+
+  @IsOptional()
+  @IsArray()
+  allocations?: any[];
 }
+
 
 export class CreateBookingDto {
   @IsUUID()
@@ -120,11 +138,42 @@ export class CreateBookingDto {
 
   @IsOptional()
   @IsUUID()
+  batchOfferId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  specialOfferDiscount?: number;
+
+  @IsOptional()
+  @IsUUID()
   batchBlockId?: string;
 
   @IsOptional()
   @IsBoolean()
   overrideCapacityLimit?: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  agentId?: string;
+
+  @IsOptional()
+  @IsEnum(CommissionType)
+  agentCommissionType?: CommissionType;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  agentCommissionValue?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  agentCommissionAmount?: number;
+
+  @IsOptional()
+  @IsEnum(AgentPayoutStatus)
+  agentPayoutStatus?: AgentPayoutStatus;
 }
 
 export class AddTravelersDto {
@@ -165,6 +214,15 @@ export class UpdateBookingDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  specialOfferDiscount?: number;
+
+  @IsOptional()
+  @IsUUID()
+  batchOfferId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   adjustmentAmount?: number;
 
   @IsOptional()
@@ -177,6 +235,28 @@ export class UpdateBookingDto {
 
   @IsOptional()
   additionalDetails?: Record<string, any>;
+
+  @IsOptional()
+  @IsUUID()
+  agentId?: string;
+
+  @IsOptional()
+  @IsEnum(CommissionType)
+  agentCommissionType?: CommissionType;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  agentCommissionValue?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  agentCommissionAmount?: number;
+
+  @IsOptional()
+  @IsEnum(AgentPayoutStatus)
+  agentPayoutStatus?: AgentPayoutStatus;
 }
 
 export class BookingStatsDto {
@@ -204,19 +284,26 @@ export class BookingSummaryDto {
   packageName: string;
   batchId?: string;
   batchStartDate: Date;
+  batchOfferId?: string | null;
   numberOfCustomers: number;
   totalAmount: number;
   discountAmount?: number;
+  specialOfferDiscount?: number;
   adjustmentAmount?: number;
   advancePaid: number;
   balanceAmount: number;
   status: BookingStatus;
   createdAt: Date;
   createdBy?: CreatedByDto | null;
+  agentId?: string;
+  agentName?: string;
+  agentCommissionAmount?: number;
+  agentPayoutStatus?: AgentPayoutStatus;
 }
 
 export class BookingCustomerResponseDto {
-  id: string;
+  id: string; // customerId
+  bookingCustomerId?: string;
   firstName: string;
   lastName?: string;
   middleName?: string;
@@ -232,6 +319,23 @@ export class BookingCustomerResponseDto {
   specialRequests?: string;
   medicalConditions?: string;
   dietaryRestrictions?: string;
+  packageTierId?: string;
+  packageTierName?: string;
+  ageCategory?: 'adult' | 'child' | 'infant';
+  calculatedShare?: number;
+  paidAmount?: number;
+  balanceAmount?: number;
+  paymentStatus?: 'paid' | 'partial' | 'unpaid';
+}
+
+export class BookingPaymentAllocationResponseDto {
+  id: string;
+  bookingCustomerId: string;
+  customerId?: string;
+  customerName: string;
+  customerEmail?: string;
+  amount: number;
+  notes?: string;
 }
 
 export class BookingResponseDto {
@@ -260,14 +364,37 @@ export class BookingResponseDto {
     totalSeats: number;
     bookedSeats: number;
   };
+  batchOffer?: {
+    id: string;
+    name: string;
+    discountType: string;
+    discountMode?: string;
+    discountValue: number;
+    minDiscountValue?: number | null;
+    maxDiscountValue?: number | null;
+    discountScope: string;
+  } | null;
   numberOfCustomers: number;
   totalAmount: number;
   discountAmount?: number;
+  specialOfferDiscount?: number;
   adjustmentAmount?: number;
   advancePaid: number;
   balanceAmount: number;
   status: BookingStatus;
   specialRequests?: string;
+  agentId?: string;
+  agent?: {
+    id: string;
+    name: string;
+    agencyName?: string;
+    email?: string;
+    phone?: string;
+  } | null;
+  agentCommissionType?: CommissionType;
+  agentCommissionValue?: number;
+  agentCommissionAmount?: number;
+  agentPayoutStatus?: AgentPayoutStatus;
 
   payments: {
     id: string;
@@ -279,9 +406,14 @@ export class BookingResponseDto {
     transactionId?: string;
     notes?: string;
     receiptFilePath?: string;
+    isPassengerSplit?: boolean;
+    payerName?: string;
+    payerCustomerId?: string;
+    allocations?: BookingPaymentAllocationResponseDto[];
   }[];
   currentWorkflowId?: string;
   currentWorkflow?: any;
   createdAt: Date;
   updatedAt: Date;
 }
+

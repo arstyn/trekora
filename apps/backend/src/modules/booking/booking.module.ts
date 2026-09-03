@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from 'src/database/entity/booking.entity';
 import { BookingPayment } from 'src/database/entity/booking-payment.entity';
+import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
@@ -9,6 +10,8 @@ import { Batch } from 'src/database/entity/batch.entity';
 import { ChecklistItem } from 'src/database/entity/package-related/checklist-items.entity';
 import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { BookingLog } from 'src/database/entity/booking-log.entity';
+import { BookingPaymentLog } from 'src/database/entity/booking-payment-log.entity';
+import { BatchOffer } from 'src/database/entity/batch-offer.entity';
 import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
 import { JwtModule } from '@nestjs/jwt';
@@ -21,13 +24,16 @@ import { WorkflowModule } from '../workflow/workflow.module';
     TypeOrmModule.forFeature([
       Booking,
       BookingPayment,
+      BookingPaymentAllocation,
       BookingDocument,
       BookingCustomer,
       Customer,
       Package,
       Batch,
+      BatchOffer,
       ChecklistItem,
       BookingLog,
+      BookingPaymentLog,
     ]),
     JwtModule.register({}),
     PermissionModule,
@@ -39,3 +45,4 @@ import { WorkflowModule } from '../workflow/workflow.module';
   exports: [BookingService],
 })
 export class BookingModule {}
+

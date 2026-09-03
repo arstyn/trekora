@@ -35,6 +35,7 @@ import {
     Shield,
     ShieldCheck,
     Tickets,
+    UserCheck,
     UsersIcon,
     Loader2,
     Receipt,
@@ -227,6 +228,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     },
                 ]
                 : []),
+            {
+                name: "Agents",
+                url: "/agents",
+                icon: UserCheck,
+            },
             ...(canReadPayments
                 ? [
                     {

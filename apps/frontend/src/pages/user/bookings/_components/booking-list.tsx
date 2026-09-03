@@ -228,6 +228,7 @@ export function BookingList({ status }: BookingListProps) {
 							<TableHead>Batch Date</TableHead>
 							<TableHead>Passengers</TableHead>
 							<TableHead>Payment</TableHead>
+							<TableHead>Agent</TableHead>
 							<TableHead>Status</TableHead>
 							<TableHead>Created By</TableHead>
 							<TableHead className="text-right">Actions</TableHead>
@@ -237,7 +238,7 @@ export function BookingList({ status }: BookingListProps) {
 						{loading ? (
 							Array.from({ length: 5 }).map((_, index) => (
 								<TableRow key={`skeleton-${index}`}>
-									{Array.from({ length: 9 }).map((_, i) => (
+									{Array.from({ length: 10 }).map((_, i) => (
 										<TableCell key={`skeleton-cell-${index}-${i}`}>
 											<Skeleton className="h-6 w-full" />
 										</TableCell>
@@ -294,6 +295,22 @@ export function BookingList({ status }: BookingListProps) {
 												)}
 											</div>
 										</div>
+									</TableCell>
+									<TableCell>
+										{booking.agentName ? (
+											<div>
+												<p className="font-medium text-sm">
+													{booking.agentName}
+												</p>
+												{booking.agentCommissionAmount !== undefined && (
+													<p className="text-xs text-muted-foreground">
+														{BookingService.formatCurrency(booking.agentCommissionAmount)}
+													</p>
+												)}
+											</div>
+										) : (
+											<span className="text-sm text-muted-foreground">—</span>
+										)}
 									</TableCell>
 									<TableCell>{getStatusBadge(booking.status)}</TableCell>
 									<TableCell>
@@ -357,7 +374,7 @@ export function BookingList({ status }: BookingListProps) {
 							))
 						) : (
 							<TableRow>
-								<TableCell colSpan={9} className="h-64 text-center">
+								<TableCell colSpan={10} className="h-64 text-center">
 									<div className="flex flex-col items-center justify-center py-12">
 										<div className="text-center">
 											<div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4">

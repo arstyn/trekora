@@ -1,5 +1,7 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNumber,
@@ -7,13 +9,27 @@ import {
   IsString,
   IsUUID,
   Max,
-  Min
+  Min,
+  ValidateNested,
 } from 'class-validator';
 import {
   PaymentMethod,
   PaymentStatus,
   PaymentType,
 } from 'src/database/entity/booking-payment.entity';
+
+export class PassengerPaymentAllocationDto {
+  @IsUUID()
+  bookingCustomerId: string;
+
+  @IsNumber()
+  @Min(0.01)
+  amount: number;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
 
 export class CreatePaymentDto {
   @IsUUID()
@@ -50,6 +66,24 @@ export class CreatePaymentDto {
   receiptFilePath?: string;
 
   @IsOptional()
+  @IsBoolean()
+  isPassengerSplit?: boolean;
+
+  @IsOptional()
+  @IsString()
+  payerName?: string;
+
+  @IsOptional()
+  @IsUUID()
+  payerCustomerId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PassengerPaymentAllocationDto)
+  allocations?: PassengerPaymentAllocationDto[];
+
+  @IsOptional()
   paymentDetails?: Record<string, any>;
 }
 
@@ -72,6 +106,20 @@ export class BookingSearchDto {
   limit?: number = 10;
 }
 
+export class BookingCustomerPaymentSummaryDto {
+  id: string; // bookingCustomerId
+  customerId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  ageCategory: string;
+  tierName?: string;
+  calculatedShare: number;
+  paidAmount: number;
+  balanceAmount: number;
+  status: 'paid' | 'partial' | 'unpaid';
+}
+
 export class BookingForPaymentDto {
   id: string;
   bookingNumber: string;
@@ -88,6 +136,10 @@ export class BookingForPaymentDto {
   totalAmount: number;
   advancePaid: number;
   balanceAmount: number;
+  discountAmount?: number;
+  specialOfferDiscount?: number;
+  adjustmentAmount?: number;
+  customers?: BookingCustomerPaymentSummaryDto[];
 }
 
 export class UpdatePaymentDto {
@@ -127,6 +179,24 @@ export class UpdatePaymentDto {
   @IsOptional()
   @IsString()
   receiptFilePath?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPassengerSplit?: boolean;
+
+  @IsOptional()
+  @IsString()
+  payerName?: string;
+
+  @IsOptional()
+  @IsUUID()
+  payerCustomerId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PassengerPaymentAllocationDto)
+  allocations?: PassengerPaymentAllocationDto[];
 
   @IsOptional()
   paymentDetails?: Record<string, any>;
@@ -205,6 +275,16 @@ export class OverduePaymentDto {
   daysOverdue: number;
 }
 
+export class PaymentAllocationResponseDto {
+  id: string;
+  bookingCustomerId: string;
+  customerId?: string;
+  customerName: string;
+  customerEmail?: string;
+  amount: number;
+  notes?: string;
+}
+
 export class PaymentResponseDto {
   id: string;
   paymentNumber: string;
@@ -217,6 +297,10 @@ export class PaymentResponseDto {
   paymentDate?: Date;
   notes?: string;
   receiptFilePath?: string;
+  isPassengerSplit: boolean;
+  payerName?: string;
+  payerCustomerId?: string;
+  allocations?: PaymentAllocationResponseDto[];
   paymentDetails?: Record<string, any>;
 
   booking: {
@@ -255,8 +339,32 @@ export class PaymentResponseDto {
     email: string;
   };
 
+  verifiedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+
+  verifiedAt?: Date | null;
+
   createdAt: Date;
   updatedAt: Date;
+}
+
+export class PaymentLogResponseDto {
+  id: string;
+  paymentId: string;
+  action: string;
+  previousData?: any;
+  newData?: any;
+  changedBy?: {
+    id: string;
+    name?: string;
+    email?: string;
+    profilePhoto?: string;
+  } | null;
+  createdAt: Date;
 }
 
 export class PaymentListResponseDto {
@@ -268,3 +376,4 @@ export class PaymentListResponseDto {
     totalPages: number;
   };
 }
+

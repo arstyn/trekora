@@ -66,14 +66,18 @@ import {
     MoreVertical,
     Phone,
     Plus,
+    Sparkles,
     Trash2,
     User,
+    UserCheck,
     Users,
     XCircle
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { PayoutDialog } from "../agents/_components/payout-dialog";
+import { AgentPayoutStatus } from "@/types/agent.types";
 
 export default function BookingDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -88,6 +92,20 @@ export default function BookingDetailsPage() {
     const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
     const [isMoving, setIsMoving] = useState(false);
     const [selectedBatchId, setSelectedBatchId] = useState<string>("");
+
+    const [payoutModal, setPayoutModal] = useState<{
+        open: boolean;
+        bookingId: string;
+        bookingNumber: string;
+        currentStatus: AgentPayoutStatus;
+        commissionAmount: number;
+    }>({
+        open: false,
+        bookingId: "",
+        bookingNumber: "",
+        currentStatus: AgentPayoutStatus.PENDING,
+        commissionAmount: 0,
+    });
 
     const fetchBookingLogs = useCallback(async () => {
         if (!id) return;
@@ -559,9 +577,20 @@ export default function BookingDetailsPage() {
                                         {BookingService.formatCurrency(booking.totalAmount)}
                                     </p>
                                 </div>
+                                {(booking.specialOfferDiscount ?? 0) > 0 && (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <Sparkles className="w-3 h-3 text-amber-500" />
+                                            Special Offer {booking.batchOffer?.name ? `(${booking.batchOffer.name})` : ''}
+                                        </p>
+                                        <p className="font-bold text-sm text-amber-600">
+                                            - {BookingService.formatCurrency(booking.specialOfferDiscount ?? 0)}
+                                        </p>
+                                    </div>
+                                )}
                                 {(booking.discountAmount ?? 0) > 0 && (
                                     <div>
-                                        <p className="text-[10px] text-muted-foreground">Discount Applied</p>
+                                        <p className="text-[10px] text-muted-foreground">Manual Discount</p>
                                         <p className="font-bold text-sm text-emerald-600">
                                             - {BookingService.formatCurrency(booking.discountAmount ?? 0)}
                                         </p>
@@ -604,6 +633,69 @@ export default function BookingDetailsPage() {
                                     />
                                 </div>
                             </div>
+
+                            {/* Referring Agent & Commission Info */}
+                            {booking.agent && (
+                                <div className="space-y-3 bg-blue-50/50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 text-xs">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                                            <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                                            Referring Agent
+                                        </h4>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-6 text-[10px] px-2"
+                                            onClick={() => navigate(`/agents/${booking.agent?.id}`)}
+                                        >
+                                            View Agent
+                                        </Button>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-semibold text-foreground">{booking.agent.name}</p>
+                                            {booking.agent.agencyName && (
+                                                <p className="text-[10px] text-muted-foreground">{booking.agent.agencyName}</p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                                                {BookingService.formatCurrency(booking.agentCommissionAmount || 0)}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                ({booking.agentCommissionType === 'percentage' ? `${booking.agentCommissionValue}%` : `₹${booking.agentCommissionValue} flat`})
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between pt-1 border-t border-blue-200/60 dark:border-blue-800/60">
+                                        <span className="text-[11px] text-muted-foreground">Payout Status:</span>
+                                        <div className="flex items-center gap-2">
+                                            <Badge
+                                                variant={booking.agentPayoutStatus === 'paid' ? 'default' : 'outline'}
+                                                className={booking.agentPayoutStatus === 'paid' ? 'bg-emerald-600' : 'text-amber-600 border-amber-400'}
+                                            >
+                                                {booking.agentPayoutStatus}
+                                            </Badge>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 text-[10px] px-1.5 underline"
+                                                        onClick={() =>
+                                                            setPayoutModal({
+                                                                open: true,
+                                                                bookingId: booking.id,
+                                                                bookingNumber: booking.bookingNumber,
+                                                                currentStatus: (booking.agentPayoutStatus as AgentPayoutStatus) || AgentPayoutStatus.PENDING,
+                                                                commissionAmount: booking.agentCommissionAmount || 0,
+                                                            })
+                                                        }
+                                            >
+                                                Update
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <Separator />
@@ -697,6 +789,8 @@ export default function BookingDetailsPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="pl-6">Guest Name</TableHead>
+                                <TableHead>Tier & Category</TableHead>
+                                <TableHead>Payment Breakdown</TableHead>
                                 <TableHead>Contact Info</TableHead>
                                 <TableHead>Requirements / Notes</TableHead>
                                 <TableHead className="text-right pr-6">Actions</TableHead>
@@ -714,10 +808,45 @@ export default function BookingDetailsPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
+                                        <div className="space-y-0.5">
+                                            <p className="text-xs font-semibold text-foreground">
+                                                {customer.packageTierName || "Standard Tier"}
+                                            </p>
+                                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 capitalize font-normal">
+                                                {customer.ageCategory || "adult"}
+                                            </Badge>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-foreground">
+                                                    {BookingService.formatCurrency(customer.calculatedShare || 0)}
+                                                </span>
+                                                {customer.paymentStatus === "paid" ? (
+                                                    <Badge className="text-[9px] py-0 px-1.5 bg-green-500/10 text-green-700 border-green-200">
+                                                        Paid
+                                                    </Badge>
+                                                ) : customer.paymentStatus === "partial" ? (
+                                                    <Badge className="text-[9px] py-0 px-1.5 bg-yellow-500/10 text-yellow-700 border-yellow-200">
+                                                        Partial (Bal: {BookingService.formatCurrency(customer.balanceAmount || 0)})
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="secondary" className="text-[9px] py-0 px-1.5 text-muted-foreground">
+                                                        Unpaid
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Paid: <span className="font-medium text-foreground">{BookingService.formatCurrency(customer.paidAmount || 0)}</span> • Bal: <span className="font-medium text-primary">{BookingService.formatCurrency(customer.balanceAmount || 0)}</span>
+                                            </p>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
                                         {renderTravelerContactInfo(customer.email, customer.phone)}
                                     </TableCell>
                                     <TableCell>
-                                        <p className="text-xs text-muted-foreground line-clamp-1 max-w-[250px]" title={customer.specialRequests || ""}>
+                                        <p className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]" title={customer.specialRequests || ""}>
                                             {customer.specialRequests || "No specific requirements"}
                                         </p>
                                     </TableCell>
@@ -798,6 +927,7 @@ export default function BookingDetailsPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="pl-6">Transaction ID</TableHead>
+                                    <TableHead>Payer / Split Details</TableHead>
                                     <TableHead className="text-center">Date</TableHead>
                                     <TableHead className="text-center">Method</TableHead>
                                     <TableHead className="text-center">Status</TableHead>
@@ -810,6 +940,28 @@ export default function BookingDetailsPage() {
                                         <TableCell className="pl-6 py-4">
                                             <p className="font-semibold text-sm">#{payment.transactionId || "N/A"}</p>
                                             <p className="text-xs text-muted-foreground">Ref: {payment.paymentReference || "N/A"}</p>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="space-y-1">
+                                                {payment.payerName && (
+                                                    <p className="text-xs font-semibold text-foreground">
+                                                        Paid by: <span className="text-primary font-bold">{payment.payerName}</span>
+                                                    </p>
+                                                )}
+                                                {payment.isPassengerSplit && payment.allocations && payment.allocations.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {payment.allocations.map((a) => (
+                                                            <Badge key={a.id || a.bookingCustomerId} variant="secondary" className="text-[10px] py-0 px-1.5 font-normal">
+                                                                {a.customerName}: {BookingService.formatCurrency(a.amount)}
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {payment.payerName ? "General Booking Payment" : "Standard Booking Payment"}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-center text-sm font-medium">
                                             {payment.paymentDate ? format(new Date(payment.paymentDate), "MMM d, yyyy") : "N/A"}
@@ -841,6 +993,7 @@ export default function BookingDetailsPage() {
                     )}
                 </CardContent>
             </Card>
+
 
             {/* Audit History Timeline full width below */}
             <Card>
@@ -987,6 +1140,16 @@ export default function BookingDetailsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            <PayoutDialog
+                open={payoutModal.open}
+                onOpenChange={(open) => setPayoutModal((prev) => ({ ...prev, open }))}
+                bookingId={payoutModal.bookingId}
+                bookingNumber={payoutModal.bookingNumber}
+                currentStatus={payoutModal.currentStatus}
+                commissionAmount={payoutModal.commissionAmount}
+                onUpdated={fetchBookingDetails}
+            />
         </div>
     );
 }

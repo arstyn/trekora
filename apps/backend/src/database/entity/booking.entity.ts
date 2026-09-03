@@ -11,6 +11,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Batch } from './batch.entity';
+import { BatchOffer } from './batch-offer.entity';
 import { Customer } from './customer.entity';
 import { Organization } from './organization.entity';
 import { Package } from './package-related/package.entity';
@@ -22,12 +23,20 @@ import { Workflow } from './workflow/workflow.entity';
 import { BookingCustomer } from './booking-customer.entity';
 import { PaymentMilestone } from './package-related/payment-milestones.entity';
 
+import { Agent, CommissionType } from './agent.entity';
+
 export enum BookingStatus {
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',
   ON_HOLD = 'on_hold',
+}
+
+export enum AgentPayoutStatus {
+  PENDING = 'pending',
+  PAID = 'paid',
+  CANCELLED = 'cancelled',
 }
 
 @Entity('bookings')
@@ -66,6 +75,13 @@ export class Booking {
   @JoinColumn({ name: 'batch_id' })
   batch: Batch;
 
+  @Column({ type: 'uuid', name: 'batch_offer_id', nullable: true })
+  batchOfferId: string | null;
+
+  @ManyToOne(() => BatchOffer, { nullable: true, eager: true })
+  @JoinColumn({ name: 'batch_offer_id' })
+  batchOffer: BatchOffer | null;
+
   @Column({ name: 'number_of_customers' })
   numberOfCustomers: number;
 
@@ -79,6 +95,14 @@ export class Booking {
     default: 0,
   })
   discountAmount: number;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    name: 'special_offer_discount',
+    default: 0,
+  })
+  specialOfferDiscount: number;
 
   @Column('decimal', {
     precision: 10,
@@ -124,6 +148,49 @@ export class Booking {
 
   @Column({ type: 'text', nullable: true, name: 'payment_override_reason' })
   paymentOverrideReason: string;
+
+  @Column({ type: 'uuid', nullable: true, name: 'agent_id' })
+  agentId: string;
+
+  @ManyToOne(() => Agent, (agent) => agent.bookings, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    eager: true,
+  })
+  @JoinColumn({ name: 'agent_id' })
+  agent: Agent;
+
+  @Column({
+    type: 'enum',
+    enum: CommissionType,
+    nullable: true,
+    name: 'agent_commission_type',
+  })
+  agentCommissionType: CommissionType;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'agent_commission_value',
+  })
+  agentCommissionValue: number;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    default: 0,
+    name: 'agent_commission_amount',
+  })
+  agentCommissionAmount: number;
+
+  @Column({
+    type: 'enum',
+    enum: AgentPayoutStatus,
+    default: AgentPayoutStatus.PENDING,
+    name: 'agent_payout_status',
+  })
+  agentPayoutStatus: AgentPayoutStatus;
 
   @OneToMany(() => BookingCustomer, (bc) => bc.booking, {
     cascade: true,

@@ -54,6 +54,9 @@ import {
     LayoutList,
     Mail,
     Phone,
+    Plus,
+    Sparkles,
+    Tag,
     Timer,
     Trash2,
     Users,
@@ -64,10 +67,15 @@ import { useCallback, useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { BatchOffersService } from "@/services/batch-offers.service";
+import type { IBatchOffer } from "@/types/batch-offers.types";
 import { CreateBookingDialog } from "../bookings/_components/create-booking-dialog";
 import { BatchReportModal } from "./_components/batch-report-modal";
 import { BookingModal } from "./_components/booking-modal";
 import { CoordinatorModal } from "./_components/coordinator-modal";
+import { BatchOfferDialog } from "./_components/batch-offer-dialog";
 
 export default function BatchDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -95,6 +103,15 @@ export default function BatchDetailsPage() {
     const [selectedBlockId, setSelectedBlockId] = useState<string>("");
     const [selectedBlockSlots, setSelectedBlockSlots] = useState<number>(0);
 
+    // Special Offers state & permissions
+    const [offers, setOffers] = useState<IBatchOffer[]>([]);
+    const [offerDialogOpen, setOfferDialogOpen] = useState(false);
+    const [selectedOfferToEdit, setSelectedOfferToEdit] = useState<IBatchOffer | null>(null);
+
+    const { hasPermission: canCreateOffer } = useHasPermission("batch-offer", "create");
+    const { hasPermission: canUpdateOffer } = useHasPermission("batch-offer", "update");
+    const { hasPermission: canDeleteOffer } = useHasPermission("batch-offer", "delete");
+
     const fetchLogs = useCallback(async () => {
         try {
             const res = await axiosInstance.get<IBatchLog[]>(
@@ -115,6 +132,39 @@ export default function BatchDetailsPage() {
         }
     }, [id]);
 
+    const fetchOffers = useCallback(async () => {
+        if (!id) return;
+        try {
+            const data = await BatchOffersService.getBatchOffers(id);
+            setOffers(data);
+        } catch (error) {
+            console.error("Failed to fetch special offers", error);
+        }
+    }, [id]);
+
+    const handleToggleOffer = async (offerId: string) => {
+        if (!id) return;
+        try {
+            await BatchOffersService.toggleBatchOfferStatus(id, offerId);
+            toast.success("Offer status updated");
+            fetchOffers();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to update offer status");
+        }
+    };
+
+    const handleDeleteOffer = async (offerId: string) => {
+        if (!id) return;
+        if (!confirm("Are you sure you want to delete this special offer?")) return;
+        try {
+            await BatchOffersService.deleteBatchOffer(id, offerId);
+            toast.success("Special offer deleted");
+            fetchOffers();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to delete special offer");
+        }
+    };
+
     const getBranch = async () => {
         try {
             const batchData = await axiosInstance.get<IBatches>(
@@ -131,6 +181,7 @@ export default function BatchDetailsPage() {
             setBatch(rawBatch);
             fetchLogs();
             fetchBlocks();
+            fetchOffers();
         } catch (error: unknown) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -719,6 +770,156 @@ export default function BatchDetailsPage() {
                                             </TableRow>
                                         );
                                     })}
+                            </TableBody>
+                        </Table>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Special Offers & Discounts */}
+            <Card className="border shadow-md rounded-2xl overflow-hidden bg-card">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                    <CardTitle className="text-lg font-black flex items-center gap-3">
+                        <Sparkles className="w-6 h-6 text-amber-500" />
+                        Special Offers & Discounts ({offers.filter(o => o.isActive).length} Active)
+                    </CardTitle>
+                    {canCreateOffer && (
+                        <Button
+                            size="sm"
+                            onClick={() => {
+                                setSelectedOfferToEdit(null);
+                                setOfferDialogOpen(true);
+                            }}
+                            className="cursor-pointer bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add Special Offer
+                        </Button>
+                    )}
+                </CardHeader>
+                <CardContent>
+                    {offers.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground border border-dashed rounded-xl p-4 space-y-2">
+                            <p className="font-medium text-foreground">No special offers configured for this batch.</p>
+                            <p className="text-xs">
+                                Create time-limited discounts or group size offers when this batch needs a boost in bookings.
+                            </p>
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Offer Name</TableHead>
+                                    <TableHead>Discount Value</TableHead>
+                                    <TableHead>Scope</TableHead>
+                                    <TableHead>Group Requirement</TableHead>
+                                    <TableHead>Validity</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {offers.map((offer) => {
+                                    const isExpired = offer.validUntil && new Date(offer.validUntil) < new Date();
+                                    return (
+                                        <TableRow key={offer.id} className={!offer.isActive || isExpired ? "opacity-60" : ""}>
+                                            <TableCell>
+                                                <div className="font-semibold flex items-center gap-2">
+                                                    <Tag className="w-4 h-4 text-amber-500" />
+                                                    {offer.name}
+                                                </div>
+                                                {offer.description && (
+                                                    <div className="text-xs text-muted-foreground truncate max-w-xs">
+                                                        {offer.description}
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className="font-mono bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200">
+                                                    {offer.discountMode === "range" && offer.minDiscountValue !== undefined && offer.minDiscountValue !== null
+                                                        ? offer.discountType === "percentage"
+                                                            ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}% OFF`
+                                                            : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")} OFF`
+                                                        : offer.discountType === "percentage"
+                                                        ? `${offer.discountValue}% OFF`
+                                                        : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
+                                                </Badge>
+                                                {offer.maxDiscountCap && (
+                                                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                                                        Cap: ₹{Number(offer.maxDiscountCap).toLocaleString("en-IN")}
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="text-xs capitalize font-medium">
+                                                    {offer.discountScope === "passenger" ? "Per Passenger" : "Total Booking"}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="text-xs flex items-center gap-1">
+                                                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                                                    {offer.minTravelers > 1 ? `Min ${offer.minTravelers} Travelers` : "All Bookings"}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="text-xs space-y-0.5">
+                                                    {offer.validUntil ? (
+                                                        <span className={isExpired ? "text-destructive font-medium" : "text-muted-foreground"}>
+                                                            {isExpired ? "Expired: " : "Until: "}
+                                                            {new Date(offer.validUntil).toLocaleDateString()}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">No Expiry</span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    {canUpdateOffer ? (
+                                                        <Switch
+                                                            checked={offer.isActive}
+                                                            onCheckedChange={() => handleToggleOffer(offer.id)}
+                                                        />
+                                                    ) : (
+                                                        <Badge variant={offer.isActive ? "default" : "secondary"}>
+                                                            {offer.isActive ? "Active" : "Inactive"}
+                                                        </Badge>
+                                                    )}
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {offer.isActive ? (isExpired ? "Expired" : "Active") : "Disabled"}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    {canUpdateOffer && (
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            onClick={() => {
+                                                                setSelectedOfferToEdit(offer);
+                                                                setOfferDialogOpen(true);
+                                                            }}
+                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
+                                                    {canDeleteOffer && (
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            onClick={() => handleDeleteOffer(offer.id)}
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     )}
@@ -1857,6 +2058,17 @@ export default function BatchDetailsPage() {
                 </DialogContent>
             </Dialog>
 
+            {/* Special Offer Dialog */}
+            {offerDialogOpen && id && (
+                <BatchOfferDialog
+                    open={offerDialogOpen}
+                    onOpenChange={setOfferDialogOpen}
+                    batchId={id}
+                    offerToEdit={selectedOfferToEdit}
+                    onSaved={fetchOffers}
+                />
+            )}
+
             {/* Create Booking Dialog */}
             {bookingBlockOpen && batch && (
                 <CreateBookingDialog
@@ -1875,3 +2087,4 @@ export default function BatchDetailsPage() {
         </div>
     );
 }
+

@@ -229,6 +229,38 @@ export const permissions = [
     description: 'View batch details',
   },
 
+  // Batch Offer permissions
+  {
+    name: 'batch-offer.create',
+    resource: 'batch-offer',
+    action: 'create',
+    description: 'Create special offers for batches',
+  },
+  {
+    name: 'batch-offer.read',
+    resource: 'batch-offer',
+    action: 'read',
+    description: 'View batch special offers',
+  },
+  {
+    name: 'batch-offer.update',
+    resource: 'batch-offer',
+    action: 'update',
+    description: 'Update batch special offers',
+  },
+  {
+    name: 'batch-offer.delete',
+    resource: 'batch-offer',
+    action: 'delete',
+    description: 'Delete batch special offers',
+  },
+  {
+    name: 'batch-offer.view',
+    resource: 'batch-offer',
+    action: 'view',
+    description: 'View batch special offer details',
+  },
+
   // Branch permissions
   {
     name: 'branch.create',
