@@ -28,6 +28,7 @@ import {
     Phone,
     Plus,
     Search,
+    Sparkles,
     Tag,
     User,
     UserMinus,
@@ -267,11 +268,29 @@ export function BookingModal({
                                             ₹{booking.totalAmount}
                                         </span>
                                     </div>
+                                    {Boolean(booking.specialOfferDiscount) && Number(booking.specialOfferDiscount) > 0 && (
+                                        <div className="flex justify-between items-start text-sm">
+                                            <span className="text-muted-foreground flex items-center gap-1">
+                                                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                                Special Offer:
+                                            </span>
+                                            <div className="text-right">
+                                                <span className="font-semibold text-amber-600 dark:text-amber-400 block">
+                                                    -₹{Number(booking.specialOfferDiscount).toLocaleString("en-IN")}
+                                                </span>
+                                                {booking.batchOffer?.name && (
+                                                    <span className="text-[10px] text-muted-foreground block font-medium">
+                                                        ({booking.batchOffer.name})
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                     {Boolean(booking.discountAmount) && Number(booking.discountAmount) > 0 && (
                                         <div className="flex justify-between items-start text-sm">
                                             <span className="text-muted-foreground flex items-center gap-1">
                                                 <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                                Discount Applied:
+                                                Manual Discount:
                                             </span>
                                             <div className="text-right">
                                                 <span className="font-semibold text-emerald-600 dark:text-emerald-400 block">
@@ -427,8 +446,7 @@ export function BookingModal({
                                         onClick={() =>
                                             InvoiceService.generateAndDownloadInvoice(
                                                 booking,
-                                                user?.organization?.name,
-                                                user?.organization?.domain,
+                                                user?.organization,
                                             )
                                         }
                                         disabled={

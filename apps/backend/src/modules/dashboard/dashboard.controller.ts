@@ -11,6 +11,7 @@ import { AuthGuard } from '../auth/guard/auth.guard';
 import {
   BestPerformingPackage,
   ChartData,
+  DashboardActiveOffer,
   DashboardService,
   DashboardStats,
   FastFillingBatch,
@@ -78,5 +79,14 @@ export class DashboardController {
       organizationId,
       limit,
     );
+  }
+
+  @Get('active-offers')
+  async getActiveOffers(
+    @Request() req: ApiRequestJWT,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+  ): Promise<DashboardActiveOffer[]> {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getActiveOffers(organizationId, limit);
   }
 }

@@ -5,8 +5,9 @@ import { BookingPayment } from '../../database/entity/booking-payment.entity';
 import { Booking } from '../../database/entity/booking.entity';
 import { Customer } from '../../database/entity/customer.entity';
 import { Lead } from '../../database/entity/lead.entity';
-import { Batch } from '../../database/entity/batch.entity';
+import { Batch, BatchStatus } from '../../database/entity/batch.entity';
 import { Package } from '../../database/entity/package-related/package.entity';
+import { BatchOffer, OfferDiscountMode, OfferDiscountScope, OfferDiscountType } from '../../database/entity/batch-offer.entity';
 
 export interface DashboardStats {
   totalRevenue: number;
@@ -69,6 +70,33 @@ export interface BestPerformingPackage {
   status: string;
 }
 
+export interface DashboardActiveOffer {
+  id: string;
+  name: string;
+  description: string | null;
+  discountType: OfferDiscountType;
+  discountMode: OfferDiscountMode;
+  discountValue: number;
+  minDiscountValue: number | null;
+  maxDiscountValue: number | null;
+  discountScope: OfferDiscountScope;
+  minTravelers: number;
+  maxDiscountCap: number | null;
+  validFrom: Date | null;
+  validUntil: Date | null;
+  batchId: string;
+  batchStartDate: Date;
+  batchEndDate: Date;
+  totalSeats: number;
+  bookedSeats: number;
+  availableSeats: number;
+  packageId: string;
+  packageName: string;
+  packageThumbnail: string | null;
+  destination: string | null;
+  createdAt: Date;
+}
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -84,6 +112,8 @@ export class DashboardService {
     private batchRepository: Repository<Batch>,
     @InjectRepository(Package)
     private packageRepository: Repository<Package>,
+    @InjectRepository(BatchOffer)
+    private batchOfferRepository: Repository<BatchOffer>,
   ) {}
 
   async getDashboardStats(organizationId: string): Promise<DashboardStats> {
@@ -436,6 +466,61 @@ export class DashboardService {
   private async getTotalCustomers(organizationId: string): Promise<number> {
     return this.customerRepository.count({
       where: { organizationId },
+    });
+  }
+
+  async getActiveOffers(
+    organizationId: string,
+    limit: number = 10,
+  ): Promise<DashboardActiveOffer[]> {
+    const now = new Date();
+    const offers = await this.batchOfferRepository
+      .createQueryBuilder('offer')
+      .leftJoinAndSelect('offer.batch', 'batch')
+      .leftJoinAndSelect('batch.package', 'package')
+      .where('offer.organizationId = :organizationId', { organizationId })
+      .andWhere('offer.isActive = true')
+      .andWhere('(offer.validUntil IS NULL OR offer.validUntil >= :now)', { now })
+      .andWhere('(batch.status IS NULL OR batch.status != :archivedStatus)', {
+        archivedStatus: BatchStatus.ARCHIVED,
+      })
+      .orderBy('offer.createdAt', 'DESC')
+      .take(limit)
+      .getMany();
+
+    return offers.map((offer) => {
+      const totalSeats = offer.batch?.totalSeats || 0;
+      const bookedSeats = offer.batch?.bookedSeats || 0;
+      const availableSeats = Math.max(0, totalSeats - bookedSeats);
+      return {
+        id: offer.id,
+        name: offer.name,
+        description: offer.description || null,
+        discountType: offer.discountType,
+        discountMode: offer.discountMode,
+        discountValue: Number(offer.discountValue),
+        minDiscountValue:
+          offer.minDiscountValue !== null ? Number(offer.minDiscountValue) : null,
+        maxDiscountValue:
+          offer.maxDiscountValue !== null ? Number(offer.maxDiscountValue) : null,
+        discountScope: offer.discountScope,
+        minTravelers: offer.minTravelers,
+        maxDiscountCap:
+          offer.maxDiscountCap !== null ? Number(offer.maxDiscountCap) : null,
+        validFrom: offer.validFrom,
+        validUntil: offer.validUntil,
+        batchId: offer.batch?.id || offer.batchId,
+        batchStartDate: offer.batch?.startDate,
+        batchEndDate: offer.batch?.endDate,
+        totalSeats,
+        bookedSeats,
+        availableSeats,
+        packageId: offer.batch?.package?.id || '',
+        packageName: offer.batch?.package?.name || 'Package',
+        packageThumbnail: offer.batch?.package?.thumbnail || null,
+        destination: offer.batch?.package?.destination || null,
+        createdAt: offer.createdAt,
+      };
     });
   }
 

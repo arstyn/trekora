@@ -39,7 +39,7 @@ import { format } from "date-fns";
 
 interface WorkflowManagerProps {
     workflowId: string;
-    onUpdate?: () => void;
+    onUpdate?: (showLoading?: boolean) => void;
 }
 
 export function WorkflowManager({
@@ -58,18 +58,20 @@ export function WorkflowManager({
     });
 
     useEffect(() => {
-        loadWorkflow();
+        if (workflowId) {
+            loadWorkflow(true);
+        }
     }, [workflowId]);
 
-    const loadWorkflow = async () => {
+    const loadWorkflow = async (showLoading = false) => {
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             const data = await WorkflowService.getWorkflow(workflowId);
             setWorkflow(data);
         } catch (error) {
             toast.error("Failed to load workflow");
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -87,12 +89,23 @@ export function WorkflowManager({
         try {
             const newStatus =
                 step.status === "completed" ? "pending" : "completed";
+            setWorkflow((prev) =>
+                prev
+                    ? {
+                          ...prev,
+                          steps: prev.steps.map((s) =>
+                              s.id === step.id ? { ...s, status: newStatus } : s,
+                          ),
+                      }
+                    : null,
+            );
             await WorkflowService.updateStep(step.id, { status: newStatus });
             toast.success(`Step marked as ${newStatus}`);
-            loadWorkflow();
-            if (onUpdate) onUpdate();
+            await loadWorkflow(false);
+            if (onUpdate) onUpdate(false);
         } catch (error) {
             toast.error("Failed to update step");
+            loadWorkflow(false);
         }
     };
 
@@ -109,15 +122,34 @@ export function WorkflowManager({
                 const updatedCompletions = completions.map((c, i) =>
                     i === customerIndex ? { ...c, completed: !c.completed } : c,
                 );
+                setWorkflow((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              steps: prev.steps.map((s) =>
+                                  s.id === step.id
+                                      ? {
+                                            ...s,
+                                            config: {
+                                                ...s.config,
+                                                completions: updatedCompletions,
+                                            },
+                                        }
+                                      : s,
+                              ),
+                          }
+                        : null,
+                );
                 await WorkflowService.updateStep(step.id, {
                     config: { ...step.config, completions: updatedCompletions },
                 });
                 toast.success("Customer status updated");
-                loadWorkflow();
-                if (onUpdate) onUpdate();
+                await loadWorkflow(false);
+                if (onUpdate) onUpdate(false);
             }
         } catch (error) {
             toast.error("Failed to update status");
+            loadWorkflow(false);
         }
     };
 
@@ -128,8 +160,8 @@ export function WorkflowManager({
             toast.success("Step added successfully");
             setIsAddingStep(false);
             setNewStep({ label: "", description: "", isMandatory: true });
-            loadWorkflow();
-            if (onUpdate) onUpdate();
+            await loadWorkflow(false);
+            if (onUpdate) onUpdate(false);
         } catch (error) {
             toast.error("Failed to add step");
         }
@@ -138,12 +170,21 @@ export function WorkflowManager({
     const handleDeleteStep = async (stepId: string) => {
         if (!confirm("Are you sure you want to delete this step?")) return;
         try {
+            setWorkflow((prev) =>
+                prev
+                    ? {
+                          ...prev,
+                          steps: prev.steps.filter((s) => s.id !== stepId),
+                      }
+                    : null,
+            );
             await WorkflowService.deleteStep(stepId);
             toast.success("Step deleted");
-            loadWorkflow();
-            if (onUpdate) onUpdate();
+            await loadWorkflow(false);
+            if (onUpdate) onUpdate(false);
         } catch (error) {
             toast.error("Failed to delete step");
+            loadWorkflow(false);
         }
     };
 

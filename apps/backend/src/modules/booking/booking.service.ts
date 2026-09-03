@@ -7,19 +7,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { BatchBlock, BatchBlockStatus } from 'src/database/entity/batch-block.entity';
 import { BatchLog } from 'src/database/entity/batch-log.entity';
 import { Batch } from 'src/database/entity/batch.entity';
+import { BatchOffer } from 'src/database/entity/batch-offer.entity';
 import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { BookingDocument } from 'src/database/entity/booking-document.entity';
 import { BookingLog } from 'src/database/entity/booking-log.entity';
+import { BookingPaymentLog } from 'src/database/entity/booking-payment-log.entity';
 import {
   BookingPayment,
   PaymentStatus,
 } from 'src/database/entity/booking-payment.entity';
 import { Agent, CommissionType } from 'src/database/entity/agent.entity';
 import { Booking, BookingStatus, AgentPayoutStatus } from 'src/database/entity/booking.entity';
+import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
 import {
   BookingCustomerResponseDto,
+  BookingPaymentAllocationResponseDto,
   BookingResponseDto,
   BookingStatsDto,
   BookingSummaryDto,
@@ -38,6 +42,8 @@ export class BookingService {
     private bookingRepository: Repository<Booking>,
     @InjectRepository(BookingPayment)
     private paymentRepository: Repository<BookingPayment>,
+    @InjectRepository(BookingPaymentAllocation)
+    private paymentAllocationRepository: Repository<BookingPaymentAllocation>,
     @InjectRepository(BookingDocument)
     private documentRepository: Repository<BookingDocument>,
     @InjectRepository(Customer)
@@ -48,9 +54,12 @@ export class BookingService {
     private batchRepository: Repository<Batch>,
     @InjectRepository(BookingLog)
     private logRepository: Repository<BookingLog>,
+    @InjectRepository(BookingPaymentLog)
+    private paymentLogRepository: Repository<BookingPaymentLog>,
     private workflowService: WorkflowService,
     private dataSource: DataSource,
   ) { }
+
 
   async getLogs(bookingId: string) {
     return this.logRepository.find({
@@ -115,12 +124,43 @@ export class BookingService {
         );
       }
 
+      // Validate Batch Special Offer if applied
+      let batchOfferId: string | null = null;
+      let specialOfferDiscount = 0;
+      if (createBookingDto.batchOfferId) {
+        const offer = await queryRunner.manager.findOne(BatchOffer, {
+          where: {
+            id: createBookingDto.batchOfferId,
+            batchId: batch.id,
+            organizationId,
+            isActive: true,
+          },
+        });
+        if (!offer) {
+          throw new BadRequestException('Selected batch special offer is invalid or inactive');
+        }
+        const now = new Date();
+        if (offer.validFrom && new Date(offer.validFrom) > now) {
+          throw new BadRequestException('Selected batch special offer is not active yet');
+        }
+        if (offer.validUntil && new Date(offer.validUntil) < now) {
+          throw new BadRequestException('Selected batch special offer has expired');
+        }
+        if (createBookingDto.customerIds.length < offer.minTravelers) {
+          throw new BadRequestException(
+            `Special offer requires at least ${offer.minTravelers} travelers`,
+          );
+        }
+        batchOfferId = offer.id;
+        specialOfferDiscount = createBookingDto.specialOfferDiscount || 0;
+      }
+
       // Generate unique booking number
       const bookingNumber = await this.generateBookingNumber(organizationId);
 
-      // Calculate balance amount
-      const advancePaid = createBookingDto.initialPayment?.amount || 0;
-      const balanceAmount = createBookingDto.totalAmount - advancePaid;
+      // Calculate balance amount - initial payment starts as pending until finance verifies it
+      const advancePaid = 0;
+      const balanceAmount = createBookingDto.totalAmount;
 
       // Handle agent & commission calculation if agentId is provided
       let agentCommissionType = createBookingDto.agentCommissionType;
@@ -156,9 +196,11 @@ export class BookingService {
         packageId: createBookingDto.packageId,
         packageTierId: createBookingDto.packageTierId,
         batchId: createBookingDto.batchId,
+        batchOfferId,
         numberOfCustomers: createBookingDto.customerIds.length,
         totalAmount: createBookingDto.totalAmount,
         discountAmount: createBookingDto.discountAmount || 0,
+        specialOfferDiscount,
         adjustmentAmount: createBookingDto.adjustmentAmount || 0,
         advancePaid,
         balanceAmount,
@@ -291,17 +333,95 @@ export class BookingService {
       }
 
       // Create initial payment if provided
-      if (createBookingDto.initialPayment && advancePaid > 0) {
+      const initialAmount = createBookingDto.initialPayment?.amount || 0;
+      if (createBookingDto.initialPayment && initialAmount > 0) {
         const paymentNumber = await this.generatePaymentNumber(organizationId);
+        const { allocations: initialAllocations, ...initialPaymentData } =
+          createBookingDto.initialPayment;
+
         const payment = queryRunner.manager.create(BookingPayment, {
-          ...createBookingDto.initialPayment,
+          ...initialPaymentData,
           paymentNumber,
           bookingId: savedBooking.id,
           recordedById: userId,
-          status: PaymentStatus.COMPLETED,
+          status: PaymentStatus.PENDING,
+          isPassengerSplit:
+            createBookingDto.initialPayment.isPassengerSplit || false,
+          payerName: createBookingDto.initialPayment.payerName,
+          payerCustomerId: createBookingDto.initialPayment.payerCustomerId,
         });
-        await queryRunner.manager.save(payment);
+        const savedPayment = await queryRunner.manager.save(payment);
+
+        // Record payment creation log
+        const initialPaymentLog = queryRunner.manager.create(BookingPaymentLog, {
+          paymentId: savedPayment.id,
+          changedById: userId,
+          action: 'created',
+          newData: {
+            paymentNumber: savedPayment.paymentNumber,
+            amount: savedPayment.amount,
+            status: savedPayment.status,
+            paymentType: savedPayment.paymentType,
+            paymentMethod: savedPayment.paymentMethod,
+            paymentReference: savedPayment.paymentReference,
+            transactionId: savedPayment.transactionId,
+            payerName: savedPayment.payerName,
+            isInitialPayment: true,
+          },
+        });
+        await queryRunner.manager.save(BookingPaymentLog, initialPaymentLog);
+
+        if (
+          createBookingDto.initialPayment.isPassengerSplit &&
+          initialAllocations &&
+          initialAllocations.length > 0
+        ) {
+          const bookingCustomers = await queryRunner.manager.find(
+            BookingCustomer,
+            {
+              where: { bookingId: savedBooking.id },
+            },
+          );
+          const customerIdToBookingCustomerId = new Map(
+            bookingCustomers.map((bc) => [bc.customerId, bc.id]),
+          );
+          const validBookingCustomerIds = new Set(
+            bookingCustomers.map((bc) => bc.id),
+          );
+
+          const allocations: BookingPaymentAllocation[] = initialAllocations
+            .map((alloc: any) => {
+              const targetBcId =
+                (alloc.customerId
+                  ? customerIdToBookingCustomerId.get(alloc.customerId)
+                  : undefined) ||
+                (alloc.bookingCustomerId
+                  ? customerIdToBookingCustomerId.get(alloc.bookingCustomerId)
+                  : undefined) ||
+                (alloc.bookingCustomerId &&
+                  validBookingCustomerIds.has(alloc.bookingCustomerId)
+                  ? alloc.bookingCustomerId
+                  : undefined);
+
+              if (!targetBcId) return null;
+              return queryRunner.manager.create(BookingPaymentAllocation, {
+                paymentId: savedPayment.id,
+                bookingCustomerId: targetBcId,
+                amount: alloc.amount,
+                notes: alloc.notes,
+              });
+            })
+            .filter((a): a is BookingPaymentAllocation => Boolean(a));
+
+          if (allocations.length > 0) {
+            await queryRunner.manager.save(
+              BookingPaymentAllocation,
+              allocations,
+            );
+          }
+        }
       }
+
 
       let usedBlock = false;
       let blockSlots = 0;
@@ -407,6 +527,8 @@ export class BookingService {
         numberOfCustomers: booking.numberOfCustomers,
         totalAmount: booking.totalAmount,
         discountAmount: booking.discountAmount || 0,
+        specialOfferDiscount: booking.specialOfferDiscount || 0,
+        batchOfferId: booking.batchOfferId || null,
         adjustmentAmount: booking.adjustmentAmount || 0,
         advancePaid: booking.advancePaid,
         balanceAmount: booking.balanceAmount,
@@ -460,6 +582,8 @@ export class BookingService {
       numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
       discountAmount: booking.discountAmount || 0,
+      specialOfferDiscount: booking.specialOfferDiscount || 0,
+      batchOfferId: booking.batchOfferId || null,
       adjustmentAmount: booking.adjustmentAmount || 0,
       advancePaid: booking.advancePaid,
       balanceAmount: booking.balanceAmount,
@@ -513,6 +637,8 @@ export class BookingService {
       numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
       discountAmount: booking.discountAmount || 0,
+      specialOfferDiscount: booking.specialOfferDiscount || 0,
+      batchOfferId: booking.batchOfferId || null,
       adjustmentAmount: booking.adjustmentAmount || 0,
       advancePaid: booking.advancePaid,
       balanceAmount: booking.balanceAmount,
@@ -589,10 +715,17 @@ export class BookingService {
       relations: [
         'customer',
         'bookingCustomers',
+        'bookingCustomers.customer',
+        'bookingCustomers.packageTier',
         'package',
         'package.packageTiers',
         'batch',
+        'batchOffer',
         'payments',
+        'payments.allocations',
+        'payments.allocations.bookingCustomer',
+        'payments.allocations.bookingCustomer.customer',
+        'payments.payerCustomer',
         'documents',
         'currentWorkflow',
         'currentWorkflow.steps',
@@ -603,6 +736,97 @@ export class BookingService {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
+
+    const allocationsByCustomer = new Map<string, number>();
+    if (booking.payments) {
+      for (const p of booking.payments) {
+        if (p.status === PaymentStatus.COMPLETED && p.allocations) {
+          for (const alloc of p.allocations) {
+            const current =
+              allocationsByCustomer.get(alloc.bookingCustomerId) || 0;
+            allocationsByCustomer.set(
+              alloc.bookingCustomerId,
+              current + Number(alloc.amount),
+            );
+          }
+        }
+      }
+    }
+
+    const bookingTotal = Number(booking.totalAmount || 0);
+    const count = booking.bookingCustomers?.length || 1;
+    const rawCosts = (booking.bookingCustomers || []).map((bc) => {
+      const tier = bc.packageTier;
+      let cost = 0;
+      if (tier) {
+        const adultCost = Number(tier.adultCost || 0);
+        if (bc.ageCategory === 'adult' || !bc.ageCategory) {
+          cost = adultCost;
+        } else if (bc.ageCategory === 'child') {
+          cost =
+            tier.childCostType === 'percentage'
+              ? adultCost * (Number(tier.childCostValue || 0) / 100)
+              : Number(tier.childCostValue || 0);
+        } else if (bc.ageCategory === 'infant') {
+          cost =
+            tier.infantCostType === 'percentage'
+              ? adultCost * (Number(tier.infantCostValue || 0) / 100)
+              : Number(tier.infantCostValue || 0);
+        }
+      }
+      return cost;
+    });
+
+    const totalRawCost = rawCosts.reduce((sum, c) => sum + c, 0);
+
+    const customers = booking.bookingCustomers
+      ? booking.bookingCustomers.map((bc, index): BookingCustomerResponseDto => {
+        const customer = bc.customer;
+        let calculatedShare: number;
+        if (totalRawCost > 0) {
+          calculatedShare =
+            Math.round(((rawCosts[index] / totalRawCost) * bookingTotal) * 100) /
+            100;
+        } else {
+          calculatedShare = Math.round((bookingTotal / count) * 100) / 100;
+        }
+        const paidAmount = allocationsByCustomer.get(bc.id) || 0;
+        const balanceAmount = Math.max(0, calculatedShare - paidAmount);
+        let paymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
+        if (paidAmount >= calculatedShare && calculatedShare > 0) {
+          paymentStatus = 'paid';
+        } else if (paidAmount > 0) {
+          paymentStatus = 'partial';
+        }
+
+        return {
+          id: customer?.id || bc.customerId,
+          bookingCustomerId: bc.id,
+          firstName: customer?.firstName || '',
+          lastName: customer?.lastName,
+          middleName: customer?.middleName,
+          email: customer?.email,
+          phone: customer?.phone,
+          alternativePhone: customer?.alternativePhone,
+          dateOfBirth: customer?.dateOfBirth,
+          gender: customer?.gender,
+          address: customer?.address,
+          emergencyContactName: customer?.emergencyContactName,
+          emergencyContactPhone: customer?.emergencyContactPhone,
+          emergencyContactRelation: customer?.emergencyContactRelation,
+          specialRequests: customer?.specialRequests,
+          medicalConditions: customer?.medicalConditions,
+          dietaryRestrictions: customer?.dietaryRestrictions,
+          packageTierId: bc.packageTierId,
+          packageTierName: bc.packageTier?.name,
+          ageCategory: bc.ageCategory || 'adult',
+          calculatedShare,
+          paidAmount,
+          balanceAmount,
+          paymentStatus,
+        };
+      })
+      : [];
 
     return {
       id: booking.id,
@@ -629,9 +853,28 @@ export class BookingService {
         totalSeats: booking.batch.totalSeats,
         bookedSeats: booking.batch.bookedSeats,
       },
+      batchOffer: booking.batchOffer
+        ? {
+          id: booking.batchOffer.id,
+          name: booking.batchOffer.name,
+          discountType: booking.batchOffer.discountType,
+          discountMode: booking.batchOffer.discountMode,
+          discountValue: Number(booking.batchOffer.discountValue),
+          minDiscountValue:
+            booking.batchOffer.minDiscountValue !== null
+              ? Number(booking.batchOffer.minDiscountValue)
+              : null,
+          maxDiscountValue:
+            booking.batchOffer.maxDiscountValue !== null
+              ? Number(booking.batchOffer.maxDiscountValue)
+              : null,
+          discountScope: booking.batchOffer.discountScope,
+        }
+        : null,
       numberOfCustomers: booking.numberOfCustomers,
       totalAmount: booking.totalAmount,
       discountAmount: booking.discountAmount || 0,
+      specialOfferDiscount: booking.specialOfferDiscount || 0,
       adjustmentAmount: booking.adjustmentAmount || 0,
       advancePaid: booking.advancePaid,
       balanceAmount: booking.balanceAmount,
@@ -640,12 +883,12 @@ export class BookingService {
       agentId: booking.agentId,
       agent: booking.agent
         ? {
-            id: booking.agent.id,
-            name: booking.agent.name,
-            agencyName: booking.agent.agencyName,
-            email: booking.agent.email,
-            phone: booking.agent.phone,
-          }
+          id: booking.agent.id,
+          name: booking.agent.name,
+          agencyName: booking.agent.agencyName,
+          email: booking.agent.email,
+          phone: booking.agent.phone,
+        }
         : null,
       agentCommissionType: booking.agentCommissionType,
       agentCommissionValue: booking.agentCommissionValue,
@@ -674,23 +917,46 @@ export class BookingService {
           };
         },
       ) : [],
-      payments: booking.payments.map((payment) => ({
-        id: payment.id,
-        amount: payment.amount,
-        paymentMethod: payment.paymentMethod,
-        status: payment.status,
-        paymentDate: payment.paymentDate,
-        paymentReference: payment.paymentReference,
-        transactionId: payment.transactionId,
-        notes: payment.notes,
-        receiptFilePath: payment.receiptFilePath,
-      })),
+      payments: booking.payments
+        ? booking.payments.map((payment) => ({
+          id: payment.id,
+          amount: payment.amount,
+          paymentMethod: payment.paymentMethod,
+          status: payment.status,
+          paymentDate: payment.paymentDate,
+          paymentReference: payment.paymentReference,
+          transactionId: payment.transactionId,
+          notes: payment.notes,
+          receiptFilePath: payment.receiptFilePath,
+          isPassengerSplit: payment.isPassengerSplit || false,
+          payerName:
+            payment.payerName ||
+            (payment.payerCustomer
+              ? `${payment.payerCustomer.firstName} ${payment.payerCustomer.lastName || ''}`.trim()
+              : undefined),
+          payerCustomerId: payment.payerCustomerId,
+          allocations: payment.allocations
+            ? payment.allocations.map((a) => ({
+              id: a.id,
+              bookingCustomerId: a.bookingCustomerId,
+              customerId: a.bookingCustomer?.customer?.id,
+              customerName: a.bookingCustomer?.customer
+                ? `${a.bookingCustomer.customer.firstName} ${a.bookingCustomer.customer.lastName || ''}`.trim()
+                : 'Passenger',
+              customerEmail: a.bookingCustomer?.customer?.email,
+              amount: Number(a.amount),
+              notes: a.notes,
+            }))
+            : [],
+        }))
+        : [],
       currentWorkflowId: booking.currentWorkflowId,
       currentWorkflow: booking.currentWorkflow,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
     };
   }
+
 
   async update(
     id: string,
@@ -893,19 +1159,59 @@ export class BookingService {
       paymentNumber,
       bookingId,
       recordedById: userId,
-      status: PaymentStatus.COMPLETED,
+      status: PaymentStatus.PENDING,
+      isPassengerSplit: paymentDto.isPassengerSplit || false,
+      payerName: paymentDto.payerName,
+      payerCustomerId: paymentDto.payerCustomerId,
     });
 
-    await this.paymentRepository.save(payment);
+    const savedPayment = await this.paymentRepository.save(payment);
 
-    // Update booking advance paid and balance
-    const newAdvancePaid = booking.advancePaid + paymentDto.amount;
-    const newBalanceAmount = booking.totalAmount - newAdvancePaid;
+    // Save allocations if present
+    if (
+      paymentDto.isPassengerSplit &&
+      paymentDto.allocations &&
+      paymentDto.allocations.length > 0
+    ) {
+      const allocations = paymentDto.allocations.map((alloc) =>
+        this.paymentAllocationRepository.create({
+          paymentId: savedPayment.id,
+          bookingCustomerId: alloc.bookingCustomerId,
+          amount: alloc.amount,
+          notes: alloc.notes,
+        }),
+      );
+      await this.paymentAllocationRepository.save(allocations);
+    }
 
-    await this.bookingRepository.update(bookingId, {
-      advancePaid: newAdvancePaid,
-      balanceAmount: newBalanceAmount,
+    // Record payment creation log
+    const paymentLog = this.paymentLogRepository.create({
+      paymentId: savedPayment.id,
+      changedById: userId,
+      action: 'created',
+      newData: {
+        paymentNumber: savedPayment.paymentNumber,
+        amount: savedPayment.amount,
+        status: savedPayment.status,
+        paymentType: savedPayment.paymentType,
+        paymentMethod: savedPayment.paymentMethod,
+        paymentReference: savedPayment.paymentReference,
+        transactionId: savedPayment.transactionId,
+        payerName: savedPayment.payerName,
+      },
     });
+    await this.paymentLogRepository.save(paymentLog);
+
+    // Only update booking advance paid and balance if payment was already completed
+    if (savedPayment.status === PaymentStatus.COMPLETED) {
+      const newAdvancePaid = Number(booking.advancePaid) + Number(paymentDto.amount);
+      const newBalanceAmount = Number(booking.totalAmount) - newAdvancePaid;
+
+      await this.bookingRepository.update(bookingId, {
+        advancePaid: newAdvancePaid,
+        balanceAmount: newBalanceAmount,
+      });
+    }
 
     return this.findOne(bookingId);
   }

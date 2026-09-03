@@ -12,6 +12,16 @@ export type PaymentMethod =
 
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 
+export interface IBookingPaymentAllocation {
+    id?: string;
+    bookingCustomerId?: string;
+    customerId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    amount: number;
+    notes?: string;
+}
+
 export interface IBookingPayment {
     id?: string;
     amount: number;
@@ -23,10 +33,15 @@ export interface IBookingPayment {
     notes?: string;
     filePath?: string;
     receiptFilePath?: string;
+    isPassengerSplit?: boolean;
+    payerName?: string;
+    payerCustomerId?: string;
+    allocations?: IBookingPaymentAllocation[];
 }
 
 export interface ICustomer {
     id?: string;
+    bookingCustomerId?: string;
     firstName: string;
     lastName?: string;
     middleName?: string;
@@ -59,9 +74,17 @@ export interface ICustomer {
         lastName?: string;
         email?: string;
     };
+    packageTierId?: string;
+    packageTierName?: string;
+    ageCategory?: 'adult' | 'child' | 'infant';
+    calculatedShare?: number;
+    paidAmount?: number;
+    balanceAmount?: number;
+    paymentStatus?: 'paid' | 'partial' | 'unpaid';
     createdAt?: string;
     updatedAt?: string;
 }
+
 
 import type { PackageTier, IPaymentStructure, PackageLocation } from "./package.schema";
 
@@ -99,9 +122,21 @@ export interface IBooking {
     primaryCustomer: ICustomer;
     package: IPackage;
     batch: IBatch;
+    batchOfferId?: string | null;
+    batchOffer?: {
+        id: string;
+        name: string;
+        discountType: 'percentage' | 'flat';
+        discountMode?: 'fixed' | 'range';
+        discountValue: number;
+        minDiscountValue?: number | null;
+        maxDiscountValue?: number | null;
+        discountScope: 'passenger' | 'booking';
+    } | null;
     numberOfCustomers: number;
     totalAmount: number;
     discountAmount?: number;
+    specialOfferDiscount?: number;
     adjustmentAmount?: number;
     advancePaid: number;
     balanceAmount: number;
@@ -135,9 +170,11 @@ export interface IBookingListItem {
     customerEmail: string;
     packageName: string;
     batchStartDate: string;
+    batchOfferId?: string | null;
     numberOfCustomers: number;
     totalAmount: number;
     discountAmount?: number;
+    specialOfferDiscount?: number;
     adjustmentAmount?: number;
     advancePaid: number;
     balanceAmount: number;
@@ -160,9 +197,11 @@ export interface ICreateBookingRequest {
     packageId: string;
     packageTierId?: string;
     batchId: string;
+    batchOfferId?: string;
     customerIds: string[];
     totalAmount: number;
     discountAmount?: number;
+    specialOfferDiscount?: number;
     adjustmentAmount?: number;
     specialRequests?: string;
     initialPayment?: Omit<IBookingPayment, "id" | "status">;

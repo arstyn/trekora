@@ -58,6 +58,8 @@ import {
     Plus,
     Search,
     ShieldAlert,
+    Sparkles,
+    Split,
     Tag,
     User,
     UserCheck,
@@ -68,6 +70,8 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { BatchOffersService } from "@/services/batch-offers.service";
+import type { IBatchOffer } from "@/types/batch-offers.types";
 
 interface CreateBookingDialogProps {
     open: boolean;
@@ -83,10 +87,12 @@ export interface ICreateBookingFormData {
     packageId: string;
     packageTierId: string;
     batchId: string;
+    batchOfferId?: string;
     numberOfCustomers: number;
     customers: ICustomer[];
     totalAmount: number;
     discountAmount: number;
+    specialOfferDiscount: number;
     adjustmentAmount: number;
     advanceAmount: number;
     paymentMethod: PaymentMethod | "";
@@ -106,6 +112,11 @@ export interface ICreateBookingFormData {
     agentCommissionType?: "percentage" | "fixed";
     agentCommissionValue?: number;
     agentCommissionAmount?: number;
+    isPassengerSplit: boolean;
+    payerType: string; // 'primary' | 'passenger' | 'custom'
+    payerCustomerId: string;
+    payerName: string;
+    allocations: Record<string, string>; // customerId -> allocated amount
 }
 
 export function CreateBookingDialog({
@@ -143,15 +154,20 @@ export function CreateBookingDialog({
     const [customerExistingBookings, setCustomerExistingBookings] = useState<Record<string, any[]>>({});
     const [discountInputType, setDiscountInputType] = useState<"amount" | "percentage">("amount");
     const [perPassengerDiscountValue, setPerPassengerDiscountValue] = useState<number>(0);
+    const [batchOffers, setBatchOffers] = useState<IBatchOffer[]>([]);
+    const [customOfferValues, setCustomOfferValues] = useState<Record<string, number>>({});
+    const [selectedPassengerIds, setSelectedPassengerIds] = useState<string[]>([]);
 
     const [formData, setFormData] = useState<ICreateBookingFormData>({
         packageId: preselectedPackageId || "",
         packageTierId: "",
         batchId: preselectedBatchId || "",
+        batchOfferId: "",
         numberOfCustomers: 0,
         customers: [],
         totalAmount: 0,
         discountAmount: 0,
+        specialOfferDiscount: 0,
         adjustmentAmount: 0,
         advanceAmount: 0,
         paymentMethod: "",
@@ -171,7 +187,13 @@ export function CreateBookingDialog({
         agentCommissionType: undefined,
         agentCommissionValue: undefined,
         agentCommissionAmount: 0,
+        isPassengerSplit: false,
+        payerType: "primary",
+        payerCustomerId: "",
+        payerName: "",
+        allocations: {},
     });
+
 
     const selectedPackage = packages.find((p) => p.id === formData.packageId);
     const paymentStructure = selectedPackage?.paymentStructure || [];
@@ -295,7 +317,7 @@ export function CreateBookingDialog({
         if (currentStep === 1) {
             if (!formData.packageId) newErrors.packageId = "Please select a tour package";
             if (!formData.batchId) newErrors.batchId = "Please select a batch";
-            
+
             if (formData.isCommonTier && !formData.packageTierId && selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0) {
                 newErrors.packageTierId = "Please select a package price tier";
             }
@@ -354,9 +376,40 @@ export function CreateBookingDialog({
             if (formData.advanceAmount > 0 && !formData.paymentMethod) {
                 newErrors.paymentMethod = "Please select a payment method for advance payment";
             }
+            if (formData.advanceAmount > 0 && formData.isPassengerSplit) {
+                const allocationsList = Object.entries(formData.allocations)
+                    .filter(([id, amt]) => selectedPassengerIds.includes(id) && Number(amt) > 0);
+
+                if (allocationsList.length === 0) {
+                    newErrors.allocations = "Please allocate advance payment amounts to at least one passenger";
+                }
+
+                const allocatedSum = allocationsList.reduce(
+                    (sum, [_, amt]) => sum + Number(amt),
+                    0
+                );
+
+                if (Math.abs(allocatedSum - formData.advanceAmount) > 0.01) {
+                    newErrors.allocations = `Passenger allocations total (${BookingService.formatCurrency(
+                        allocatedSum
+                    )}) must match advance payment amount (${BookingService.formatCurrency(formData.advanceAmount)})`;
+                }
+            }
             const availableSeats = getAvailableSeats(selectedBatch);
+
             if (selectedBatch && formData.customers.length > availableSeats && !formData.overrideCapacityLimit) {
                 newErrors.capacity = `Selected travelers (${formData.customers.length}) exceed batch capacity (${availableSeats} seats left). Check override option to submit.`;
+            }
+            if (formData.batchOfferId) {
+                const selectedOffer = batchOffers.find(o => o.id === formData.batchOfferId);
+                if (selectedOffer && selectedOffer.discountMode === "range") {
+                    const enteredVal = customOfferValues[selectedOffer.id] ?? Number(selectedOffer.maxDiscountValue ?? selectedOffer.discountValue);
+                    const min = Number(selectedOffer.minDiscountValue || 0);
+                    const max = Number(selectedOffer.maxDiscountValue || 0);
+                    if (enteredVal < min || enteredVal > max) {
+                        newErrors.specialOffer = `Special offer discount must be between ${min} and ${max}.`;
+                    }
+                }
             }
         }
 
@@ -403,6 +456,27 @@ export function CreateBookingDialog({
                 hasMore: customersData.hasMore,
                 total: customersData.total,
             });
+
+            if (preselectedBatchId) {
+                // Resolve package for preselected batch if not provided
+                for (const pkg of packagesData.packages || []) {
+                    try {
+                        const batches = await BookingService.getAvailableBatches(pkg.id);
+                        if (batches.some(b => b.id === preselectedBatchId)) {
+                            setFormData(prev => ({
+                                ...prev,
+                                packageId: pkg.id,
+                                batchId: preselectedBatchId,
+                            }));
+                            setAvailableBatches(batches);
+                            loadBatchOffers(preselectedBatchId);
+                            break;
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+            }
         } catch (err) {
             console.error("Error loading initial data:", err);
             setError("Failed to load data. Please try again.");
@@ -510,6 +584,29 @@ export function CreateBookingDialog({
         }
     }, [formData.packageId]);
 
+    const loadBatchOffers = async (batchId: string) => {
+        if (!batchId) {
+            setBatchOffers([]);
+            return;
+        }
+        try {
+            const offers = await BatchOffersService.getActiveBatchOffers(batchId);
+            setBatchOffers(offers);
+        } catch (err) {
+            console.error("Error loading batch offers:", err);
+            setBatchOffers([]);
+        }
+    };
+
+    // Load batch offers when batch is selected
+    useEffect(() => {
+        if (formData.batchId) {
+            loadBatchOffers(formData.batchId);
+        } else {
+            setBatchOffers([]);
+        }
+    }, [formData.batchId]);
+
     // Sync default milestone and advance amount when selected package or total amount changes
     useEffect(() => {
         if (!selectedPackage) return;
@@ -564,6 +661,64 @@ export function CreateBookingDialog({
         }
     };
 
+    const computeSpecialOfferDiscount = (
+        offer: IBatchOffer | null | undefined,
+        baseTotal: number,
+        customerCount: number,
+        customValue?: number
+    ) => {
+        if (!offer || customerCount < offer.minTravelers) return 0;
+        let rateOrAmount = Number(offer.discountValue);
+        if (offer.discountMode === "range") {
+            if (customValue !== undefined && customValue !== null) {
+                rateOrAmount = customValue;
+            } else if (customOfferValues[offer.id] !== undefined) {
+                rateOrAmount = customOfferValues[offer.id];
+            } else if (offer.maxDiscountValue !== null && offer.maxDiscountValue !== undefined) {
+                rateOrAmount = Number(offer.maxDiscountValue);
+            }
+        }
+        let disc = 0;
+        if (offer.discountType === "percentage") {
+            disc = Math.round((baseTotal * rateOrAmount) / 100);
+            if (offer.maxDiscountCap && disc > Number(offer.maxDiscountCap)) {
+                disc = Number(offer.maxDiscountCap);
+            }
+        } else {
+            if (offer.discountScope === "passenger") {
+                disc = rateOrAmount * customerCount;
+            } else {
+                disc = rateOrAmount;
+            }
+        }
+        return Math.min(disc, baseTotal);
+    };
+
+    const handleRangeOfferValueChange = (
+        offer: IBatchOffer,
+        val: number,
+        baseTotal: number,
+        customerCount: number
+    ) => {
+        setCustomOfferValues((prev) => ({
+            ...prev,
+            [offer.id]: val,
+        }));
+
+        const newSavings = computeSpecialOfferDiscount(offer, baseTotal, customerCount, val);
+        setFormData((prev) => {
+            const newTotal = Math.max(
+                0,
+                baseTotal + (prev.adjustmentAmount || 0) - (prev.discountAmount || 0) - newSavings
+            );
+            return {
+                ...prev,
+                specialOfferDiscount: newSavings,
+                totalAmount: newTotal,
+            };
+        });
+    };
+
     const calculateTotalAmount = (
         pkgId: string,
         commonTierId: string,
@@ -571,6 +726,7 @@ export function CreateBookingDialog({
         selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
         currentCustomers: ICustomer[],
         discount: number = formData.discountAmount || 0,
+        specialDiscount: number = formData.specialOfferDiscount || 0,
         adjustment: number = formData.adjustmentAmount || 0
     ) => {
         const pkg = packages.find((p) => p.id === pkgId);
@@ -589,7 +745,7 @@ export function CreateBookingDialog({
                 const packageTier = pkg.packageTiers.find((t) => t.id === effectiveTierId);
                 const batchTier = selectedBatch?.batchTiers?.find((t: any) => t.packageTierId === effectiveTierId);
                 const tier = batchTier || packageTier;
-                
+
                 if (tier) {
                     const adultCost = Number(tier.adultCost || 0);
 
@@ -612,7 +768,7 @@ export function CreateBookingDialog({
             }
         });
 
-        return Math.max(0, total + adjustment - discount);
+        return Math.max(0, total + adjustment - discount - specialDiscount);
     };
 
     const calculateBaseTotal = (
@@ -622,8 +778,159 @@ export function CreateBookingDialog({
         selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
         currentCustomers: ICustomer[]
     ) => {
-        return calculateTotalAmount(pkgId, commonTierId, isCommon, selections, currentCustomers, 0, 0);
+        return calculateTotalAmount(pkgId, commonTierId, isCommon, selections, currentCustomers, 0, 0, 0);
     };
+
+    const calculatePassengerShares = (): Record<string, number> => {
+        const pkg = packages.find((p) => p.id === formData.packageId);
+        if (!pkg || formData.customers.length === 0) return {};
+
+        const selectedBatch = availableBatches.find((b) => b.id === formData.batchId);
+        const rawCosts: Record<string, number> = {};
+        let totalRaw = 0;
+
+        formData.customers.forEach((customer) => {
+            const custId = customer.id || customer.email || customer.phone || customer.firstName || "";
+            const selection = formData.customerSelections[custId] || {
+                tierId: formData.packageTierId,
+                ageCategory: "adult",
+            };
+            const effectiveTierId = formData.isCommonTier ? formData.packageTierId : selection.tierId;
+            const ageCategory = selection.ageCategory || "adult";
+
+            let cost = 0;
+            if (pkg.packageTiers && effectiveTierId) {
+                const packageTier = pkg.packageTiers.find((t) => t.id === effectiveTierId);
+                const batchTier = selectedBatch?.batchTiers?.find((t: any) => t.packageTierId === effectiveTierId);
+                const tier = batchTier || packageTier;
+
+                if (tier) {
+                    const adultCost = Number(tier.adultCost || 0);
+                    if (ageCategory === "adult") {
+                        cost = adultCost;
+                    } else if (ageCategory === "child") {
+                        cost =
+                            tier.childCostType === "percentage"
+                                ? adultCost * (Number(tier.childCostValue || 0) / 100)
+                                : Number(tier.childCostValue || 0);
+                    } else if (ageCategory === "infant") {
+                        cost =
+                            tier.infantCostType === "percentage"
+                                ? adultCost * (Number(tier.infantCostValue || 0) / 100)
+                                : Number(tier.infantCostValue || 0);
+                    }
+                }
+            }
+            rawCosts[custId] = cost;
+            totalRaw += cost;
+        });
+
+        const shares: Record<string, number> = {};
+        const count = formData.customers.length;
+        const total = formData.totalAmount;
+
+        formData.customers.forEach((c) => {
+            const custId = c.id || c.email || c.phone || c.firstName || "";
+            if (totalRaw > 0) {
+                shares[custId] = Math.round(((rawCosts[custId] / totalRaw) * total) * 100) / 100;
+            } else {
+                shares[custId] = Math.round((total / count) * 100) / 100;
+            }
+        });
+
+        return shares;
+    };
+
+    const handleSplitAdvanceEqually = () => {
+        const activeIds = selectedPassengerIds;
+        if (activeIds.length === 0) {
+            toast.error("Please select at least one passenger to split advance among.");
+            return;
+        }
+
+        const totalToSplit = formData.advanceAmount || formData.totalAmount || 0;
+        if (totalToSplit <= 0) return;
+
+        const equalShare = Math.floor((totalToSplit / activeIds.length) * 100) / 100;
+        let remainder = Math.round((totalToSplit - equalShare * activeIds.length) * 100) / 100;
+
+        const newAllocations: Record<string, string> = {};
+        activeIds.forEach((id, index) => {
+            let allocated = equalShare;
+            if (index === activeIds.length - 1 && remainder !== 0) {
+                allocated = Math.round((allocated + remainder) * 100) / 100;
+            }
+            newAllocations[id] = String(allocated);
+        });
+
+        setFormData((prev) => ({
+            ...prev,
+            advanceAmount: totalToSplit,
+            allocations: newAllocations,
+            isPaymentOverridden: true,
+        }));
+    };
+
+    const handleAssignFullAdvanceToPassenger = (targetCustomerId: string) => {
+        const totalAdvance = formData.advanceAmount || 0;
+        const newAllocations: Record<string, string> = {};
+
+        const shares = calculatePassengerShares();
+        const allocatedAmount = totalAdvance > 0 ? totalAdvance : (shares[targetCustomerId] || 0);
+
+        formData.customers.forEach((c) => {
+            const custId = c.id || c.email || c.phone || c.firstName || "";
+            if (custId === targetCustomerId) {
+                newAllocations[custId] = String(allocatedAmount);
+            } else {
+                newAllocations[custId] = "0";
+            }
+        });
+
+        if (!selectedPassengerIds.includes(targetCustomerId)) {
+            setSelectedPassengerIds((prev) => [...prev, targetCustomerId]);
+        }
+
+        setFormData((prev) => ({
+            ...prev,
+            allocations: newAllocations,
+            advanceAmount: allocatedAmount,
+            isPaymentOverridden: true,
+        }));
+    };
+
+    const handleAllocationChange = (customerId: string, val: string) => {
+        const newAllocations = {
+            ...formData.allocations,
+            [customerId]: val,
+        };
+
+        setFormData((prev) => ({
+            ...prev,
+            allocations: newAllocations,
+            isPaymentOverridden: true,
+        }));
+    };
+
+    const togglePassengerCheckbox = (customerId: string) => {
+        setSelectedPassengerIds((prev) => {
+            if (prev.includes(customerId)) {
+                const next = prev.filter((id) => id !== customerId);
+                const updatedAllocations = { ...formData.allocations };
+                delete updatedAllocations[customerId];
+                setFormData((p) => ({
+                    ...p,
+                    allocations: updatedAllocations,
+                    isPaymentOverridden: true,
+                }));
+                return next;
+            } else {
+                return [...prev, customerId];
+            }
+        });
+    };
+
+
 
     const handleCustomerSelect = (customer: ICustomer) => {
         const custId = customer.id || customer.email || customer.phone || customer.firstName;
@@ -798,14 +1105,50 @@ export function CreateBookingDialog({
                 .map((c) => c.id)
                 .filter((id): id is string => Boolean(id));
 
+            let payerName: string | undefined = undefined;
+            let payerCustomerId: string | undefined = undefined;
+
+            if (formData.isPassengerSplit) {
+                if (formData.payerType === "primary") {
+                    payerCustomerId = formData.customers[0]?.id;
+                    payerName = `${formData.customers[0]?.firstName || ""} ${formData.customers[0]?.lastName || ""}`.trim();
+                } else if (formData.payerType === "passenger") {
+                    const pass = formData.customers.find(
+                        (c) => c.id === formData.payerCustomerId
+                    );
+                    payerCustomerId = pass?.id;
+                    payerName = pass
+                        ? `${pass.firstName || ""} ${pass.lastName || ""}`.trim()
+                        : undefined;
+                } else if (formData.payerType === "custom") {
+                    payerName = formData.payerName.trim();
+                }
+            }
+
+            const initialPaymentAllocations =
+                formData.isPassengerSplit && formData.advanceAmount > 0
+                    ? Object.entries(formData.allocations)
+                        .filter(
+                            ([id, amt]) =>
+                                selectedPassengerIds.includes(id) &&
+                                Number(amt) > 0,
+                        )
+                        .map(([customerId, amt]) => ({
+                            customerId,
+                            amount: Number(amt),
+                        }))
+                    : undefined;
+
             const bookingData: ICreateBookingRequest = {
                 customerId: formData.customers[0]?.id || "",
                 packageId: formData.packageId,
                 packageTierId: formData.packageTierId || undefined,
                 batchId: formData.batchId,
+                batchOfferId: formData.batchOfferId || undefined,
                 customerIds,
                 totalAmount: formData.totalAmount,
                 discountAmount: formData.discountAmount || 0,
+                specialOfferDiscount: formData.specialOfferDiscount || 0,
                 adjustmentAmount: formData.adjustmentAmount || 0,
                 specialRequests: formData.specialRequests,
                 isCommonTier: formData.isCommonTier,
@@ -833,6 +1176,10 @@ export function CreateBookingDialog({
                             transactionId: formData.transactionId || undefined,
                             paymentDate: formData.paymentDate || undefined,
                             notes: "Initial payment",
+                            isPassengerSplit: formData.isPassengerSplit,
+                            payerName,
+                            payerCustomerId,
+                            allocations: initialPaymentAllocations,
                         }
                         : undefined,
             };
@@ -882,10 +1229,12 @@ export function CreateBookingDialog({
             packageId: "",
             packageTierId: "",
             batchId: "",
+            batchOfferId: "",
             numberOfCustomers: 0,
             customers: [],
             totalAmount: 0,
             discountAmount: 0,
+            specialOfferDiscount: 0,
             adjustmentAmount: 0,
             advanceAmount: 0,
             paymentMethod: "",
@@ -900,8 +1249,15 @@ export function CreateBookingDialog({
             isPaymentOverridden: false,
             paymentOverrideReason: "",
             overrideCapacityLimit: false,
+            isPassengerSplit: false,
+            payerType: "primary",
+            payerCustomerId: "",
+            payerName: "",
+            allocations: {},
         });
+        setSelectedPassengerIds([]);
         setStep(1);
+
         setCustomerSearch("");
         setCustomerPagination({
             offset: 0,
@@ -1227,6 +1583,41 @@ export function CreateBookingDialog({
                                                         </div>
                                                     )}
                                                     {errors.batchId && <p className="text-xs text-destructive mt-1 font-medium">{errors.batchId}</p>}
+
+                                                    {/* Active Special Offers Notice in Step 1 */}
+                                                    {formData.batchId && batchOffers.length > 0 && (
+                                                        <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2 mt-3">
+                                                            <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
+                                                                <Sparkles className="w-4 h-4 text-amber-500" />
+                                                                <span>{batchOffers.length} Special Offer{batchOffers.length > 1 ? "s" : ""} Available for this Batch!</span>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {batchOffers.map((offer) => (
+                                                                    <Badge
+                                                                        key={offer.id}
+                                                                        className="bg-amber-600 hover:bg-amber-600 text-white font-mono text-xs flex items-center gap-1.5"
+                                                                    >
+                                                                        <Tag className="w-3 h-3" />
+                                                                        <span>{offer.name}:</span>
+                                                                        <span className="font-bold">
+                                                                            {offer.discountMode === "range" &&
+                                                                                offer.minDiscountValue !== undefined &&
+                                                                                offer.minDiscountValue !== null
+                                                                                ? offer.discountType === "percentage"
+                                                                                    ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}% OFF`
+                                                                                    : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")} OFF`
+                                                                                : offer.discountType === "percentage"
+                                                                                    ? `${offer.discountValue}% OFF`
+                                                                                    : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
+                                                                        </span>
+                                                                    </Badge>
+                                                                ))}
+                                                            </div>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                You will be able to apply and preview this discount in Step 3 (Payment Details).
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -1460,15 +1851,15 @@ export function CreateBookingDialog({
                                                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3.5 bg-background border rounded-xl gap-3">
                                                                         <span className="font-semibold text-sm text-foreground">{tier.name}</span>
                                                                         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                                                                            <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-500" /> 
+                                                                            <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-500" />
                                                                                 {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
                                                                                 <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
                                                                             </span>
-                                                                            <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-slate-500" /> 
+                                                                            <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-slate-500" />
                                                                                 {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
                                                                                 <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
                                                                             </span>
-                                                                            <span className="flex items-center gap-1.5"><Baby className="w-4 h-4 text-slate-500" /> 
+                                                                            <span className="flex items-center gap-1.5"><Baby className="w-4 h-4 text-slate-500" />
                                                                                 {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
                                                                                 <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
                                                                             </span>
@@ -1493,15 +1884,15 @@ export function CreateBookingDialog({
                                                                                 <span className="flex items-center gap-3">
                                                                                     <span className="font-semibold">{tier.name}</span>
                                                                                     <span className="text-muted-foreground">|</span>
-                                                                                    <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> 
+                                                                                    <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />
                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
                                                                                     </span>
-                                                                                    <span className="flex items-center gap-1"><PersonStanding className="w-3.5 h-3.5" /> 
+                                                                                    <span className="flex items-center gap-1"><PersonStanding className="w-3.5 h-3.5" />
                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
                                                                                     </span>
-                                                                                    <span className="flex items-center gap-1"><Baby className="w-3.5 h-3.5" /> 
+                                                                                    <span className="flex items-center gap-1"><Baby className="w-3.5 h-3.5" />
                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
                                                                                     </span>
@@ -1569,15 +1960,15 @@ export function CreateBookingDialog({
                                                                                                 <span className="flex items-center gap-2">
                                                                                                     <span className="font-semibold">{tier.name}</span>
                                                                                                     <span className="text-muted-foreground">|</span>
-                                                                                                    <span className="flex items-center gap-0.5"><User className="w-3 h-3 text-slate-500" /> 
+                                                                                                    <span className="flex items-center gap-0.5"><User className="w-3 h-3 text-slate-500" />
                                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
                                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
                                                                                                     </span>
-                                                                                                    <span className="flex items-center gap-0.5"><PersonStanding className="w-3 h-3 text-slate-500" /> 
+                                                                                                    <span className="flex items-center gap-0.5"><PersonStanding className="w-3 h-3 text-slate-500" />
                                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
                                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
                                                                                                     </span>
-                                                                                                    <span className="flex items-center gap-0.5"><Baby className="w-3 h-3 text-slate-500" /> 
+                                                                                                    <span className="flex items-center gap-0.5"><Baby className="w-3 h-3 text-slate-500" />
                                                                                                         {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
                                                                                                         <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
                                                                                                     </span>
@@ -1855,6 +2246,216 @@ export function CreateBookingDialog({
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Batch Special Offers & Discounts Section */}
+                                        {(() => {
+                                            const baseTotal = calculateBaseTotal(
+                                                formData.packageId,
+                                                formData.packageTierId,
+                                                formData.isCommonTier,
+                                                formData.customerSelections,
+                                                formData.customers
+                                            );
+                                            const travelerCount = formData.customers.length || 1;
+
+                                            if (batchOffers.length === 0) return null;
+
+                                            return (
+                                                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/10 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <Sparkles className="w-5 h-5 text-amber-500" />
+                                                            <div>
+                                                                <Label className="text-sm font-bold text-foreground">
+                                                                    Special Offers Available for this Batch
+                                                                </Label>
+                                                                <p className="text-[11px] text-muted-foreground">
+                                                                    Select a promotional or group-based offer to apply automatically.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        {formData.batchOfferId && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-xs text-muted-foreground hover:text-foreground h-7"
+                                                                onClick={() => {
+                                                                    setFormData((prev) => {
+                                                                        const newTotal = Math.max(
+                                                                            0,
+                                                                            baseTotal + (prev.adjustmentAmount || 0) - (prev.discountAmount || 0)
+                                                                        );
+                                                                        return {
+                                                                            ...prev,
+                                                                            batchOfferId: "",
+                                                                            specialOfferDiscount: 0,
+                                                                            totalAmount: newTotal,
+                                                                        };
+                                                                    });
+                                                                }}
+                                                            >
+                                                                Clear Offer
+                                                            </Button>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                                                        {batchOffers.map((offer) => {
+                                                            const isSelected = formData.batchOfferId === offer.id;
+                                                            const isEligible = travelerCount >= offer.minTravelers;
+                                                            const offerSavings = computeSpecialOfferDiscount(offer, baseTotal, travelerCount);
+
+                                                            return (
+                                                                <div
+                                                                    key={offer.id}
+                                                                    onClick={() => {
+                                                                        if (!isEligible) {
+                                                                            toast.error(
+                                                                                `This offer requires at least ${offer.minTravelers} travelers (currently ${travelerCount}).`
+                                                                            );
+                                                                            return;
+                                                                        }
+
+                                                                        if (isSelected) {
+                                                                            // Deselect
+                                                                            setFormData((prev) => {
+                                                                                const newTotal = Math.max(
+                                                                                    0,
+                                                                                    baseTotal + (prev.adjustmentAmount || 0) - (prev.discountAmount || 0)
+                                                                                );
+                                                                                return {
+                                                                                    ...prev,
+                                                                                    batchOfferId: "",
+                                                                                    specialOfferDiscount: 0,
+                                                                                    totalAmount: newTotal,
+                                                                                };
+                                                                            });
+                                                                        } else {
+                                                                            // Select
+                                                                            setFormData((prev) => {
+                                                                                const newTotal = Math.max(
+                                                                                    0,
+                                                                                    baseTotal + (prev.adjustmentAmount || 0) - (prev.discountAmount || 0) - offerSavings
+                                                                                );
+                                                                                return {
+                                                                                    ...prev,
+                                                                                    batchOfferId: offer.id,
+                                                                                    specialOfferDiscount: offerSavings,
+                                                                                    totalAmount: newTotal,
+                                                                                };
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                    className={cn(
+                                                                        "p-3 rounded-lg border transition-all cursor-pointer relative flex flex-col justify-between gap-2",
+                                                                        isSelected
+                                                                            ? "border-amber-500 bg-amber-500/10 shadow-xs"
+                                                                            : isEligible
+                                                                                ? "bg-background hover:border-amber-400/60"
+                                                                                : "bg-muted/40 opacity-60 cursor-not-allowed"
+                                                                    )}
+                                                                >
+                                                                    <div className="flex items-start justify-between gap-2">
+                                                                        <div className="space-y-0.5">
+                                                                            <p className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                                                                                <Tag className="w-3.5 h-3.5 text-amber-500" />
+                                                                                {offer.name}
+                                                                            </p>
+                                                                            {offer.description && (
+                                                                                <p className="text-[10px] text-muted-foreground line-clamp-1">
+                                                                                    {offer.description}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                        <Badge
+                                                                            variant={isSelected ? "default" : "secondary"}
+                                                                            className={cn(
+                                                                                "text-[10px] font-mono",
+                                                                                isSelected ? "bg-amber-600 hover:bg-amber-600 text-white" : ""
+                                                                            )}
+                                                                        >
+                                                                            {offer.discountMode === "range" && offer.minDiscountValue !== undefined && offer.minDiscountValue !== null
+                                                                                ? offer.discountType === "percentage"
+                                                                                    ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}% OFF`
+                                                                                    : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")} OFF`
+                                                                                : offer.discountType === "percentage"
+                                                                                    ? `${offer.discountValue}% OFF`
+                                                                                    : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
+                                                                        </Badge>
+                                                                    </div>
+
+                                                                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/50">
+                                                                        <span className="text-muted-foreground">
+                                                                            {offer.minTravelers > 1 ? `Min ${offer.minTravelers} travelers` : "All bookings"}
+                                                                            {offer.discountScope === "passenger" ? " • Per Pax" : " • Total"}
+                                                                        </span>
+                                                                        {isEligible ? (
+                                                                            <span className="font-bold text-amber-600 dark:text-amber-400">
+                                                                                {offer.discountMode === "range" ? "Applied Savings: " : "Save "}
+                                                                                {BookingService.formatCurrency(offerSavings)}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-destructive font-medium text-[10px]">
+                                                                                Needs {offer.minTravelers - travelerCount} more pax
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Custom Range Input Field */}
+                                                                    {isSelected && offer.discountMode === "range" && (
+                                                                        <div
+                                                                            className="pt-2 border-t border-amber-500/20 space-y-1.5 mt-1"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            <div className="flex items-center justify-between text-[11px]">
+                                                                                <span className="font-semibold text-foreground">
+                                                                                    Enter Custom Discount ({offer.discountType === "percentage" ? "%" : "₹"}):
+                                                                                </span>
+                                                                                <span className="text-[10px] text-muted-foreground font-mono">
+                                                                                    Allowed: {offer.discountType === "percentage"
+                                                                                        ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}%`
+                                                                                        : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")}`}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="relative flex-1">
+                                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">
+                                                                                        {offer.discountType === "percentage" ? "%" : "₹"}
+                                                                                    </span>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        min={Number(offer.minDiscountValue || 0)}
+                                                                                        max={Number(offer.maxDiscountValue || 0)}
+                                                                                        step={offer.discountType === "percentage" ? 1 : 50}
+                                                                                        value={customOfferValues[offer.id] ?? Number(offer.maxDiscountValue ?? offer.discountValue)}
+                                                                                        onChange={(e) => {
+                                                                                            const val = parseFloat(e.target.value) || 0;
+                                                                                            handleRangeOfferValueChange(offer, val, baseTotal, travelerCount);
+                                                                                        }}
+                                                                                        className="h-8 pl-7 text-xs font-bold bg-background"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                            {customOfferValues[offer.id] !== undefined &&
+                                                                                (customOfferValues[offer.id] < Number(offer.minDiscountValue || 0) ||
+                                                                                    customOfferValues[offer.id] > Number(offer.maxDiscountValue || 0)) && (
+                                                                                    <p className="text-[10px] text-destructive font-semibold">
+                                                                                        Value must be between{" "}
+                                                                                        {offer.discountType === "percentage"
+                                                                                            ? `${offer.minDiscountValue}% and ${offer.maxDiscountValue}%`
+                                                                                            : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} and ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")}`}
+                                                                                    </p>
+                                                                                )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
 
                                         {/* Discount Section */}
                                         {(() => {
@@ -2270,6 +2871,272 @@ export function CreateBookingDialog({
                                             </div>
                                         </div>
 
+                                        {/* Optional Passenger-Wise Split / Multi-Payer Mode Switch */}
+                                        {formData.advanceAmount > 0 && formData.customers.length > 0 && (
+                                            <div className="flex items-center justify-between p-4 rounded-xl border bg-card border-border/80 shadow-2xs">
+                                                <div className="space-y-1 pr-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Split className="w-4 h-4 text-primary" />
+                                                        <Label htmlFor="passengerSplitToggleBooking" className="text-sm font-bold cursor-pointer">
+                                                            Passenger-Wise Split / Multi-Payer Mode
+                                                        </Label>
+                                                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground">
+                                                            Optional
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                                        Enable if this advance payment is provided by a specific person or is allocated towards specific travelers (e.g. joint family branches).
+                                                    </p>
+                                                </div>
+                                                <Switch
+                                                    id="passengerSplitToggleBooking"
+                                                    checked={formData.isPassengerSplit}
+                                                    onCheckedChange={(checked) => {
+                                                        setFormData((prev) => ({ ...prev, isPassengerSplit: checked }));
+                                                        if (checked) {
+                                                            setSelectedPassengerIds(formData.customers.map((c) => c.id || c.email || c.phone || c.firstName || ""));
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Passenger Split Details Box */}
+                                        {formData.advanceAmount > 0 && formData.isPassengerSplit && (
+                                            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-4">
+                                                {/* Payer Configuration */}
+                                                <div className="space-y-3 p-3.5 bg-background rounded-lg border">
+                                                    <Label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                                                        <UserCheck className="w-3.5 h-3.5 text-primary" />
+                                                        Who is making this advance payment?
+                                                    </Label>
+                                                    <div className="grid sm:grid-cols-3 gap-2">
+                                                        <Button
+                                                            type="button"
+                                                            variant={formData.payerType === "primary" ? "default" : "outline"}
+                                                            size="sm"
+                                                            className="text-xs justify-start h-9"
+                                                            onClick={() => setFormData((p) => ({ ...p, payerType: "primary" }))}
+                                                        >
+                                                            Primary Booker ({formData.customers[0]?.firstName || "Traveler 1"})
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant={formData.payerType === "passenger" ? "default" : "outline"}
+                                                            size="sm"
+                                                            className="text-xs justify-start h-9"
+                                                            onClick={() =>
+                                                                setFormData((p) => ({
+                                                                    ...p,
+                                                                    payerType: "passenger",
+                                                                    payerCustomerId: p.payerCustomerId || formData.customers[0]?.id || "",
+                                                                }))
+                                                            }
+                                                        >
+                                                            Select Specific Traveler
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant={formData.payerType === "custom" ? "default" : "outline"}
+                                                            size="sm"
+                                                            className="text-xs justify-start h-9"
+                                                            onClick={() => setFormData((p) => ({ ...p, payerType: "custom" }))}
+                                                        >
+                                                            Other / Third-Party Payer
+                                                        </Button>
+                                                    </div>
+
+                                                    {formData.payerType === "passenger" && (
+                                                        <div className="pt-2">
+                                                            <Select
+                                                                value={formData.payerCustomerId}
+                                                                onValueChange={(val) => setFormData((p) => ({ ...p, payerCustomerId: val }))}
+                                                            >
+                                                                <SelectTrigger className="h-9 text-xs bg-background">
+                                                                    <SelectValue placeholder="Choose paying traveler..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {formData.customers.map((c, i) => (
+                                                                        <SelectItem key={c.id || i} value={c.id || ""} className="text-xs">
+                                                                            {c.firstName} {c.lastName} ({c.phone || c.email || `Passenger #${i + 1}`})
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    )}
+
+                                                    {formData.payerType === "custom" && (
+                                                        <div className="pt-2">
+                                                            <Input
+                                                                placeholder="Enter payer full name & contact (e.g. John Doe - Sponsor)..."
+                                                                value={formData.payerName}
+                                                                onChange={(e) => setFormData((p) => ({ ...p, payerName: e.target.value }))}
+                                                                className="h-9 text-xs bg-background"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Quick Actions & Allocations */}
+                                                <div className="space-y-3">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                        <div>
+                                                            <Label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                                                                <Users className="w-3.5 h-3.5 text-primary" />
+                                                                Allocate Advance Amount To Travelers
+                                                            </Label>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                Specify which travelers this payment is covering.
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 text-[11px] px-2.5 bg-background"
+                                                                onClick={handleSplitAdvanceEqually}
+                                                            >
+                                                                ⚡ Split Advance Evenly
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Traveler Allocations List */}
+                                                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                                                        {(() => {
+                                                            const shares = calculatePassengerShares();
+                                                            return formData.customers.map((c, i) => {
+                                                                const custId = c.id || c.email || c.phone || c.firstName || "";
+                                                                const isChecked = selectedPassengerIds.includes(custId);
+                                                                const currentAmt = formData.allocations[custId] || "";
+                                                                const targetShare = shares[custId] || 0;
+                                                                const selection = formData.customerSelections[custId];
+                                                                const tier = selectedPackage?.packageTiers?.find(
+                                                                    (t) => t.id === (formData.isCommonTier ? formData.packageTierId : selection?.tierId)
+                                                                );
+
+                                                                return (
+                                                                    <div
+                                                                        key={custId || i}
+                                                                        className={cn(
+                                                                            "p-3 rounded-lg border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3",
+                                                                            isChecked
+                                                                                ? "bg-background border-border shadow-2xs"
+                                                                                : "bg-muted/30 border-dashed border-border/60 opacity-60"
+                                                                        )}
+                                                                    >
+                                                                        <div className="flex items-center gap-3 min-w-0">
+                                                                            <Checkbox
+                                                                                id={`cb-pass-${custId}`}
+                                                                                checked={isChecked}
+                                                                                onCheckedChange={() => togglePassengerCheckbox(custId)}
+                                                                            />
+                                                                            <div className="min-w-0">
+                                                                                <Label
+                                                                                    htmlFor={`cb-pass-${custId}`}
+                                                                                    className="text-xs font-semibold text-foreground cursor-pointer flex items-center gap-1.5"
+                                                                                >
+                                                                                    {c.firstName} {c.lastName}
+                                                                                    <span className="capitalize font-medium text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                                                                        {selection?.ageCategory || "Adult"}
+                                                                                    </span>
+                                                                                </Label>
+                                                                                <p className="text-[10px] text-muted-foreground">
+                                                                                    {tier?.name ? `${tier.name} • ` : ""}Target Share: <span className="font-semibold text-foreground">{BookingService.formatCurrency(targetShare)}</span>
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {isChecked && (
+                                                                            <div className="flex items-center gap-2 shrink-0">
+                                                                                <div className="relative w-36">
+                                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">
+                                                                                        ₹
+                                                                                    </span>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        min="0"
+                                                                                        placeholder="0"
+                                                                                        value={currentAmt}
+                                                                                        onChange={(e) => handleAllocationChange(custId, e.target.value)}
+                                                                                        className="h-8 pl-6 text-xs bg-background font-semibold"
+                                                                                    />
+                                                                                </div>
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="ghost"
+                                                                                    size="sm"
+                                                                                    className="h-8 px-2 text-[11px] text-primary hover:bg-primary/10"
+                                                                                    onClick={() => handleAssignFullAdvanceToPassenger(custId)}
+                                                                                >
+                                                                                    Full Share
+                                                                                </Button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            });
+                                                        })()}
+                                                    </div>
+
+                                                    {/* Allocation Balance & Sum Status */}
+                                                    {(() => {
+                                                        const activeAllocations = Object.entries(formData.allocations).filter(([id]) =>
+                                                            selectedPassengerIds.includes(id)
+                                                        );
+                                                        const allocatedSum = activeAllocations.reduce((s, [_, v]) => s + (Number(v) || 0), 0);
+                                                        const diff = Math.round((allocatedSum - (formData.advanceAmount || 0)) * 100) / 100;
+
+                                                        return (
+                                                            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t text-xs">
+                                                                <div className="text-muted-foreground">
+                                                                    Allocated Sum:{" "}
+                                                                    <span className="font-bold text-foreground">
+                                                                        {BookingService.formatCurrency(allocatedSum)}
+                                                                    </span>{" "}
+                                                                    / Advance Total:{" "}
+                                                                    <span className="font-bold text-foreground">
+                                                                        {BookingService.formatCurrency(formData.advanceAmount || 0)}
+                                                                    </span>
+                                                                </div>
+
+                                                                {diff !== 0 && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                                                            {diff > 0
+                                                                                ? `(+${BookingService.formatCurrency(diff)} excess)`
+                                                                                : `(${BookingService.formatCurrency(Math.abs(diff))} unallocated)`}
+                                                                        </span>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="secondary"
+                                                                            size="sm"
+                                                                            className="h-7 text-[10px] px-2"
+                                                                            onClick={() =>
+                                                                                setFormData((p) => ({
+                                                                                    ...p,
+                                                                                    advanceAmount: allocatedSum,
+                                                                                    isPaymentOverridden: true,
+                                                                                }))
+                                                                            }
+                                                                        >
+                                                                            Sync Advance
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                    {errors.allocations && (
+                                                        <p className="text-xs text-destructive font-medium">{errors.allocations}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+
                                         {/* Rest of the payment functionality */}
                                         {formData.advanceAmount > 0 && (
                                             <Card className="border border-muted/80 bg-muted/10 shadow-none">
@@ -2516,20 +3383,88 @@ export function CreateBookingDialog({
                                     <div className="space-y-2 pt-2 border-t">
                                         <h4 className="text-xs font-bold text-muted-foreground uppercase">Pricing Breakdown</h4>
                                         <div className="space-y-2 p-3 rounded-xl border bg-background">
-                                            <div className="flex justify-between text-xs text-muted-foreground">
-                                                <span>Total Price:</span>
-                                                <span className="font-semibold text-foreground">{BookingService.formatCurrency(formData.totalAmount)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs text-muted-foreground">
-                                                <span>Paid Advance:</span>
-                                                <span className="font-semibold text-foreground">{BookingService.formatCurrency(formData.advanceAmount)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs border-t pt-2 font-bold text-foreground">
-                                                <span>Remaining Balance:</span>
-                                                <span className="text-primary">{BookingService.formatCurrency(Math.max(0, formData.totalAmount - formData.advanceAmount))}</span>
-                                            </div>
+                                            {(() => {
+                                                const baseTotal = calculateBaseTotal(
+                                                    formData.packageId,
+                                                    formData.packageTierId,
+                                                    formData.isCommonTier,
+                                                    formData.customerSelections,
+                                                    formData.customers
+                                                );
+                                                return (
+                                                    <>
+                                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                                            <span>Base Price:</span>
+                                                            <span className="font-medium text-foreground">{BookingService.formatCurrency(baseTotal)}</span>
+                                                        </div>
+                                                        {formData.specialOfferDiscount > 0 && (
+                                                            <div className="flex justify-between text-xs text-amber-600 font-semibold">
+                                                                <span className="flex items-center gap-1">
+                                                                    <Sparkles className="w-3 h-3" /> Special Offer:
+                                                                </span>
+                                                                <span>- {BookingService.formatCurrency(formData.specialOfferDiscount)}</span>
+                                                            </div>
+                                                        )}
+                                                        {formData.discountAmount > 0 && (
+                                                            <div className="flex justify-between text-xs text-emerald-600 font-semibold">
+                                                                <span>Manual Discount:</span>
+                                                                <span>- {BookingService.formatCurrency(formData.discountAmount)}</span>
+                                                            </div>
+                                                        )}
+                                                        {(formData.adjustmentAmount || 0) > 0 && (
+                                                            <div className="flex justify-between text-xs text-blue-600 font-semibold">
+                                                                <span>Adjustments:</span>
+                                                                <span>+ {BookingService.formatCurrency(formData.adjustmentAmount)}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex justify-between text-xs border-t pt-2 font-bold text-foreground">
+                                                            <span>Total Price:</span>
+                                                            <span className="font-semibold text-foreground">{BookingService.formatCurrency(formData.totalAmount)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                                            <span>Paid Advance:</span>
+                                                            <span className="font-semibold text-foreground">{BookingService.formatCurrency(formData.advanceAmount)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs border-t pt-2 font-bold text-foreground">
+                                                            <span>Remaining Balance:</span>
+                                                            <span className="text-primary">{BookingService.formatCurrency(Math.max(0, formData.totalAmount - formData.advanceAmount))}</span>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
+
+                                    {/* Passenger Allocations Breakdown in Sidebar */}
+                                    {formData.advanceAmount > 0 && formData.isPassengerSplit && (
+                                        <div className="space-y-2 pt-2 border-t">
+                                            <h4 className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                                                <Split className="w-3.5 h-3.5 text-primary" /> Advance Split
+                                            </h4>
+                                            <div className="space-y-1.5 p-3 rounded-xl border bg-background text-xs">
+                                                {formData.customers
+                                                    .filter((c) => {
+                                                        const custId = c.id || c.email || c.phone || c.firstName || "";
+                                                        return selectedPassengerIds.includes(custId) && Number(formData.allocations[custId] || 0) > 0;
+                                                    })
+                                                    .map((c) => {
+                                                        const custId = c.id || c.email || c.phone || c.firstName || "";
+                                                        const amt = Number(formData.allocations[custId] || 0);
+                                                        return (
+                                                            <div key={custId} className="flex justify-between items-center py-0.5">
+                                                                <span className="font-medium text-foreground truncate max-w-[120px]">
+                                                                    {c.firstName} {c.lastName}
+                                                                </span>
+                                                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                                    {BookingService.formatCurrency(amt)}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        </div>
+                                    )}
+
                                 </div>
                             </ScrollArea>
                         </div>

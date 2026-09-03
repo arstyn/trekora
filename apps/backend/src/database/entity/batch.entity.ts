@@ -14,6 +14,7 @@ import { Organization } from './organization.entity';
 import { Package } from './package-related/package.entity';
 import { Booking } from './booking.entity';
 import { BatchTier } from './batch-tier.entity';
+import { BatchOffer } from './batch-offer.entity';
 
 export enum BatchStatus {
   UPCOMING = 'upcoming',
@@ -82,4 +83,10 @@ export class Batch {
 
   @OneToMany(() => BatchTier, (batchTier) => batchTier.batch, { cascade: true })
   batchTiers: BatchTier[];
+
+  @OneToMany(() => BatchOffer, (batchOffer) => batchOffer.batch, {
+    cascade: true,
+  })
+  offers: BatchOffer[];
 }
+

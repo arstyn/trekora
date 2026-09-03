@@ -51,7 +51,24 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsString()
   receiptFilePath?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPassengerSplit?: boolean;
+
+  @IsOptional()
+  @IsString()
+  payerName?: string;
+
+  @IsOptional()
+  @IsUUID()
+  payerCustomerId?: string;
+
+  @IsOptional()
+  @IsArray()
+  allocations?: any[];
 }
+
 
 export class CreateBookingDto {
   @IsUUID()
@@ -118,6 +135,15 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   paymentOverrideReason?: string;
+
+  @IsOptional()
+  @IsUUID()
+  batchOfferId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  specialOfferDiscount?: number;
 
   @IsOptional()
   @IsUUID()
@@ -188,6 +214,15 @@ export class UpdateBookingDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  specialOfferDiscount?: number;
+
+  @IsOptional()
+  @IsUUID()
+  batchOfferId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   adjustmentAmount?: number;
 
   @IsOptional()
@@ -249,9 +284,11 @@ export class BookingSummaryDto {
   packageName: string;
   batchId?: string;
   batchStartDate: Date;
+  batchOfferId?: string | null;
   numberOfCustomers: number;
   totalAmount: number;
   discountAmount?: number;
+  specialOfferDiscount?: number;
   adjustmentAmount?: number;
   advancePaid: number;
   balanceAmount: number;
@@ -265,7 +302,8 @@ export class BookingSummaryDto {
 }
 
 export class BookingCustomerResponseDto {
-  id: string;
+  id: string; // customerId
+  bookingCustomerId?: string;
   firstName: string;
   lastName?: string;
   middleName?: string;
@@ -281,6 +319,23 @@ export class BookingCustomerResponseDto {
   specialRequests?: string;
   medicalConditions?: string;
   dietaryRestrictions?: string;
+  packageTierId?: string;
+  packageTierName?: string;
+  ageCategory?: 'adult' | 'child' | 'infant';
+  calculatedShare?: number;
+  paidAmount?: number;
+  balanceAmount?: number;
+  paymentStatus?: 'paid' | 'partial' | 'unpaid';
+}
+
+export class BookingPaymentAllocationResponseDto {
+  id: string;
+  bookingCustomerId: string;
+  customerId?: string;
+  customerName: string;
+  customerEmail?: string;
+  amount: number;
+  notes?: string;
 }
 
 export class BookingResponseDto {
@@ -309,9 +364,20 @@ export class BookingResponseDto {
     totalSeats: number;
     bookedSeats: number;
   };
+  batchOffer?: {
+    id: string;
+    name: string;
+    discountType: string;
+    discountMode?: string;
+    discountValue: number;
+    minDiscountValue?: number | null;
+    maxDiscountValue?: number | null;
+    discountScope: string;
+  } | null;
   numberOfCustomers: number;
   totalAmount: number;
   discountAmount?: number;
+  specialOfferDiscount?: number;
   adjustmentAmount?: number;
   advancePaid: number;
   balanceAmount: number;
@@ -340,9 +406,14 @@ export class BookingResponseDto {
     transactionId?: string;
     notes?: string;
     receiptFilePath?: string;
+    isPassengerSplit?: boolean;
+    payerName?: string;
+    payerCustomerId?: string;
+    allocations?: BookingPaymentAllocationResponseDto[];
   }[];
   currentWorkflowId?: string;
   currentWorkflow?: any;
   createdAt: Date;
   updatedAt: Date;
 }
+

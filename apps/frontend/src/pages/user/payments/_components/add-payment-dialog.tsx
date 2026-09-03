@@ -2,6 +2,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
     DialogContent,
@@ -9,7 +10,6 @@ import {
     DialogTitle
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { TypableDatePicker } from "@/components/ui/typable-date-picker";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -20,16 +20,32 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { TypableDatePicker } from "@/components/ui/typable-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { debounce } from "@/lib/utils";
+import BookingService from "@/services/booking.service";
 import PaymentService from "@/services/payment.service";
 import type {
+    BookingCustomerPaymentSummary,
     BookingForPayment,
     CreatePaymentDto,
+    PassengerPaymentAllocation,
 } from "@/types/payment.types";
 import { PaymentMethod, PaymentType } from "@/types/payment.types";
-import { AlertTriangle, ArrowLeft, Loader2, Plus, Search, Upload } from "lucide-react";
+import {
+    AlertCircle,
+    AlertTriangle,
+    ArrowLeft,
+    Loader2,
+    Plus,
+    Search,
+    Split,
+    Upload,
+    UserCheck,
+    Users
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -37,12 +53,14 @@ interface AddPaymentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onPaymentAdded?: () => void;
+    initialBookingId?: string;
 }
 
 export function AddPaymentDialog({
     open,
     onOpenChange,
     onPaymentAdded,
+    initialBookingId,
 }: AddPaymentDialogProps) {
     const [formData, setFormData] = useState({
         bookingId: "",
@@ -54,21 +72,25 @@ export function AddPaymentDialog({
         paymentDate: new Date().toISOString().split("T")[0],
         paymentScreenshot: null as File | null,
         notes: "",
+        isPassengerSplit: false,
+        payerType: "primary", // 'primary' | 'passenger' | 'custom'
+        payerCustomerId: "",
+        payerName: "",
+        allocations: {} as Record<string, string>, // bookingCustomerId -> allocated amount
     });
 
+    const [selectedPassengerIds, setSelectedPassengerIds] = useState<string[]>([]);
     const [bookingSearch, setBookingSearch] = useState("");
     const [bookings, setBookings] = useState<BookingForPayment[]>([]);
     const [loading, setLoading] = useState({
         bookings: false,
         submit: false,
         upload: false,
+        details: false,
     });
     const [error, setError] = useState<string | null>(null);
-    const [validationErrors, setValidationErrors] = useState<
-        Record<string, string>
-    >({});
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const { toast } = useToast();
-    // Pagination state
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
@@ -88,8 +110,8 @@ export function AddPaymentDialog({
             });
             setBookings(response.data);
             setTotalPages(Math.ceil(response.total / 10));
-        } catch (error) {
-            console.error("Error fetching bookings:", error);
+        } catch (err) {
+            console.error("Error fetching bookings:", err);
             setError("Failed to load bookings. Please try again.");
             setBookings([]);
         } finally {
@@ -99,22 +121,265 @@ export function AddPaymentDialog({
 
     const debouncedSearch = useCallback(
         debounce(async (searchTerm: string) => {
-            // Reset to first page on new search
             setPage(1);
             await fetchBookings(1, searchTerm);
         }, 500),
         []
     );
 
-    // Handle booking search and pagination
     useEffect(() => {
         debouncedSearch(bookingSearch);
     }, [bookingSearch, debouncedSearch]);
 
-    // Refetch when page changes
     useEffect(() => {
         fetchBookings(page, bookingSearch);
     }, [page]);
+
+    // Format currency helper
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0,
+        }).format(amount || 0);
+    };
+
+    // When booking is selected, ensure customers are loaded
+    const handleSelectBooking = async (booking: BookingForPayment) => {
+        setFormData((prev) => ({
+            ...prev,
+            bookingId: booking.id,
+            amount:
+                booking.balanceAmount > 0
+                    ? String(booking.balanceAmount)
+                    : prev.amount,
+            paymentType:
+                booking.advancePaid === 0
+                    ? PaymentType.ADVANCE
+                    : booking.balanceAmount > 0
+                        ? PaymentType.BALANCE
+                        : prev.paymentType,
+        }));
+
+        if (validationErrors.bookingId) {
+            setValidationErrors((prev) => ({ ...prev, bookingId: "" }));
+        }
+
+        // If booking doesn't have customers details loaded, fetch full booking
+        if (!booking.customers || booking.customers.length === 0) {
+            try {
+                setLoading((prev) => ({ ...prev, details: true }));
+                const fullBooking = await BookingService.getBookingById(booking.id);
+                if (fullBooking && fullBooking.customers) {
+                    const mappedCustomers: BookingCustomerPaymentSummary[] =
+                        fullBooking.customers.map((c) => ({
+                            id: c.bookingCustomerId || c.id || "",
+                            customerId: c.id || "",
+                            name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || "Passenger",
+                            email: c.email || "",
+                            phone: c.phone || "",
+                            ageCategory: c.ageCategory || "adult",
+                            tierName: c.packageTierName,
+                            calculatedShare: Number(c.calculatedShare || 0),
+                            paidAmount: Number(c.paidAmount || 0),
+                            balanceAmount: Number(c.balanceAmount || 0),
+                            status: c.paymentStatus || "unpaid",
+                        }));
+
+                    setBookings((prev) =>
+                        prev.map((b) =>
+                            b.id === booking.id ? { ...b, customers: mappedCustomers } : b
+                        )
+                    );
+
+                    setSelectedPassengerIds(mappedCustomers.map((c) => c.id));
+                }
+            } catch (err) {
+                console.error("Failed to load booking customers:", err);
+            } finally {
+                setLoading((prev) => ({ ...prev, details: false }));
+            }
+        } else {
+            setSelectedPassengerIds(booking.customers.map((c) => c.id));
+        }
+    };
+
+    // Load initial booking when dialog opens with initialBookingId
+    useEffect(() => {
+        if (!open) {
+            resetForm();
+            return;
+        }
+
+        if (initialBookingId) {
+            const loadInitialBooking = async () => {
+                try {
+                    setLoading((prev) => ({ ...prev, bookings: true }));
+                    const booking = await BookingService.getBookingById(initialBookingId);
+                    if (booking) {
+                        const primaryCust = booking.primaryCustomer || booking.customers?.[0];
+                        const customerName = primaryCust
+                            ? `${primaryCust.firstName || ""} ${primaryCust.lastName || ""}`.trim()
+                            : "Unknown Customer";
+
+                        const mappedCustomers: BookingCustomerPaymentSummary[] =
+                            booking.customers
+                                ? booking.customers.map((c) => ({
+                                    id: c.bookingCustomerId || c.id || "",
+                                    customerId: c.id || "",
+                                    name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || "Passenger",
+                                    email: c.email || "",
+                                    phone: c.phone || "",
+                                    ageCategory: c.ageCategory || "adult",
+                                    tierName: c.packageTierName,
+                                    calculatedShare: Number(c.calculatedShare || 0),
+                                    paidAmount: Number(c.paidAmount || 0),
+                                    balanceAmount: Number(c.balanceAmount || 0),
+                                    status: c.paymentStatus || "unpaid",
+                                }))
+                                : [];
+
+                        const bookingItem: BookingForPayment = {
+                            id: booking.id,
+                            bookingNumber: booking.bookingNumber,
+                            customer: {
+                                id: primaryCust?.id || "",
+                                name: customerName,
+                                email: primaryCust?.email || "",
+                            },
+                            package: {
+                                id: booking.package?.id || "",
+                                name: booking.package?.name || "Unknown Package",
+                                destination: booking.package?.destination,
+                            },
+                            totalAmount: Number(booking.totalAmount) || 0,
+                            advancePaid: Number(booking.advancePaid) || 0,
+                            balanceAmount: Number(booking.balanceAmount) || 0,
+                            customers: mappedCustomers,
+                        };
+
+                        setBookings((prev) => {
+                            const exists = prev.some((b) => b.id === bookingItem.id);
+                            return exists ? prev : [bookingItem, ...prev];
+                        });
+
+                        setFormData((prev) => ({
+                            ...prev,
+                            bookingId: bookingItem.id,
+                            amount:
+                                bookingItem.balanceAmount > 0
+                                    ? String(bookingItem.balanceAmount)
+                                    : prev.amount,
+                            paymentType:
+                                bookingItem.advancePaid === 0
+                                    ? PaymentType.ADVANCE
+                                    : bookingItem.balanceAmount > 0
+                                        ? PaymentType.BALANCE
+                                        : prev.paymentType,
+                        }));
+
+                        setSelectedPassengerIds(mappedCustomers.map((c) => c.id));
+                    }
+                } catch (err) {
+                    console.error("Failed to load initial booking:", err);
+                } finally {
+                    setLoading((prev) => ({ ...prev, bookings: false }));
+                }
+            };
+
+            loadInitialBooking();
+        }
+    }, [open, initialBookingId]);
+
+    // Quick Split actions
+    const handleSplitEqually = () => {
+        const activeIds = selectedPassengerIds;
+        if (activeIds.length === 0) {
+            toast({
+                title: "No passengers selected",
+                description: "Please select at least one passenger to split payment among.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        const totalToSplit = Number(formData.amount) || selectedBooking?.balanceAmount || 0;
+        if (totalToSplit <= 0) return;
+
+        const equalShare = Math.floor((totalToSplit / activeIds.length) * 100) / 100;
+        let remainder = Math.round((totalToSplit - equalShare * activeIds.length) * 100) / 100;
+
+        const newAllocations: Record<string, string> = {};
+        activeIds.forEach((id, index) => {
+            let allocated = equalShare;
+            if (index === activeIds.length - 1 && remainder !== 0) {
+                allocated = Math.round((allocated + remainder) * 100) / 100;
+            }
+            newAllocations[id] = String(allocated);
+        });
+
+        setFormData((prev) => ({
+            ...prev,
+            amount: String(totalToSplit),
+            allocations: newAllocations,
+        }));
+    };
+
+    const handleAssignFullAmountToPassenger = (targetPassengerId: string) => {
+        const totalPayment = Number(formData.amount) || 0;
+        const newAllocations: Record<string, string> = {};
+
+        if (!selectedBooking?.customers) return;
+
+        selectedBooking.customers.forEach((c) => {
+            if (c.id === targetPassengerId) {
+                const targetVal = totalPayment > 0 ? totalPayment : Number(c.balanceAmount || c.calculatedShare || 0);
+                newAllocations[c.id] = String(targetVal);
+            } else {
+                newAllocations[c.id] = "0";
+            }
+        });
+
+        if (!selectedPassengerIds.includes(targetPassengerId)) {
+            setSelectedPassengerIds((prev) => [...prev, targetPassengerId]);
+        }
+
+        setFormData((prev) => ({
+            ...prev,
+            allocations: newAllocations,
+        }));
+    };
+
+    const handleAllocationChange = (passengerId: string, val: string) => {
+        const newAllocations = {
+            ...formData.allocations,
+            [passengerId]: val,
+        };
+
+        setFormData((prev) => ({
+            ...prev,
+            allocations: newAllocations,
+        }));
+    };
+
+    const togglePassengerCheckbox = (passengerId: string) => {
+        setSelectedPassengerIds((prev) => {
+            if (prev.includes(passengerId)) {
+                const next = prev.filter((id) => id !== passengerId);
+                // Remove allocation for unselected
+                const updatedAllocations = { ...formData.allocations };
+                delete updatedAllocations[passengerId];
+                setFormData((p) => ({
+                    ...p,
+                    allocations: updatedAllocations,
+                }));
+                return next;
+            } else {
+                return [...prev, passengerId];
+            }
+        });
+    };
+
 
     const validateForm = (): boolean => {
         const errors: Record<string, string> = {};
@@ -123,13 +388,14 @@ export function AddPaymentDialog({
             errors.bookingId = "Please select a booking";
         }
 
-        if (!formData.amount || Number(formData.amount) <= 0) {
+        const totalAmountNum = Number(formData.amount);
+        if (!formData.amount || totalAmountNum <= 0) {
             errors.amount = "Please enter a valid amount";
         }
 
         if (
             selectedBooking &&
-            Number(formData.amount) > selectedBooking.balanceAmount
+            totalAmountNum > selectedBooking.balanceAmount
         ) {
             errors.amount = `Amount cannot exceed balance of ${formatCurrency(
                 selectedBooking.balanceAmount
@@ -148,29 +414,41 @@ export function AddPaymentDialog({
             errors.paymentDate = "Please select a payment date";
         }
 
+        // Passenger split validations
+        if (formData.isPassengerSplit) {
+            const allocationsList = Object.entries(formData.allocations)
+                .filter(([id, amt]) => selectedPassengerIds.includes(id) && Number(amt) > 0);
+
+            if (allocationsList.length === 0) {
+                errors.allocations = "Please allocate amounts to at least one passenger";
+            }
+
+            const allocatedSum = allocationsList.reduce(
+                (sum, [_, amt]) => sum + Number(amt),
+                0
+            );
+
+            if (Math.abs(allocatedSum - totalAmountNum) > 0.01) {
+                errors.allocations = `Passenger allocations total (${formatCurrency(
+                    allocatedSum
+                )}) must match payment amount (${formatCurrency(totalAmountNum)})`;
+            }
+        }
+
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
-    };
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-IN", {
-            style: "currency",
-            currency: "INR",
-            maximumFractionDigits: 0,
-        }).format(amount || 0);
     };
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            // Validate file type and size
             const allowedTypes = [
                 "image/jpeg",
                 "image/jpg",
                 "image/png",
                 "application/pdf",
             ];
-            const maxSize = 5 * 1024 * 1024; // 5MB
+            const maxSize = 5 * 1024 * 1024;
 
             if (!allowedTypes.includes(file.type)) {
                 toast({
@@ -205,7 +483,35 @@ export function AddPaymentDialog({
             setLoading((prev) => ({ ...prev, submit: true }));
             setError(null);
 
-            // Create payment DTO
+            let payerName: string | undefined = undefined;
+            let payerCustomerId: string | undefined = undefined;
+
+            if (formData.isPassengerSplit) {
+                if (formData.payerType === "primary") {
+                    payerCustomerId = selectedBooking?.customer?.id;
+                    payerName = selectedBooking?.customer?.name;
+                } else if (formData.payerType === "passenger") {
+                    const pass = selectedBooking?.customers?.find(
+                        (c) => c.customerId === formData.payerCustomerId || c.id === formData.payerCustomerId
+                    );
+                    payerCustomerId = pass?.customerId;
+                    payerName = pass?.name;
+                } else if (formData.payerType === "custom") {
+                    payerName = formData.payerName.trim();
+                }
+            }
+
+            // Prepare allocations
+            let allocations: PassengerPaymentAllocation[] | undefined = undefined;
+            if (formData.isPassengerSplit) {
+                allocations = Object.entries(formData.allocations)
+                    .filter(([id, amt]) => selectedPassengerIds.includes(id) && Number(amt) > 0)
+                    .map(([bcId, amt]) => ({
+                        bookingCustomerId: bcId,
+                        amount: Number(amt),
+                    }));
+            }
+
             const paymentData: CreatePaymentDto = {
                 bookingId: formData.bookingId,
                 amount: Number(formData.amount),
@@ -215,12 +521,14 @@ export function AddPaymentDialog({
                 transactionId: formData.transactionId || undefined,
                 paymentDate: formData.paymentDate,
                 notes: formData.notes || undefined,
+                isPassengerSplit: formData.isPassengerSplit,
+                payerName,
+                payerCustomerId,
+                allocations,
             };
 
-            // Create the payment
             const newPayment = await PaymentService.createPayment(paymentData);
 
-            // Upload receipt if provided
             if (formData.paymentScreenshot) {
                 try {
                     setLoading((prev) => ({ ...prev, upload: true }));
@@ -230,7 +538,6 @@ export function AddPaymentDialog({
                     );
                 } catch (uploadError) {
                     console.error("Error uploading receipt:", uploadError);
-                    // Don't fail the whole process if upload fails
                     toast({
                         title: "Payment created",
                         description:
@@ -247,15 +554,13 @@ export function AddPaymentDialog({
                 description: "Payment added successfully.",
             });
 
-            // Reset form and close dialog
             resetForm();
             onOpenChange(false);
             onPaymentAdded?.();
-        } catch (error) {
-            console.error("Error creating payment:", error);
+        } catch (err: any) {
+            console.error("Error creating payment:", err);
             const errorMessage =
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (error as any)?.response?.data?.message ||
+                err?.response?.data?.message ||
                 "Failed to create payment. Please try again.";
             setError(errorMessage);
             toast({
@@ -279,7 +584,13 @@ export function AddPaymentDialog({
             paymentDate: new Date().toISOString().split("T")[0],
             paymentScreenshot: null,
             notes: "",
+            isPassengerSplit: false,
+            payerType: "primary",
+            payerCustomerId: "",
+            payerName: "",
+            allocations: {},
         });
+        setSelectedPassengerIds([]);
         setBookingSearch("");
         setBookings([]);
         setPage(1);
@@ -287,27 +598,23 @@ export function AddPaymentDialog({
         setValidationErrors({});
     };
 
-    // Reset form when dialog closes
-    useEffect(() => {
-        if (!open) {
-            resetForm();
-        }
-    }, [open]);
-
-    // Live calculation for balance updates
     const currentPaymentAmount = Number(formData.amount) || 0;
     const balanceAfterPayment = selectedBooking
         ? Math.max(0, selectedBooking.balanceAmount - currentPaymentAmount)
         : 0;
 
+    const totalAllocatedAmount = Object.entries(formData.allocations)
+        .filter(([id]) => selectedPassengerIds.includes(id))
+        .reduce((sum, [_, amt]) => sum + (Number(amt) || 0), 0);
+
     return (
         <Dialog open={open} onOpenChange={(val) => { if (!val) resetForm(); onOpenChange(val); }}>
-            <DialogContent className="responsive-dialog sm:max-w-6xl w-[95vw] h-[85vh] max-lg:h-auto max-lg:max-h-[90vh] overflow-hidden max-lg:overflow-y-auto p-0 flex gap-0 flex-col rounded-xl border bg-background shadow-2xl">
+            <DialogContent className="responsive-dialog sm:max-w-6xl w-[95vw] h-[88vh] max-lg:h-auto max-lg:max-h-[92vh] overflow-hidden max-lg:overflow-y-auto p-0 flex gap-0 flex-col rounded-xl border bg-background shadow-2xl">
                 <style>{`
                     @media (max-height: 800px) {
                         .responsive-dialog {
                             height: auto !important;
-                            max-height: 90vh !important;
+                            max-height: 92vh !important;
                             overflow-y: auto !important;
                         }
                         .responsive-layout, .responsive-left {
@@ -328,7 +635,7 @@ export function AddPaymentDialog({
                             Add New Payment
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                            Search for a booking and record the transaction details to apply a payment.
+                            Search for a booking, choose payment split or bulk mode, and record the transaction.
                         </DialogDescription>
                     </div>
                 </div>
@@ -351,7 +658,9 @@ export function AddPaymentDialog({
                                 {!formData.bookingId ? (
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="bookingSearch" className="text-sm font-semibold">1. Search and Select Booking</Label>
+                                            <Label htmlFor="bookingSearch" className="text-sm font-semibold">
+                                                1. Search and Select Booking
+                                            </Label>
                                             <div className="relative">
                                                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                                 <Input
@@ -399,15 +708,7 @@ export function AddPaymentDialog({
                                                             ? "border-primary bg-primary/5 ring-1 ring-primary"
                                                             : "bg-card border-border"
                                                             }`}
-                                                        onClick={() => {
-                                                            setFormData((prev) => ({
-                                                                ...prev,
-                                                                bookingId: booking.id,
-                                                            }));
-                                                            if (validationErrors.bookingId) {
-                                                                setValidationErrors((prev) => ({ ...prev, bookingId: "" }));
-                                                            }
-                                                        }}
+                                                        onClick={() => handleSelectBooking(booking)}
                                                     >
                                                         <div className="flex justify-between items-start">
                                                             <div className="space-y-1 min-w-0 pr-4">
@@ -418,6 +719,12 @@ export function AddPaymentDialog({
                                                                     <Badge variant="outline" className="text-[10px] font-medium py-0 px-1.5 capitalize">
                                                                         {booking.customer.name}
                                                                     </Badge>
+                                                                    {booking.customers && booking.customers.length > 1 && (
+                                                                        <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-normal">
+                                                                            <Users className="w-2.5 h-2.5 mr-1" />
+                                                                            {booking.customers.length} Travelers
+                                                                        </Badge>
+                                                                    )}
                                                                 </div>
                                                                 <p className="text-xs text-muted-foreground truncate">
                                                                     {booking.package.name}
@@ -434,14 +741,27 @@ export function AddPaymentDialog({
                                                         </div>
                                                     </div>
                                                 ))}
+
                                                 {/* Pagination Controls */}
                                                 {bookings.length > 0 && !loading.bookings && (
                                                     <div className="flex justify-between items-center mt-2">
-                                                        <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1}>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                                                            disabled={page === 1}
+                                                        >
                                                             Previous
                                                         </Button>
-                                                        <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-                                                        <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages}>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            Page {page} of {totalPages}
+                                                        </span>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                                                            disabled={page === totalPages}
+                                                        >
                                                             Next
                                                         </Button>
                                                     </div>
@@ -449,7 +769,6 @@ export function AddPaymentDialog({
                                             </div>
                                         )}
 
-                                        {/* No results */}
                                         {!loading.bookings && bookingSearch.length >= 2 && bookings.length === 0 && (
                                             <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-xl bg-muted/20 text-center">
                                                 <Search className="h-8 w-8 text-muted-foreground/60 mb-2" />
@@ -511,12 +830,273 @@ export function AddPaymentDialog({
                                             </CardContent>
                                         </Card>
 
+                                        {/* Optional Switch: Passenger-Wise Payment Allocation */}
+                                        <div className="flex items-center justify-between p-4 rounded-xl border bg-card border-border/80 shadow-2xs">
+                                            <div className="space-y-1 pr-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Split className="w-4 h-4 text-primary" />
+                                                    <Label htmlFor="passengerSplitToggle" className="text-sm font-bold cursor-pointer">
+                                                        Passenger-Wise Split / Multi-Payer Mode
+                                                    </Label>
+                                                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground">
+                                                        Optional
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                                    Enable if this payment is provided by a specific person or is allocated towards specific travelers (e.g. joint family branches).
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                id="passengerSplitToggle"
+                                                checked={formData.isPassengerSplit}
+                                                onCheckedChange={(checked) => {
+                                                    setFormData((prev) => ({ ...prev, isPassengerSplit: checked }));
+                                                    if (checked && selectedBooking?.customers && selectedBooking.customers.length > 0) {
+                                                        setSelectedPassengerIds(selectedBooking.customers.map((c) => c.id));
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* Passenger Split & Multi-Payer Controls */}
+                                        {formData.isPassengerSplit && (
+                                            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-4">
+                                                <div className="flex items-center justify-between border-b border-primary/10 pb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <UserCheck className="w-4 h-4 text-primary" />
+                                                        <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                                                            Passenger Allocations & Payer Details
+                                                        </h4>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={handleSplitEqually}
+                                                            className="text-xs h-7 bg-background"
+                                                        >
+                                                            <Split className="w-3 h-3 mr-1 text-primary" />
+                                                            Split Amount Evenly
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Payer Configuration */}
+                                                <div className="grid sm:grid-cols-2 gap-3 bg-background/80 p-3 rounded-lg border">
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs font-semibold text-muted-foreground">
+                                                            Who made this payment? (Payer)
+                                                        </Label>
+                                                        <Select
+                                                            value={formData.payerType}
+                                                            onValueChange={(val) => {
+                                                                setFormData((prev) => ({
+                                                                    ...prev,
+                                                                    payerType: val,
+                                                                    payerCustomerId:
+                                                                        val === "primary"
+                                                                            ? selectedBooking?.customer?.id || ""
+                                                                            : val === "passenger" && selectedBooking?.customers?.[0]
+                                                                                ? selectedBooking.customers[0].customerId
+                                                                                : "",
+                                                                }));
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="h-9 text-xs bg-background">
+                                                                <SelectValue placeholder="Select payer" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="primary">
+                                                                    Primary Booker: {selectedBooking?.customer.name}
+                                                                </SelectItem>
+                                                                <SelectItem value="passenger">Specific Passenger</SelectItem>
+                                                                <SelectItem value="custom">Other / Custom Name</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {formData.payerType === "passenger" && (
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-xs font-semibold text-muted-foreground">
+                                                                Select Passenger
+                                                            </Label>
+                                                            <Select
+                                                                value={formData.payerCustomerId}
+                                                                onValueChange={(val) =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        payerCustomerId: val,
+                                                                    }))
+                                                                }
+                                                            >
+                                                                <SelectTrigger className="h-9 text-xs bg-background">
+                                                                    <SelectValue placeholder="Choose passenger" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {selectedBooking?.customers?.map((c) => (
+                                                                        <SelectItem key={c.id} value={c.customerId}>
+                                                                            {c.name} ({c.tierName || c.ageCategory})
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    )}
+
+                                                    {formData.payerType === "custom" && (
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-xs font-semibold text-muted-foreground">
+                                                                Payer Name / Family Head
+                                                            </Label>
+                                                            <Input
+                                                                placeholder="e.g. Ramesh Kumar (Uncle)"
+                                                                value={formData.payerName}
+                                                                onChange={(e) =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        payerName: e.target.value,
+                                                                    }))
+                                                                }
+                                                                className="h-9 text-xs bg-background"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Passenger Allocation Grid */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground px-1">
+                                                        <span>Select & Allocate to Travelers</span>
+                                                        <span className="text-[11px]">
+                                                            Allocated: {formatCurrency(totalAllocatedAmount)} / {formatCurrency(currentPaymentAmount)}
+                                                        </span>
+                                                    </div>
+
+                                                    {validationErrors.allocations && (
+                                                        <p className="text-xs text-destructive font-medium">
+                                                            {validationErrors.allocations}
+                                                        </p>
+                                                    )}
+
+                                                    <div className="space-y-2">
+                                                        {selectedBooking?.customers && selectedBooking.customers.length > 0 ? (
+                                                            selectedBooking.customers.map((c) => {
+                                                                const isChecked = selectedPassengerIds.includes(c.id);
+                                                                const allocated = formData.allocations[c.id] || "";
+                                                                return (
+                                                                    <div
+                                                                        key={c.id}
+                                                                        className={`p-3 rounded-lg border transition-all duration-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isChecked
+                                                                            ? "bg-background border-primary/40 shadow-2xs"
+                                                                            : "bg-muted/20 border-muted opacity-70"
+                                                                            }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-3 min-w-0">
+                                                                            <Checkbox
+                                                                                id={`chk-${c.id}`}
+                                                                                checked={isChecked}
+                                                                                onCheckedChange={() => togglePassengerCheckbox(c.id)}
+                                                                                className="mt-1"
+                                                                            />
+                                                                            <div className="space-y-0.5">
+                                                                                <label
+                                                                                    htmlFor={`chk-${c.id}`}
+                                                                                    className="text-xs font-bold text-foreground cursor-pointer flex items-center gap-1.5"
+                                                                                >
+                                                                                    {c.name}
+                                                                                    {c.status === "paid" && (
+                                                                                        <Badge className="text-[9px] py-0 px-1 bg-green-500/10 text-green-700 border-green-200">
+                                                                                            Paid
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                </label>
+                                                                                <p className="text-[11px] text-muted-foreground">
+                                                                                    Share: {formatCurrency(c.calculatedShare)} • Paid: {formatCurrency(c.paidAmount)} •{" "}
+                                                                                    <span className="font-semibold text-primary">
+                                                                                        Bal: {formatCurrency(c.balanceAmount)}
+                                                                                    </span>
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="flex items-center gap-2 sm:self-center flex-shrink-0">
+                                                                            <Label className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                                                                Pay:
+                                                                            </Label>
+                                                                            <Input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                step="0.01"
+                                                                                disabled={!isChecked}
+                                                                                value={allocated}
+                                                                                onChange={(e) =>
+                                                                                    handleAllocationChange(c.id, e.target.value)
+                                                                                }
+                                                                                placeholder="0.00"
+                                                                                className="h-8 w-28 text-xs font-semibold text-right bg-background"
+                                                                            />
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                disabled={!isChecked}
+                                                                                className="h-8 px-2 text-[11px] text-primary hover:bg-primary/10"
+                                                                                onClick={() => handleAssignFullAmountToPassenger(c.id)}
+                                                                            >
+                                                                                Full Share
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <div className="p-4 text-center text-xs text-muted-foreground bg-background rounded-lg border border-dashed">
+                                                                Loading travelers list...
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Total allocation warning banner if mismatch */}
+                                                    {formData.isPassengerSplit &&
+                                                        Math.abs(totalAllocatedAmount - currentPaymentAmount) > 0.01 && (
+                                                            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                                                    <span>
+                                                                        Allocations sum ({formatCurrency(totalAllocatedAmount)}) differs from payment amount ({formatCurrency(currentPaymentAmount)}).
+                                                                    </span>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            amount: String(totalAllocatedAmount),
+                                                                        }))
+                                                                    }
+                                                                    className="h-6 text-[11px] font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
+                                                                >
+                                                                    Sync Total
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="space-y-4 pt-2">
-                                            <h4 className="text-sm font-semibold text-foreground border-b pb-2">2. Enter Payment Details</h4>
+                                            <h4 className="text-sm font-semibold text-foreground border-b pb-2">
+                                                {formData.isPassengerSplit ? "3." : "2."} Payment Transaction Details
+                                            </h4>
 
                                             <div className="grid sm:grid-cols-2 gap-4">
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="amount" className="text-xs font-bold text-muted-foreground">Payment Amount *</Label>
+                                                    <Label htmlFor="amount" className="text-xs font-bold text-muted-foreground">
+                                                        Total Payment Amount *
+                                                    </Label>
                                                     <Input
                                                         id="amount"
                                                         type="number"
@@ -540,7 +1120,9 @@ export function AddPaymentDialog({
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="paymentType" className="text-xs font-bold text-muted-foreground">Payment Type *</Label>
+                                                    <Label htmlFor="paymentType" className="text-xs font-bold text-muted-foreground">
+                                                        Payment Type *
+                                                    </Label>
                                                     <Select
                                                         value={formData.paymentType}
                                                         onValueChange={(value) =>
@@ -568,7 +1150,9 @@ export function AddPaymentDialog({
 
                                             <div className="grid sm:grid-cols-2 gap-4">
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="paymentMethod" className="text-xs font-bold text-muted-foreground">Payment Method *</Label>
+                                                    <Label htmlFor="paymentMethod" className="text-xs font-bold text-muted-foreground">
+                                                        Payment Method *
+                                                    </Label>
                                                     <Select
                                                         value={formData.paymentMethod}
                                                         onValueChange={(value) =>
@@ -596,7 +1180,9 @@ export function AddPaymentDialog({
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="paymentDate" className="text-xs font-bold text-muted-foreground">Payment Date *</Label>
+                                                    <Label htmlFor="paymentDate" className="text-xs font-bold text-muted-foreground">
+                                                        Payment Date *
+                                                    </Label>
                                                     <TypableDatePicker
                                                         id="paymentDate"
                                                         value={formData.paymentDate}
@@ -617,7 +1203,9 @@ export function AddPaymentDialog({
 
                                             <div className="grid sm:grid-cols-2 gap-4">
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="paymentReference" className="text-xs font-bold text-muted-foreground">Payment Reference</Label>
+                                                    <Label htmlFor="paymentReference" className="text-xs font-bold text-muted-foreground">
+                                                        Payment Reference
+                                                    </Label>
                                                     <Input
                                                         id="paymentReference"
                                                         value={formData.paymentReference}
@@ -633,7 +1221,9 @@ export function AddPaymentDialog({
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="transactionId" className="text-xs font-bold text-muted-foreground">Transaction ID / UTR</Label>
+                                                    <Label htmlFor="transactionId" className="text-xs font-bold text-muted-foreground">
+                                                        Transaction ID / UTR
+                                                    </Label>
                                                     <Input
                                                         id="transactionId"
                                                         value={formData.transactionId}
@@ -663,7 +1253,9 @@ export function AddPaymentDialog({
                                                                 <Upload className="w-6 h-6 mx-auto mb-1 text-muted-foreground/80" />
                                                                 <p className="text-xs font-medium text-muted-foreground">
                                                                     {formData.paymentScreenshot ? (
-                                                                        <span className="text-primary font-semibold truncate max-w-[220px] inline-block">{formData.paymentScreenshot.name}</span>
+                                                                        <span className="text-primary font-semibold truncate max-w-[220px] inline-block">
+                                                                            {formData.paymentScreenshot.name}
+                                                                        </span>
                                                                     ) : (
                                                                         "Drop image or pdf (Max 5MB)"
                                                                     )}
@@ -764,6 +1356,36 @@ export function AddPaymentDialog({
                                         <p className="text-xs text-muted-foreground italic">No booking selected yet</p>
                                     )}
                                 </div>
+
+                                {/* Passenger Split Summary in Sidebar */}
+                                {formData.isPassengerSplit && (
+                                    <div className="space-y-2 pt-2 border-t">
+                                        <h4 className="text-xs font-bold text-muted-foreground uppercase flex items-center justify-between">
+                                            <span>Allocations</span>
+                                            <Badge variant="outline" className="text-[10px] py-0 px-1 text-primary">
+                                                {selectedPassengerIds.length} Selected
+                                            </Badge>
+                                        </h4>
+                                        <div className="space-y-1.5 p-3 rounded-xl border bg-background text-xs">
+                                            {formData.payerType === "custom" && formData.payerName && (
+                                                <p className="pb-1.5 border-b text-[11px]">
+                                                    <span className="text-muted-foreground">Payer: </span>
+                                                    <span className="font-bold text-foreground">{formData.payerName}</span>
+                                                </p>
+                                            )}
+                                            {selectedBooking?.customers
+                                                ?.filter((c) => selectedPassengerIds.includes(c.id))
+                                                .map((c) => (
+                                                    <div key={c.id} className="flex justify-between items-center text-[11px]">
+                                                        <span className="truncate max-w-[120px] text-muted-foreground">{c.name}</span>
+                                                        <span className="font-bold text-foreground">
+                                                            {formatCurrency(Number(formData.allocations[c.id] || 0))}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Live Calculations */}
                                 <div className="space-y-2 pt-2 border-t">

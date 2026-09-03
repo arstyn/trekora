@@ -38,6 +38,7 @@ import {
     UserCheck,
     UsersIcon,
     Loader2,
+    Receipt,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -192,6 +193,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 title: "Defaults",
                 url: "/defaults",
                 icon: SettingsIcon,
+            },
+            {
+                title: "Invoice Settings",
+                url: "/settings/invoice",
+                icon: Receipt,
             },
         ],
         documents: [

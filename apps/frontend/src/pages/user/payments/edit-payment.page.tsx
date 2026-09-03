@@ -20,11 +20,11 @@ import type React from "react";
 import { useState, useEffect } from "react";
 import { NavLink, useParams, useNavigate } from "react-router-dom";
 import PaymentService from "@/services/payment.service";
-import type { Payment, UpdatePaymentDto, FileManager } from "@/types/payment.types";
-import { 
-	PaymentType, 
-	PaymentMethod, 
-	PaymentStatus 
+import type { Payment, UpdatePaymentDto, FileManager, PassengerPaymentAllocation } from "@/types/payment.types";
+import {
+	PaymentType,
+	PaymentMethod,
+	PaymentStatus
 } from "@/types/payment.types";
 import { useToast } from "@/hooks/use-toast";
 import { getFileUrl } from "@/lib/utils";
@@ -51,6 +51,10 @@ export default function EditPaymentPage() {
 		paymentScreenshot: null as File | null,
 		notes: "",
 		status: "",
+		isPassengerSplit: false,
+		payerName: "",
+		payerCustomerId: "",
+		allocations: {} as Record<string, string>,
 	});
 
 	const [hasChanges, setHasChanges] = useState(false);
@@ -67,16 +71,23 @@ export default function EditPaymentPage() {
 		try {
 			setLoading(true);
 			setError(null);
-			
+
 			// Load payment details with receipt files
 			const [payment, receipts] = await Promise.all([
 				PaymentService.getPaymentById(id, true),
 				PaymentService.getPaymentReceipts(id).catch(() => []) // Fallback to empty array if fails
 			]);
-			
+
 			setPaymentData(payment);
 			setReceiptFiles(receipts);
-			
+
+			const initialAllocations: Record<string, string> = {};
+			if (payment.allocations) {
+				payment.allocations.forEach((a) => {
+					initialAllocations[a.bookingCustomerId] = String(a.amount);
+				});
+			}
+
 			// Populate form with existing data
 			setFormData({
 				amount: payment.amount.toString(),
@@ -84,16 +95,21 @@ export default function EditPaymentPage() {
 				paymentMethod: payment.paymentMethod,
 				paymentReference: payment.paymentReference || "",
 				transactionId: payment.transactionId || "",
-				paymentDate: payment.paymentDate.split('T')[0], // Format for date input
+				paymentDate: payment.paymentDate ? payment.paymentDate.split('T')[0] : "", // Format for date input
 				paymentScreenshot: null,
 				notes: payment.notes || "",
 				status: payment.status,
+				isPassengerSplit: !!payment.isPassengerSplit,
+				payerName: payment.payerName || "",
+				payerCustomerId: payment.payerCustomerId || "",
+				allocations: initialAllocations,
 			});
 		} catch (error) {
+
 			console.error("Error loading payment details:", error);
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const errorMessage = (error as any)?.response?.status === 404 
+			const errorMessage = (error as any)?.response?.status === 404
 				? "Payment not found"
 				: "Failed to load payment details. Please try again.";
 			setError(errorMessage);
@@ -150,7 +166,7 @@ export default function EditPaymentPage() {
 	const handleInputChange = (field: string, value: string | number) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 		setHasChanges(true);
-		
+
 		// Clear validation error for this field
 		if (validationErrors[field]) {
 			setValidationErrors(prev => {
@@ -191,9 +207,9 @@ export default function EditPaymentPage() {
 
 		try {
 			setUploading(true);
-			
+
 			let newFiles: FileManager[];
-			
+
 			if (files.length === 1) {
 				// Single file upload
 				const newFile = await PaymentService.uploadReceipt(id, files[0]);
@@ -202,11 +218,11 @@ export default function EditPaymentPage() {
 				// Multiple file upload
 				newFiles = await PaymentService.uploadReceipts(id, Array.from(files));
 			}
-			
+
 			// Add new files to local state
 			setReceiptFiles(prev => [...prev, ...newFiles]);
 			setHasChanges(true);
-			
+
 			toast({
 				title: "Success",
 				description: `${files.length} receipt file(s) uploaded successfully.`,
@@ -230,11 +246,11 @@ export default function EditPaymentPage() {
 
 		try {
 			await PaymentService.deleteReceiptFile(id, fileId);
-			
+
 			// Remove file from local state
 			setReceiptFiles(prev => prev.filter(file => file.id !== fileId));
 			setHasChanges(true);
-			
+
 			toast({
 				title: "Success",
 				description: "Receipt file deleted successfully.",
@@ -251,7 +267,7 @@ export default function EditPaymentPage() {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		
+
 		if (!validateForm() || !id) {
 			return;
 		}
@@ -274,6 +290,16 @@ export default function EditPaymentPage() {
 				await PaymentService.updatePayment(id, updateData);
 			} else {
 				// Full update for pending/failed payments
+				let allocations: PassengerPaymentAllocation[] | undefined = undefined;
+				if (formData.isPassengerSplit) {
+					allocations = Object.entries(formData.allocations)
+						.filter(([_, amt]) => Number(amt) > 0)
+						.map(([bcId, amt]) => ({
+							bookingCustomerId: bcId,
+							amount: Number(amt),
+						}));
+				}
+
 				const updateData: UpdatePaymentDto = {
 					amount: Number(formData.amount),
 					paymentType: formData.paymentType as PaymentType,
@@ -283,10 +309,15 @@ export default function EditPaymentPage() {
 					transactionId: formData.transactionId || undefined,
 					paymentDate: formData.paymentDate,
 					notes: formData.notes || undefined,
+					isPassengerSplit: formData.isPassengerSplit,
+					payerName: formData.payerName || undefined,
+					payerCustomerId: formData.payerCustomerId || undefined,
+					allocations,
 				};
 
 				await PaymentService.updatePayment(id, updateData);
 			}
+
 
 			toast({
 				title: "Success",
@@ -294,7 +325,7 @@ export default function EditPaymentPage() {
 			});
 
 			setHasChanges(false);
-			
+
 			// Navigate back to payment details
 			navigate(`/payments/${id}`);
 
@@ -396,7 +427,7 @@ export default function EditPaymentPage() {
 						</Button>
 					</NavLink>
 				</div>
-				
+
 				<Alert variant="destructive">
 					<AlertTriangle className="h-4 w-4" />
 					<AlertDescription>
@@ -426,8 +457,8 @@ export default function EditPaymentPage() {
 					</div>
 				</div>
 				<div className="flex gap-2">
-					<Button 
-						type="submit" 
+					<Button
+						type="submit"
 						form="edit-payment-form"
 						disabled={!hasChanges || submitting}
 					>
@@ -610,8 +641,51 @@ export default function EditPaymentPage() {
 									</div>
 								</div>
 
+								{/* Payer & Passenger Allocations Section */}
+								{(formData.isPassengerSplit || formData.payerName) && (
+									<div className="space-y-3 p-4 rounded-xl border bg-muted/20">
+										<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+											Payer & Passenger Allocations
+										</Label>
+										<div>
+											<Label htmlFor="payerName" className="text-xs">Paid By (Payer Name)</Label>
+											<Input
+												id="payerName"
+												value={formData.payerName}
+												onChange={(e) => handleInputChange("payerName", e.target.value)}
+												placeholder="Payer Name"
+												disabled={isReadOnly}
+												className="mt-1"
+											/>
+										</div>
+										{paymentData?.allocations && paymentData.allocations.length > 0 && (
+											<div className="space-y-2 pt-2 border-t">
+												<Label className="text-xs font-semibold text-muted-foreground">
+													Allocated per Passenger:
+												</Label>
+												<div className="space-y-1.5">
+													{paymentData.allocations.map((alloc) => (
+														<div
+															key={alloc.id || alloc.bookingCustomerId}
+															className="flex justify-between items-center p-2 rounded-lg bg-background border text-xs"
+														>
+															<span className="font-semibold text-foreground">
+																{alloc.customerName || "Passenger"}
+															</span>
+															<span className="font-bold text-primary">
+																{formatCurrency(alloc.amount)}
+															</span>
+														</div>
+													))}
+												</div>
+											</div>
+										)}
+									</div>
+								)}
+
 								<div>
 									<Label htmlFor="paymentDate">Payment Date *</Label>
+
 									<TypableDatePicker
 										id="paymentDate"
 										value={formData.paymentDate}
@@ -668,7 +742,7 @@ export default function EditPaymentPage() {
 												{receiptFiles.map((file) => {
 													const isImage = file.filename.toLowerCase().match(/\.(jpg|jpeg|png)$/);
 													const FileIcon = isImage ? Eye : FileText;
-													
+
 													return (
 														<div key={file.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/20">
 															<div className="flex items-center gap-3">
@@ -681,17 +755,17 @@ export default function EditPaymentPage() {
 																</div>
 															</div>
 															<div className="flex items-center gap-1">
-																<Button 
+																<Button
 																	type="button"
-																	size="sm" 
+																	size="sm"
 																	variant="ghost"
 																	onClick={() => window.open(getFileUrl(file.url), '_blank')}
 																>
 																	<Eye className="w-4 h-4" />
 																</Button>
-																<Button 
+																<Button
 																	type="button"
-																	size="sm" 
+																	size="sm"
 																	variant="ghost"
 																	onClick={() => {
 																		const link = document.createElement('a');
@@ -705,9 +779,9 @@ export default function EditPaymentPage() {
 																>
 																	<Download className="w-4 h-4" />
 																</Button>
-																<Button 
+																<Button
 																	type="button"
-																	size="sm" 
+																	size="sm"
 																	variant="ghost"
 																	onClick={() => handleDeleteReceiptFile(file.id)}
 																>
