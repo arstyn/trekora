@@ -23,14 +23,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import {
     Select,
@@ -80,7 +72,6 @@ import {
     Loader2,
     Mail,
     MapPin,
-    MoreVertical,
     Phone,
     Plus,
     ShieldCheck,
@@ -476,18 +467,6 @@ export default function BookingDetailsPage() {
 
                 {/* Header Action Buttons */}
                 <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                    {/* Mark as Completed Button for Pending / On-Hold */}
-                    {(booking.status === "pending" || booking.status === "on_hold") && (
-                        <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                            onClick={() => setCompleteModalOpen(true)}
-                        >
-                            <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                            Mark as Completed
-                        </Button>
-                    )}
-
                     {/* Download Invoice button */}
                     <Button
                         variant="outline"
@@ -510,52 +489,6 @@ export default function BookingDetailsPage() {
                         )}
                         Invoice
                     </Button>
-
-                    {/* Edit button */}
-                    {booking.status !== "cancelled" && (
-                        <NavLink to={`/bookings/${booking.id}/edit`}>
-                            <Button variant="outline" size="sm">
-                                <Edit className="w-4 h-4 mr-1.5" />
-                                Edit Details
-                            </Button>
-                        </NavLink>
-                    )}
-
-                    {/* Secondary Actions Dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="w-4 h-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-52">
-                            <DropdownMenuLabel>Booking Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {booking.status !== "cancelled" && booking.status !== "on_hold" && (
-                                <DropdownMenuItem onClick={handlePutOnHold}>
-                                    <Clock className="w-4 h-4 mr-2 text-amber-500" />
-                                    Put on Hold
-                                </DropdownMenuItem>
-                            )}
-                            {booking.status !== "cancelled" && (
-                                <DropdownMenuItem
-                                    onClick={handleCancelBooking}
-                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                >
-                                    <XCircle className="w-4 h-4 mr-2" />
-                                    Cancel Booking
-                                </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onClick={handleDeleteBooking}
-                                className="text-destructive font-semibold focus:text-destructive focus:bg-destructive/10"
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Booking
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </div>
             </div>
 
@@ -632,28 +565,18 @@ export default function BookingDetailsPage() {
                                     Booking Confirmed & Fully Completed
                                 </div>
                             ) : (
-                                <div className="flex flex-col sm:flex-row lg:flex-col gap-2 items-start lg:items-end">
-                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-medium">
-                                        <Clock className="w-4 h-4 text-amber-600" />
-                                        <span>Status: <strong className="capitalize">{booking.status}</strong></span>
-                                        {balanceAmount > 0 ? (
-                                            <span className="text-[11px] opacity-80">
-                                                ({BookingService.formatCurrency(balanceAmount)} due)
-                                            </span>
-                                        ) : (
-                                            <span className="text-[11px] text-emerald-700 font-semibold">
-                                                (Paid in full)
-                                            </span>
-                                        )}
-                                    </div>
-                                    <Button
-                                        size="sm"
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8"
-                                        onClick={() => setCompleteModalOpen(true)}
-                                    >
-                                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                                        Complete Booking
-                                    </Button>
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-medium">
+                                    <Clock className="w-4 h-4 text-amber-600" />
+                                    <span>Status: <strong className="capitalize">{booking.status}</strong></span>
+                                    {balanceAmount > 0 ? (
+                                        <span className="text-[11px] opacity-80">
+                                            ({BookingService.formatCurrency(balanceAmount)} due)
+                                        </span>
+                                    ) : (
+                                        <span className="text-[11px] text-emerald-700 font-semibold">
+                                            (Paid in full)
+                                        </span>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -1390,15 +1313,48 @@ export default function BookingDetailsPage() {
                                     Download Booking Invoice
                                 </Button>
 
-                                <NavLink to={`/bookings/${booking.id}/edit`} className="block">
+                                {booking.status !== "cancelled" && (
+                                    <NavLink to={`/bookings/${booking.id}/edit`} className="block">
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-start text-xs h-8"
+                                        >
+                                            <Edit className="w-3.5 h-3.5 mr-2" />
+                                            Edit Guest & Package Details
+                                        </Button>
+                                    </NavLink>
+                                )}
+
+                                {booking.status !== "cancelled" && booking.status !== "on_hold" && (
                                     <Button
                                         variant="outline"
-                                        className="w-full justify-start text-xs h-8"
+                                        className="w-full justify-start text-xs h-8 text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+                                        onClick={handlePutOnHold}
                                     >
-                                        <Edit className="w-3.5 h-3.5 mr-2" />
-                                        Edit Guest & Package Details
+                                        <Clock className="w-3.5 h-3.5 mr-2 text-amber-500" />
+                                        Put on Hold
                                     </Button>
-                                </NavLink>
+                                )}
+
+                                {booking.status !== "cancelled" && (
+                                    <Button
+                                        variant="outline"
+                                        className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={handleCancelBooking}
+                                    >
+                                        <XCircle className="w-3.5 h-3.5 mr-2" />
+                                        Cancel Booking
+                                    </Button>
+                                )}
+
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10 font-medium"
+                                    onClick={handleDeleteBooking}
+                                >
+                                    <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                    Delete Booking
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
