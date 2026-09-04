@@ -7,6 +7,7 @@ import { BookingPaymentLog } from 'src/database/entity/booking-payment-log.entit
 import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
 import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { Booking } from 'src/database/entity/booking.entity';
+import { BookingLog } from 'src/database/entity/booking-log.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
 import { EmployeeModule } from '../employee/employee.module';
@@ -22,6 +23,7 @@ import { PaymentService } from './payment.service';
       BookingPaymentAllocation,
       BookingCustomer,
       Booking,
+      BookingLog,
       Customer,
       Package,
       Batch,

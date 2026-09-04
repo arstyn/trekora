@@ -143,8 +143,12 @@ export class BookingController {
 
   @Patch(':id')
   @RequirePermission('booking', 'update')
-  update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
-    return this.bookingService.update(id, updateBookingDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateBookingDto: UpdateBookingDto,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.bookingService.update(id, updateBookingDto, req.user?.userId);
   }
 
   @Delete(':id')

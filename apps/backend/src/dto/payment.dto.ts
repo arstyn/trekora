@@ -46,6 +46,10 @@ export class CreatePaymentDto {
   paymentMethod: PaymentMethod;
 
   @IsOptional()
+  @IsEnum(PaymentStatus)
+  status?: PaymentStatus;
+
+  @IsOptional()
   @IsString()
   paymentReference?: string;
 

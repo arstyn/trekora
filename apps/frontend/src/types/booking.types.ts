@@ -24,6 +24,7 @@ export interface IBookingPaymentAllocation {
 
 export interface IBookingPayment {
     id?: string;
+    paymentNumber?: number;
     amount: number;
     paymentMethod: PaymentMethod;
     paymentReference?: string;
@@ -234,6 +235,7 @@ export interface IUpdateBookingRequest {
     agentCommissionValue?: number;
     agentCommissionAmount?: number;
     agentPayoutStatus?: "pending" | "paid" | "cancelled";
+    additionalDetails?: Record<string, any>;
 }
 
 // Dashboard statistics

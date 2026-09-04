@@ -920,6 +920,7 @@ export class BookingService {
       payments: booking.payments
         ? booking.payments.map((payment) => ({
           id: payment.id,
+          paymentNumber: payment.paymentNumber,
           amount: payment.amount,
           paymentMethod: payment.paymentMethod,
           status: payment.status,
@@ -961,6 +962,7 @@ export class BookingService {
   async update(
     id: string,
     updateBookingDto: UpdateBookingDto,
+    userId?: string,
   ): Promise<BookingResponseDto> {
     const booking = await this.bookingRepository.findOne({
       where: { id },
@@ -1067,6 +1069,28 @@ export class BookingService {
         });
       }
 
+      // Log status change if status was updated
+      if (
+        updateBookingDto.status &&
+        updateBookingDto.status !== booking.status
+      ) {
+        await this.logAction(
+          id,
+          userId || booking.createdById,
+          'status_change',
+          { status: booking.status },
+          {
+            status: updateBookingDto.status,
+            reason:
+              updateBookingDto.additionalDetails?.reason ||
+              (updateBookingDto.status === BookingStatus.COMPLETED
+                ? 'Marked as completed'
+                : 'Status updated'),
+          },
+          queryRunner.manager,
+        );
+      }
+
       await queryRunner.commitTransaction();
 
       return this.findOne(id);
@@ -1154,16 +1178,22 @@ export class BookingService {
       bookingWithOrg.organizationId,
     );
 
+    const paymentStatus = paymentDto.status || PaymentStatus.COMPLETED;
+
+    const { allocations: dtoAllocations, ...paymentFields } = paymentDto;
+
     const payment = this.paymentRepository.create({
-      ...paymentDto,
+      ...paymentFields,
       paymentNumber,
       bookingId,
       recordedById: userId,
-      status: PaymentStatus.PENDING,
+      status: paymentStatus,
       isPassengerSplit: paymentDto.isPassengerSplit || false,
       payerName: paymentDto.payerName,
       payerCustomerId: paymentDto.payerCustomerId,
-    });
+      verifiedById: paymentStatus === PaymentStatus.COMPLETED ? userId : null,
+      verifiedAt: paymentStatus === PaymentStatus.COMPLETED ? new Date() : null,
+    } as any) as unknown as BookingPayment;
 
     const savedPayment = await this.paymentRepository.save(payment);
 
@@ -1202,15 +1232,43 @@ export class BookingService {
     });
     await this.paymentLogRepository.save(paymentLog);
 
-    // Only update booking advance paid and balance if payment was already completed
+    // Update booking advance paid, balance, and status if payment is completed
     if (savedPayment.status === PaymentStatus.COMPLETED) {
-      const newAdvancePaid = Number(booking.advancePaid) + Number(paymentDto.amount);
-      const newBalanceAmount = Number(booking.totalAmount) - newAdvancePaid;
+      const alreadyPaid = Number(booking.advancePaid || 0);
+      const lastPayment = Number(paymentDto.amount || 0);
+      const totalBookingAmount = Number(booking.totalAmount || 0);
 
-      await this.bookingRepository.update(bookingId, {
+      const newAdvancePaid = alreadyPaid + lastPayment;
+      const newBalanceAmount = totalBookingAmount - newAdvancePaid;
+
+      const isFullPayment =
+        alreadyPaid + lastPayment >= totalBookingAmount ||
+        Math.abs(totalBookingAmount - (alreadyPaid + lastPayment)) < 0.01;
+
+      const updateData: Partial<Booking> = {
         advancePaid: newAdvancePaid,
         balanceAmount: newBalanceAmount,
-      });
+      };
+
+      if (isFullPayment && booking.status !== BookingStatus.CANCELLED) {
+        updateData.status = BookingStatus.COMPLETED;
+      }
+
+      await this.bookingRepository.update(bookingId, updateData);
+
+      if (
+        isFullPayment &&
+        booking.status !== BookingStatus.CANCELLED &&
+        booking.status !== BookingStatus.COMPLETED
+      ) {
+        await this.logAction(
+          bookingId,
+          userId,
+          'status_change',
+          { status: booking.status },
+          { status: BookingStatus.COMPLETED, reason: 'Full payment received' },
+        );
+      }
     }
 
     return this.findOne(bookingId);

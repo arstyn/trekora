@@ -13,6 +13,7 @@ import { BookingPaymentLog } from 'src/database/entity/booking-payment-log.entit
 import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
 import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
+import { BookingLog } from 'src/database/entity/booking-log.entity';
 import {
   BookingCustomerPaymentSummaryDto,
   BookingForPaymentDto,
@@ -43,8 +44,31 @@ export class PaymentService {
     private bookingCustomerRepository: Repository<BookingCustomer>,
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
+    @InjectRepository(BookingLog)
+    private bookingLogRepository: Repository<BookingLog>,
     private uploadService: UploadService,
   ) {}
+
+  async logBookingAction(
+    bookingId: string,
+    userId: string,
+    action: string,
+    previousData: any,
+    newData: any,
+  ): Promise<void> {
+    try {
+      const log = this.bookingLogRepository.create({
+        bookingId,
+        changedById: userId,
+        action,
+        previousData,
+        newData,
+      });
+      await this.bookingLogRepository.save(log);
+    } catch (err) {
+      console.error('Failed to log booking action:', err);
+    }
+  }
 
   async logPaymentAction(
     paymentId: string,
@@ -287,6 +311,9 @@ export class PaymentService {
     const paymentNumber = await this.generatePaymentNumber(organizationId);
 
     // Create payment with paymentType in dedicated column
+    const paymentStatus = createPaymentDto.status || PaymentStatus.PENDING;
+
+    // Create payment with paymentType in dedicated column
     const payment = this.paymentRepository.create({
       paymentNumber,
       amount: createPaymentDto.amount,
@@ -303,7 +330,9 @@ export class PaymentService {
       payerCustomerId: createPaymentDto.payerCustomerId || null,
       bookingId: createPaymentDto.bookingId,
       recordedById: userId,
-      status: PaymentStatus.PENDING,
+      verifiedById: paymentStatus === PaymentStatus.COMPLETED ? userId : null,
+      verifiedAt: paymentStatus === PaymentStatus.COMPLETED ? new Date() : null,
+      status: paymentStatus,
     } as any) as unknown as BookingPayment;
 
     const savedPayment = await this.paymentRepository.save(payment);
@@ -318,10 +347,6 @@ export class PaymentService {
       transactionId: savedPayment.transactionId,
       payerName: savedPayment.payerName,
     });
-
-
-
-
 
     // Save allocations if present
     if (
@@ -340,18 +365,46 @@ export class PaymentService {
       await this.paymentAllocationRepository.save(allocations);
     }
 
-    // Update booking amounts if payment is completed
+    // Update booking amounts and status if payment is completed
     if (
       savedPayment.status === PaymentStatus.COMPLETED &&
       createPaymentDto.paymentType !== PaymentType.REFUND
     ) {
-      const newAdvancePaid = booking.advancePaid + createPaymentDto.amount;
-      const newBalanceAmount = booking.totalAmount - newAdvancePaid;
+      const alreadyPaid = Number(booking.advancePaid || 0);
+      const lastPayment = Number(createPaymentDto.amount || 0);
+      const totalBookingAmount = Number(booking.totalAmount || 0);
 
-      await this.bookingRepository.update(booking.id, {
+      const newAdvancePaid = alreadyPaid + lastPayment;
+      const newBalanceAmount = totalBookingAmount - newAdvancePaid;
+
+      const isFullPayment =
+        alreadyPaid + lastPayment >= totalBookingAmount ||
+        Math.abs(totalBookingAmount - (alreadyPaid + lastPayment)) < 0.01;
+
+      const updateData: Partial<Booking> = {
         advancePaid: newAdvancePaid,
         balanceAmount: newBalanceAmount,
-      });
+      };
+
+      if (isFullPayment && booking.status !== BookingStatus.CANCELLED) {
+        updateData.status = BookingStatus.COMPLETED;
+      }
+
+      await this.bookingRepository.update(booking.id, updateData);
+
+      if (
+        isFullPayment &&
+        booking.status !== BookingStatus.CANCELLED &&
+        booking.status !== BookingStatus.COMPLETED
+      ) {
+        await this.logBookingAction(
+          booking.id,
+          userId,
+          'status_change',
+          { status: booking.status },
+          { status: BookingStatus.COMPLETED, reason: 'Full payment received' },
+        );
+      }
     }
 
     return this.findOne(savedPayment.id, organizationId);
@@ -793,16 +846,44 @@ export class PaymentService {
     payment.verifiedAt = new Date();
     await this.paymentRepository.save(payment);
 
-    // Update booking balance and advance amounts
+    // Update booking balance, advance amounts, and status
     if (payment.paymentType !== PaymentType.REFUND) {
       const booking = payment.booking;
-      const newAdvancePaid = Number(booking.advancePaid) + Number(payment.amount);
-      const newBalanceAmount = Number(booking.totalAmount) - newAdvancePaid;
+      const alreadyPaid = Number(booking.advancePaid || 0);
+      const lastPayment = Number(payment.amount || 0);
+      const totalBookingAmount = Number(booking.totalAmount || 0);
 
-      await this.bookingRepository.update(booking.id, {
+      const newAdvancePaid = alreadyPaid + lastPayment;
+      const newBalanceAmount = totalBookingAmount - newAdvancePaid;
+
+      const isFullPayment =
+        alreadyPaid + lastPayment >= totalBookingAmount ||
+        Math.abs(totalBookingAmount - (alreadyPaid + lastPayment)) < 0.01;
+
+      const updateData: Partial<Booking> = {
         advancePaid: newAdvancePaid,
         balanceAmount: newBalanceAmount,
-      });
+      };
+
+      if (isFullPayment && booking.status !== BookingStatus.CANCELLED) {
+        updateData.status = BookingStatus.COMPLETED;
+      }
+
+      await this.bookingRepository.update(booking.id, updateData);
+
+      if (
+        isFullPayment &&
+        booking.status !== BookingStatus.CANCELLED &&
+        booking.status !== BookingStatus.COMPLETED
+      ) {
+        await this.logBookingAction(
+          booking.id,
+          userId || booking.createdById,
+          'status_change',
+          { status: booking.status },
+          { status: BookingStatus.COMPLETED, reason: 'Full payment received' },
+        );
+      }
     }
 
     if (userId) {
