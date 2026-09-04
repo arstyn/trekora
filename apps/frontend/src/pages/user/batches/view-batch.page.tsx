@@ -60,6 +60,7 @@ import {
     Timer,
     Trash2,
     Users,
+    UserX,
     XCircle,
     Info,
 } from "lucide-react";
@@ -71,6 +72,7 @@ import { Switch } from "@/components/ui/switch";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { BatchOffersService } from "@/services/batch-offers.service";
 import type { IBatchOffer } from "@/types/batch-offers.types";
+import { CancelBookingDialog } from "../bookings/_components/cancel-booking-dialog";
 import { CreateBookingDialog } from "../bookings/_components/create-booking-dialog";
 import { BatchReportModal } from "./_components/batch-report-modal";
 import { BookingModal } from "./_components/booking-modal";
@@ -175,7 +177,12 @@ export default function BatchDetailsPage() {
                 rawBatch.bookings = rawBatch.bookings.map((booking: any) => ({
                     ...booking,
                     primaryCustomer: booking.primaryCustomer || booking.customer,
-                    customers: booking.customers || booking.bookingCustomers?.map((bc: any) => bc.customer).filter(Boolean) || [],
+                    customers: booking.customers || booking.bookingCustomers?.map((bc: any) => ({
+                        ...(bc.customer || {}),
+                        status: bc.status || 'active',
+                        cancelledAt: bc.cancelledAt,
+                        cancellationReason: bc.cancellationReason,
+                    })).filter(Boolean) || [],
                 }));
             }
             setBatch(rawBatch);
@@ -246,36 +253,19 @@ export default function BatchDetailsPage() {
         }
     };
 
-    const handleCancelBooking = async (bookingId: string) => {
-        if (!confirm("Are you sure you want to cancel this booking?")) return;
-        try {
-            await BookingService.cancelBooking(bookingId);
-            toast.success("Booking cancelled successfully");
-            getBranch();
-        } catch (error: any) {
-            toast.error(
-                error.response?.data?.message || "Failed to cancel booking",
-            );
-        }
-    };
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [cancellingBooking, setCancellingBooking] = useState<IBooking | null>(null);
+    const [cancellingCustomerId, setCancellingCustomerId] = useState<string | null>(null);
 
-    const handleDeleteBooking = async (bookingId: string) => {
-        if (
-            !confirm(
-                "Are you sure you want to PERMANENTLY DELETE this booking and all related data? This action cannot be undone.",
-            )
-        )
-            return;
+    const handleOpenCancelDialog = async (bookingItem: IBooking, customerId?: string) => {
         try {
-            await BookingService.deleteBooking(bookingId);
-            toast.success("Booking deleted permanently");
-            getBranch();
-        } catch (error: any) {
-            toast.error(
-                error.response?.data?.message ||
-                "Failed to delete booking. You might not have permission.",
-            );
+            const detailedBooking = await BookingService.getBookingById(bookingItem.id);
+            setCancellingBooking(detailedBooking);
+        } catch {
+            setCancellingBooking(bookingItem);
         }
+        setCancellingCustomerId(customerId || null);
+        setCancelDialogOpen(true);
     };
 
     const activeBookings =
@@ -1053,28 +1043,15 @@ export default function BatchDetailsPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleCancelBooking(
-                                                                    booking.id,
-                                                                );
-                                                            }}
-                                                        >
-                                                            <XCircle className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
                                                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleDeleteBooking(
-                                                                    booking.id,
-                                                                );
+                                                                handleOpenCancelDialog(booking);
                                                             }}
+                                                            title="Cancel Booking"
                                                         >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <XCircle className="w-4 h-4 mr-1.5" />
+                                                            Cancel
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -1090,21 +1067,49 @@ export default function BatchDetailsPage() {
                                                                 </div>
                                                                 {travelers.length > 0 ? (
                                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                                        {travelers.map((c) => (
-                                                                            <div
-                                                                                key={c.id}
-                                                                                className="flex items-center gap-2 p-2 rounded-lg bg-background border text-sm"
-                                                                            >
-                                                                                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
-                                                                                    {c.firstName[0]}
-                                                                                    {c?.lastName?.[0] ?? ""}
+                                                                        {travelers.map((c) => {
+                                                                            const isCancelled = c.status === "cancelled";
+                                                                            return (
+                                                                                <div
+                                                                                    key={c.id}
+                                                                                    className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-sm ${
+                                                                                        isCancelled
+                                                                                            ? "bg-muted/40 opacity-60 line-through"
+                                                                                            : "bg-background"
+                                                                                    }`}
+                                                                                >
+                                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                                        <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                                                            {c.firstName[0]}
+                                                                                            {c?.lastName?.[0] ?? ""}
+                                                                                        </div>
+                                                                                        <span className="truncate">
+                                                                                            {c.firstName}{" "}
+                                                                                            {c?.lastName?.[0] ?? ""}
+                                                                                        </span>
+                                                                                        {isCancelled && (
+                                                                                            <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30 shrink-0">
+                                                                                                Cancelled
+                                                                                            </Badge>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    {!isCancelled && booking.status !== "cancelled" && (
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="icon"
+                                                                                            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                                                                                            title="Cancel Traveler"
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                handleOpenCancelDialog(booking, c.id);
+                                                                                            }}
+                                                                                        >
+                                                                                            <UserX className="w-3.5 h-3.5" />
+                                                                                        </Button>
+                                                                                    )}
                                                                                 </div>
-                                                                                <span className="truncate">
-                                                                                    {c.firstName}{" "}
-                                                                                    {c?.lastName?.[0] ?? ""}
-                                                                                </span>
-                                                                            </div>
-                                                                        ))}
+                                                                            );
+                                                                        })}
                                                                     </div>
                                                                 ) : (
                                                                     <p className="text-xs text-muted-foreground italic">No additional travelers</p>
@@ -1299,19 +1304,13 @@ export default function BatchDetailsPage() {
                                                                 </Button>
                                                                 <Button
                                                                     variant="ghost"
-                                                                    size="icon"
-                                                                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-8 w-8"
-                                                                    onClick={() => handleCancelBooking(booking.id)}
+                                                                    size="sm"
+                                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2.5"
+                                                                    onClick={() => handleOpenCancelDialog(booking)}
+                                                                    title="Cancel Booking"
                                                                 >
-                                                                    <XCircle className="w-4 h-4" />
-                                                                </Button>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
-                                                                    onClick={() => handleDeleteBooking(booking.id)}
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
+                                                                    <XCircle className="w-4 h-4 mr-1" />
+                                                                    Cancel
                                                                 </Button>
                                                             </div>
                                                         </TableCell>
@@ -1492,19 +1491,6 @@ export default function BatchDetailsPage() {
                                                 }}
                                             >
                                                 Details
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteBooking(
-                                                        booking.id,
-                                                    );
-                                                }}
-                                            >
-                                                <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
                                     </div>
@@ -2082,6 +2068,25 @@ export default function BatchDetailsPage() {
                     preselectedPackageId={batch.packageId}
                     preselectedBlockId={selectedBlockId}
                     preselectedBlockSlots={selectedBlockSlots}
+                />
+            )}
+
+            {/* Cancel Booking & Partial Cancellation Dialog */}
+            {cancellingBooking && (
+                <CancelBookingDialog
+                    open={cancelDialogOpen}
+                    onOpenChange={(open) => {
+                        setCancelDialogOpen(open);
+                        if (!open) {
+                            setCancellingBooking(null);
+                            setCancellingCustomerId(null);
+                        }
+                    }}
+                    booking={cancellingBooking}
+                    initialCustomerId={cancellingCustomerId}
+                    onSuccess={() => {
+                        getBranch();
+                    }}
                 />
             )}
         </div>
