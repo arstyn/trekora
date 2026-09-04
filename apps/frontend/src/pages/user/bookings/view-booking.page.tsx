@@ -76,10 +76,10 @@ import {
     Plus,
     ShieldCheck,
     Sparkles,
-    Trash2,
     User,
     UserCheck,
     Users,
+    UserX,
     XCircle,
 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
@@ -88,6 +88,7 @@ import { toast } from "sonner";
 import { PayoutDialog } from "../agents/_components/payout-dialog";
 import { BookingLogsCard } from "./_components/booking-logs-card";
 import { CompleteBookingDialog } from "./_components/complete-booking-dialog";
+import { CancelBookingDialog } from "./_components/cancel-booking-dialog";
 
 export default function BookingDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -105,6 +106,8 @@ export default function BookingDetailsPage() {
     const [selectedBatchId, setSelectedBatchId] = useState<string>("");
     const [copiedField, setCopiedField] = useState<string | null>(null);
     const [completeModalOpen, setCompleteModalOpen] = useState(false);
+    const [cancelModalOpen, setCancelModalOpen] = useState(false);
+    const [cancelInitialCustomerId, setCancelInitialCustomerId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
     const [payoutModal, setPayoutModal] = useState<{
@@ -178,53 +181,6 @@ export default function BookingDetailsPage() {
         toast.success(`Copied "${text}" to clipboard`);
     };
 
-    const handleCancelBooking = async () => {
-        if (!confirm("Are you sure you want to cancel this entire booking?"))
-            return;
-        try {
-            await BookingService.cancelBooking(id!);
-            toast.success("Booking cancelled successfully");
-            fetchBookingDetails();
-        } catch (error: any) {
-            toast.error(
-                error.response?.data?.message || "Failed to cancel booking",
-            );
-        }
-    };
-
-    const handlePutOnHold = async () => {
-        if (!confirm("Are you sure you want to put this booking ON HOLD?"))
-            return;
-        try {
-            await BookingService.updateBooking(id!, { status: "on_hold" });
-            toast.success("Booking put on hold");
-            fetchBookingDetails();
-        } catch (error: any) {
-            toast.error(
-                error.response?.data?.message ||
-                "Failed to put booking on hold",
-            );
-        }
-    };
-
-    const handleDeleteBooking = async () => {
-        if (
-            !confirm(
-                "Are you sure you want to PERMANENTLY DELETE this booking? This action cannot be undone.",
-            )
-        )
-            return;
-        try {
-            await BookingService.deleteBooking(id!);
-            toast.success("Booking deleted successfully");
-            navigate("/bookings");
-        } catch (error: any) {
-            toast.error(
-                error.response?.data?.message || "Failed to delete booking",
-            );
-        }
-    };
-
     const handleMoveBooking = async () => {
         if (!selectedBatchId) {
             toast.error("Please select a target batch");
@@ -249,27 +205,6 @@ export default function BookingDetailsPage() {
             );
         } finally {
             setIsMoving(false);
-        }
-    };
-
-    const handleRemoveTraveler = async (
-        customerId: string,
-        customerName: string,
-    ) => {
-        if (
-            !confirm(
-                `Are you sure you want to remove ${customerName} from this booking?`,
-            )
-        )
-            return;
-        try {
-            await BookingService.cancelCustomerFromBooking(id!, customerId);
-            toast.success("Traveler removed successfully");
-            fetchBookingDetails();
-        } catch (error: any) {
-            toast.error(
-                error.response?.data?.message || "Failed to remove traveler",
-            );
         }
     };
 
@@ -971,69 +906,99 @@ export default function BookingDetailsPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {booking.customers && booking.customers.length > 0 ? (
-                                        booking.customers.map((customer) => (
-                                            <TableRow key={customer.id} className="hover:bg-muted/40">
-                                                <TableCell className="pl-6 py-3.5">
-                                                    <div className="font-semibold text-xs text-foreground">
-                                                        {customer.firstName} {customer.lastName}
-                                                    </div>
-                                                    <div className="text-[11px] text-muted-foreground capitalize mt-0.5">
-                                                        {customer.gender || "N/A"} • {customer.dateOfBirth ? format(new Date(customer.dateOfBirth), "MMM d, yyyy") : "N/A"}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="space-y-0.5">
-                                                        <p className="text-xs font-medium text-foreground">
-                                                            {customer.packageTierName || "Standard Tier"}
-                                                        </p>
-                                                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 capitalize font-normal">
-                                                            {customer.ageCategory || "adult"}
-                                                        </Badge>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="text-xs font-bold text-foreground font-mono">
-                                                                {BookingService.formatCurrency(customer.calculatedShare || 0)}
-                                                            </span>
-                                                            {customer.paymentStatus === "paid" ? (
-                                                                <Badge className="text-[9px] py-0 px-1.5 bg-emerald-500/10 text-emerald-700 border-emerald-200">
-                                                                    Paid
-                                                                </Badge>
-                                                            ) : customer.paymentStatus === "partial" ? (
-                                                                <Badge className="text-[9px] py-0 px-1.5 bg-amber-500/10 text-amber-700 border-amber-200">
-                                                                    Partial
-                                                                </Badge>
-                                                            ) : (
-                                                                <Badge variant="secondary" className="text-[9px] py-0 px-1.5 text-muted-foreground">
-                                                                    Unpaid
+                                        booking.customers.map((customer) => {
+                                            const isCancelled = customer.status === "cancelled";
+                                            return (
+                                                <TableRow key={customer.id} className={`hover:bg-muted/40 ${isCancelled ? "opacity-60 bg-muted/20" : ""}`}>
+                                                    <TableCell className="pl-6 py-3.5">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <div className={`font-semibold text-xs ${isCancelled ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                                                                {customer.firstName} {customer.lastName}
+                                                            </div>
+                                                            {isCancelled && (
+                                                                <Badge variant="outline" className="text-[9px] py-0 px-1 border-rose-300 text-rose-700 bg-rose-50 dark:bg-rose-950/40">
+                                                                    Cancelled
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        <p className="text-[11px] text-muted-foreground">
-                                                            Paid: <span className="font-medium text-foreground">{BookingService.formatCurrency(customer.paidAmount || 0)}</span> • Bal: <span className="font-medium text-primary">{BookingService.formatCurrency(customer.balanceAmount || 0)}</span>
-                                                        </p>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {renderTravelerContactInfo(customer.email, customer.phone)}
-                                                </TableCell>
-                                                <TableCell className="text-right pr-6">
-                                                    {booking.status !== "cancelled" && booking.customers.length > 1 && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-7 w-7 text-muted-foreground hover:text-red-600 rounded-md"
-                                                            title="Remove guest"
-                                                            onClick={() => customer.id && handleRemoveTraveler(customer.id, `${customer.firstName} ${customer.lastName}`)}
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                                        <div className="text-[11px] text-muted-foreground capitalize mt-0.5">
+                                                            {customer.gender || "N/A"} • {customer.dateOfBirth ? format(new Date(customer.dateOfBirth), "MMM d, yyyy") : "N/A"}
+                                                        </div>
+                                                        {isCancelled && customer.cancellationReason && (
+                                                            <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-0.5 italic">
+                                                                Reason: {customer.cancellationReason}
+                                                            </p>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="space-y-0.5">
+                                                            <p className="text-xs font-medium text-foreground">
+                                                                {customer.packageTierName || "Standard Tier"}
+                                                            </p>
+                                                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 capitalize font-normal">
+                                                                {customer.ageCategory || "adult"}
+                                                            </Badge>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="space-y-1">
+                                                            {!isCancelled ? (
+                                                                <>
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-xs font-bold text-foreground font-mono">
+                                                                            {BookingService.formatCurrency(customer.calculatedShare || 0)}
+                                                                        </span>
+                                                                        {customer.paymentStatus === "paid" ? (
+                                                                            <Badge className="text-[9px] py-0 px-1.5 bg-emerald-500/10 text-emerald-700 border-emerald-200">
+                                                                                Paid
+                                                                            </Badge>
+                                                                        ) : customer.paymentStatus === "partial" ? (
+                                                                            <Badge className="text-[9px] py-0 px-1.5 bg-amber-500/10 text-amber-700 border-amber-200">
+                                                                                Partial
+                                                                            </Badge>
+                                                                        ) : (
+                                                                            <Badge variant="secondary" className="text-[9px] py-0 px-1.5 text-muted-foreground">
+                                                                                Unpaid
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-[11px] text-muted-foreground">
+                                                                        Paid: <span className="font-medium text-foreground">{BookingService.formatCurrency(customer.paidAmount || 0)}</span> • Bal: <span className="font-medium text-primary">{BookingService.formatCurrency(customer.balanceAmount || 0)}</span>
+                                                                    </p>
+                                                                </>
+                                                            ) : (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Paid Share: <span className="font-medium text-foreground">{BookingService.formatCurrency(customer.paidAmount || 0)}</span>
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {renderTravelerContactInfo(customer.email, customer.phone)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right pr-6">
+                                                        {isCancelled ? (
+                                                            <span className="text-[11px] text-muted-foreground italic">Cancelled</span>
+                                                        ) : (
+                                                            booking.status !== "cancelled" && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7 text-muted-foreground hover:text-red-600 rounded-md"
+                                                                    title="Cancel traveler"
+                                                                    onClick={() => {
+                                                                        setCancelInitialCustomerId(customer.id || null);
+                                                                        setCancelModalOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <UserX className="w-3.5 h-3.5" />
+                                                                </Button>
+                                                            )
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     ) : (
                                         <TableRow>
                                             <TableCell colSpan={5} className="py-6 text-center text-muted-foreground text-xs">
@@ -1088,18 +1053,25 @@ export default function BookingDetailsPage() {
                                         {booking.payments.map((payment) => (
                                             <TableRow key={payment.id} className="hover:bg-muted/40">
                                                 <TableCell className="pl-6 py-3.5">
-                                                    {payment.id ? (
-                                                        <NavLink
-                                                            to={`/payments/${payment.id}`}
-                                                            className="font-mono font-semibold text-xs text-primary hover:underline"
-                                                        >
-                                                            #{payment.paymentNumber || payment.id.slice(0, 8)}
-                                                        </NavLink>
-                                                    ) : (
-                                                        <span className="font-mono font-semibold text-xs">
-                                                            #{payment.paymentNumber || "N/A"}
-                                                        </span>
-                                                    )}
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        {payment.id ? (
+                                                            <NavLink
+                                                                to={`/payments/${payment.id}`}
+                                                                className="font-mono font-semibold text-xs text-primary hover:underline"
+                                                            >
+                                                                #{payment.paymentNumber || payment.id.slice(0, 8)}
+                                                            </NavLink>
+                                                        ) : (
+                                                            <span className="font-mono font-semibold text-xs">
+                                                                #{payment.paymentNumber || "N/A"}
+                                                            </span>
+                                                        )}
+                                                        {payment.paymentType === "refund" && (
+                                                            <Badge variant="outline" className="text-[9px] py-0 px-1 border-purple-300 text-purple-700 bg-purple-50 dark:bg-purple-950/40">
+                                                                Refund
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                     {payment.paymentReference && (
                                                         <p className="text-[11px] text-muted-foreground mt-0.5">
                                                             Ref: {payment.paymentReference}
@@ -1150,7 +1122,8 @@ export default function BookingDetailsPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right pr-6">
                                                     <div className="flex flex-col items-end gap-1">
-                                                        <span className="font-mono font-bold text-xs text-foreground">
+                                                        <span className={`font-mono font-bold text-xs ${payment.paymentType === "refund" ? "text-purple-700 dark:text-purple-400" : "text-foreground"}`}>
+                                                            {payment.paymentType === "refund" ? "-" : "+"}
                                                             {BookingService.formatCurrency(payment.amount)}
                                                         </span>
                                                         {/* Inline Verify & Complete button for Pending payments */}
@@ -1167,7 +1140,7 @@ export default function BookingDetailsPage() {
                                                                 ) : (
                                                                     <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
                                                                 )}
-                                                                Verify
+                                                                {payment.paymentType === "refund" ? "Complete Refund" : "Verify"}
                                                             </Button>
                                                         )}
                                                     </div>
@@ -1325,36 +1298,19 @@ export default function BookingDetailsPage() {
                                     </NavLink>
                                 )}
 
-                                {booking.status !== "cancelled" && booking.status !== "on_hold" && (
-                                    <Button
-                                        variant="outline"
-                                        className="w-full justify-start text-xs h-8 text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
-                                        onClick={handlePutOnHold}
-                                    >
-                                        <Clock className="w-3.5 h-3.5 mr-2 text-amber-500" />
-                                        Put on Hold
-                                    </Button>
-                                )}
-
                                 {booking.status !== "cancelled" && (
                                     <Button
                                         variant="outline"
                                         className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                        onClick={handleCancelBooking}
+                                        onClick={() => {
+                                            setCancelInitialCustomerId(null);
+                                            setCancelModalOpen(true);
+                                        }}
                                     >
                                         <XCircle className="w-3.5 h-3.5 mr-2" />
-                                        Cancel Booking
+                                        Cancel Booking / Travelers
                                     </Button>
                                 )}
-
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10 font-medium"
-                                    onClick={handleDeleteBooking}
-                                >
-                                    <Trash2 className="w-3.5 h-3.5 mr-2" />
-                                    Delete Booking
-                                </Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -1411,6 +1367,17 @@ export default function BookingDetailsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Cancel Booking / Travelers Dialog */}
+            {booking && (
+                <CancelBookingDialog
+                    open={cancelModalOpen}
+                    onOpenChange={setCancelModalOpen}
+                    booking={booking}
+                    initialCustomerId={cancelInitialCustomerId}
+                    onSuccess={fetchBookingDetails}
+                />
+            )}
 
             {/* Complete Booking Modal */}
             <CompleteBookingDialog

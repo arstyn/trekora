@@ -14,6 +14,7 @@ import { BookingStatus } from 'src/database/entity/booking.entity';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
 import {
   AddTravelersDto,
+  CancelBookingDto,
   CreateBookingDto,
   CreatePaymentDto,
   UpdateBookingDto,
@@ -159,8 +160,12 @@ export class BookingController {
 
   @Post(':id/cancel')
   @RequirePermission('booking', 'update')
-  cancel(@Param('id') id: string, @Request() req: ApiRequestJWT) {
-    return this.bookingService.cancelBooking(id, req.user.userId);
+  cancel(
+    @Param('id') id: string,
+    @Body() cancelDto: CancelBookingDto,
+    @Request() req: ApiRequestJWT,
+  ) {
+    return this.bookingService.cancelBooking(id, req.user.userId, cancelDto);
   }
 
   @Post(':id/add-customer/:customerId')
@@ -196,12 +201,14 @@ export class BookingController {
   cancelCustomer(
     @Param('id') id: string,
     @Param('customerId') customerId: string,
+    @Body() cancelDto: CancelBookingDto,
     @Request() req: ApiRequestJWT,
   ) {
     return this.bookingService.cancelCustomerFromBooking(
       id,
       customerId,
       req.user.userId,
+      cancelDto,
     );
   }
 

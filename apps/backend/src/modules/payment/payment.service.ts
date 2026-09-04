@@ -366,43 +366,66 @@ export class PaymentService {
     }
 
     // Update booking amounts and status if payment is completed
-    if (
-      savedPayment.status === PaymentStatus.COMPLETED &&
-      createPaymentDto.paymentType !== PaymentType.REFUND
-    ) {
-      const alreadyPaid = Number(booking.advancePaid || 0);
-      const lastPayment = Number(createPaymentDto.amount || 0);
-      const totalBookingAmount = Number(booking.totalAmount || 0);
+    if (savedPayment.status === PaymentStatus.COMPLETED) {
+      if (createPaymentDto.paymentType !== PaymentType.REFUND) {
+        const alreadyPaid = Number(booking.advancePaid || 0);
+        const lastPayment = Number(createPaymentDto.amount || 0);
+        const totalBookingAmount = Number(booking.totalAmount || 0);
 
-      const newAdvancePaid = alreadyPaid + lastPayment;
-      const newBalanceAmount = totalBookingAmount - newAdvancePaid;
+        const newAdvancePaid = alreadyPaid + lastPayment;
+        const newBalanceAmount = totalBookingAmount - newAdvancePaid;
 
-      const isFullPayment =
-        alreadyPaid + lastPayment >= totalBookingAmount ||
-        Math.abs(totalBookingAmount - (alreadyPaid + lastPayment)) < 0.01;
+        const isFullPayment =
+          alreadyPaid + lastPayment >= totalBookingAmount ||
+          Math.abs(totalBookingAmount - (alreadyPaid + lastPayment)) < 0.01;
 
-      const updateData: Partial<Booking> = {
-        advancePaid: newAdvancePaid,
-        balanceAmount: newBalanceAmount,
-      };
+        const updateData: Partial<Booking> = {
+          advancePaid: newAdvancePaid,
+          balanceAmount: newBalanceAmount,
+        };
 
-      if (isFullPayment && booking.status !== BookingStatus.CANCELLED) {
-        updateData.status = BookingStatus.COMPLETED;
-      }
+        if (isFullPayment && booking.status !== BookingStatus.CANCELLED) {
+          updateData.status = BookingStatus.COMPLETED;
+        }
 
-      await this.bookingRepository.update(booking.id, updateData);
+        await this.bookingRepository.update(booking.id, updateData);
 
-      if (
-        isFullPayment &&
-        booking.status !== BookingStatus.CANCELLED &&
-        booking.status !== BookingStatus.COMPLETED
-      ) {
+        if (
+          isFullPayment &&
+          booking.status !== BookingStatus.CANCELLED &&
+          booking.status !== BookingStatus.COMPLETED
+        ) {
+          await this.logBookingAction(
+            booking.id,
+            userId,
+            'status_change',
+            { status: booking.status },
+            { status: BookingStatus.COMPLETED, reason: 'Full payment received' },
+          );
+        }
+      } else {
+        const alreadyPaid = Number(booking.advancePaid || 0);
+        const refundAmount = Number(createPaymentDto.amount || 0);
+        const totalBookingAmount = Number(booking.totalAmount || 0);
+
+        const newAdvancePaid = Math.max(0, alreadyPaid - refundAmount);
+        const newBalanceAmount = Math.max(0, totalBookingAmount - newAdvancePaid);
+
+        await this.bookingRepository.update(booking.id, {
+          advancePaid: newAdvancePaid,
+          balanceAmount: newBalanceAmount,
+        });
+
         await this.logBookingAction(
           booking.id,
           userId,
-          'status_change',
-          { status: booking.status },
-          { status: BookingStatus.COMPLETED, reason: 'Full payment received' },
+          'refund_completed',
+          { advancePaid: alreadyPaid, balanceAmount: booking.balanceAmount },
+          {
+            advancePaid: newAdvancePaid,
+            balanceAmount: newBalanceAmount,
+            refundPaymentId: savedPayment.id,
+          },
         );
       }
     }
@@ -884,6 +907,31 @@ export class PaymentService {
           { status: BookingStatus.COMPLETED, reason: 'Full payment received' },
         );
       }
+    } else {
+      const booking = payment.booking;
+      const alreadyPaid = Number(booking.advancePaid || 0);
+      const refundAmount = Number(payment.amount || 0);
+      const totalBookingAmount = Number(booking.totalAmount || 0);
+
+      const newAdvancePaid = Math.max(0, alreadyPaid - refundAmount);
+      const newBalanceAmount = Math.max(0, totalBookingAmount - newAdvancePaid);
+
+      await this.bookingRepository.update(booking.id, {
+        advancePaid: newAdvancePaid,
+        balanceAmount: newBalanceAmount,
+      });
+
+      await this.logBookingAction(
+        booking.id,
+        userId || booking.createdById,
+        'refund_completed',
+        { advancePaid: alreadyPaid, balanceAmount: booking.balanceAmount },
+        {
+          advancePaid: newAdvancePaid,
+          balanceAmount: newBalanceAmount,
+          refundPaymentId: payment.id,
+        },
+      );
     }
 
     if (userId) {

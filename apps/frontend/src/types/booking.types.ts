@@ -22,10 +22,13 @@ export interface IBookingPaymentAllocation {
     notes?: string;
 }
 
+export type PaymentType = "advance" | "balance" | "partial" | "refund";
+
 export interface IBookingPayment {
     id?: string;
-    paymentNumber?: number;
+    paymentNumber?: string;
     amount: number;
+    paymentType?: PaymentType;
     paymentMethod: PaymentMethod;
     paymentReference?: string;
     transactionId?: string;
@@ -82,8 +85,20 @@ export interface ICustomer {
     paidAmount?: number;
     balanceAmount?: number;
     paymentStatus?: 'paid' | 'partial' | 'unpaid';
+    status?: 'active' | 'cancelled';
+    cancelledAt?: string;
+    cancellationReason?: string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface ICancelBookingRequest {
+    customerIds?: string[];
+    issueRefund?: boolean;
+    refundAmount?: number;
+    refundMethod?: PaymentMethod;
+    reason?: string;
+    notes?: string;
 }
 
 

@@ -14,7 +14,9 @@ import { BookingLog } from 'src/database/entity/booking-log.entity';
 import { BookingPaymentLog } from 'src/database/entity/booking-payment-log.entity';
 import {
   BookingPayment,
+  PaymentMethod,
   PaymentStatus,
+  PaymentType,
 } from 'src/database/entity/booking-payment.entity';
 import { Agent, CommissionType } from 'src/database/entity/agent.entity';
 import { Booking, BookingStatus, AgentPayoutStatus } from 'src/database/entity/booking.entity';
@@ -27,6 +29,7 @@ import {
   BookingResponseDto,
   BookingStatsDto,
   BookingSummaryDto,
+  CancelBookingDto,
   CreateBookingDto,
   CreatePaymentDto,
   UpdateBookingDto,
@@ -744,9 +747,13 @@ export class BookingService {
           for (const alloc of p.allocations) {
             const current =
               allocationsByCustomer.get(alloc.bookingCustomerId) || 0;
+            const diff =
+              p.paymentType === PaymentType.REFUND
+                ? -Number(alloc.amount)
+                : Number(alloc.amount);
             allocationsByCustomer.set(
               alloc.bookingCustomerId,
-              current + Number(alloc.amount),
+              current + diff,
             );
           }
         }
@@ -754,8 +761,11 @@ export class BookingService {
     }
 
     const bookingTotal = Number(booking.totalAmount || 0);
-    const count = booking.bookingCustomers?.length || 1;
-    const rawCosts = (booking.bookingCustomers || []).map((bc) => {
+    const activeBookingCustomers = (booking.bookingCustomers || []).filter(
+      (bc) => bc.status !== 'cancelled',
+    );
+    const count = activeBookingCustomers.length || 1;
+    const activeRawCosts = activeBookingCustomers.map((bc) => {
       const tier = bc.packageTier;
       let cost = 0;
       if (tier) {
@@ -777,20 +787,33 @@ export class BookingService {
       return cost;
     });
 
-    const totalRawCost = rawCosts.reduce((sum, c) => sum + c, 0);
+    const totalActiveRawCost = activeRawCosts.reduce((sum, c) => sum + c, 0);
 
     const customers = booking.bookingCustomers
-      ? booking.bookingCustomers.map((bc, index): BookingCustomerResponseDto => {
+      ? booking.bookingCustomers.map((bc): BookingCustomerResponseDto => {
         const customer = bc.customer;
-        let calculatedShare: number;
-        if (totalRawCost > 0) {
-          calculatedShare =
-            Math.round(((rawCosts[index] / totalRawCost) * bookingTotal) * 100) /
-            100;
-        } else {
-          calculatedShare = Math.round((bookingTotal / count) * 100) / 100;
+        const isCancelled = bc.status === 'cancelled';
+        let calculatedShare = 0;
+        if (!isCancelled) {
+          const activeIndex = activeBookingCustomers.findIndex(
+            (a) => a.id === bc.id,
+          );
+          if (totalActiveRawCost > 0 && activeIndex !== -1) {
+            calculatedShare =
+              Math.round(
+                ((activeRawCosts[activeIndex] / totalActiveRawCost) *
+                  bookingTotal) *
+                  100,
+              ) / 100;
+          } else {
+            calculatedShare =
+              Math.round((bookingTotal / count) * 100) / 100;
+          }
         }
-        const paidAmount = allocationsByCustomer.get(bc.id) || 0;
+        const paidAmount = Math.max(
+          0,
+          allocationsByCustomer.get(bc.id) || 0,
+        );
         const balanceAmount = Math.max(0, calculatedShare - paidAmount);
         let paymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
         if (paidAmount >= calculatedShare && calculatedShare > 0) {
@@ -824,6 +847,9 @@ export class BookingService {
           paidAmount,
           balanceAmount,
           paymentStatus,
+          status: bc.status || 'active',
+          cancelledAt: bc.cancelledAt,
+          cancellationReason: bc.cancellationReason,
         };
       })
       : [];
@@ -1356,10 +1382,21 @@ export class BookingService {
     return `PAY${year}${month}${sequence}`;
   }
 
-  async cancelBooking(id: string, userId: string): Promise<BookingResponseDto> {
+  async cancelBooking(
+    id: string,
+    userId: string,
+    cancelDto?: CancelBookingDto,
+  ): Promise<BookingResponseDto> {
     const booking = await this.bookingRepository.findOne({
       where: { id },
-      relations: ['batch'],
+      relations: [
+        'customer',
+        'bookingCustomers',
+        'bookingCustomers.customer',
+        'bookingCustomers.packageTier',
+        'batch',
+        'batch.batchTiers',
+      ],
     });
 
     if (!booking) {
@@ -1370,28 +1407,214 @@ export class BookingService {
       throw new BadRequestException('Booking is already cancelled');
     }
 
+    const activeCustomers = (booking.bookingCustomers || []).filter(
+      (bc) => bc.status !== 'cancelled',
+    );
+
+    if (activeCustomers.length === 0) {
+      throw new BadRequestException('No active passengers found in this booking');
+    }
+
+    let toCancel: BookingCustomer[] = [];
+    if (cancelDto?.customerIds && cancelDto.customerIds.length > 0) {
+      toCancel = activeCustomers.filter(
+        (bc) =>
+          cancelDto.customerIds!.includes(bc.customer.id) ||
+          cancelDto.customerIds!.includes(bc.id),
+      );
+      if (toCancel.length === 0) {
+        throw new BadRequestException(
+          'Selected passengers not found or already cancelled',
+        );
+      }
+    } else {
+      toCancel = activeCustomers;
+    }
+
+    const isFullCancellation = toCancel.length >= activeCustomers.length;
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const previousData = { ...booking };
-      booking.status = BookingStatus.CANCELLED;
+      const previousData = {
+        status: booking.status,
+        numberOfCustomers: booking.numberOfCustomers,
+        totalAmount: booking.totalAmount,
+        balanceAmount: booking.balanceAmount,
+        advancePaid: booking.advancePaid,
+        activeCustomerIds: activeCustomers.map((bc) => bc.customer.id),
+      };
+
+      const cancellationReason =
+        cancelDto?.reason ||
+        cancelDto?.notes ||
+        (isFullCancellation
+          ? 'Booking cancelled'
+          : 'Passenger cancelled');
+
+      // 1. Update status on target booking_customers
+      for (const bc of toCancel) {
+        bc.status = 'cancelled';
+        bc.cancelledAt = new Date();
+        bc.cancellationReason = cancellationReason;
+        await queryRunner.manager.save(bc);
+      }
+
+      // 2. Release batch seats
+      const seatsToRelease = toCancel.length;
+      if (booking.batch) {
+        await queryRunner.manager.update(Batch, booking.batch.id, {
+          bookedSeats: Math.max(0, booking.batch.bookedSeats - seatsToRelease),
+        });
+      }
+
+      // 3. Update booking status and recalculate financials
+      if (isFullCancellation) {
+        booking.status = BookingStatus.CANCELLED;
+        booking.numberOfCustomers = 0;
+      } else {
+        const remainingActive = activeCustomers.filter(
+          (bc) => !toCancel.some((tc) => tc.id === bc.id),
+        );
+        booking.numberOfCustomers = remainingActive.length;
+
+        // Recalculate package total based on remaining active travelers
+        const packageEntity = await this.packageRepository.findOne({
+          where: { id: booking.packageId },
+          relations: ['packageTiers'],
+        });
+
+        let newTotal = 0;
+        for (const rbc of remainingActive) {
+          const packageTier =
+            packageEntity?.packageTiers?.find(
+              (t) => t.id === rbc.packageTierId,
+            ) || packageEntity?.packageTiers?.[0];
+          const batchTier = booking.batch?.batchTiers?.find(
+            (bt) => bt.packageTierId === packageTier?.id,
+          );
+          const adultPrice = batchTier
+            ? Number(batchTier.adultCost || 0)
+            : packageTier
+              ? Number(packageTier.adultCost || 0)
+              : 0;
+
+          let personCost = adultPrice;
+          if (rbc.ageCategory === 'child') {
+            personCost =
+              packageTier?.childCostType === 'percentage'
+                ? adultPrice * (Number(packageTier.childCostValue || 0) / 100)
+                : Number(packageTier?.childCostValue || 0);
+          } else if (rbc.ageCategory === 'infant') {
+            personCost =
+              packageTier?.infantCostType === 'percentage'
+                ? adultPrice * (Number(packageTier.infantCostValue || 0) / 100)
+                : Number(packageTier?.infantCostValue || 0);
+          }
+          newTotal += personCost;
+        }
+
+        booking.totalAmount = Math.round(newTotal * 100) / 100;
+        booking.balanceAmount = Math.max(
+          0,
+          booking.totalAmount - Number(booking.advancePaid || 0),
+        );
+      }
 
       await queryRunner.manager.save(booking);
 
-      // Update batch seats
-      await queryRunner.manager.update(Batch, booking.batch.id, {
-        bookedSeats: booking.batch.bookedSeats - booking.numberOfCustomers,
-      });
+      // 4. Handle Refund Payment if requested
+      if (
+        cancelDto?.issueRefund &&
+        cancelDto?.refundAmount &&
+        cancelDto.refundAmount > 0
+      ) {
+        const paymentNumber = await this.generatePaymentNumber(
+          booking.organizationId,
+        );
+        const primaryCancelledCustomer =
+          toCancel[0]?.customer || booking.customer;
+        const cancelledNames = toCancel
+          .map((tc) =>
+            `${tc.customer?.firstName || ''} ${tc.customer?.lastName || ''}`.trim(),
+          )
+          .join(', ');
 
-      // Log cancellation
+        const refundPayment = this.paymentRepository.create({
+          bookingId: booking.id,
+          paymentNumber,
+          amount: Number(cancelDto.refundAmount),
+          paymentType: PaymentType.REFUND,
+          paymentMethod: cancelDto.refundMethod || PaymentMethod.BANK_TRANSFER,
+          status: PaymentStatus.PENDING,
+          paymentDate: new Date(),
+          payerName:
+            `${primaryCancelledCustomer?.firstName || ''} ${primaryCancelledCustomer?.lastName || ''}`.trim() ||
+            booking.customer?.firstName ||
+            'Traveler',
+          payerCustomerId: primaryCancelledCustomer?.id,
+          notes:
+            cancelDto.notes || cancelDto.reason
+              ? `${cancelDto.reason ? `Reason: ${cancelDto.reason}. ` : ''}${cancelDto.notes || ''}`.trim()
+              : `Refund for cancellation of passenger(s): ${cancelledNames}`,
+          recordedById: userId,
+          isPassengerSplit: toCancel.length > 1,
+        });
+
+        const savedRefund = await queryRunner.manager.save(refundPayment);
+
+        // Create allocations across the cancelled customers
+        const perCustomerRefund =
+          Math.round(
+            (Number(cancelDto.refundAmount) / toCancel.length) * 100,
+          ) / 100;
+        for (let i = 0; i < toCancel.length; i++) {
+          const tc = toCancel[i];
+          const allocAmount =
+            i === toCancel.length - 1
+              ? Number(cancelDto.refundAmount) -
+                perCustomerRefund * (toCancel.length - 1)
+              : perCustomerRefund;
+          const allocation = this.paymentAllocationRepository.create({
+            paymentId: savedRefund.id,
+            bookingCustomerId: tc.id,
+            amount: allocAmount,
+            notes: `Refund allocation for ${tc.customer?.firstName || ''} ${tc.customer?.lastName || ''}`.trim(),
+          });
+          await queryRunner.manager.save(allocation);
+        }
+
+        // Log payment creation
+        const paymentLog = this.paymentLogRepository.create({
+          paymentId: savedRefund.id,
+          changedById: userId,
+          action: 'created_refund',
+          newData: {
+            paymentNumber,
+            amount: cancelDto.refundAmount,
+            status: PaymentStatus.PENDING,
+            cancelledPassengerCount: toCancel.length,
+          },
+        });
+        await queryRunner.manager.save(paymentLog);
+      }
+
+      // 5. Log cancellation in booking audit log
       await this.logAction(
         id,
         userId,
-        'cancel',
+        isFullCancellation ? 'cancel' : 'passenger_cancellation',
         previousData,
-        booking,
+        {
+          status: booking.status,
+          numberOfCustomers: booking.numberOfCustomers,
+          totalAmount: booking.totalAmount,
+          cancelledCustomerIds: toCancel.map((tc) => tc.customer.id),
+          refundIssued: !!(cancelDto?.issueRefund && cancelDto?.refundAmount),
+          refundAmount: cancelDto?.refundAmount || 0,
+        },
         queryRunner.manager,
       );
 
@@ -1409,80 +1632,12 @@ export class BookingService {
     bookingId: string,
     customerId: string,
     userId: string,
+    cancelDto?: CancelBookingDto,
   ): Promise<BookingResponseDto> {
-    const booking = await this.bookingRepository.findOne({
-      where: { id: bookingId },
-      relations: ['bookingCustomers', 'batch', 'batch.batchTiers'],
+    return this.cancelBooking(bookingId, userId, {
+      ...cancelDto,
+      customerIds: [customerId],
     });
-
-    if (!booking) {
-      throw new NotFoundException('Booking not found');
-    }
-
-    const customerIndex = booking.bookingCustomers.findIndex((bc) => bc.customer.id === customerId);
-    if (customerIndex === -1) {
-      throw new NotFoundException('Customer not found in this booking');
-    }
-
-    if (booking.bookingCustomers.length === 1) {
-      return this.cancelBooking(bookingId, userId);
-    }
-
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const previousData = {
-        numberOfCustomers: booking.numberOfCustomers,
-        customerIds: booking.bookingCustomers.map((bc) => bc.customer.id),
-      };
-
-      const removedBookingCustomer = booking.bookingCustomers.splice(customerIndex, 1)[0];
-      await queryRunner.manager.delete(BookingCustomer, removedBookingCustomer.id);
-
-      booking.numberOfCustomers = booking.bookingCustomers.length;
-
-      const packageEntity = await this.packageRepository.findOne({
-        where: { id: booking.packageId },
-        relations: ['packageTiers'],
-      });
-      if (packageEntity) {
-        const packageTier = packageEntity.packageTiers?.find(t => t.id === booking.packageTierId) || packageEntity.packageTiers?.[0];
-        const batchTier = booking.batch?.batchTiers?.find(bt => bt.packageTierId === packageTier?.id);
-        const adultPrice = batchTier ? Number(batchTier.adultCost || 0) : (packageTier ? Number(packageTier.adultCost || 0) : 0);
-        booking.totalAmount = adultPrice * booking.numberOfCustomers;
-        booking.balanceAmount = booking.totalAmount - booking.advancePaid;
-      }
-
-      await queryRunner.manager.save(booking);
-
-      // Update batch seats
-      await queryRunner.manager.update(Batch, booking.batch.id, {
-        bookedSeats: booking.batch.bookedSeats - 1,
-      });
-
-      // Log partial cancellation
-      await this.logAction(
-        bookingId,
-        userId,
-        'customer_removed',
-        previousData,
-        {
-          numberOfCustomers: booking.numberOfCustomers,
-          removedCustomerId: customerId,
-        },
-        queryRunner.manager,
-      );
-
-      await queryRunner.commitTransaction();
-      return this.findOne(bookingId);
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
   }
 
   async addCustomerToBooking(

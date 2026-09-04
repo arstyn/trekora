@@ -186,6 +186,34 @@ export class AddTravelersDto {
   customerIds: string[];
 }
 
+export class CancelBookingDto {
+  @IsOptional()
+  @IsArray()
+  @IsUUID(4, { each: true })
+  customerIds?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  issueRefund?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  refundAmount?: number;
+
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  refundMethod?: PaymentMethod;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
 
 export class UpdateBookingDto {
   @IsOptional()
@@ -330,6 +358,9 @@ export class BookingCustomerResponseDto {
   paidAmount?: number;
   balanceAmount?: number;
   paymentStatus?: 'paid' | 'partial' | 'unpaid';
+  status?: 'active' | 'cancelled';
+  cancelledAt?: Date;
+  cancellationReason?: string;
 }
 
 export class BookingPaymentAllocationResponseDto {

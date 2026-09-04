@@ -47,6 +47,19 @@ export class BookingCustomer {
   })
   ageCategory: 'adult' | 'child' | 'infant';
 
+  @Column({
+    type: 'enum',
+    enum: ['active', 'cancelled'],
+    default: 'active',
+  })
+  status: 'active' | 'cancelled';
+
+  @Column({ type: 'timestamp', nullable: true, name: 'cancelled_at' })
+  cancelledAt?: Date;
+
+  @Column({ type: 'text', nullable: true, name: 'cancellation_reason' })
+  cancellationReason?: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
