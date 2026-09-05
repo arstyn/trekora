@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
-import { BookingPayment } from '../../database/entity/booking-payment.entity';
+import { BookingPayment, PaymentStatus, PaymentType } from '../../database/entity/booking-payment.entity';
 import { Booking } from '../../database/entity/booking.entity';
 import { Customer } from '../../database/entity/customer.entity';
 import { Lead } from '../../database/entity/lead.entity';
@@ -411,6 +411,8 @@ export class DashboardService {
       .leftJoin('payment.booking', 'booking')
       .select('SUM(payment.amount)', 'total')
       .where('booking.organization_id = :organizationId', { organizationId })
+      .andWhere('payment.status = :status', { status: PaymentStatus.COMPLETED })
+      .andWhere('(payment.payment_type IS NULL OR payment.payment_type != :refundType)', { refundType: PaymentType.REFUND })
       .andWhere('payment.created_at BETWEEN :startDate AND :endDate', {
         startDate,
         endDate,
@@ -452,6 +454,8 @@ export class DashboardService {
       .leftJoin('payment.booking', 'booking')
       .select('SUM(payment.amount)', 'total')
       .where('booking.organization_id = :organizationId', { organizationId })
+      .andWhere('payment.status = :status', { status: PaymentStatus.COMPLETED })
+      .andWhere('(payment.payment_type IS NULL OR payment.payment_type != :refundType)', { refundType: PaymentType.REFUND })
       .getRawOne();
 
     return parseFloat(result?.total || '0');

@@ -1,5 +1,6 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgentService from "@/services/agent.service";
@@ -45,6 +46,9 @@ export default function AgentsPage() {
     setDialogOpen(true);
   };
 
+  const activeCount = agents.filter((a) => a.status === "active").length;
+  const inactiveCount = agents.filter((a) => a.status === "inactive").length;
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -81,11 +85,16 @@ export default function AgentsPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm space-y-2">
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-8 w-1/3" />
-              <Skeleton className="h-3 w-2/3" />
-            </div>
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-1/3 mb-1" />
+                <Skeleton className="h-3 w-2/3" />
+              </CardContent>
+            </Card>
           ))}
         </div>
       ) : (
@@ -95,15 +104,22 @@ export default function AgentsPage() {
       {/* Agent Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all">All Agents</TabsTrigger>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="inactive">Inactive</TabsTrigger>
+          <TabsTrigger value="all">
+            All Agents {agents.length > 0 ? `(${agents.length})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="active">
+            Active {activeCount > 0 ? `(${activeCount})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="inactive">
+            Inactive {inactiveCount > 0 ? `(${inactiveCount})` : ""}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="all">
           <AgentList
             status="all"
             agents={agents}
+            loading={loading}
             onRefresh={fetchAgents}
             onOpenEdit={handleOpenEdit}
           />
@@ -113,6 +129,7 @@ export default function AgentsPage() {
           <AgentList
             status="active"
             agents={agents}
+            loading={loading}
             onRefresh={fetchAgents}
             onOpenEdit={handleOpenEdit}
           />
@@ -122,6 +139,7 @@ export default function AgentsPage() {
           <AgentList
             status="inactive"
             agents={agents}
+            loading={loading}
             onRefresh={fetchAgents}
             onOpenEdit={handleOpenEdit}
           />

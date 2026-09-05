@@ -31,13 +31,14 @@ import {
     Sparkles,
     Tag,
     User,
-    UserMinus,
     UserPlus,
     Users,
+    UserX,
     XCircle
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { CancelBookingDialog } from "../../bookings/_components/cancel-booking-dialog";
 
 interface BookingModalProps {
     booking: IBooking;
@@ -90,16 +91,23 @@ export function BookingModal({
         }
     }, [isAddTravelerOpen, travelerMode, customerSearch]);
 
-    const handleCancelBooking = async () => {
-        if (!confirm("Are you sure you want to cancel this entire booking?")) return;
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [cancellingCustomerId, setCancellingCustomerId] = useState<string | null>(null);
+    const [detailedBooking, setDetailedBooking] = useState<IBooking>(booking);
+
+    useEffect(() => {
+        setDetailedBooking(booking);
+    }, [booking]);
+
+    const handleOpenCancelDialog = async (customerId?: string) => {
         try {
-            await BookingService.cancelBooking(booking.id);
-            toast.success("Booking cancelled successfully");
-            onUpdate?.();
-            onOpenChange(false);
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to cancel booking");
+            const fresh = await BookingService.getBookingById(booking.id);
+            setDetailedBooking(fresh);
+        } catch {
+            setDetailedBooking(booking);
         }
+        setCancellingCustomerId(customerId || null);
+        setCancelDialogOpen(true);
     };
 
     const handleMoveBooking = async () => {
@@ -119,29 +127,6 @@ export function BookingModal({
             toast.error(error.response?.data?.message || "Failed to move booking");
         } finally {
             setIsMoving(false);
-        }
-    };
-
-    const handlePutOnHold = async () => {
-        if (!confirm("Are you sure you want to put this booking ON HOLD?")) return;
-        try {
-            await BookingService.updateBooking(booking.id, { status: 'on_hold' });
-            toast.success("Booking put on hold");
-            onUpdate?.();
-            onOpenChange(false);
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to put booking on hold");
-        }
-    };
-
-    const handleRemoveTraveler = async (customerId: string, customerName: string) => {
-        if (!confirm(`Are you sure you want to remove ${customerName} from this booking?`)) return;
-        try {
-            await BookingService.cancelCustomerFromBooking(booking.id, customerId);
-            toast.success("Traveler removed successfully");
-            onUpdate?.();
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to remove traveler");
         }
     };
 
@@ -169,22 +154,12 @@ export function BookingModal({
                             Booking Details: {booking.bookingNumber}
                         </div>
                         <div className="flex items-center gap-2">
-                            {booking.status !== 'cancelled' && booking.status !== 'on_hold' && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-amber-600 border-amber-200 hover:bg-amber-50"
-                                    onClick={handlePutOnHold}
-                                >
-                                    Put on Hold
-                                </Button>
-                            )}
                             {booking.status !== 'cancelled' && (
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     className="text-destructive border-red-200 hover:bg-red-50"
-                                    onClick={handleCancelBooking}
+                                    onClick={() => handleOpenCancelDialog()}
                                 >
                                     <XCircle className="w-4 h-4 mr-2" />
                                     Cancel Booking
@@ -650,39 +625,54 @@ export function BookingModal({
                                 </Card>
                             )}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {booking.customers?.map((customer) => (
-                                    <div
-                                        key={customer.id}
-                                        className={`p-3 border rounded-lg bg-background ${customer.isBlacklisted ? 'border-destructive/50 bg-destructive/5' : ''}`}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-1.5">
-                                                    <p className="font-medium text-sm">
-                                                        {customer.firstName}{" "}
-                                                        {customer.lastName}
+                                {booking.customers?.map((customer) => {
+                                    const isCancelled = customer.status === 'cancelled';
+                                    return (
+                                        <div
+                                            key={customer.id}
+                                            className={`p-3 border rounded-lg bg-background ${
+                                                isCancelled
+                                                    ? 'border-destructive/30 bg-destructive/5 opacity-60'
+                                                    : customer.isBlacklisted
+                                                    ? 'border-destructive/50 bg-destructive/5'
+                                                    : ''
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className={`font-medium text-sm ${isCancelled ? 'line-through' : ''}`}>
+                                                            {customer.firstName}{" "}
+                                                            {customer.lastName}
+                                                        </p>
+                                                        {isCancelled && (
+                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 text-destructive border-destructive/30">
+                                                                Cancelled
+                                                            </Badge>
+                                                        )}
+                                                        {customer.isBlacklisted && (
+                                                            <Badge variant="destructive" className="text-[9px] px-1 py-0">Blacklisted</Badge>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {customer.email || customer.phone || "N/A"}
                                                     </p>
-                                                    {customer.isBlacklisted && (
-                                                        <Badge variant="destructive" className="text-[9px] px-1 py-0">Blacklisted</Badge>
-                                                    )}
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {customer.email || customer.phone || "N/A"}
-                                                </p>
+                                                {booking.status !== 'cancelled' && !isCancelled && (booking.customers.filter(c => c.status !== 'cancelled').length > 1) && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                                        title="Cancel Traveler"
+                                                        onClick={() => customer.id && handleOpenCancelDialog(customer.id)}
+                                                    >
+                                                        <UserX className="w-4 h-4" />
+                                                    </Button>
+                                                )}
                                             </div>
-                                            {booking.status !== 'cancelled' && booking.customers.length > 1 && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                                                    onClick={() => customer.id && handleRemoveTraveler(customer.id, `${customer.firstName} ${customer.lastName}`)}
-                                                >
-                                                    <UserMinus className="w-4 h-4" />
-                                                </Button>
-                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -717,6 +707,22 @@ export function BookingModal({
                     </div>
                 </ScrollArea>
             </DialogContent>
+
+            {cancelDialogOpen && (
+                <CancelBookingDialog
+                    open={cancelDialogOpen}
+                    onOpenChange={(open) => {
+                        setCancelDialogOpen(open);
+                        if (!open) setCancellingCustomerId(null);
+                    }}
+                    booking={detailedBooking}
+                    initialCustomerId={cancellingCustomerId}
+                    onSuccess={() => {
+                        onUpdate?.();
+                        onOpenChange(false);
+                    }}
+                />
+            )}
         </Dialog>
     );
 }

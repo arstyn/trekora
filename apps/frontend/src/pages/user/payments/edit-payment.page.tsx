@@ -277,8 +277,8 @@ export default function EditPaymentPage() {
 			setError(null);
 
 			// Check if payment can be modified
-			if (paymentData?.status === "completed" || paymentData?.status === "refunded") {
-				// Only allow status and notes changes for completed/refunded payments
+			if (paymentData?.status === "completed") {
+				// Only allow status and notes changes for completed payments
 				const updateData: UpdatePaymentDto = {
 					notes: formData.notes || undefined,
 				};
@@ -352,14 +352,12 @@ export default function EditPaymentPage() {
 				return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
 			case "failed":
 				return <Badge className="bg-red-100 text-red-800">Failed</Badge>;
-			case "refunded":
-				return <Badge className="bg-blue-100 text-blue-800">Refunded</Badge>;
 			default:
 				return <Badge variant="secondary">{status}</Badge>;
 		}
 	};
 
-	const isReadOnly = paymentData?.status === "completed" || paymentData?.status === "refunded";
+	const isReadOnly = paymentData?.status === "completed";
 
 	if (loading) {
 		return (
@@ -606,9 +604,6 @@ export default function EditPaymentPage() {
 												</SelectItem>
 												<SelectItem value={PaymentStatus.FAILED}>
 													Failed
-												</SelectItem>
-												<SelectItem value={PaymentStatus.REFUNDED}>
-													Refunded
 												</SelectItem>
 											</SelectContent>
 										</Select>

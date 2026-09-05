@@ -355,14 +355,7 @@ export default function PaymentDetailsPage() {
                         "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800",
                     icon: XCircle,
                 };
-            case "refunded":
-                return {
-                    label: "Refunded",
-                    dotClass: "bg-purple-500",
-                    badgeClass:
-                        "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800",
-                    icon: RefreshCw,
-                };
+
             case "archived":
                 return {
                     label: "Archived",
@@ -495,7 +488,7 @@ export default function PaymentDetailsPage() {
                     </Button>
 
                     {/* Edit button */}
-                    {paymentData.status !== "completed" && paymentData.status !== "refunded" && (
+                    {paymentData.status !== "completed" && (
                         <NavLink to={`/payments/${id}/edit`}>
                             <Button variant="outline" size="sm">
                                 <Edit className="w-4 h-4 mr-2" />

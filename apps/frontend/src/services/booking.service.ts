@@ -7,6 +7,7 @@ import type {
     IBookingLog,
     IBookingPayment,
     IBookingStatistics,
+    ICancelBookingRequest,
     ICreateBookingRequest,
     ICustomer,
     IPackage,
@@ -86,17 +87,25 @@ export class BookingService {
         await axiosInstance.delete(`${this.baseUrl}/${id}`);
     }
 
-    static async cancelBooking(id: string): Promise<IBooking> {
-        const response = await axiosInstance.post(`${this.baseUrl}/${id}/cancel`);
+    static async cancelBooking(
+        id: string,
+        cancelData?: ICancelBookingRequest,
+    ): Promise<IBooking> {
+        const response = await axiosInstance.post(
+            `${this.baseUrl}/${id}/cancel`,
+            cancelData || {},
+        );
         return response.data;
     }
 
     static async cancelCustomerFromBooking(
         bookingId: string,
         customerId: string,
+        cancelData?: ICancelBookingRequest,
     ): Promise<IBooking> {
         const response = await axiosInstance.post(
             `${this.baseUrl}/${bookingId}/cancel-customer/${customerId}`,
+            cancelData || {},
         );
         return response.data;
     }

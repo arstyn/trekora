@@ -278,7 +278,7 @@ export default function TodosPage() {
     }
 
     return (
-        <div className="container mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+        <div className="container mx-auto p-6 space-y-8">
             <TodoFilters
                 isAdmin={isAdmin}
                 employees={employees}

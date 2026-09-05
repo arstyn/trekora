@@ -46,6 +46,10 @@ export class CreatePaymentDto {
   paymentMethod: PaymentMethod;
 
   @IsOptional()
+  @IsEnum(PaymentStatus)
+  status?: PaymentStatus;
+
+  @IsOptional()
   @IsString()
   paymentReference?: string;
 
@@ -214,6 +218,11 @@ export class PaymentFilterDto {
   @IsOptional()
   @IsEnum(PaymentType)
   paymentType?: PaymentType;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  excludeRefunds?: boolean;
 
   @IsOptional()
   @IsEnum(PaymentMethod)

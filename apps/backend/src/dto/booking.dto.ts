@@ -10,7 +10,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { PaymentMethod } from 'src/database/entity/booking-payment.entity';
+import { PaymentMethod, PaymentStatus, PaymentType } from 'src/database/entity/booking-payment.entity';
 import { AgentPayoutStatus, BookingStatus } from 'src/database/entity/booking.entity';
 import { CommissionType } from 'src/database/entity/agent.entity';
 
@@ -32,6 +32,14 @@ export class CreatePaymentDto {
 
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
+
+  @IsOptional()
+  @IsEnum(PaymentType)
+  paymentType?: PaymentType;
+
+  @IsOptional()
+  @IsEnum(PaymentStatus)
+  status?: PaymentStatus;
 
   @IsOptional()
   @IsString()
@@ -182,6 +190,34 @@ export class AddTravelersDto {
   customerIds: string[];
 }
 
+export class CancelBookingDto {
+  @IsOptional()
+  @IsArray()
+  @IsUUID(4, { each: true })
+  customerIds?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  issueRefund?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  refundAmount?: number;
+
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  refundMethod?: PaymentMethod;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
 
 export class UpdateBookingDto {
   @IsOptional()
@@ -326,6 +362,9 @@ export class BookingCustomerResponseDto {
   paidAmount?: number;
   balanceAmount?: number;
   paymentStatus?: 'paid' | 'partial' | 'unpaid';
+  status?: 'active' | 'cancelled';
+  cancelledAt?: Date;
+  cancellationReason?: string;
 }
 
 export class BookingPaymentAllocationResponseDto {
@@ -399,6 +438,7 @@ export class BookingResponseDto {
   payments: {
     id: string;
     amount: number;
+    paymentType?: PaymentType;
     paymentMethod: PaymentMethod;
     status: string;
     paymentDate?: Date;

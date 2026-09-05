@@ -180,6 +180,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     },
                 ]
                 : []),
+            {
+                title: "Agents",
+                url: "/agents",
+                icon: UserCheck,
+            },
             ...(canReadEmployees || canReadLeads || canReadCustomers
                 ? [
                     {
@@ -228,11 +233,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     },
                 ]
                 : []),
-            {
-                name: "Agents",
-                url: "/agents",
-                icon: UserCheck,
-            },
             ...(canReadPayments
                 ? [
                     {

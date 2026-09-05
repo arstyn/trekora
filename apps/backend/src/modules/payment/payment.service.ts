@@ -13,6 +13,7 @@ import { BookingPaymentLog } from 'src/database/entity/booking-payment-log.entit
 import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
 import { BookingCustomer } from 'src/database/entity/booking-customer.entity';
 import { Booking, BookingStatus } from 'src/database/entity/booking.entity';
+import { BookingLog } from 'src/database/entity/booking-log.entity';
 import {
   BookingCustomerPaymentSummaryDto,
   BookingForPaymentDto,
@@ -43,8 +44,31 @@ export class PaymentService {
     private bookingCustomerRepository: Repository<BookingCustomer>,
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
+    @InjectRepository(BookingLog)
+    private bookingLogRepository: Repository<BookingLog>,
     private uploadService: UploadService,
   ) {}
+
+  async logBookingAction(
+    bookingId: string,
+    userId: string,
+    action: string,
+    previousData: any,
+    newData: any,
+  ): Promise<void> {
+    try {
+      const log = this.bookingLogRepository.create({
+        bookingId,
+        changedById: userId,
+        action,
+        previousData,
+        newData,
+      });
+      await this.bookingLogRepository.save(log);
+    } catch (err) {
+      console.error('Failed to log booking action:', err);
+    }
+  }
 
   async logPaymentAction(
     paymentId: string,
@@ -183,9 +207,13 @@ export class PaymentService {
             for (const alloc of p.allocations) {
               const current =
                 allocationsByCustomer.get(alloc.bookingCustomerId) || 0;
+              const diff =
+                p.paymentType === PaymentType.REFUND
+                  ? -Number(alloc.amount)
+                  : Number(alloc.amount);
               allocationsByCustomer.set(
                 alloc.bookingCustomerId,
-                current + Number(alloc.amount),
+                current + diff,
               );
             }
           }
@@ -287,6 +315,9 @@ export class PaymentService {
     const paymentNumber = await this.generatePaymentNumber(organizationId);
 
     // Create payment with paymentType in dedicated column
+    const paymentStatus = createPaymentDto.status || PaymentStatus.PENDING;
+
+    // Create payment with paymentType in dedicated column
     const payment = this.paymentRepository.create({
       paymentNumber,
       amount: createPaymentDto.amount,
@@ -303,7 +334,9 @@ export class PaymentService {
       payerCustomerId: createPaymentDto.payerCustomerId || null,
       bookingId: createPaymentDto.bookingId,
       recordedById: userId,
-      status: PaymentStatus.PENDING,
+      verifiedById: paymentStatus === PaymentStatus.COMPLETED ? userId : null,
+      verifiedAt: paymentStatus === PaymentStatus.COMPLETED ? new Date() : null,
+      status: paymentStatus,
     } as any) as unknown as BookingPayment;
 
     const savedPayment = await this.paymentRepository.save(payment);
@@ -318,10 +351,6 @@ export class PaymentService {
       transactionId: savedPayment.transactionId,
       payerName: savedPayment.payerName,
     });
-
-
-
-
 
     // Save allocations if present
     if (
@@ -340,18 +369,69 @@ export class PaymentService {
       await this.paymentAllocationRepository.save(allocations);
     }
 
-    // Update booking amounts if payment is completed
-    if (
-      savedPayment.status === PaymentStatus.COMPLETED &&
-      createPaymentDto.paymentType !== PaymentType.REFUND
-    ) {
-      const newAdvancePaid = booking.advancePaid + createPaymentDto.amount;
-      const newBalanceAmount = booking.totalAmount - newAdvancePaid;
+    // Update booking amounts and status if payment is completed
+    if (savedPayment.status === PaymentStatus.COMPLETED) {
+      if (createPaymentDto.paymentType !== PaymentType.REFUND) {
+        const alreadyPaid = Number(booking.advancePaid || 0);
+        const lastPayment = Number(createPaymentDto.amount || 0);
+        const totalBookingAmount = Number(booking.totalAmount || 0);
 
-      await this.bookingRepository.update(booking.id, {
-        advancePaid: newAdvancePaid,
-        balanceAmount: newBalanceAmount,
-      });
+        const newAdvancePaid = alreadyPaid + lastPayment;
+        const newBalanceAmount = totalBookingAmount - newAdvancePaid;
+
+        const isFullPayment =
+          alreadyPaid + lastPayment >= totalBookingAmount ||
+          Math.abs(totalBookingAmount - (alreadyPaid + lastPayment)) < 0.01;
+
+        const updateData: Partial<Booking> = {
+          advancePaid: newAdvancePaid,
+          balanceAmount: newBalanceAmount,
+        };
+
+        if (isFullPayment && booking.status !== BookingStatus.CANCELLED) {
+          updateData.status = BookingStatus.COMPLETED;
+        }
+
+        await this.bookingRepository.update(booking.id, updateData);
+
+        if (
+          isFullPayment &&
+          booking.status !== BookingStatus.CANCELLED &&
+          booking.status !== BookingStatus.COMPLETED
+        ) {
+          await this.logBookingAction(
+            booking.id,
+            userId,
+            'status_change',
+            { status: booking.status },
+            { status: BookingStatus.COMPLETED, reason: 'Full payment received' },
+          );
+        }
+      } else {
+        const alreadyPaid = Number(booking.advancePaid || 0);
+        const refundAmount = Number(createPaymentDto.amount || 0);
+        const totalBookingAmount = Number(booking.totalAmount || 0);
+
+        const newAdvancePaid = Math.max(0, alreadyPaid - refundAmount);
+        const newBalanceAmount = Math.max(0, totalBookingAmount - newAdvancePaid);
+
+        await this.bookingRepository.update(booking.id, {
+          advancePaid: newAdvancePaid,
+          balanceAmount: newBalanceAmount,
+        });
+
+        await this.logBookingAction(
+          booking.id,
+          userId,
+          'refund_completed',
+          { advancePaid: alreadyPaid, balanceAmount: booking.balanceAmount },
+          {
+            advancePaid: newAdvancePaid,
+            balanceAmount: newBalanceAmount,
+            refundPaymentId: savedPayment.id,
+          },
+        );
+      }
     }
 
     return this.findOne(savedPayment.id, organizationId);
@@ -396,6 +476,8 @@ export class PaymentService {
 
     if (paymentType) {
       query.andWhere('payment.paymentType = :paymentType', { paymentType });
+    } else if (filterDto.excludeRefunds) {
+      query.andWhere('payment.paymentType != :refundType', { refundType: PaymentType.REFUND });
     }
 
     if (paymentMethod) {
@@ -492,6 +574,8 @@ export class PaymentService {
 
     if (paymentType) {
       query.andWhere('payment.paymentType = :paymentType', { paymentType });
+    } else if (filterDto.excludeRefunds) {
+      query.andWhere('payment.paymentType != :refundType', { refundType: PaymentType.REFUND });
     }
 
     if (paymentMethod) {
@@ -588,11 +672,8 @@ export class PaymentService {
       throw new NotFoundException('Payment not found or access denied');
     }
 
-    // Prevent editing completed/refunded payments for certain fields
-    if (
-      payment.status === PaymentStatus.COMPLETED ||
-      payment.status === PaymentStatus.REFUNDED
-    ) {
+    // Prevent editing completed payments for certain fields
+    if (payment.status === PaymentStatus.COMPLETED) {
       const restrictedFields = ['amount', 'paymentMethod', 'paymentType'];
       const hasRestrictedChanges = restrictedFields.some(
         (field) =>
@@ -601,7 +682,7 @@ export class PaymentService {
 
       if (hasRestrictedChanges) {
         throw new BadRequestException(
-          'Cannot modify amount, method, or type of completed/refunded payments',
+          'Cannot modify amount, method, or type of completed payments',
         );
       }
     }
@@ -652,7 +733,7 @@ export class PaymentService {
 
     if (payment.status === PaymentStatus.COMPLETED) {
       throw new BadRequestException(
-        'Cannot delete completed payments. Mark as refunded instead.',
+        'Cannot delete completed payments.',
       );
     }
 
@@ -674,12 +755,19 @@ export class PaymentService {
       archivedResult,
     ] = await Promise.all([
       query
+        .clone()
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
+        })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
         .getRawOne(),
       query
         .clone()
         .andWhere('payment.status = :status', { status: PaymentStatus.PENDING })
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
+        })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
         .getRawOne(),
@@ -688,19 +776,25 @@ export class PaymentService {
         .andWhere('payment.status = :status', {
           status: PaymentStatus.COMPLETED,
         })
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
+        })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
         .getRawOne(),
       query
         .clone()
         .andWhere('payment.status = :status', { status: PaymentStatus.FAILED })
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
+        })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
         .getRawOne(),
       query
         .clone()
-        .andWhere('payment.status = :status', {
-          status: PaymentStatus.REFUNDED,
+        .andWhere('payment.paymentType = :refundType', {
+          refundType: PaymentType.REFUND,
         })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
@@ -709,6 +803,9 @@ export class PaymentService {
         .clone()
         .andWhere('payment.status = :status', {
           status: PaymentStatus.ARCHIVED,
+        })
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
         })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
@@ -793,16 +890,69 @@ export class PaymentService {
     payment.verifiedAt = new Date();
     await this.paymentRepository.save(payment);
 
-    // Update booking balance and advance amounts
+    // Update booking balance, advance amounts, and status
     if (payment.paymentType !== PaymentType.REFUND) {
       const booking = payment.booking;
-      const newAdvancePaid = Number(booking.advancePaid) + Number(payment.amount);
-      const newBalanceAmount = Number(booking.totalAmount) - newAdvancePaid;
+      const alreadyPaid = Number(booking.advancePaid || 0);
+      const lastPayment = Number(payment.amount || 0);
+      const totalBookingAmount = Number(booking.totalAmount || 0);
+
+      const newAdvancePaid = alreadyPaid + lastPayment;
+      const newBalanceAmount = totalBookingAmount - newAdvancePaid;
+
+      const isFullPayment =
+        alreadyPaid + lastPayment >= totalBookingAmount ||
+        Math.abs(totalBookingAmount - (alreadyPaid + lastPayment)) < 0.01;
+
+      const updateData: Partial<Booking> = {
+        advancePaid: newAdvancePaid,
+        balanceAmount: newBalanceAmount,
+      };
+
+      if (isFullPayment && booking.status !== BookingStatus.CANCELLED) {
+        updateData.status = BookingStatus.COMPLETED;
+      }
+
+      await this.bookingRepository.update(booking.id, updateData);
+
+      if (
+        isFullPayment &&
+        booking.status !== BookingStatus.CANCELLED &&
+        booking.status !== BookingStatus.COMPLETED
+      ) {
+        await this.logBookingAction(
+          booking.id,
+          userId || booking.createdById,
+          'status_change',
+          { status: booking.status },
+          { status: BookingStatus.COMPLETED, reason: 'Full payment received' },
+        );
+      }
+    } else {
+      const booking = payment.booking;
+      const alreadyPaid = Number(booking.advancePaid || 0);
+      const refundAmount = Number(payment.amount || 0);
+      const totalBookingAmount = Number(booking.totalAmount || 0);
+
+      const newAdvancePaid = Math.max(0, alreadyPaid - refundAmount);
+      const newBalanceAmount = Math.max(0, totalBookingAmount - newAdvancePaid);
 
       await this.bookingRepository.update(booking.id, {
         advancePaid: newAdvancePaid,
         balanceAmount: newBalanceAmount,
       });
+
+      await this.logBookingAction(
+        booking.id,
+        userId || booking.createdById,
+        'refund_completed',
+        { advancePaid: alreadyPaid, balanceAmount: booking.balanceAmount },
+        {
+          advancePaid: newAdvancePaid,
+          balanceAmount: newBalanceAmount,
+          refundPaymentId: payment.id,
+        },
+      );
     }
 
     if (userId) {
@@ -849,36 +999,7 @@ export class PaymentService {
     return this.findOne(id, organizationId);
   }
 
-  async markAsRefunded(
-    id: string,
-    organizationId: string,
-    userId?: string,
-  ): Promise<PaymentResponseDto> {
-    const payment = await this.paymentRepository.findOne({
-      where: { id },
-      relations: ['booking'],
-    });
 
-    if (!payment || payment.booking.organizationId !== organizationId) {
-      throw new NotFoundException('Payment not found or access denied');
-    }
-
-    const previousStatus = payment.status;
-    payment.status = PaymentStatus.REFUNDED;
-    await this.paymentRepository.save(payment);
-
-    if (userId) {
-      await this.logPaymentAction(
-        id,
-        userId,
-        'refunded',
-        { status: previousStatus },
-        { status: PaymentStatus.REFUNDED },
-      );
-    }
-
-    return this.findOne(id, organizationId);
-  }
 
   async markAsArchived(
     id: string,

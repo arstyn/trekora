@@ -242,7 +242,7 @@ export default function PaymentsPage() {
 
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">Refunded</CardTitle>
+						<CardTitle className="text-sm font-medium">Refunds</CardTitle>
 						<TrendingUp className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
 					<CardContent>
@@ -280,35 +280,31 @@ export default function PaymentsPage() {
 				<Card className="border-red-200 bg-red-50">
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2 text-red-800">
-							<AlertTriangle className="w-5 h-5" />
+							<AlertTriangle className="w-5 h-5 text-red-600" />
 							Overdue Payments ({overduePayments.length})
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="space-y-3">
-							{overduePayments.map((payment) => (
+						<div className="space-y-2">
+							{overduePayments.slice(0, 3).map((payment) => (
 								<div
 									key={payment.bookingId}
-									className="flex items-center justify-between p-3 bg-white rounded-lg border"
+									className="flex justify-between items-center text-sm p-2 bg-white rounded border border-red-200"
 								>
 									<div>
-										<p className="font-medium">
-											{payment.customerName}
-										</p>
-										<p className="text-sm text-muted-foreground">
-											{payment.packageName} • Due:{" "}
-											{new Date(
-												payment.dueDate
-											).toLocaleDateString()}
-										</p>
+										<span className="font-medium">{payment.customerName}</span>
+										<span className="text-muted-foreground">
+											{" "}
+											- {payment.packageName}
+										</span>
 									</div>
 									<div className="text-right">
-										<p className="font-bold text-red-600">
+										<div className="font-semibold text-red-600">
 											{formatCurrency(payment.dueAmount)}
-										</p>
-										<p className="text-xs text-red-500">
+										</div>
+										<div className="text-xs text-red-500">
 											{payment.daysOverdue} days overdue
-										</p>
+										</div>
 									</div>
 								</div>
 							))}
@@ -325,7 +321,7 @@ export default function PaymentsPage() {
 					<TabsTrigger value="pending">Pending</TabsTrigger>
 					<TabsTrigger value="completed">Completed</TabsTrigger>
 					<TabsTrigger value="failed">Failed</TabsTrigger>
-					<TabsTrigger value="refunded">Refunded</TabsTrigger>
+					<TabsTrigger value="refunds">Refunds</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="all">
@@ -347,8 +343,8 @@ export default function PaymentsPage() {
 					<PaymentList status="failed" onPaymentUpdate={handlePaymentAdded} />
 				</TabsContent>
 
-				<TabsContent value="refunded">
-					<PaymentList status="refunded" onPaymentUpdate={handlePaymentAdded} />
+				<TabsContent value="refunds">
+					<PaymentList paymentType="refund" onPaymentUpdate={handlePaymentAdded} />
 				</TabsContent>
 			</Tabs>
 

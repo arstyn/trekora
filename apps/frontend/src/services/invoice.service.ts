@@ -51,10 +51,13 @@ export class InvoiceService {
         );
     }
 
-    // Calculate total paid amount from completed payments
+    // Calculate total paid amount from completed payments (accounting for refunds)
     static getTotalPaidAmount(booking: IBooking): number {
         return this.getCompletedPayments(booking).reduce(
-            (total, payment) => total + payment.amount,
+            (total, payment) =>
+                payment.paymentType === "refund"
+                    ? total - Number(payment.amount)
+                    : total + Number(payment.amount),
             0
         );
     }

@@ -10,7 +10,7 @@ export type PaymentMethod =
     | "upi"
     | "other";
 
-export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
+export type PaymentStatus = "pending" | "completed" | "failed";
 
 export interface IBookingPaymentAllocation {
     id?: string;
@@ -22,9 +22,13 @@ export interface IBookingPaymentAllocation {
     notes?: string;
 }
 
+export type PaymentType = "advance" | "balance" | "partial" | "refund";
+
 export interface IBookingPayment {
     id?: string;
+    paymentNumber?: string;
     amount: number;
+    paymentType?: PaymentType;
     paymentMethod: PaymentMethod;
     paymentReference?: string;
     transactionId?: string;
@@ -81,8 +85,20 @@ export interface ICustomer {
     paidAmount?: number;
     balanceAmount?: number;
     paymentStatus?: 'paid' | 'partial' | 'unpaid';
+    status?: 'active' | 'cancelled';
+    cancelledAt?: string;
+    cancellationReason?: string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface ICancelBookingRequest {
+    customerIds?: string[];
+    issueRefund?: boolean;
+    refundAmount?: number;
+    refundMethod?: PaymentMethod;
+    reason?: string;
+    notes?: string;
 }
 
 
@@ -234,6 +250,7 @@ export interface IUpdateBookingRequest {
     agentCommissionValue?: number;
     agentCommissionAmount?: number;
     agentPayoutStatus?: "pending" | "paid" | "cancelled";
+    additionalDetails?: Record<string, any>;
 }
 
 // Dashboard statistics
