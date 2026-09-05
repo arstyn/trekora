@@ -375,7 +375,7 @@ export default function BookingDetailsPage() {
     const isPaidInFull = balanceAmount <= 0.01;
 
     return (
-        <div className="w-full p-4 sm:p-6 space-y-6 animate-in fade-in duration-300">
+        <div className="w-full p-4 sm:p-6 space-y-6">
             {/* Top Navigation & Breadcrumbs */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <Breadcrumb>
