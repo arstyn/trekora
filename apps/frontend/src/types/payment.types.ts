@@ -19,7 +19,6 @@ export const PaymentStatus = {
     PENDING: "pending",
     COMPLETED: "completed",
     FAILED: "failed",
-    REFUNDED: "refunded",
     ARCHIVED: "archived",
 } as const;
 
@@ -247,6 +246,7 @@ export interface PaymentFilters {
     search?: string;
     status?: PaymentStatus;
     paymentType?: PaymentType;
+    excludeRefunds?: boolean;
     paymentMethod?: PaymentMethod;
     fromDate?: string;
     toDate?: string;

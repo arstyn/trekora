@@ -207,9 +207,13 @@ export class PaymentService {
             for (const alloc of p.allocations) {
               const current =
                 allocationsByCustomer.get(alloc.bookingCustomerId) || 0;
+              const diff =
+                p.paymentType === PaymentType.REFUND
+                  ? -Number(alloc.amount)
+                  : Number(alloc.amount);
               allocationsByCustomer.set(
                 alloc.bookingCustomerId,
-                current + Number(alloc.amount),
+                current + diff,
               );
             }
           }
@@ -472,6 +476,8 @@ export class PaymentService {
 
     if (paymentType) {
       query.andWhere('payment.paymentType = :paymentType', { paymentType });
+    } else if (filterDto.excludeRefunds) {
+      query.andWhere('payment.paymentType != :refundType', { refundType: PaymentType.REFUND });
     }
 
     if (paymentMethod) {
@@ -568,6 +574,8 @@ export class PaymentService {
 
     if (paymentType) {
       query.andWhere('payment.paymentType = :paymentType', { paymentType });
+    } else if (filterDto.excludeRefunds) {
+      query.andWhere('payment.paymentType != :refundType', { refundType: PaymentType.REFUND });
     }
 
     if (paymentMethod) {
@@ -664,11 +672,8 @@ export class PaymentService {
       throw new NotFoundException('Payment not found or access denied');
     }
 
-    // Prevent editing completed/refunded payments for certain fields
-    if (
-      payment.status === PaymentStatus.COMPLETED ||
-      payment.status === PaymentStatus.REFUNDED
-    ) {
+    // Prevent editing completed payments for certain fields
+    if (payment.status === PaymentStatus.COMPLETED) {
       const restrictedFields = ['amount', 'paymentMethod', 'paymentType'];
       const hasRestrictedChanges = restrictedFields.some(
         (field) =>
@@ -677,7 +682,7 @@ export class PaymentService {
 
       if (hasRestrictedChanges) {
         throw new BadRequestException(
-          'Cannot modify amount, method, or type of completed/refunded payments',
+          'Cannot modify amount, method, or type of completed payments',
         );
       }
     }
@@ -728,7 +733,7 @@ export class PaymentService {
 
     if (payment.status === PaymentStatus.COMPLETED) {
       throw new BadRequestException(
-        'Cannot delete completed payments. Mark as refunded instead.',
+        'Cannot delete completed payments.',
       );
     }
 
@@ -750,12 +755,19 @@ export class PaymentService {
       archivedResult,
     ] = await Promise.all([
       query
+        .clone()
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
+        })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
         .getRawOne(),
       query
         .clone()
         .andWhere('payment.status = :status', { status: PaymentStatus.PENDING })
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
+        })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
         .getRawOne(),
@@ -764,19 +776,25 @@ export class PaymentService {
         .andWhere('payment.status = :status', {
           status: PaymentStatus.COMPLETED,
         })
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
+        })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
         .getRawOne(),
       query
         .clone()
         .andWhere('payment.status = :status', { status: PaymentStatus.FAILED })
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
+        })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
         .getRawOne(),
       query
         .clone()
-        .andWhere('payment.status = :status', {
-          status: PaymentStatus.REFUNDED,
+        .andWhere('payment.paymentType = :refundType', {
+          refundType: PaymentType.REFUND,
         })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
@@ -785,6 +803,9 @@ export class PaymentService {
         .clone()
         .andWhere('payment.status = :status', {
           status: PaymentStatus.ARCHIVED,
+        })
+        .andWhere('payment.paymentType != :refundType', {
+          refundType: PaymentType.REFUND,
         })
         .select('COUNT(*)', 'count')
         .addSelect('SUM(payment.amount)', 'sum')
@@ -978,36 +999,7 @@ export class PaymentService {
     return this.findOne(id, organizationId);
   }
 
-  async markAsRefunded(
-    id: string,
-    organizationId: string,
-    userId?: string,
-  ): Promise<PaymentResponseDto> {
-    const payment = await this.paymentRepository.findOne({
-      where: { id },
-      relations: ['booking'],
-    });
 
-    if (!payment || payment.booking.organizationId !== organizationId) {
-      throw new NotFoundException('Payment not found or access denied');
-    }
-
-    const previousStatus = payment.status;
-    payment.status = PaymentStatus.REFUNDED;
-    await this.paymentRepository.save(payment);
-
-    if (userId) {
-      await this.logPaymentAction(
-        id,
-        userId,
-        'refunded',
-        { status: previousStatus },
-        { status: PaymentStatus.REFUNDED },
-      );
-    }
-
-    return this.findOne(id, organizationId);
-  }
 
   async markAsArchived(
     id: string,

@@ -220,6 +220,11 @@ export class PaymentFilterDto {
   paymentType?: PaymentType;
 
   @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  excludeRefunds?: boolean;
+
+  @IsOptional()
   @IsEnum(PaymentMethod)
   paymentMethod?: PaymentMethod;
 

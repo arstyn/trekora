@@ -948,6 +948,7 @@ export class BookingService {
           id: payment.id,
           paymentNumber: payment.paymentNumber,
           amount: payment.amount,
+          paymentType: payment.paymentType,
           paymentMethod: payment.paymentMethod,
           status: payment.status,
           paymentDate: payment.paymentDate,
@@ -1259,7 +1260,10 @@ export class BookingService {
     await this.paymentLogRepository.save(paymentLog);
 
     // Update booking advance paid, balance, and status if payment is completed
-    if (savedPayment.status === PaymentStatus.COMPLETED) {
+    if (
+      savedPayment.status === PaymentStatus.COMPLETED &&
+      paymentDto.paymentType !== PaymentType.REFUND
+    ) {
       const alreadyPaid = Number(booking.advancePaid || 0);
       const lastPayment = Number(paymentDto.amount || 0);
       const totalBookingAmount = Number(booking.totalAmount || 0);

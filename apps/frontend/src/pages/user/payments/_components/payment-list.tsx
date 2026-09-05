@@ -46,11 +46,12 @@ import { debounce } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
 
 interface PaymentListProps {
-    status: "all" | "pending" | "completed" | "failed" | "refunded";
+    status?: "all" | "pending" | "completed" | "failed";
+    paymentType?: "all" | "advance" | "balance" | "partial" | "refund";
     onPaymentUpdate?: () => void;
 }
 
-export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
+export function PaymentList({ status = "all", paymentType = "all", onPaymentUpdate }: PaymentListProps) {
     const [searchParams, setSearchParams] = useSearchParams();
     const initialPage = parseInt(searchParams.get("page") || "1", 10);
     const initialLimit = parseInt(searchParams.get("limit") || "20", 10);
@@ -75,7 +76,7 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
         debounce((term: string) => {
             loadPayments(1, term);
         }, 500),
-        [status],
+        [status, paymentType],
     );
 
     // Load payments data
@@ -92,6 +93,9 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
                 search: search || undefined,
                 status:
                     status !== "all" ? (status as PaymentStatus) : undefined,
+                paymentType:
+                    paymentType !== "all" ? (paymentType as any) : undefined,
+                excludeRefunds: status === "completed" && paymentType === "all",
                 sortBy: "paymentDate",
                 sortOrder: "DESC",
             };
@@ -119,10 +123,10 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
         }
     };
 
-    // Load payments when component mounts or status changes
+    // Load payments when component mounts or status/type changes
     useEffect(() => {
         loadPayments(1);
-    }, [status]);
+    }, [status, paymentType]);
 
     // Handle search
     useEffect(() => {
@@ -153,12 +157,6 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
             case "failed":
                 return (
                     <Badge className="bg-red-100 text-red-800">Failed</Badge>
-                );
-            case "refunded":
-                return (
-                    <Badge className="bg-blue-100 text-blue-800">
-                        Refunded
-                    </Badge>
                 );
             default:
                 return <Badge variant="secondary">{status}</Badge>;
@@ -493,10 +491,7 @@ export function PaymentList({ status, onPaymentUpdate }: PaymentListProps) {
                                                         View Details
                                                     </NavLink>
                                                 </DropdownMenuItem>
-                                                {payment.status !==
-                                                    "completed" &&
-                                                    payment.status !==
-                                                        "refunded" && (
+                                                {payment.status !== "completed" && (
                                                         <DropdownMenuItem
                                                             asChild
                                                         >

@@ -10,7 +10,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { PaymentMethod, PaymentStatus } from 'src/database/entity/booking-payment.entity';
+import { PaymentMethod, PaymentStatus, PaymentType } from 'src/database/entity/booking-payment.entity';
 import { AgentPayoutStatus, BookingStatus } from 'src/database/entity/booking.entity';
 import { CommissionType } from 'src/database/entity/agent.entity';
 
@@ -32,6 +32,10 @@ export class CreatePaymentDto {
 
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
+
+  @IsOptional()
+  @IsEnum(PaymentType)
+  paymentType?: PaymentType;
 
   @IsOptional()
   @IsEnum(PaymentStatus)
@@ -434,6 +438,7 @@ export class BookingResponseDto {
   payments: {
     id: string;
     amount: number;
+    paymentType?: PaymentType;
     paymentMethod: PaymentMethod;
     status: string;
     paymentDate?: Date;

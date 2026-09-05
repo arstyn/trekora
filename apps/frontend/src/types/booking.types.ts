@@ -10,7 +10,7 @@ export type PaymentMethod =
     | "upi"
     | "other";
 
-export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
+export type PaymentStatus = "pending" | "completed" | "failed";
 
 export interface IBookingPaymentAllocation {
     id?: string;
