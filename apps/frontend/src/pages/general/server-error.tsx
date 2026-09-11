@@ -72,10 +72,6 @@ export default function ServerErrorPage({ onRetry }: ServerErrorPageProps) {
 					</h3>
 					<ul className="space-y-2.5 text-xs text-muted-foreground">
 						<li className="flex items-start gap-2">
-							<span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-border text-[10px] font-bold text-foreground mt-0.5">1</span>
-							<span>Ensure the backend server is running via <code className="bg-muted px-1.5 py-0.5 rounded border border-border/50 text-[11px] font-mono">npm run dev</code> inside <code className="bg-muted px-1.5 py-0.5 rounded border border-border/50 text-[11px] font-mono">apps/backend</code>.</span>
-						</li>
-						<li className="flex items-start gap-2">
 							<span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-border text-[10px] font-bold text-foreground mt-0.5">2</span>
 							<span>Verify that your internet connection is active.</span>
 						</li>
