@@ -14,15 +14,16 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/context/authContext";
 import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
+import { ApprovalService } from "@/services/approval.service";
 import type { IEmployee } from "@/types/employee.types";
 import {
     Banknote,
     BarChart3,
     BookUser,
     Building,
-    CheckCircle2,
     ChevronsUpDown,
     FileChartColumnIncreasing,
     FileSpreadsheet,
@@ -31,20 +32,19 @@ import {
     History,
     LayoutDashboardIcon,
     ListIcon,
+    ListTodo,
+    Loader2,
+    Receipt,
     SettingsIcon,
     Shield,
     ShieldAlert,
     ShieldCheck,
     Tickets,
     UserCheck,
-    UsersIcon,
-    Loader2,
-    Receipt,
+    UsersIcon
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ApprovalService } from "@/services/approval.service";
-import { useAuth } from "@/context/authContext";
 import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
@@ -168,7 +168,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {
                 title: "Todos",
                 url: "/todos",
-                icon: CheckCircle2,
+                icon: ListTodo,
             },
             ...(canReadEmployees
                 ? [

@@ -20,6 +20,7 @@ export interface IWorkflowStep {
         email: string;
     };
     completedAt?: string;
+    dueDate?: string;
     config?: any;
     workflow?: IWorkflow;
     createdAt: string;

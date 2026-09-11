@@ -1,15 +1,22 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosInstance from "@/lib/axios";
 import workflowService from "@/services/workflow.service";
 import type { IEmployee } from "@/types/employee.types";
 import type { IWorkflowStep } from "@/types/workflow.types";
-import { Loader2 } from "lucide-react";
+import {
+    ListTodo,
+    RefreshCw,
+    Shield,
+    UserCheck,
+    Users
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { TaskHistoryDialog } from "./_components/TaskHistoryDialog";
 import { TaskList } from "./_components/TaskList";
-import { TodoAnalytics } from "./_components/TodoAnalytics";
 import { TodoFilters } from "./_components/TodoFilters";
 import { TodoSummary } from "./_components/TodoSummary";
 
@@ -19,20 +26,21 @@ export default function TodosPage() {
     const [summary, setSummary] = useState<any>(null);
     const [employees, setEmployees] = useState<IEmployee[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState("my-tasks");
+    const [viewMode, setViewMode] = useState<"table" | "card">("table");
 
     // Filters state
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [filterType, setFilterType] = useState<string>("all");
     const [filterWorkflow, setFilterWorkflow] = useState<string>("all");
     const [filterEmployee, setFilterEmployee] = useState<string>("all");
+    const [filterMandatory, setFilterMandatory] = useState<string>("all");
 
     // History state
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-    const [selectedTask, setSelectedTask] = useState<IWorkflowStep | null>(
-        null,
-    );
+    const [selectedTask, setSelectedTask] = useState<IWorkflowStep | null>(null);
     const [historyLogs, setHistoryLogs] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -65,10 +73,15 @@ export default function TodosPage() {
         }
     };
 
-    const fetchData = async () => {
+    const fetchData = async (isManualRefresh = false) => {
         try {
-            setLoading(true);
-            const profile = await fetchProfileData();
+            if (isManualRefresh) {
+                setRefreshing(true);
+            } else {
+                setLoading(true);
+            }
+
+            const profile = userData || (await fetchProfileData());
             if (!profile) return;
 
             const isUserAdmin = profile.permissionSets?.some(
@@ -84,16 +97,23 @@ export default function TodosPage() {
                 ]);
                 setTasks(allTasks);
                 setSummary(stats);
-                await fetchEmployees();
+                if (employees.length === 0) {
+                    await fetchEmployees();
+                }
             } else {
                 const myTasks = await workflowService.getAssignedSteps();
                 setTasks(myTasks);
+            }
+
+            if (isManualRefresh) {
+                toast.success("Tasks refreshed");
             }
         } catch (error) {
             console.error("Error fetching todos:", error);
             toast.error("Failed to load todos");
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -105,16 +125,20 @@ export default function TodosPage() {
         try {
             const newStatus =
                 task.status === "completed" ? "pending" : "completed";
-            await workflowService.updateStep(task.id, { status: newStatus });
 
+            // Optimistic update
             setTasks((prev) =>
                 prev.map((t) =>
                     t.id === task.id ? { ...t, status: newStatus } : t,
                 ),
             );
 
+            await workflowService.updateStep(task.id, { status: newStatus });
+
             toast.success(
-                newStatus === "completed" ? "Task completed!" : "Task reopened",
+                newStatus === "completed"
+                    ? `Task marked complete: "${task.label}"`
+                    : `Task reopened: "${task.label}"`,
             );
 
             if (isAdmin) {
@@ -122,6 +146,10 @@ export default function TodosPage() {
                 setSummary(stats);
             }
         } catch (error) {
+            // Roll back on failure
+            setTasks((prev) =>
+                prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t)),
+            );
             toast.error("Failed to update task");
         }
     };
@@ -131,35 +159,36 @@ export default function TodosPage() {
             const targetEmployeeId =
                 employeeId === "unassigned" ? null : employeeId;
 
-            await workflowService.updateStep(taskId, {
-                assignedToId: targetEmployeeId || undefined,
-            });
-
             const assignedTo = targetEmployeeId
                 ? employees.find((e) => e.userId === targetEmployeeId)
                 : null;
 
+            // Optimistic update
             setTasks((prev) =>
                 prev.map((t) =>
                     t.id === taskId
                         ? {
-                              ...t,
-                              assignedToId: targetEmployeeId || undefined,
-                              assignedTo: assignedTo
-                                  ? {
-                                        id: assignedTo.id,
-                                        name: assignedTo.name,
-                                        email: assignedTo.email || "",
-                                    }
-                                  : undefined,
-                          }
+                            ...t,
+                            assignedToId: targetEmployeeId || undefined,
+                            assignedTo: assignedTo
+                                ? {
+                                    id: assignedTo.id,
+                                    name: assignedTo.name,
+                                    email: assignedTo.email || "",
+                                }
+                                : undefined,
+                        }
                         : t,
                 ),
             );
 
+            await workflowService.updateStep(taskId, {
+                assignedToId: targetEmployeeId || undefined,
+            });
+
             toast.success(
                 targetEmployeeId
-                    ? "Task assigned successfully"
+                    ? `Assigned to ${assignedTo?.name || "employee"}`
                     : "Task unassigned",
             );
 
@@ -169,6 +198,7 @@ export default function TodosPage() {
             }
         } catch (error) {
             toast.error("Failed to assign task");
+            fetchData();
         }
     };
 
@@ -190,7 +220,12 @@ export default function TodosPage() {
         const unique = new Map();
         tasks.forEach((t) => {
             if (t.workflow) {
-                unique.set(t.workflow.id, t.workflow.name);
+                const cleanName =
+                    t.workflow.name
+                        .replace(/^booking\s*[:-]?\s*/i, "")
+                        .replace(/\s*flow$/i, "")
+                        .trim() || t.workflow.name;
+                unique.set(t.workflow.id, cleanName);
             }
         });
         return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
@@ -198,14 +233,13 @@ export default function TodosPage() {
 
     const baseFilteredTasks = useMemo(() => {
         return tasks.filter((task) => {
+            const query = searchQuery.toLowerCase().trim();
             const matchesSearch =
-                task.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                task.description
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase()) ||
-                task.assignedTo?.name
-                    .toLowerCase()
-                    .includes(searchQuery.toLowerCase());
+                !query ||
+                task.label.toLowerCase().includes(query) ||
+                task.description?.toLowerCase().includes(query) ||
+                task.assignedTo?.name.toLowerCase().includes(query) ||
+                task.workflow?.name.toLowerCase().includes(query);
 
             const matchesStatus =
                 filterStatus === "all" || task.status === filterStatus;
@@ -217,14 +251,21 @@ export default function TodosPage() {
                 filterEmployee === "all" ||
                 (filterEmployee === "unassigned"
                     ? !task.assignedToId
-                    : task.assignedToId === filterEmployee);
+                    : task.assignedToId === filterEmployee ||
+                    task.assignedTo?.name === filterEmployee);
+            const matchesMandatory =
+                filterMandatory === "all" ||
+                (filterMandatory === "mandatory"
+                    ? task.isMandatory
+                    : !task.isMandatory);
 
             return (
                 matchesSearch &&
                 matchesStatus &&
                 matchesType &&
                 matchesWorkflow &&
-                matchesEmployee
+                matchesEmployee &&
+                matchesMandatory
             );
         });
     }, [
@@ -234,6 +275,7 @@ export default function TodosPage() {
         filterType,
         filterWorkflow,
         filterEmployee,
+        filterMandatory,
     ]);
 
     const tabCounts = useMemo(() => {
@@ -246,7 +288,7 @@ export default function TodosPage() {
         };
     }, [baseFilteredTasks, userData]);
 
-    const filteredTasks = useMemo(() => {
+    const currentTabTasks = useMemo(() => {
         if (activeTab === "my-tasks") {
             return baseFilteredTasks.filter(
                 (t) => t.assignedToId === userData?.userId,
@@ -257,94 +299,115 @@ export default function TodosPage() {
         return baseFilteredTasks;
     }, [baseFilteredTasks, activeTab, userData]);
 
-    const chartData = useMemo(() => {
-        if (!summary) return [];
-        return [
-            { name: "Completed", value: summary.completed, color: "#10b981" },
-            { name: "Pending", value: summary.pending, color: "#f59e0b" },
-            { name: "Skipped", value: summary.skipped, color: "#6b7280" },
-        ];
-    }, [summary]);
-
-    if (loading && !tasks.length) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-muted-foreground animate-pulse">
-                    Loading your workspace...
-                </p>
-            </div>
-        );
-    }
+    const handleResetFilters = () => {
+        setFilterStatus("all");
+        setFilterType("all");
+        setFilterWorkflow("all");
+        setFilterEmployee("all");
+        setFilterMandatory("all");
+        setSearchQuery("");
+    };
 
     return (
-        <div className="container mx-auto p-6 space-y-8">
-            <TodoFilters
-                isAdmin={isAdmin}
-                employees={employees}
-                filterEmployee={filterEmployee}
-                filterStatus={filterStatus}
-                filterType={filterType}
-                filterWorkflow={filterWorkflow}
-                searchQuery={searchQuery}
-                setFilterEmployee={setFilterEmployee}
-                setFilterStatus={setFilterStatus}
-                setFilterType={setFilterType}
-                setFilterWorkflow={setFilterWorkflow}
-                setSearchQuery={setSearchQuery}
-                workflowOptions={workflowOptions}
-                onReset={() => {
-                    setFilterStatus("all");
-                    setFilterType("all");
-                    setFilterWorkflow("all");
-                    setFilterEmployee("all");
-                    setSearchQuery("");
-                    fetchData();
-                }}
-            />
+        <div className="w-full p-4 sm:p-6 space-y-6">
+            {/* Top Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
+                        <ListTodo className="h-7 w-7 text-primary" />
+                        Tasks & Workflows
+                    </h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                        {isAdmin
+                            ? "Manage operational workflow steps, assignments, and team execution."
+                            : "Your assigned operational tasks and action items for today."}
+                    </p>
+                </div>
 
-            {isAdmin && summary && <TodoSummary summary={summary} />}
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchData(true)}
+                        disabled={refreshing}
+                        className="text-xs h-9 gap-1.5"
+                    >
+                        <RefreshCw
+                            className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""
+                                }`}
+                        />
+                        Refresh
+                    </Button>
+                </div>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div
-                    className={`${isAdmin ? "lg:col-span-8" : "lg:col-span-12"} space-y-6`}
+            {/* KPI Summary Cards */}
+            {summary ? (
+                <TodoSummary
+                    summary={summary}
+                    selectedEmployee={filterEmployee}
+                    onSelectEmployee={(empName) =>
+                        setFilterEmployee((prev) =>
+                            prev === empName ? "all" : empName,
+                        )
+                    }
+                />
+            ) : loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                    ))}
+                </div>
+            ) : null}
+
+            {/* Main Task Workspace (Full Width) */}
+            <div className="space-y-4">
+                <Tabs
+                    value={activeTab}
+                    onValueChange={setActiveTab}
+                    className="w-full"
                 >
-                    <Tabs defaultValue="my-tasks" onValueChange={setActiveTab}>
-                        <TabsList className="grid w-fit grid-cols-3 bg-muted/40 p-1 rounded-lg">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b pb-3">
+                        <TabsList className="bg-muted/50 p-1 rounded-lg h-9 self-start lg:self-auto">
                             <TabsTrigger
                                 value="my-tasks"
-                                className="rounded-md px-4 gap-2"
+                                className="rounded-md px-3 text-xs gap-1.5 h-7"
                             >
+                                <UserCheck className="h-3.5 w-3.5" />
                                 My Tasks
                                 <Badge
                                     variant="secondary"
-                                    className="px-1.5 py-0 rounded-full text-[10px] h-4 min-w-[20px] justify-center bg-muted/50"
+                                    className="ml-1 px-1.5 py-0 h-4 text-[10px] font-mono rounded-full bg-background"
                                 >
                                     {tabCounts["my-tasks"]}
                                 </Badge>
                             </TabsTrigger>
+
                             {isAdmin && (
                                 <>
                                     <TabsTrigger
                                         value="unassigned"
-                                        className="rounded-md px-4 gap-2"
+                                        className="rounded-md px-3 text-xs gap-1.5 h-7"
                                     >
+                                        <Shield className="h-3.5 w-3.5" />
                                         Unassigned
                                         <Badge
                                             variant="secondary"
-                                            className="px-1.5 py-0 rounded-full text-[10px] h-4 min-w-[20px] justify-center bg-muted/50"
+                                            className="ml-1 px-1.5 py-0 h-4 text-[10px] font-mono rounded-full bg-background"
                                         >
                                             {tabCounts.unassigned}
                                         </Badge>
                                     </TabsTrigger>
+
                                     <TabsTrigger
                                         value="all-tasks"
-                                        className="rounded-md px-4 gap-2"
+                                        className="rounded-md px-3 text-xs gap-1.5 h-7"
                                     >
+                                        <Users className="h-3.5 w-3.5" />
                                         All Team Tasks
                                         <Badge
                                             variant="secondary"
-                                            className="px-1.5 py-0 rounded-full text-[10px] h-4 min-w-[20px] justify-center bg-muted/50"
+                                            className="ml-1 px-1.5 py-0 h-4 text-[10px] font-mono rounded-full bg-background"
                                         >
                                             {tabCounts["all-tasks"]}
                                         </Badge>
@@ -353,54 +416,97 @@ export default function TodosPage() {
                             )}
                         </TabsList>
 
-                        <TabsContent value="my-tasks" className="mt-6">
-                            <TaskList
-                                tasks={filteredTasks}
-                                onToggle={handleToggleTask}
-                                employees={employees}
+                        {/* Search, Filter Popover & Table View Switcher placed right here */}
+                        <div className="flex items-center gap-3 self-end lg:self-auto flex-wrap">
+                            <TodoFilters
                                 isAdmin={isAdmin}
-                                onAssign={handleAssignTask}
-                                onHistory={handleViewHistory}
-                                emptyMessage="Everything's done! You have no pending tasks assigned to you."
+                                employees={employees}
+                                filterEmployee={filterEmployee}
+                                filterStatus={filterStatus}
+                                filterType={filterType}
+                                filterWorkflow={filterWorkflow}
+                                filterMandatory={filterMandatory}
+                                searchQuery={searchQuery}
+                                viewMode={viewMode}
+                                setFilterEmployee={setFilterEmployee}
+                                setFilterStatus={setFilterStatus}
+                                setFilterType={setFilterType}
+                                setFilterWorkflow={setFilterWorkflow}
+                                setFilterMandatory={setFilterMandatory}
+                                setSearchQuery={setSearchQuery}
+                                setViewMode={setViewMode}
+                                workflowOptions={workflowOptions}
+                                onReset={handleResetFilters}
                             />
-                        </TabsContent>
+                        </div>
+                    </div>
 
-                        {isAdmin && (
-                            <>
-                                <TabsContent
-                                    value="unassigned"
-                                    className="mt-6"
-                                >
-                                    <TaskList
-                                        tasks={filteredTasks}
-                                        onToggle={handleToggleTask}
-                                        employees={employees}
-                                        isAdmin={isAdmin}
-                                        onAssign={handleAssignTask}
-                                        onHistory={handleViewHistory}
-                                        emptyMessage="No unassigned tasks found."
-                                    />
-                                </TabsContent>
-                                <TabsContent value="all-tasks" className="mt-6">
-                                    <TaskList
-                                        tasks={filteredTasks}
-                                        onToggle={handleToggleTask}
-                                        employees={employees}
-                                        isAdmin={isAdmin}
-                                        onAssign={handleAssignTask}
-                                        onHistory={handleViewHistory}
-                                    />
-                                </TabsContent>
-                            </>
-                        )}
-                    </Tabs>
-                </div>
+                    {/* Loading Skeleton */}
+                    {loading && !tasks.length ? (
+                        <div className="space-y-2 pt-2">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                                <Skeleton
+                                    key={i}
+                                    className="h-14 w-full rounded-lg"
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <>
+                            <TabsContent value="my-tasks" className="pt-2 m-0">
+                                <TaskList
+                                    tasks={currentTabTasks}
+                                    viewMode={viewMode}
+                                    onToggle={handleToggleTask}
+                                    employees={employees}
+                                    isAdmin={isAdmin}
+                                    onAssign={handleAssignTask}
+                                    onHistory={handleViewHistory}
+                                    emptyMessage="Everything is done! You have no pending tasks assigned to you."
+                                />
+                            </TabsContent>
 
-                {isAdmin && (
-                    <TodoAnalytics chartData={chartData} summary={summary} />
-                )}
+                            {isAdmin && (
+                                <>
+                                    <TabsContent
+                                        value="unassigned"
+                                        className="pt-2 m-0"
+                                    >
+                                        <TaskList
+                                            tasks={currentTabTasks}
+                                            viewMode={viewMode}
+                                            onToggle={handleToggleTask}
+                                            employees={employees}
+                                            isAdmin={isAdmin}
+                                            onAssign={handleAssignTask}
+                                            onHistory={handleViewHistory}
+                                            emptyMessage="Great news! There are no unassigned workflow steps currently."
+                                        />
+                                    </TabsContent>
+
+                                    <TabsContent
+                                        value="all-tasks"
+                                        className="pt-2 m-0"
+                                    >
+                                        <TaskList
+                                            tasks={currentTabTasks}
+                                            viewMode={viewMode}
+                                            onToggle={handleToggleTask}
+                                            employees={employees}
+                                            isAdmin={isAdmin}
+                                            onAssign={handleAssignTask}
+                                            onHistory={handleViewHistory}
+                                            emptyMessage="No tasks found matching your search and filter criteria."
+                                        />
+                                    </TabsContent>
+                                </>
+                            )}
+                        </>
+                    )}
+                </Tabs>
             </div>
 
+            {/* History Audit Modal */}
             <TaskHistoryDialog
                 isOpen={isHistoryOpen}
                 onOpenChange={setIsHistoryOpen}
