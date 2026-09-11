@@ -22,12 +22,14 @@ import {
   PermissionSetService,
   UpdatePermissionSetDto,
 } from './permission-set.service';
+import { PermissionService } from './permission.service';
 
 @UseGuards(AuthGuard, PermissionGuard)
 @Controller('permission-sets')
 export class PermissionSetController {
   constructor(
     private readonly permissionSetService: PermissionSetService,
+    private readonly permissionService: PermissionService,
     @InjectRepository(Employee)
     private readonly employeeRepository: Repository<Employee>,
   ) {}
@@ -38,6 +40,15 @@ export class PermissionSetController {
   async getMyPermissionSets(@Request() req: ApiRequestJWT) {
     const userId = req.user.userId;
     const organizationId = req.user.organizationId;
+
+    try {
+      await this.permissionService.createDefaultPermissionsForOrganization(
+        organizationId,
+      );
+      await this.permissionSetService.syncAdminPermissionSets(organizationId);
+    } catch (e) {
+      // Non-critical, ignore if sync error
+    }
 
     let employee = await this.employeeRepository.findOne({
       where: { userId, organizationId },

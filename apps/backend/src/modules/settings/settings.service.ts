@@ -232,11 +232,49 @@ export class SettingsService {
 
       // Clear Employees (except current user)
       if (dto.employees) {
-        const result = await queryRunner.query(
-          `DELETE FROM "employee" WHERE "organization_id" = $1 AND "user_id" != $2 AND "id" != $2`,
-          [organizationId, currentUserId],
+        // 1. Identify the current user's employee records to preserve
+        const currentEmpRecords = await queryRunner.query(
+          `SELECT "id" FROM "employee" WHERE "organization_id" = $1 AND ("user_id" = $2 OR LOWER("email") = LOWER($3))`,
+          [organizationId, currentUserId, user.email || ''],
         );
-        cleared.employees = result[1] || 0;
+        const preservedEmployeeIds: string[] = currentEmpRecords.map((r: { id: string }) => r.id);
+
+        // 2. Clear manager references to prevent self-referencing foreign key constraint issues
+        await queryRunner.query(
+          `UPDATE "employee" SET "manager_id" = NULL WHERE "organization_id" = $1`,
+          [organizationId],
+        );
+
+        // 3. Clear user_invite records for employees being deleted (FK has ON DELETE NO ACTION)
+        if (preservedEmployeeIds.length > 0) {
+          const placeholders = preservedEmployeeIds.map((_, i) => `$${i + 2}`).join(', ');
+          await queryRunner.query(
+            `DELETE FROM "user_invite" WHERE "employee_id" IN (
+              SELECT "id" FROM "employee" WHERE "organization_id" = $1 AND "id" NOT IN (${placeholders})
+            )`,
+            [organizationId, ...preservedEmployeeIds],
+          );
+
+          // 4. Delete non-preserved employees
+          const result = await queryRunner.query(
+            `DELETE FROM "employee" WHERE "organization_id" = $1 AND "id" NOT IN (${placeholders})`,
+            [organizationId, ...preservedEmployeeIds],
+          );
+          cleared.employees = result[1] || 0;
+        } else {
+          await queryRunner.query(
+            `DELETE FROM "user_invite" WHERE "employee_id" IN (
+              SELECT "id" FROM "employee" WHERE "organization_id" = $1
+            )`,
+            [organizationId],
+          );
+
+          const result = await queryRunner.query(
+            `DELETE FROM "employee" WHERE "organization_id" = $1`,
+            [organizationId],
+          );
+          cleared.employees = result[1] || 0;
+        }
       }
 
       await queryRunner.commitTransaction();

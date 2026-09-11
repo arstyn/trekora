@@ -77,6 +77,20 @@ export class ActivityLogService {
       .getMany();
   }
 
+  async findByEntity(organizationId: string, entityType: string, entityId: string): Promise<ActivityLog[]> {
+    const idKey = `${entityType}Id`;
+    return this.activityLogRepository
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.performedBy', 'performedBy')
+      .where('log.organizationId = :organizationId', { organizationId })
+      .andWhere(
+        "(log.metadata ->> :idKey = :entityId OR log.metadata ->> 'entityId' = :entityId)",
+        { idKey, entityId },
+      )
+      .orderBy('log.createdAt', 'DESC')
+      .getMany();
+  }
+
   async findByAction(organizationId: string, action: string): Promise<ActivityLog[]> {
     return this.activityLogRepository.find({
       where: { organizationId, action },

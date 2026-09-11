@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Organization } from 'src/database/entity/organization.entity';
 import { Permission } from 'src/database/entity/permission.entity';
 import { PermissionSet } from 'src/database/entity/permission-set.entity';
 import { PermissionSetPermission } from 'src/database/entity/permission-set-permission.entity';
@@ -23,6 +24,7 @@ import { AuthModule } from '../auth/auth.module';
       ProfilePermissionSet,
       User,
       Employee,
+      Organization,
     ]),
     JwtModule.register({}),
     forwardRef(() => AuthModule),

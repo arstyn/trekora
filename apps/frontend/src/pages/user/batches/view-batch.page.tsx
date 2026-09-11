@@ -39,17 +39,16 @@ import { BatchOffersService } from "@/services/batch-offers.service";
 import BookingService from "@/services/booking.service";
 import type { IBatchOffer } from "@/types/batch-offers.types";
 import type { IBatches, IBatchLog } from "@/types/batches.types";
+import { BatchLogsCard } from "./_components/batch-logs-card";
 import type { IBooking } from "@/types/booking.types";
 import type { IEmployee } from "@/types/employee.types";
 import { format } from "date-fns";
 import {
     Calendar,
-    ChevronRight,
     ClipboardList,
     DollarSign,
     Download,
     Edit,
-    History,
     Info,
     Mail,
     Phone,
@@ -85,6 +84,7 @@ export default function BatchDetailsPage() {
         useState<IEmployee | null>(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [batchLogs, setBatchLogs] = useState<IBatchLog[]>([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
     const [showStatusConfirm, setShowStatusConfirm] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
@@ -109,6 +109,7 @@ export default function BatchDetailsPage() {
     const { hasPermission: canDeleteOffer } = useHasPermission("batch-offer", "delete");
 
     const fetchLogs = useCallback(async () => {
+        setLoadingLogs(true);
         try {
             const res = await axiosInstance.get<IBatchLog[]>(
                 `/batches/${id}/logs`,
@@ -116,6 +117,8 @@ export default function BatchDetailsPage() {
             setBatchLogs(res.data);
         } catch (error) {
             console.error("Failed to fetch logs", error);
+        } finally {
+            setLoadingLogs(false);
         }
     }, [id]);
 
@@ -1009,299 +1012,9 @@ export default function BatchDetailsPage() {
             </AlertDialog>
 
             {/* Audit Trail & History */}
-            <Card className="border shadow-md rounded-2xl overflow-hidden bg-muted/5 mt-8">
-                <CardHeader className="bg-muted/10 pb-6">
-                    <CardTitle className="text-lg font-black flex items-center gap-3">
-                        <History className="w-6 h-6 text-primary" />
-                        Audit Tracking & History
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                    {batchLogs.length > 0 ? (
-                        <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-muted">
-                            {batchLogs.map((log) => (
-                                <div
-                                    key={log.id}
-                                    className="relative flex items-start gap-8 group"
-                                >
-                                    <div className="absolute left-0 mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 bg-background shadow-md z-10 transition-transform group-hover:scale-110">
-                                        <div
-                                            className={`h-4 w-4 rounded-md flex items-center justify-center ${log.action === "create"
-                                                ? "bg-emerald-500 text-white"
-                                                : log.action ===
-                                                    "status_change"
-                                                    ? "bg-blue-500 text-white"
-                                                    : log.action === "delete"
-                                                        ? "bg-rose-500 text-white"
-                                                        : "bg-primary text-white"
-                                                }`}
-                                        >
-                                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col flex-1 pb-10 pl-14">
-                                        <div className="flex items-center justify-between gap-4 mb-2">
-                                            <span className="font-extrabold text-sm uppercase tracking-wider text-foreground">
-                                                {log.action.replace("_", " ")}
-                                            </span>
-                                            <time className="text-[10px] font-black text-muted-foreground whitespace-nowrap bg-muted px-2 py-1 rounded-lg border border-muted-foreground/10">
-                                                {format(
-                                                    new Date(log.createdAt),
-                                                    "dd-MM-yyyy • HH:mm",
-                                                )}
-                                            </time>
-                                        </div>
-                                        <p className="text-xs font-medium text-muted-foreground leading-relaxed mb-3">
-                                            Batch modified by{" "}
-                                            <span className="font-bold text-foreground underline decoration-primary/30 underline-offset-4 decoration-2">
-                                                {log.changedBy?.name ||
-                                                    "Automated System"}
-                                            </span>
-                                            .
-                                        </p>
-                                        {log.newData && (
-                                            <div className="rounded-xl border bg-card/50 p-3 shadow-inner group-hover:bg-card transition-all overflow-hidden max-w-full">
-                                                <div className="text-[11px] font-medium text-muted-foreground/90">
-                                                    {(() => {
-                                                        if (
-                                                            log.action ===
-                                                            "status_change"
-                                                        ) {
-                                                            return (
-                                                                <div className="flex items-center gap-2">
-                                                                    <Badge
-                                                                        variant="outline"
-                                                                        className="opacity-50 text-[9px] uppercase"
-                                                                    >
-                                                                        {
-                                                                            log.previousData as string
-                                                                        }
-                                                                    </Badge>
-                                                                    <ChevronRight className="w-3 h-3 text-primary" />
-                                                                    <Badge className="text-[9px] uppercase">
-                                                                        {
-                                                                            log.newData as string
-                                                                        }
-                                                                    </Badge>
-                                                                </div>
-                                                            );
-                                                        }
-                                                        if (
-                                                            log.action ===
-                                                            "coordinator_add" ||
-                                                            log.action ===
-                                                            "coordinator_remove"
-                                                        ) {
-                                                            const data =
-                                                                (log.newData ||
-                                                                    log.previousData) as any;
-                                                            return (
-                                                                <div className="flex items-center gap-2">
-                                                                    <Users className="w-3 h-3 text-primary" />
-                                                                    <span>
-                                                                        {log.action ===
-                                                                            "coordinator_add"
-                                                                            ? "Added"
-                                                                            : "Removed"}{" "}
-                                                                        Coordinator:
-                                                                    </span>
-                                                                    <span className="font-bold text-foreground">
-                                                                        {
-                                                                            data.name
-                                                                        }
-                                                                    </span>
-                                                                </div>
-                                                            );
-                                                        }
-                                                        if (
-                                                            log.action ===
-                                                            "create"
-                                                        ) {
-                                                            return (
-                                                                <span className="text-emerald-600 font-bold">
-                                                                    Initial
-                                                                    batch
-                                                                    creation
-                                                                </span>
-                                                            );
-                                                        }
-                                                        if (log.action === "slots_blocked") {
-                                                            const data = log.newData as any;
-                                                            return (
-                                                                <div className="space-y-1">
-                                                                    <p className="font-bold text-foreground/75">
-                                                                        Blocked <span className="text-primary font-black">{data.slots} slots</span>
-                                                                    </p>
-                                                                    {data.reason && (
-                                                                        <p className="text-xs text-muted-foreground italic">
-                                                                            Reason: "{data.reason}"
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        }
-                                                        if (log.action === "slots_released") {
-                                                            const data = log.newData as any;
-                                                            return (
-                                                                <p className="font-bold text-rose-500">
-                                                                    Released <span className="font-extrabold">{data.slots} slots</span> back to batch capacity.
-                                                                </p>
-                                                            );
-                                                        }
-                                                        if (log.action === "slots_expired") {
-                                                            const data = log.newData as any;
-                                                            return (
-                                                                <p className="font-bold text-amber-500">
-                                                                    Expired <span className="font-extrabold">{data.slots} slots</span> (automatic release).
-                                                                </p>
-                                                            );
-                                                        }
-                                                        if (log.action === "slots_converted") {
-                                                            const data = log.newData as any;
-                                                            return (
-                                                                <p className="font-bold text-emerald-600">
-                                                                    Converted <span className="font-extrabold">{data.slots} blocked slots</span> to booking.
-                                                                </p>
-                                                            );
-                                                        }
-                                                        if (
-                                                            log.action ===
-                                                            "update"
-                                                        ) {
-                                                            const data =
-                                                                log.newData as any;
-                                                            return (
-                                                                <div className="space-y-1">
-                                                                    <p className="font-bold text-foreground/70 mb-1">
-                                                                        Updated
-                                                                        Fields:
-                                                                    </p>
-                                                                    {Object.entries(
-                                                                        data,
-                                                                    ).map(
-                                                                        ([
-                                                                            key,
-                                                                            value,
-                                                                        ]) => {
-                                                                            if (
-                                                                                key ===
-                                                                                "updatedAt" ||
-                                                                                key ===
-                                                                                "id" ||
-                                                                                key ===
-                                                                                "package" ||
-                                                                                key ===
-                                                                                "coordinators"
-                                                                            )
-                                                                                return null;
-                                                                            return (
-                                                                                <div
-                                                                                    key={
-                                                                                        key
-                                                                                    }
-                                                                                    className="flex items-baseline gap-2"
-                                                                                >
-                                                                                    <span className="font-bold text-foreground capitalize min-w-[100px]">
-                                                                                        {key.replace(
-                                                                                            /([A-Z])/g,
-                                                                                            " $1",
-                                                                                        )}
-                                                                                        :
-                                                                                    </span>
-                                                                                    <span className="text-primary font-semibold">
-                                                                                        {String(
-                                                                                            value,
-                                                                                        )}
-                                                                                    </span>
-                                                                                </div>
-                                                                            );
-                                                                        },
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        }
-                                                        if (
-                                                            typeof log.newData ===
-                                                            "object" &&
-                                                            log.newData !== null
-                                                        ) {
-                                                            return (
-                                                                <div className="space-y-1">
-                                                                    {Object.entries(
-                                                                        log.newData,
-                                                                    ).map(
-                                                                        ([
-                                                                            key,
-                                                                            value,
-                                                                        ]) => {
-                                                                            if (
-                                                                                key ===
-                                                                                "updatedAt" ||
-                                                                                key ===
-                                                                                "id" ||
-                                                                                key ===
-                                                                                "package"
-                                                                            )
-                                                                                return null;
-                                                                            return (
-                                                                                <div
-                                                                                    key={
-                                                                                        key
-                                                                                    }
-                                                                                    className="flex items-baseline gap-2"
-                                                                                >
-                                                                                    <span className="font-bold text-foreground capitalize min-w-[80px]">
-                                                                                        {key.replace(
-                                                                                            /([A-Z])/g,
-                                                                                            " $1",
-                                                                                        )}
-                                                                                        :
-                                                                                    </span>
-                                                                                    <span className="truncate">
-                                                                                        {typeof value ===
-                                                                                            "object"
-                                                                                            ? "..."
-                                                                                            : String(
-                                                                                                value,
-                                                                                            )}
-                                                                                    </span>
-                                                                                </div>
-                                                                            );
-                                                                        },
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        }
-                                                        return (
-                                                            <span className="italic">
-                                                                Action performed
-                                                                successfully
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="py-16 text-center border-2 border-dashed rounded-3xl">
-                            <div className="p-4 bg-muted/50 rounded-full w-fit mx-auto mb-4">
-                                <History className="w-8 h-8 opacity-20" />
-                            </div>
-                            <h4 className="font-bold text-muted-foreground">
-                                End of audit trail
-                            </h4>
-                            <p className="text-xs opacity-50 mt-1">
-                                No historical modifications found for this
-                                batch.
-                            </p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            <div className="mt-8">
+                <BatchLogsCard logs={batchLogs} loading={loadingLogs} />
+            </div>
 
             {selectedCoordinator && (
                 <CoordinatorModal

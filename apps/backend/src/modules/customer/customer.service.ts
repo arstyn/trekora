@@ -5,6 +5,7 @@ import { Customer } from 'src/database/entity/customer.entity';
 import { DataSource, Repository } from 'typeorm';
 import { CreateCustomerDto } from '../../dto/create-customer.dto';
 import { UploadService } from '../upload/upload.service';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class CustomerService {
@@ -13,6 +14,7 @@ export class CustomerService {
     private customerRepository: Repository<Customer>,
     private readonly uploadService: UploadService,
     private readonly dataSource: DataSource,
+    private readonly activityLogService: ActivityLogService,
   ) { }
 
   async createCustomer(
@@ -47,6 +49,19 @@ export class CustomerService {
       const savedCustomer = await queryRunner.manager.save(customer);
 
       await queryRunner.commitTransaction();
+
+      try {
+        await this.activityLogService.log(
+          organizationId,
+          userId,
+          'customer_created',
+          `Created customer ${savedCustomer.firstName || ''} ${savedCustomer.lastName || ''}`.trim(),
+          { customerId: savedCustomer.id, email: savedCustomer.email, phone: savedCustomer.phone },
+        );
+      } catch (err) {
+        console.error('Failed to log customer creation:', err);
+      }
+
       return savedCustomer;
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -241,7 +256,22 @@ export class CustomerService {
       await queryRunner.manager.update(Customer, id, customerData);
       await queryRunner.commitTransaction();
 
-      return this.findOneWithFiles(id);
+      const updated = await this.findOneWithFiles(id);
+      if (updated) {
+        try {
+          await this.activityLogService.log(
+            updated.organizationId,
+            updated.createdById || '',
+            'customer_updated',
+            `Updated profile for customer ${updated.firstName || ''} ${updated.lastName || ''}`.trim(),
+            { customerId: id, changes: Object.keys(updateData) },
+          );
+        } catch (err) {
+          console.error('Failed to log customer update:', err);
+        }
+      }
+
+      return updated;
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -317,6 +347,22 @@ export class CustomerService {
     };
 
     await this.customerRepository.update(id, updateData);
-    return this.findOneWithFiles(id);
+    const updated = await this.findOneWithFiles(id);
+    if (updated) {
+      try {
+        await this.activityLogService.log(
+          updated.organizationId,
+          userId || updated.createdById || '',
+          isBlacklisted ? 'customer_blacklisted' : 'customer_whitelisted',
+          isBlacklisted
+            ? `Customer blacklisted: ${reason || 'No reason provided'}`
+            : `Customer removed from blacklist`,
+          { customerId: id, reason, isBlacklisted },
+        );
+      } catch (err) {
+        console.error('Failed to log blacklist change:', err);
+      }
+    }
+    return updated;
   }
 }

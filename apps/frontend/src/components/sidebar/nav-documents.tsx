@@ -9,6 +9,7 @@ import {
 	SidebarGroupLabel,
 	SidebarMenu,
 	SidebarMenuAction,
+	SidebarMenuBadge,
 	SidebarMenuButton,
 	SidebarMenuItem,
 	useSidebar,
@@ -25,6 +26,7 @@ export function NavDocuments({
 		name: string;
 		url: string;
 		icon: LucideIcon;
+		badge?: number | string;
 	}[];
 	loading?: boolean;
 }) {
@@ -58,6 +60,11 @@ export function NavDocuments({
 											<span>{item.name}</span>
 										</NavLink>
 									</SidebarMenuButton>
+									{item.badge !== undefined && (
+										<SidebarMenuBadge className="bg-amber-500 text-white font-bold text-[10px]">
+											{item.badge}
+										</SidebarMenuBadge>
+									)}
 									<DropdownMenu>
 										<DropdownMenuTrigger asChild>
 											<SidebarMenuAction

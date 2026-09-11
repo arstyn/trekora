@@ -53,6 +53,11 @@ export class PermissionCheckService {
       new Map(employeePermissionSets.map((ps) => [ps.id, ps])).values(),
     );
 
+    // Full access for Admin - Full Access permission set
+    if (uniquePermissionSets.some((ps) => ps.name === 'Admin - Full Access')) {
+      return true;
+    }
+
     // Get permissions from all assigned permission sets
     // Filter by organizationId to ensure tenant isolation
     const allPermissions: Permission[] = [];
@@ -113,6 +118,11 @@ export class PermissionCheckService {
       await this.permissionSetService.getPermissionSetsForUser(
         employeeId,
       );
+
+    // Full access for Admin - Full Access permission set
+    if (permissionSets.some((ps) => ps.name === 'Admin - Full Access')) {
+      return true;
+    }
 
     // Get permissions from all assigned permission sets
     // Filter by organizationId to ensure tenant isolation

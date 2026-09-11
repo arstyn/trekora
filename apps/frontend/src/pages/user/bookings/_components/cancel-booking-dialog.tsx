@@ -29,12 +29,15 @@ import {
     AlertCircle,
     DollarSign,
     Loader2,
+    Send,
+    ShieldAlert,
     UserX,
     Users,
     XCircle,
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 
 interface CancelBookingDialogProps {
     open: boolean;
@@ -51,6 +54,8 @@ export function CancelBookingDialog({
     initialCustomerId,
     onSuccess,
 }: CancelBookingDialogProps) {
+    const { hasPermission: canDirectCancel } = useHasPermission("booking", "cancel");
+
     // Active customers (not previously cancelled)
     const activeCustomers = useMemo(() => {
         return (booking.customers || []).filter(
@@ -165,7 +170,7 @@ export function CancelBookingDialog({
                     ? activeCustomers.map((c) => c.id || "").filter(Boolean)
                     : selectedCustomerIds;
 
-            await BookingService.cancelBooking(booking.id, {
+            const res: any = await BookingService.cancelBooking(booking.id, {
                 customerIds: customerIdsToCancel,
                 issueRefund: issueRefund && parsedRefundAmount > 0,
                 refundAmount: parsedRefundAmount,
@@ -173,6 +178,15 @@ export function CancelBookingDialog({
                 reason: reason.trim() || undefined,
                 notes: notes.trim() || undefined,
             });
+
+            if (res?.requiresApproval) {
+                toast.success(
+                    res.message || "Cancellation request submitted to manager for approval"
+                );
+                onSuccess?.();
+                onOpenChange(false);
+                return;
+            }
 
             const countCancelled = customerIdsToCancel.length;
             if (scope === "entire" || countCancelled >= activeCustomers.length) {
@@ -205,19 +219,60 @@ export function CancelBookingDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[560px] p-0 overflow-hidden max-h-[90vh] flex flex-col">
                 {/* Header Top Accent Bar */}
-                <div className="h-1.5 w-full bg-linear-to-r from-rose-500 to-amber-500" />
+                <div
+                    className={`h-1.5 w-full ${
+                        canDirectCancel
+                            ? "bg-linear-to-r from-rose-500 to-amber-500"
+                            : "bg-linear-to-r from-amber-500 to-orange-500"
+                    }`}
+                />
 
                 <DialogHeader className="px-6 pt-5 pb-3">
-                    <DialogTitle className="flex items-center gap-2 text-destructive text-lg font-bold">
-                        <XCircle className="w-5 h-5 text-destructive" />
-                        {scope === "entire" || isSingleTraveler
-                            ? "Cancel Booking"
-                            : "Cancel Selected Travelers"}
+                    <DialogTitle
+                        className={`flex items-center gap-2 text-lg font-bold ${
+                            canDirectCancel
+                                ? "text-destructive"
+                                : "text-amber-800 dark:text-amber-300"
+                        }`}
+                    >
+                        {canDirectCancel ? (
+                            <XCircle className="w-5 h-5 text-destructive" />
+                        ) : (
+                            <ShieldAlert className="w-5 h-5 text-amber-500" />
+                        )}
+                        {canDirectCancel
+                            ? scope === "entire" || isSingleTraveler
+                                ? "Cancel Booking"
+                                : "Cancel Selected Travelers"
+                            : scope === "entire" || isSingleTraveler
+                                ? "Request Booking Cancellation"
+                                : "Request Traveler Cancellation"}
                     </DialogTitle>
                     <DialogDescription className="text-xs">
-                        Booking <span className="font-mono font-semibold text-foreground">#{booking.bookingNumber}</span> • Batch seats will be freed up and refundable payments scheduled.
+                        Booking{" "}
+                        <span className="font-mono font-semibold text-foreground">
+                            #{booking.bookingNumber}
+                        </span>{" "}
+                        •{" "}
+                        {canDirectCancel
+                            ? "Batch seats will be freed up and refundable payments scheduled."
+                            : "Awaiting manager verification before seats are released or refunds processed."}
                     </DialogDescription>
                 </DialogHeader>
+
+                {!canDirectCancel && (
+                    <div className="mx-6 mb-2 p-3 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+                        <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-semibold text-amber-950 dark:text-amber-100">
+                                Manager Approval Required
+                            </p>
+                            <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                                As a junior team member, your cancellation will be sent to management for review before inventory and financials are updated.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 space-y-4 pb-4">
                     {/* Cancellation Scope Selector (only if multiple travelers) */}
@@ -462,17 +517,30 @@ export function CancelBookingDialog({
                             type="submit"
                             size="sm"
                             disabled={loading || (scope === "partial" && selectedCustomerIds.length === 0)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs shadow-xs"
+                            className={`text-xs shadow-xs ${
+                                canDirectCancel
+                                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    : "bg-amber-600 text-white hover:bg-amber-700"
+                            }`}
                         >
                             {loading ? (
                                 <>
                                     <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                    Cancelling...
+                                    {canDirectCancel ? "Cancelling..." : "Submitting Request..."}
                                 </>
                             ) : (
                                 <>
-                                    <XCircle className="w-3.5 h-3.5 mr-1.5" />
-                                    Confirm Cancellation
+                                    {canDirectCancel ? (
+                                        <>
+                                            <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                                            Confirm Cancellation
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Send className="w-3.5 h-3.5 mr-1.5" />
+                                            Submit for Manager Approval
+                                        </>
+                                    )}
                                 </>
                             )}
                         </Button>

@@ -33,6 +33,7 @@ import {
     ListIcon,
     SettingsIcon,
     Shield,
+    ShieldAlert,
     ShieldCheck,
     Tickets,
     UserCheck,
@@ -42,6 +43,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ApprovalService } from "@/services/approval.service";
+import { useAuth } from "@/context/authContext";
 import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
@@ -49,6 +52,7 @@ import { NavUser } from "./nav-user";
 import { QuickCreateModal } from "./quick-create-modal";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const { user: authUser } = useAuth();
     const [userData, setUserData] = useState<IEmployee>();
     const [organizations, setOrganizations] = useState<any[]>([]);
     const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
@@ -89,6 +93,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         "payment",
         "read",
     );
+    const { hasPermission: canReadApprovals } = useHasPermission(
+        "approval",
+        "read",
+    );
+    const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
+
+    useEffect(() => {
+        if (canReadApprovals) {
+            ApprovalService.getCounts()
+                .then((c) => setPendingApprovalsCount(c.total))
+                .catch(() => { });
+        }
+    }, [canReadApprovals]);
 
     useEffect(() => {
         const getProfile = async () => {
@@ -138,9 +155,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     const data = {
         user: {
-            name: userData?.name ?? "shadcn",
-            email: userData?.email ?? "m@example.com",
-            avatar: userData?.profilePhoto ?? "/avatars/shadcn.jpg",
+            name: userData?.name || authUser?.name || "User",
+            email: userData?.email || authUser?.email || "",
+            avatar: userData?.profilePhoto || "",
         },
         navMain: [
             {
@@ -242,6 +259,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     },
                 ]
                 : []),
+            ...(canReadApprovals
+                ? [
+                    {
+                        name: "Approvals",
+                        url: "/approvals",
+                        icon: ShieldAlert,
+                        badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
+                    },
+                ]
+                : []),
         ],
         navSecondary: [
             ...(canManagePermissions
@@ -256,6 +283,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         url: "/permissions",
                         icon: ShieldCheck,
                     },
+                    ...(canManagePermissionSets
+                        ? [
+                            {
+                                title: "Permission Sets",
+                                url: "/permission-sets",
+                                icon: Shield,
+                            },
+                        ]
+                        : []),
                     {
                         title: "Activity Logs",
                         url: "/admin/logs",
@@ -272,15 +308,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     },
                 ]
                 : []),
-            ...(canManagePermissionSets
-                ? [
-                    {
-                        title: "Permission Sets",
-                        url: "/permission-sets",
-                        icon: Shield,
-                    },
-                ]
-                : []),
+
             {
                 title: "Settings",
                 url: "/settings",

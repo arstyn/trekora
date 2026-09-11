@@ -276,4 +276,52 @@ export class PermissionSetService {
 
     return createdSets;
   }
+
+  /**
+   * Synchronize Admin permission sets with all current permissions of the organization
+   * Ensures that any newly added system permissions (e.g. approval, privileged permissions)
+   * are immediately granted to Admin permission sets.
+   */
+  async syncAdminPermissionSets(organizationId: string): Promise<void> {
+    try {
+      const adminSets = await this.permissionSetRepository.find({
+        where: [
+          { organizationId, name: 'Admin - Full Access' },
+          { organizationId, name: 'Admin' },
+        ],
+        relations: ['permissionSetPermissions'],
+      });
+
+      if (!adminSets.length) return;
+
+      const allPermissions = await this.permissionRepository.find({
+        where: { organizationId },
+      });
+
+      for (const adminSet of adminSets) {
+        const existingPermIds = new Set(
+          (adminSet.permissionSetPermissions || []).map((psp) => psp.permissionId),
+        );
+
+        const missingPerms = allPermissions.filter(
+          (p) => !existingPermIds.has(p.id),
+        );
+
+        if (missingPerms.length > 0) {
+          const linksToCreate = missingPerms.map((p) =>
+            this.permissionSetPermissionRepository.create({
+              permissionSetId: adminSet.id,
+              permissionId: p.id,
+            }),
+          );
+          await this.permissionSetPermissionRepository.save(linksToCreate);
+        }
+      }
+    } catch (err) {
+      console.error(
+        `Failed to sync admin permission sets for org ${organizationId}:`,
+        err,
+      );
+    }
+  }
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from 'src/database/entity/booking.entity';
 import { BookingPayment } from 'src/database/entity/booking-payment.entity';
@@ -18,6 +18,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PermissionModule } from '../permission/permission.module';
 import { EmployeeModule } from '../employee/employee.module';
 import { WorkflowModule } from '../workflow/workflow.module';
+import { ApprovalModule } from '../approval/approval.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { WorkflowModule } from '../workflow/workflow.module';
     PermissionModule,
     EmployeeModule,
     WorkflowModule,
+    forwardRef(() => ApprovalModule),
   ],
   controllers: [BookingController],
   providers: [BookingService],

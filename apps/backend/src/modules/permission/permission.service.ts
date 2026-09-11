@@ -1,15 +1,48 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Permission } from 'src/database/entity/permission.entity';
+import { Organization } from 'src/database/entity/organization.entity';
 import { permissions } from '../../database/seeds/permission.seed';
+import { PermissionSetService } from './permission-set.service';
 
 @Injectable()
-export class PermissionService {
+export class PermissionService implements OnModuleInit {
   constructor(
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
+    @InjectRepository(Organization)
+    private readonly organizationRepository: Repository<Organization>,
+    @Inject(forwardRef(() => PermissionSetService))
+    private readonly permissionSetService: PermissionSetService,
   ) { }
+
+  async onModuleInit() {
+    await this.syncAllOrganizations();
+  }
+
+  // Synchronize all organizations with the latest permissions and admin sets
+  async syncAllOrganizations(): Promise<void> {
+    try {
+      const organizations = await this.organizationRepository.find({
+        select: ['id'],
+      });
+      for (const org of organizations) {
+        await this.createDefaultPermissionsForOrganization(org.id);
+        if (this.permissionSetService) {
+          await this.permissionSetService.syncAdminPermissionSets(org.id);
+        }
+      }
+      console.log(
+        `[PermissionService] Synchronized permissions for ${organizations.length} organizations.`,
+      );
+    } catch (err) {
+      console.error(
+        '[PermissionService] Failed to sync permissions for organizations:',
+        err,
+      );
+    }
+  }
 
   // Create a new permission
   async create(
@@ -25,6 +58,7 @@ export class PermissionService {
 
   // Find all permissions for an organization
   async findAll(organizationId: string): Promise<Permission[]> {
+    await this.createDefaultPermissionsForOrganization(organizationId);
     return await this.permissionRepository.find({
       where: { organizationId },
       order: { resource: 'ASC', action: 'ASC' },
@@ -110,7 +144,9 @@ export class PermissionService {
     // Using statically imported permissions
 
     // Check which permissions already exist for this organization
-    const existingPermissions = await this.findAll(organizationId);
+    const existingPermissions = await this.permissionRepository.find({
+      where: { organizationId },
+    });
     const existingPermissionNames = new Set(
       existingPermissions.map((p) => p.name),
     );
@@ -125,6 +161,13 @@ export class PermissionService {
     }
 
     // Create the permissions
-    return await this.bulkCreate(permissionsToCreate, organizationId);
+    const created = await this.bulkCreate(permissionsToCreate, organizationId);
+
+    // Sync admin permission sets with new permissions
+    if (this.permissionSetService) {
+      await this.permissionSetService.syncAdminPermissionSets(organizationId);
+    }
+
+    return [...existingPermissions, ...created];
   }
 }

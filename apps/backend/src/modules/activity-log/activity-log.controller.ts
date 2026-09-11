@@ -42,4 +42,17 @@ export class ActivityLogController {
       employeeId,
     );
   }
+
+  @Get('entity/:entityType/:entityId')
+  async findByEntity(
+    @Request() req: ApiRequestJWT,
+    @Param('entityType') entityType: string,
+    @Param('entityId') entityId: string,
+  ): Promise<ActivityLog[]> {
+    return this.activityLogService.findByEntity(
+      req.user.organizationId,
+      entityType,
+      entityId,
+    );
+  }
 }

@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Customer } from 'src/database/entity/customer.entity';
 import { EmployeeModule } from '../employee/employee.module';
 import { PermissionModule } from '../permission/permission.module';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { CustomerController } from './customer.controller';
 import { CustomerService } from './customer.service';
 
@@ -13,6 +14,7 @@ import { CustomerService } from './customer.service';
     JwtModule.register({}),
     PermissionModule,
     EmployeeModule,
+    ActivityLogModule,
   ],
   controllers: [CustomerController],
   providers: [CustomerService],

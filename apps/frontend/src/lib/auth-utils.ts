@@ -4,6 +4,12 @@ import { jwtDecode } from "jwt-decode";
 import axiosInstance from "./axios";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "./constants/auth.constants";
 
+export const clearAuthTokens = () => {
+	localStorage.removeItem(ACCESS_TOKEN_KEY);
+	localStorage.removeItem(REFRESH_TOKEN_KEY);
+	localStorage.removeItem("activeOrganizationId");
+};
+
 export const refreshToken = async () => {
 	const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 	if (!refreshToken) return null;
@@ -22,13 +28,14 @@ export const refreshToken = async () => {
 		if (isNetwork) {
 			throw error;
 		}
+		// If refresh token is expired, invalid, or rejected, purge dead tokens
+		clearAuthTokens();
 		return null;
 	}
 };
 
 export const logout = () => {
-	localStorage.removeItem(ACCESS_TOKEN_KEY);
-	localStorage.removeItem(REFRESH_TOKEN_KEY);
+	clearAuthTokens();
 	window.location.href = "/";
 };
 
@@ -48,7 +55,11 @@ export const getAccessToken = async () => {
 	}
 
 	if (isExpired) {
-		return await refreshToken();
+		const refreshed = await refreshToken();
+		if (!refreshed) {
+			clearAuthTokens();
+		}
+		return refreshed;
 	}
 	return token;
 };

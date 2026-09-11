@@ -25,7 +25,6 @@ import {
     Calendar,
     Edit,
     FileText,
-    History,
     Mail,
     MapPin,
     Phone,
@@ -41,6 +40,7 @@ import { toast } from "sonner";
 import { ActivateDialog } from "./_components/activate-modal";
 import { DeactivateDialog } from "./_components/deactivate-dialog";
 import { EmployeeModal } from "./_components/employee-modal";
+import { EmployeeLogsCard } from "./_components/employee-logs-card";
 
 interface IActivityLog {
     id: string;
@@ -61,7 +61,6 @@ export default function ViewEmployeePage() {
     const [logs, setLogs] = useState<IActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingLogs, setLoadingLogs] = useState(false);
-    const [showAllLogs, setShowAllLogs] = useState(false);
 
     // Modal state
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -516,63 +515,7 @@ export default function ViewEmployeePage() {
                     </Card>
 
                     {/* Timeline Activity History */}
-                    <Card className="shadow-sm">
-                        <CardHeader className="border-b flex flex-row items-center gap-3">
-                            <div className="bg-primary/10 p-2 rounded-lg text-primary">
-                                <History className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-base">Activity Timeline</CardTitle>
-                                <p className="text-xs text-muted-foreground">Historical records for employee</p>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {loadingLogs ? (
-                                <div className="space-y-2">
-                                    <Skeleton className="h-10 w-full" />
-                                    <Skeleton className="h-10 w-full" />
-                                    <Skeleton className="h-10 w-full" />
-                                </div>
-                            ) : logs.length > 0 ? (
-                                <div className="space-y-4">
-                                    <div className="relative border-l border-border pl-4 space-y-4">
-                                        {(showAllLogs ? logs : logs.slice(0, 5)).map((log) => (
-                                            <div key={log.id} className="relative space-y-1">
-                                                <div className="absolute -left-[21px] mt-1.5 bg-background border rounded-full h-2.5 w-2.5" />
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <p className="text-xs font-medium text-foreground leading-snug">{log.details}</p>
-                                                </div>
-                                                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                                                    <span>By: {log.performedBy ? log.performedBy.name : "System"}</span>
-                                                    <span>
-                                                        {new Date(log.createdAt).toLocaleString(undefined, {
-                                                            dateStyle: "short",
-                                                            timeStyle: "short",
-                                                        })}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {logs.length > 5 && (
-                                        <div className="flex justify-center pt-2">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setShowAllLogs(!showAllLogs)}
-                                                className="text-xs font-semibold text-primary hover:text-primary/90"
-                                            >
-                                                {showAllLogs ? "Show Less" : `Show More (${logs.length - 5} more)`}
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground italic text-center py-4">No activities recorded</p>
-                            )}
-                        </CardContent>
-                    </Card>
+                    <EmployeeLogsCard logs={logs} loading={loadingLogs} />
                 </div>
             </div>
 

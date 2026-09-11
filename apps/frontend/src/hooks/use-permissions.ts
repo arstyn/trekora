@@ -62,10 +62,13 @@ export function useHasPermission(resource: string, action: string) {
         }
         // Check if any permission set contains the required permission
         const hasPerm = permissionSets.some((set) => {
+            if (set.name === "Admin - Full Access") {
+                return true;
+            }
+
             if (!set.permissionSetPermissions || set.permissionSetPermissions.length === 0) {
                 return false;
             }
-
 
             const found = set.permissionSetPermissions.some(
                 (psp) => {

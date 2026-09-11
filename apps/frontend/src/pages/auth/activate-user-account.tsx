@@ -12,6 +12,7 @@ import { NavLink, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/lib/axios";
 import { AxiosError } from "axios";
+import { clearAuthTokens } from "@/lib/auth-utils";
 
 interface IActivationResult {
     success: boolean;
@@ -25,6 +26,9 @@ export default function ActivateUserPage() {
     const { id: token } = useParams<{ id: string }>();
 
     useEffect(() => {
+        // Clear all previous tokens when activating a user account
+        clearAuthTokens();
+
         const activateUser = async () => {
             try {
                 const res = await axiosInstance.post<IActivationResult>(
