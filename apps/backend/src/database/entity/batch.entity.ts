@@ -88,5 +88,8 @@ export class Batch {
     cascade: true,
   })
   offers: BatchOffer[];
+
+  @Column({ type: 'jsonb', nullable: true, name: 'cost_sheet' })
+  costSheet: any;
 }
 

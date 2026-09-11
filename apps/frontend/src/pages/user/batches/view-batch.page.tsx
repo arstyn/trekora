@@ -555,10 +555,70 @@ export default function BatchDetailsPage() {
                         </div>
                         <Separator />
                         <div>
-                            <p className="text-sm text-muted-foreground mb-2">
-                                Package Tiers
-                            </p>
-                            {batch?.package?.packageTiers && batch.package.packageTiers.length > 0 ? (
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-semibold text-foreground">
+                                    {batch?.costSheet?.tiers?.length ? "Batch Cost Sheet & Pricing" : "Package Tiers"}
+                                </p>
+                                {batch?.costSheet?.hasTiers && (
+                                    <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
+                                        Multi-Tier ({batch.costSheet.tiers.length})
+                                    </Badge>
+                                )}
+                            </div>
+
+                            {batch?.costSheet?.maxDiscountEnabled && (
+                                <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex items-center justify-between text-xs mb-3">
+                                    <span className="font-semibold text-emerald-800 dark:text-emerald-200 flex items-center gap-1.5">
+                                        <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                        Max Discount Cap:
+                                    </span>
+                                    <Badge variant="outline" className="text-[11px] bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold">
+                                        {batch.costSheet.maxDiscountType === "percentage"
+                                            ? `${batch.costSheet.maxDiscountPercentage ?? batch.costSheet.maxDiscountValue}% Off`
+                                            : `₹${(batch.costSheet.maxDiscountValue || 0).toLocaleString("en-IN")} Off`}
+                                        {" "}
+                                        {batch.costSheet.maxDiscountScope === "passenger" ? "/ Passenger" : "Total Booking"}
+                                    </Badge>
+                                </div>
+                            )}
+
+                            {batch?.costSheet?.tiers && batch.costSheet.tiers.length > 0 ? (
+                                <div className="space-y-3">
+                                    {batch.costSheet.tiers.map((tier) => (
+                                        <div key={tier.id} className="bg-muted/30 p-3 rounded-lg border space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <p className="font-semibold text-sm text-foreground flex items-center gap-1.5">
+                                                    {tier.name}
+                                                    {tier.isDefault && (
+                                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Default</Badge>
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                                                {tier.ageCategories.map((cat) => {
+                                                    const total = cat.items.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
+                                                    const marginItem = cat.items.find((i) => i.isMargin);
+                                                    return (
+                                                        <div key={cat.id || cat.categoryKey || cat.name} className="bg-background/80 p-2 rounded border text-xs flex justify-between items-center">
+                                                            <div>
+                                                                <span className="font-medium text-foreground">{cat.label || cat.name}</span>
+                                                                {marginItem && (
+                                                                    <span className="block text-[10px] text-emerald-600">
+                                                                        Margin: ₹{Number(marginItem.cost).toLocaleString()}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className="font-bold text-foreground">
+                                                                {BookingService.formatCurrency(total)}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : batch?.package?.packageTiers && batch.package.packageTiers.length > 0 ? (
                                 <div className="space-y-2">
                                     {batch.package.packageTiers.map((tier) => {
                                         return (

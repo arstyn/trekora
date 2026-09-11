@@ -1,3 +1,4 @@
+import type { IBatchCostSheet } from "./cost-sheet.types";
 import type { IBooking, ICustomer } from "./booking.types";
 import type { IEmployee } from "./employee.types";
 import type { IPackages } from "./package.schema";
@@ -20,6 +21,7 @@ export interface IBatches {
     bookings?: IBooking[];
     fillRate?: number;
     batchTiers?: any[];
+    costSheet?: IBatchCostSheet;
 }
 
 export interface IBatchStats {
@@ -30,6 +32,7 @@ export interface IBatchStats {
     availableSeats: number;
     fastFilling: number;
 }
+
 export interface IBatchLog {
     id: string;
     batchId: string;

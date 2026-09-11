@@ -225,7 +225,8 @@ export interface ICreateBookingRequest {
     customerSelections?: {
         customerId: string;
         tierId: string;
-        ageCategory: 'adult' | 'child' | 'infant';
+        tierName?: string;
+        ageCategory: 'adult' | 'child' | 'infant' | string;
     }[];
     paymentStructureId?: string;
     isPaymentOverridden?: boolean;

@@ -43,7 +43,7 @@ export class BatchesService {
   }
 
   async create(data: CreateBatchDto, organizationId: string, userId: string): Promise<Batch> {
-    const { packageId, coordinators, ignoreConflicts, customTierPrices, ...rest } = data;
+    const { packageId, coordinators, ignoreConflicts, customTierPrices, costSheet, ...rest } = data;
 
     if (!ignoreConflicts) {
       const conflicts = await this.checkConflicts(
@@ -68,6 +68,7 @@ export class BatchesService {
 
     const batch = this.batchRepo.create({
       ...rest,
+      costSheet: costSheet || null,
       package: { id: packageId },
       organizationId,
       coordinators: coordinatorsData,
@@ -85,6 +86,30 @@ export class BatchesService {
     const savedBatch = await this.batchRepo.save(batch);
     await this.logAction(savedBatch.id, userId, 'create', null, savedBatch);
     return savedBatch;
+  }
+
+  async getPreviousBatchCostSheet(packageId: string, organizationId: string): Promise<any> {
+    const batch = await this.batchRepo
+      .createQueryBuilder('batch')
+      .where('batch.package_id = :packageId', { packageId })
+      .andWhere('batch.organization_id = :organizationId', { organizationId })
+      .andWhere('batch.cost_sheet IS NOT NULL')
+      .orderBy('batch.startDate', 'DESC')
+      .getOne();
+
+    if (batch?.costSheet) {
+      return batch.costSheet;
+    }
+
+    // Fallback: check package cost sheet template
+    const pkg = await this.batchRepo.manager
+      .getRepository('Package')
+      .findOne({
+        where: { id: packageId, organizationId },
+        select: ['id', 'costSheet'],
+      } as any);
+
+    return (pkg as any)?.costSheet || null;
   }
 
   async findAll(

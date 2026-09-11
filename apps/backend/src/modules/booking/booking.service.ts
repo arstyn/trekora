@@ -158,6 +158,48 @@ export class BookingService {
         specialOfferDiscount = createBookingDto.specialOfferDiscount || 0;
       }
 
+      // Validate max discount policy if configured on batch cost sheet
+      if (
+        createBookingDto.discountAmount &&
+        createBookingDto.discountAmount > 0 &&
+        !createBookingDto.isPaymentOverridden
+      ) {
+        if (batch.costSheet && batch.costSheet.maxDiscountEnabled) {
+          const discType = batch.costSheet.maxDiscountType || 'amount';
+          const discScope = batch.costSheet.maxDiscountScope || 'group';
+          const maxVal = Number(
+            discType === 'percentage'
+              ? (batch.costSheet.maxDiscountPercentage ?? batch.costSheet.maxDiscountValue ?? 0)
+              : (batch.costSheet.maxDiscountValue ?? 0)
+          );
+          const paxCount = createBookingDto.customerIds.length || 1;
+          const grossAmount =
+            Number(createBookingDto.totalAmount || 0) +
+            Number(createBookingDto.discountAmount || 0) +
+            Number(specialOfferDiscount || 0) -
+            Number(createBookingDto.adjustmentAmount || 0);
+
+          let maxAllowedDiscount = 0;
+          if (discScope === 'passenger') {
+            maxAllowedDiscount =
+              discType === 'percentage'
+                ? Math.round((grossAmount * maxVal) / 100)
+                : maxVal * paxCount;
+          } else {
+            maxAllowedDiscount =
+              discType === 'percentage'
+                ? Math.round((grossAmount * maxVal) / 100)
+                : maxVal;
+          }
+
+          if (maxAllowedDiscount > 0 && createBookingDto.discountAmount > maxAllowedDiscount) {
+            throw new BadRequestException(
+              `Discount amount (${createBookingDto.discountAmount}) exceeds the batch maximum allowed discount (${maxAllowedDiscount})`,
+            );
+          }
+        }
+      }
+
       // Generate unique booking number
       const bookingNumber = await this.generateBookingNumber(organizationId);
 
