@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import {
   CreateWorkflowDto,
   CreateWorkflowStepDto,
   UpdateWorkflowStepDto,
+  WorkflowStepFilterDto,
 } from '../../dto/workflow.dto';
 import { RequirePermission } from '../auth/decorator/require-permission.decorator';
 import { AuthGuard } from '../auth/guard/auth.guard';
@@ -32,14 +34,46 @@ export class WorkflowController {
   }
 
   @Get('steps/assigned')
-  async findAssignedSteps(@Request() req: ApiRequestJWT) {
+  async findAssignedSteps(
+    @Request() req: ApiRequestJWT,
+    @Query() filter: WorkflowStepFilterDto,
+  ) {
+    if (filter && (filter.page || filter.limit || filter.search || filter.status || filter.type || filter.workflowId || filter.isMandatory)) {
+      return this.workflowService.findAssignedStepsPaginated(
+        req.user.userId,
+        filter,
+      );
+    }
     return this.workflowService.findAssignedSteps(req.user.userId);
   }
 
   @Get('steps/all')
   @RequirePermission('workflow', 'read')
-  async findAllSteps(@Request() req: ApiRequestJWT) {
+  async findAllSteps(
+    @Request() req: ApiRequestJWT,
+    @Query() filter: WorkflowStepFilterDto,
+  ) {
+    if (filter && (filter.page || filter.limit || filter.search || filter.status || filter.type || filter.workflowId || filter.assignedToId || filter.isMandatory || filter.tab)) {
+      return this.workflowService.findAllStepsPaginated(
+        req.user.organizationId,
+        filter,
+        req.user.userId,
+      );
+    }
     return this.workflowService.findAllSteps(req.user.organizationId);
+  }
+
+  @Get('steps/counts')
+  async getStepCounts(@Request() req: ApiRequestJWT) {
+    return this.workflowService.getStepCounts(
+      req.user.organizationId,
+      req.user.userId,
+    );
+  }
+
+  @Get('workflows/list')
+  async getWorkflowsList(@Request() req: ApiRequestJWT) {
+    return this.workflowService.getWorkflowsForOrg(req.user.organizationId);
   }
 
   @Get('summary')

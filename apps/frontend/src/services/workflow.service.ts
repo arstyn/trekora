@@ -6,6 +6,28 @@ import type {
     IWorkflowStep,
 } from "@/types/workflow.types";
 
+export interface IWorkflowStepFilter {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    type?: string;
+    workflowId?: string;
+    assignedToId?: string;
+    isMandatory?: string;
+    tab?: string;
+}
+
+export interface IPaginatedWorkflowSteps {
+    data: IWorkflowStep[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
+}
+
 class WorkflowService {
     async getWorkflow(id: string): Promise<IWorkflow> {
         const response = await axiosInstance.get(`/workflow/${id}`);
@@ -38,13 +60,35 @@ class WorkflowService {
         await axiosInstance.delete(`/workflow/steps/${stepId}`);
     }
 
-    async getAssignedSteps(): Promise<IWorkflowStep[]> {
-        const response = await axiosInstance.get(`/workflow/steps/assigned`);
+    async getAssignedSteps(
+        params?: IWorkflowStepFilter,
+    ): Promise<IPaginatedWorkflowSteps | IWorkflowStep[]> {
+        const response = await axiosInstance.get(`/workflow/steps/assigned`, {
+            params,
+        });
         return response.data;
     }
 
-    async getAllSteps(): Promise<IWorkflowStep[]> {
-        const response = await axiosInstance.get(`/workflow/steps/all`);
+    async getAllSteps(
+        params?: IWorkflowStepFilter,
+    ): Promise<IPaginatedWorkflowSteps | IWorkflowStep[]> {
+        const response = await axiosInstance.get(`/workflow/steps/all`, {
+            params,
+        });
+        return response.data;
+    }
+
+    async getStepCounts(): Promise<{
+        myTasks: number;
+        unassigned: number;
+        allTasks: number;
+    }> {
+        const response = await axiosInstance.get(`/workflow/steps/counts`);
+        return response.data;
+    }
+
+    async getWorkflowsList(): Promise<{ id: string; name: string }[]> {
+        const response = await axiosInstance.get(`/workflow/workflows/list`);
         return response.data;
     }
 

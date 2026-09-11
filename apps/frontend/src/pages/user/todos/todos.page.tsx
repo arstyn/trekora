@@ -1,3 +1,4 @@
+import DataTableFooter from "@/components/data-table-footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +14,8 @@ import {
     UserCheck,
     Users
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { TaskHistoryDialog } from "./_components/TaskHistoryDialog";
 import { TaskList } from "./_components/TaskList";
@@ -25,11 +27,32 @@ export default function TodosPage() {
     const [tasks, setTasks] = useState<IWorkflowStep[]>([]);
     const [summary, setSummary] = useState<any>(null);
     const [employees, setEmployees] = useState<IEmployee[]>([]);
+    const [workflowOptions, setWorkflowOptions] = useState<
+        Array<{ id: string; name: string }>
+    >([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState("my-tasks");
     const [viewMode, setViewMode] = useState<"table" | "card">("table");
+
+    // Pagination state
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialPage = parseInt(searchParams.get("page") || "1", 10);
+    const initialLimit = parseInt(searchParams.get("limit") || "10", 10);
+    const [pagination, setPagination] = useState({
+        page: initialPage,
+        limit: initialLimit,
+        total: 0,
+        totalPages: 1,
+    });
+
+    // Tab counts state
+    const [tabCounts, setTabCounts] = useState({
+        "my-tasks": 0,
+        unassigned: 0,
+        "all-tasks": 0,
+    });
 
     // Filters state
     const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -43,6 +66,8 @@ export default function TodosPage() {
     const [selectedTask, setSelectedTask] = useState<IWorkflowStep | null>(null);
     const [historyLogs, setHistoryLogs] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
+
+    const isFirstRender = useRef(true);
 
     const isAdmin = useMemo(() => {
         if (!userData?.permissionSets) return false;
@@ -73,7 +98,12 @@ export default function TodosPage() {
         }
     };
 
-    const fetchData = async (isManualRefresh = false) => {
+    const loadTasks = async (
+        targetPage: number = pagination.page,
+        targetLimit: number = pagination.limit,
+        search: string = searchQuery,
+        isManualRefresh = false,
+    ) => {
         try {
             if (isManualRefresh) {
                 setRefreshing(true);
@@ -90,19 +120,85 @@ export default function TodosPage() {
                     ps.name.toLowerCase().includes("manager"),
             );
 
+            const filterParams = {
+                page: targetPage,
+                limit: targetLimit,
+                search: search.trim() || undefined,
+                status: filterStatus !== "all" ? filterStatus : undefined,
+                type: filterType !== "all" ? filterType : undefined,
+                workflowId: filterWorkflow !== "all" ? filterWorkflow : undefined,
+                assignedToId: filterEmployee !== "all" ? filterEmployee : undefined,
+                isMandatory: filterMandatory !== "all" ? filterMandatory : undefined,
+                tab: activeTab,
+            };
+
             if (isUserAdmin) {
-                const [allTasks, stats] = await Promise.all([
-                    workflowService.getAllSteps(),
+                const [stepRes, stats, counts, wfList] = await Promise.all([
+                    workflowService.getAllSteps(filterParams),
                     workflowService.getSummary(),
+                    workflowService.getStepCounts(),
+                    workflowOptions.length === 0
+                        ? workflowService.getWorkflowsList()
+                        : Promise.resolve(null),
                 ]);
-                setTasks(allTasks);
+
+                if (stepRes && "pagination" in stepRes) {
+                    setTasks(stepRes.data);
+                    setPagination(stepRes.pagination);
+                } else if (Array.isArray(stepRes)) {
+                    setTasks(stepRes);
+                    setPagination({
+                        page: targetPage,
+                        limit: targetLimit,
+                        total: stepRes.length,
+                        totalPages: Math.max(1, Math.ceil(stepRes.length / targetLimit)),
+                    });
+                }
+
                 setSummary(stats);
+                if (counts) {
+                    setTabCounts({
+                        "my-tasks": counts.myTasks,
+                        unassigned: counts.unassigned,
+                        "all-tasks": counts.allTasks,
+                    });
+                }
+                if (wfList) {
+                    const cleaned = wfList.map((w) => ({
+                        id: w.id,
+                        name:
+                            w.name
+                                .replace(/^booking\s*[:-]?\s*/i, "")
+                                .replace(/\s*flow$/i, "")
+                                .trim() || w.name,
+                    }));
+                    setWorkflowOptions(cleaned);
+                }
                 if (employees.length === 0) {
                     await fetchEmployees();
                 }
             } else {
-                const myTasks = await workflowService.getAssignedSteps();
-                setTasks(myTasks);
+                const stepRes = await workflowService.getAssignedSteps(filterParams);
+                if (stepRes && "pagination" in stepRes) {
+                    setTasks(stepRes.data);
+                    setPagination(stepRes.pagination);
+                    setTabCounts((prev) => ({
+                        ...prev,
+                        "my-tasks": stepRes.pagination.total,
+                    }));
+                } else if (Array.isArray(stepRes)) {
+                    setTasks(stepRes);
+                    setPagination({
+                        page: targetPage,
+                        limit: targetLimit,
+                        total: stepRes.length,
+                        totalPages: Math.max(1, Math.ceil(stepRes.length / targetLimit)),
+                    });
+                    setTabCounts((prev) => ({
+                        ...prev,
+                        "my-tasks": stepRes.length,
+                    }));
+                }
             }
 
             if (isManualRefresh) {
@@ -117,9 +213,34 @@ export default function TodosPage() {
         }
     };
 
+    // Debounced search and filter watcher
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            loadTasks(initialPage, initialLimit, searchQuery);
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setPagination((prev) => ({ ...prev, page: 1 }));
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.set("page", "1");
+                return next;
+            });
+            loadTasks(1, pagination.limit, searchQuery);
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [
+        searchQuery,
+        filterStatus,
+        filterType,
+        filterWorkflow,
+        filterEmployee,
+        filterMandatory,
+        activeTab,
+    ]);
 
     const handleToggleTask = async (task: IWorkflowStep) => {
         try {
@@ -142,8 +263,18 @@ export default function TodosPage() {
             );
 
             if (isAdmin) {
-                const stats = await workflowService.getSummary();
+                const [stats, counts] = await Promise.all([
+                    workflowService.getSummary(),
+                    workflowService.getStepCounts(),
+                ]);
                 setSummary(stats);
+                if (counts) {
+                    setTabCounts({
+                        "my-tasks": counts.myTasks,
+                        unassigned: counts.unassigned,
+                        "all-tasks": counts.allTasks,
+                    });
+                }
             }
         } catch (error) {
             // Roll back on failure
@@ -193,12 +324,22 @@ export default function TodosPage() {
             );
 
             if (isAdmin) {
-                const stats = await workflowService.getSummary();
+                const [stats, counts] = await Promise.all([
+                    workflowService.getSummary(),
+                    workflowService.getStepCounts(),
+                ]);
                 setSummary(stats);
+                if (counts) {
+                    setTabCounts({
+                        "my-tasks": counts.myTasks,
+                        unassigned: counts.unassigned,
+                        "all-tasks": counts.allTasks,
+                    });
+                }
             }
         } catch (error) {
             toast.error("Failed to assign task");
-            fetchData();
+            loadTasks(pagination.page, pagination.limit, searchQuery);
         }
     };
 
@@ -216,88 +357,36 @@ export default function TodosPage() {
         }
     };
 
-    const workflowOptions = useMemo(() => {
-        const unique = new Map();
-        tasks.forEach((t) => {
-            if (t.workflow) {
-                const cleanName =
-                    t.workflow.name
-                        .replace(/^booking\s*[:-]?\s*/i, "")
-                        .replace(/\s*flow$/i, "")
-                        .trim() || t.workflow.name;
-                unique.set(t.workflow.id, cleanName);
-            }
+    const handlePageChange = (newPage: number) => {
+        setPagination((prev) => ({ ...prev, page: newPage }));
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("page", newPage.toString());
+            return next;
         });
-        return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
-    }, [tasks]);
+        loadTasks(newPage, pagination.limit, searchQuery);
+    };
 
-    const baseFilteredTasks = useMemo(() => {
-        return tasks.filter((task) => {
-            const query = searchQuery.toLowerCase().trim();
-            const matchesSearch =
-                !query ||
-                task.label.toLowerCase().includes(query) ||
-                task.description?.toLowerCase().includes(query) ||
-                task.assignedTo?.name.toLowerCase().includes(query) ||
-                task.workflow?.name.toLowerCase().includes(query);
-
-            const matchesStatus =
-                filterStatus === "all" || task.status === filterStatus;
-            const matchesType =
-                filterType === "all" || task.type === filterType;
-            const matchesWorkflow =
-                filterWorkflow === "all" || task.workflowId === filterWorkflow;
-            const matchesEmployee =
-                filterEmployee === "all" ||
-                (filterEmployee === "unassigned"
-                    ? !task.assignedToId
-                    : task.assignedToId === filterEmployee ||
-                    task.assignedTo?.name === filterEmployee);
-            const matchesMandatory =
-                filterMandatory === "all" ||
-                (filterMandatory === "mandatory"
-                    ? task.isMandatory
-                    : !task.isMandatory);
-
-            return (
-                matchesSearch &&
-                matchesStatus &&
-                matchesType &&
-                matchesWorkflow &&
-                matchesEmployee &&
-                matchesMandatory
-            );
+    const handleLimitChange = (newLimit: number) => {
+        setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }));
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("limit", newLimit.toString());
+            next.set("page", "1");
+            return next;
         });
-    }, [
-        tasks,
-        searchQuery,
-        filterStatus,
-        filterType,
-        filterWorkflow,
-        filterEmployee,
-        filterMandatory,
-    ]);
+        loadTasks(1, newLimit, searchQuery);
+    };
 
-    const tabCounts = useMemo(() => {
-        return {
-            "my-tasks": baseFilteredTasks.filter(
-                (t) => t.assignedToId === userData?.userId,
-            ).length,
-            unassigned: baseFilteredTasks.filter((t) => !t.assignedToId).length,
-            "all-tasks": baseFilteredTasks.length,
-        };
-    }, [baseFilteredTasks, userData]);
-
-    const currentTabTasks = useMemo(() => {
-        if (activeTab === "my-tasks") {
-            return baseFilteredTasks.filter(
-                (t) => t.assignedToId === userData?.userId,
-            );
-        } else if (activeTab === "unassigned") {
-            return baseFilteredTasks.filter((t) => !t.assignedToId);
-        }
-        return baseFilteredTasks;
-    }, [baseFilteredTasks, activeTab, userData]);
+    const handleTabChange = (val: string) => {
+        setActiveTab(val);
+        setPagination((prev) => ({ ...prev, page: 1 }));
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("page", "1");
+            return next;
+        });
+    };
 
     const handleResetFilters = () => {
         setFilterStatus("all");
@@ -306,6 +395,12 @@ export default function TodosPage() {
         setFilterEmployee("all");
         setFilterMandatory("all");
         setSearchQuery("");
+        setPagination((prev) => ({ ...prev, page: 1 }));
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("page", "1");
+            return next;
+        });
     };
 
     return (
@@ -328,7 +423,14 @@ export default function TodosPage() {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => fetchData(true)}
+                        onClick={() =>
+                            loadTasks(
+                                pagination.page,
+                                pagination.limit,
+                                searchQuery,
+                                true,
+                            )
+                        }
                         disabled={refreshing}
                         className="text-xs h-9 gap-1.5"
                     >
@@ -364,7 +466,7 @@ export default function TodosPage() {
             <div className="space-y-4">
                 <Tabs
                     value={activeTab}
-                    onValueChange={setActiveTab}
+                    onValueChange={handleTabChange}
                     className="w-full"
                 >
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b pb-3">
@@ -455,7 +557,7 @@ export default function TodosPage() {
                         <>
                             <TabsContent value="my-tasks" className="pt-2 m-0">
                                 <TaskList
-                                    tasks={currentTabTasks}
+                                    tasks={tasks}
                                     viewMode={viewMode}
                                     onToggle={handleToggleTask}
                                     employees={employees}
@@ -473,7 +575,7 @@ export default function TodosPage() {
                                         className="pt-2 m-0"
                                     >
                                         <TaskList
-                                            tasks={currentTabTasks}
+                                            tasks={tasks}
                                             viewMode={viewMode}
                                             onToggle={handleToggleTask}
                                             employees={employees}
@@ -489,7 +591,7 @@ export default function TodosPage() {
                                         className="pt-2 m-0"
                                     >
                                         <TaskList
-                                            tasks={currentTabTasks}
+                                            tasks={tasks}
                                             viewMode={viewMode}
                                             onToggle={handleToggleTask}
                                             employees={employees}
@@ -500,6 +602,21 @@ export default function TodosPage() {
                                         />
                                     </TabsContent>
                                 </>
+                            )}
+
+                            {/* Standard Pagination & Rows Per Page Footer */}
+                            {pagination.total > 0 && (
+                                <div className="pt-2">
+                                    <DataTableFooter
+                                        page={pagination.page}
+                                        limit={pagination.limit}
+                                        total={pagination.total}
+                                        totalPages={pagination.totalPages}
+                                        onPageChange={handlePageChange}
+                                        onLimitChange={handleLimitChange}
+                                        entityName="tasks"
+                                    />
+                                </div>
                             )}
                         </>
                     )}
