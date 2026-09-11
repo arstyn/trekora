@@ -89,6 +89,7 @@ import { PayoutDialog } from "../agents/_components/payout-dialog";
 import { BookingLogsCard } from "./_components/booking-logs-card";
 import { CompleteBookingDialog } from "./_components/complete-booking-dialog";
 import { CancelBookingDialog } from "./_components/cancel-booking-dialog";
+import { BookingPendingApprovalBanner } from "./_components/booking-pending-approval-banner";
 
 export default function BookingDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -426,6 +427,12 @@ export default function BookingDetailsPage() {
                     </Button>
                 </div>
             </div>
+
+            {/* Pending Manager Approval Banner */}
+            <BookingPendingApprovalBanner
+                bookingId={booking.id}
+                onResolved={fetchBookingDetails}
+            />
 
             {/* Hero Booking Banner */}
             <Card className="border-border/80 shadow-xs overflow-hidden relative">

@@ -2,13 +2,16 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
   Query,
   Request,
   UseGuards,
+  forwardRef,
 } from '@nestjs/common';
 import { BookingStatus } from 'src/database/entity/booking.entity';
 import { ApiRequestJWT } from 'src/dto/api-request-jwt.types';
@@ -24,6 +27,9 @@ import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../auth/guard/permission.guard';
 import { EmployeeService } from '../employee/employee.service';
 import { BookingService } from './booking.service';
+import { PermissionCheckService } from '../permission/permission-check.service';
+import { ApprovalService } from '../approval/approval.service';
+import { ApprovalAction } from 'src/database/entity/approval-request.entity';
 
 @UseGuards(AuthGuard, PermissionGuard)
 @Controller('bookings')
@@ -31,6 +37,9 @@ export class BookingController {
   constructor(
     private readonly bookingService: BookingService,
     private readonly employeeService: EmployeeService,
+    private readonly permissionCheckService: PermissionCheckService,
+    @Inject(forwardRef(() => ApprovalService))
+    private readonly approvalService: ApprovalService,
   ) {}
 
   @Post()
@@ -159,13 +168,73 @@ export class BookingController {
   }
 
   @Post(':id/cancel')
-  @RequirePermission('booking', 'update')
-  cancel(
+  async cancel(
     @Param('id') id: string,
     @Body() cancelDto: CancelBookingDto,
     @Request() req: ApiRequestJWT,
   ) {
-    return this.bookingService.cancelBooking(id, req.user.userId, cancelDto);
+    const userId = req.user.userId;
+    const organizationId = req.user.organizationId;
+
+    const canDirectCancel = await this.permissionCheckService.hasPermission(
+      userId,
+      organizationId,
+      'booking',
+      'cancel',
+    );
+
+    if (canDirectCancel) {
+      return this.bookingService.cancelBooking(id, userId, cancelDto);
+    }
+
+    const canRequestCancel =
+      (await this.permissionCheckService.hasPermission(
+        userId,
+        organizationId,
+        'booking',
+        'cancel_request',
+      )) ||
+      (await this.permissionCheckService.hasPermission(
+        userId,
+        organizationId,
+        'booking',
+        'update',
+      ));
+
+    if (!canRequestCancel) {
+      throw new ForbiddenException(
+        'You do not have permission to cancel or request cancellation for this booking.',
+      );
+    }
+
+    const booking = await this.bookingService.findOne(id);
+
+    const approvalRequest = await this.approvalService.createRequest(
+      {
+        action: ApprovalAction.BOOKING_CANCEL,
+        resource: 'booking',
+        entityId: id,
+        entityReference: booking.bookingNumber,
+        title: `Cancellation Request for Booking #${booking.bookingNumber}`,
+        reason:
+          cancelDto.reason || cancelDto.notes || 'Booking cancellation requested',
+        payload: cancelDto,
+        snapshot: {
+          bookingNumber: booking.bookingNumber,
+          totalAmount: booking.totalAmount,
+          advancePaid: booking.advancePaid,
+          customersCount: booking.customers?.length || 0,
+        },
+      },
+      userId,
+      organizationId,
+    );
+
+    return {
+      requiresApproval: true,
+      message: 'Cancellation request submitted to manager for approval.',
+      approvalRequest,
+    };
   }
 
   @Post(':id/add-customer/:customerId')
@@ -197,19 +266,89 @@ export class BookingController {
   }
 
   @Post(':id/cancel-customer/:customerId')
-  @RequirePermission('booking', 'update')
-  cancelCustomer(
+  async cancelCustomer(
     @Param('id') id: string,
     @Param('customerId') customerId: string,
     @Body() cancelDto: CancelBookingDto,
     @Request() req: ApiRequestJWT,
   ) {
-    return this.bookingService.cancelCustomerFromBooking(
-      id,
-      customerId,
-      req.user.userId,
-      cancelDto,
+    const userId = req.user.userId;
+    const organizationId = req.user.organizationId;
+
+    const canDirectCancel = await this.permissionCheckService.hasPermission(
+      userId,
+      organizationId,
+      'booking',
+      'cancel',
     );
+
+    if (canDirectCancel) {
+      return this.bookingService.cancelCustomerFromBooking(
+        id,
+        customerId,
+        userId,
+        cancelDto,
+      );
+    }
+
+    const canRequestCancel =
+      (await this.permissionCheckService.hasPermission(
+        userId,
+        organizationId,
+        'booking',
+        'cancel_request',
+      )) ||
+      (await this.permissionCheckService.hasPermission(
+        userId,
+        organizationId,
+        'booking',
+        'update',
+      ));
+
+    if (!canRequestCancel) {
+      throw new ForbiddenException(
+        'You do not have permission to cancel travelers on this booking.',
+      );
+    }
+
+    const booking = await this.bookingService.findOne(id);
+    const targetCustomer = (booking.customers || []).find(
+      (c) => c.id === customerId || (c as any).customerId === customerId,
+    );
+    const travelerName = targetCustomer
+      ? `${targetCustomer.firstName || ''} ${targetCustomer.lastName || ''}`.trim()
+      : 'Traveler';
+
+    const mergedPayload = {
+      ...cancelDto,
+      customerIds: [customerId],
+    };
+
+    const approvalRequest = await this.approvalService.createRequest(
+      {
+        action: ApprovalAction.BOOKING_CANCEL,
+        resource: 'booking',
+        entityId: id,
+        entityReference: booking.bookingNumber,
+        title: `Traveler Cancellation Request (${travelerName}) - Booking #${booking.bookingNumber}`,
+        reason:
+          cancelDto.reason || cancelDto.notes || 'Traveler cancellation requested',
+        payload: mergedPayload,
+        snapshot: {
+          bookingNumber: booking.bookingNumber,
+          customerId,
+          travelerName,
+        },
+      },
+      userId,
+      organizationId,
+    );
+
+    return {
+      requiresApproval: true,
+      message: 'Traveler cancellation request submitted to manager for approval.',
+      approvalRequest,
+    };
   }
 
   @Post(':id/move/:batchId')

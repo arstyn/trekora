@@ -33,13 +33,17 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import axiosInstance from "@/lib/axios";
 import { PayoutDialog } from "./_components/payout-dialog";
+import { AgentLogsCard, type IAgentLog } from "./_components/agent-logs-card";
 
 export default function ViewAgentPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [agent, setAgent] = useState<IAgentDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [agentLogs, setAgentLogs] = useState<IAgentLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   const [payoutModal, setPayoutModal] = useState<{
     open: boolean;
@@ -69,8 +73,24 @@ export default function ViewAgentPage() {
     }
   };
 
+  const fetchLogs = async () => {
+    if (!id) return;
+    try {
+      setLoadingLogs(true);
+      const res = await axiosInstance.get<IAgentLog[]>(
+        `/activity-log/entity/agent/${id}`,
+      );
+      setAgentLogs(res.data);
+    } catch (error) {
+      console.error("Failed to load agent logs:", error);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
   useEffect(() => {
     fetchAgent();
+    fetchLogs();
   }, [id]);
 
   const formatCurrency = (amount: number) => {
@@ -349,6 +369,9 @@ export default function ViewAgentPage() {
         </CardContent>
       </Card>
 
+      {/* Activity & Audit Logs */}
+      <AgentLogsCard logs={agentLogs} loading={loadingLogs} />
+
       <PayoutDialog
         open={payoutModal.open}
         onOpenChange={(open) => setPayoutModal((prev) => ({ ...prev, open }))}
@@ -356,7 +379,10 @@ export default function ViewAgentPage() {
         bookingNumber={payoutModal.bookingNumber}
         currentStatus={payoutModal.currentStatus}
         commissionAmount={payoutModal.commissionAmount}
-        onUpdated={fetchAgent}
+        onUpdated={() => {
+          fetchAgent();
+          fetchLogs();
+        }}
       />
     </div>
   );

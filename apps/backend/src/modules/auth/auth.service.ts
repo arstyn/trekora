@@ -85,7 +85,9 @@ export class AuthService {
       );
       return { accessToken: newAccessToken };
     } catch (error) {
-      console.log('🚀 ~ auth.service.ts:43 ~ AuthService ~ error:', error);
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new UnauthorizedException('Refresh token has expired');
+      }
       throw new UnauthorizedException('Invalid refresh token');
     }
   }

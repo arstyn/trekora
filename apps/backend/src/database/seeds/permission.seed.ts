@@ -30,6 +30,36 @@ export const permissions = [
     action: 'view',
     description: 'View booking details',
   },
+  {
+    name: 'booking.cancel',
+    resource: 'booking',
+    action: 'cancel',
+    description: 'Directly cancel bookings without approval',
+  },
+  {
+    name: 'booking.cancel_request',
+    resource: 'booking',
+    action: 'cancel_request',
+    description: 'Request booking cancellation for manager approval',
+  },
+  {
+    name: 'booking.cancel_approve',
+    resource: 'booking',
+    action: 'cancel_approve',
+    description: 'Approve or reject booking cancellation requests',
+  },
+  {
+    name: 'booking.discount_request',
+    resource: 'booking',
+    action: 'discount_request',
+    description: 'Request price override/discount for manager approval',
+  },
+  {
+    name: 'booking.discount_approve',
+    resource: 'booking',
+    action: 'discount_approve',
+    description: 'Approve or reject booking discount requests',
+  },
 
   // Lead permissions
   {
@@ -195,6 +225,36 @@ export const permissions = [
     resource: 'payment',
     action: 'view',
     description: 'View payment details',
+  },
+  {
+    name: 'payment.refund',
+    resource: 'payment',
+    action: 'refund',
+    description: 'Directly issue payment refunds without approval',
+  },
+  {
+    name: 'payment.refund_request',
+    resource: 'payment',
+    action: 'refund_request',
+    description: 'Request customer refund for manager approval',
+  },
+  {
+    name: 'payment.refund_approve',
+    resource: 'payment',
+    action: 'refund_approve',
+    description: 'Approve or reject customer refund requests',
+  },
+  {
+    name: 'payment.delete_request',
+    resource: 'payment',
+    action: 'delete_request',
+    description: 'Request payment deletion/void for manager approval',
+  },
+  {
+    name: 'payment.delete_approve',
+    resource: 'payment',
+    action: 'delete_approve',
+    description: 'Approve or reject payment deletion requests',
   },
 
   // Batch permissions
@@ -431,6 +491,64 @@ export const permissions = [
     resource: 'workflow',
     action: 'view',
     description: 'View workflow details',
+  },
+
+  // Agent permissions
+  {
+    name: 'agent.create',
+    resource: 'agent',
+    action: 'create',
+    description: 'Create new agents',
+  },
+  {
+    name: 'agent.read',
+    resource: 'agent',
+    action: 'read',
+    description: 'View agents',
+  },
+  {
+    name: 'agent.update',
+    resource: 'agent',
+    action: 'update',
+    description: 'Update existing agents',
+  },
+  {
+    name: 'agent.delete',
+    resource: 'agent',
+    action: 'delete',
+    description: 'Delete agents',
+  },
+  {
+    name: 'agent.view',
+    resource: 'agent',
+    action: 'view',
+    description: 'View agent details',
+  },
+  {
+    name: 'agent.payout_request',
+    resource: 'agent',
+    action: 'payout_request',
+    description: 'Request agent commission payout for manager approval',
+  },
+  {
+    name: 'agent.payout_approve',
+    resource: 'agent',
+    action: 'payout_approve',
+    description: 'Approve or reject agent commission payouts',
+  },
+
+  // Approval permissions
+  {
+    name: 'approval.read',
+    resource: 'approval',
+    action: 'read',
+    description: 'View approval requests',
+  },
+  {
+    name: 'approval.manage',
+    resource: 'approval',
+    action: 'manage',
+    description: 'Approve or reject pending approval requests',
   },
 
   // Settings permissions

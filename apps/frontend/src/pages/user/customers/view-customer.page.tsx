@@ -35,6 +35,7 @@ import { useCallback, useEffect, useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import EnhancedCustomerForm from "./_components/enhanced-customer-form";
+import { CustomerLogsCard, type ICustomerLog } from "./_components/customer-logs-card";
 
 export default function ViewCustomerPage() {
     const { id } = useParams<{ id: string }>();
@@ -42,6 +43,8 @@ export default function ViewCustomerPage() {
 
     const [customer, setCustomer] = useState<ICustomer | null>(null);
     const [bookings, setBookings] = useState<any[]>([]);
+    const [customerLogs, setCustomerLogs] = useState<ICustomerLog[]>([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
     const [loading, setLoading] = useState(true);
     const [bookingsLoading, setBookingsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
@@ -85,12 +88,28 @@ export default function ViewCustomerPage() {
         }
     }, [id]);
 
+    const fetchCustomerLogs = useCallback(async () => {
+        if (!id) return;
+        try {
+            setLoadingLogs(true);
+            const res = await axiosInstance.get<ICustomerLog[]>(
+                `/activity-log/entity/customer/${id}`,
+            );
+            setCustomerLogs(res.data);
+        } catch (err) {
+            console.error("Failed to fetch customer logs:", err);
+        } finally {
+            setLoadingLogs(false);
+        }
+    }, [id]);
+
     useEffect(() => {
         if (id) {
             fetchCustomerData();
             fetchBookingsData();
+            fetchCustomerLogs();
         }
-    }, [id, fetchCustomerData, fetchBookingsData]);
+    }, [id, fetchCustomerData, fetchBookingsData, fetchCustomerLogs]);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -103,6 +122,7 @@ export default function ViewCustomerPage() {
         setCustomer(updatedCustomer);
         setIsEditing(false);
         toast.success("Customer profile updated successfully");
+        fetchCustomerLogs();
     };
 
     const handleToggleBlacklist = async (isBlacklisting: boolean) => {
@@ -124,6 +144,7 @@ export default function ViewCustomerPage() {
                     ? "Customer has been blacklisted successfully."
                     : "Customer removed from blacklist successfully."
             );
+            fetchCustomerLogs();
         } catch (err: any) {
             console.error("Failed to update blacklist status:", err);
             toast.error(err.response?.data?.message || "Failed to update blacklist status.");
@@ -627,6 +648,9 @@ export default function ViewCustomerPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Activity & Audit Logs */}
+            <CustomerLogsCard logs={customerLogs} loading={loadingLogs} />
 
             {/* Booking History card full width below */}
             <Card>

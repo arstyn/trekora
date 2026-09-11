@@ -15,5 +15,6 @@ import { BatchLog } from 'src/database/entity/batch-log.entity';
   ],
   controllers: [BatchesController],
   providers: [BatchesService],
+  exports: [BatchesService],
 })
 export class BatchesModule {}

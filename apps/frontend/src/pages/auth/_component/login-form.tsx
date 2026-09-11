@@ -89,7 +89,7 @@ export default function LoginForm() {
 			});
 			localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken);
 			localStorage.setItem(REFRESH_TOKEN_KEY, res.data.refreshToken);
-			refresh();
+			await refresh();
 			const params = new URLSearchParams(window.location.search);
 			const redirectUrl = params.get("redirect") || "/";
 			navigate(redirectUrl);

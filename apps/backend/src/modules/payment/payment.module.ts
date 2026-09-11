@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Batch } from 'src/database/entity/batch.entity';
@@ -12,6 +12,7 @@ import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
 import { EmployeeModule } from '../employee/employee.module';
 import { PermissionModule } from '../permission/permission.module';
+import { ApprovalModule } from '../approval/approval.module';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 
@@ -31,6 +32,7 @@ import { PaymentService } from './payment.service';
     JwtModule.register({}),
     PermissionModule,
     EmployeeModule,
+    forwardRef(() => ApprovalModule),
   ],
   controllers: [PaymentController],
   providers: [PaymentService],

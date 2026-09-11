@@ -29,6 +29,7 @@ import ServerErrorPage from "./pages/general/server-error";
 import NotFoundPage from "./pages/general/not-found";
 import ActivityLogsPage from "./pages/user/admin/logs.page";
 import AdminOverviewPage from "./pages/user/admin/overview.page";
+import ApprovalsPage from "./pages/user/approvals/approvals.page";
 import BatchesPage from "./pages/user/batches/batches.page";
 import EditBatchPage from "./pages/user/batches/edit-batch.page";
 import BatchDetailsPage from "./pages/user/batches/view-batch.page";
@@ -118,6 +119,10 @@ function AuthenticatedApp() {
                         path="/manager/overview"
                         element={<ManagerOverviewPage />}
                     />
+                    <Route
+                        path="/approvals"
+                        element={<ApprovalsPage />}
+                    />
                     <Route path="/branches" element={<BranchPage />} />
                     <Route path="/batches" element={<BatchesPage />} />
                     <Route path="/batches/:id" element={<BatchDetailsPage />} />
@@ -193,7 +198,8 @@ export default function App() {
     // Standalone routes that shouldn't render inside sidebar/app layout or public navbar/footer
     const isStandaloneRoute = location.pathname.startsWith("/accept-invitation/") ||
         location.pathname.startsWith("/activate-account/") ||
-        location.pathname.startsWith("/activate-user-account/");
+        location.pathname.startsWith("/activate-user-account/") ||
+        location.pathname.startsWith("/google-callback");
 
     if (isStandaloneRoute) {
         return (
@@ -201,6 +207,7 @@ export default function App() {
                 <Route path="/accept-invitation/:id" element={<AcceptInvitationPage />} />
                 <Route path="/activate-account/:id" element={<ActivatePage />} />
                 <Route path="/activate-user-account/:id" element={<ActivateUserPage />} />
+                <Route path="/google-callback" element={<GoogleCallbackPage />} />
             </Routes>
         );
     }

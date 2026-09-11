@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, NavLink } from "react-router-dom";
-import { Building2, CheckCircle2, XCircle, AlertCircle, LogIn, ArrowRight, ShieldCheck } from "lucide-react";
+import { Building2, CheckCircle2, XCircle, AlertCircle, LogIn, ArrowRight, ShieldCheck, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import axiosInstance from "@/lib/axios";
 import { AxiosError } from "axios";
+import { useAuth } from "@/context/authContext";
+import { clearAuthTokens } from "@/lib/auth-utils";
 
 interface IInviteDetails {
 	valid: boolean;
@@ -22,6 +24,7 @@ interface IInviteDetails {
 export default function AcceptInvitationPage() {
 	const { id: token } = useParams<{ id: string }>();
 	const navigate = useNavigate();
+	const { isAuthenticated, user, logout } = useAuth();
 
 	const [details, setDetails] = useState<IInviteDetails | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -29,7 +32,12 @@ export default function AcceptInvitationPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-	const isLoggedIn = !!localStorage.getItem("accessToken");
+	// Clear old/invalid tokens if the user is not authenticated
+	useEffect(() => {
+		if (!isAuthenticated) {
+			clearAuthTokens();
+		}
+	}, [isAuthenticated]);
 
 	useEffect(() => {
 		const fetchDetails = async () => {
@@ -212,8 +220,8 @@ export default function AcceptInvitationPage() {
 						</Alert>
 					)}
 
-					{/* Logged Out Warning */}
-					{!isLoggedIn ? (
+					{/* Auth State Handling */}
+					{!isAuthenticated || !user ? (
 						<div className="space-y-4">
 							<Alert variant="default" className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200">
 								<LogIn className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -223,19 +231,52 @@ export default function AcceptInvitationPage() {
 								</AlertDescription>
 							</Alert>
 
-							<Button asChild className="w-full gap-2" size="lg">
-								<NavLink to={`/login?redirect=/accept-invitation/${token}`}>
-									Log In to Accept <ArrowRight className="w-4 h-4" />
-								</NavLink>
+							<Button
+								onClick={() => {
+									clearAuthTokens();
+									navigate(`/login?redirect=/accept-invitation/${token}`);
+								}}
+								className="w-full gap-2 cursor-pointer"
+								size="lg"
+							>
+								Log In to Accept <ArrowRight className="w-4 h-4" />
+							</Button>
+						</div>
+					) : details && user.email.toLowerCase() !== details.email.toLowerCase() ? (
+						<div className="space-y-4">
+							<Alert variant="default" className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+								<AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+								<AlertTitle className="font-semibold">Different Account Signed In</AlertTitle>
+								<AlertDescription className="text-xs">
+									You are currently logged in as <span className="font-semibold">{user.email}</span>, but this invitation was sent to <span className="font-semibold">{details.email}</span>. Please log in with the invited email to accept.
+								</AlertDescription>
+							</Alert>
+
+							<Button
+								onClick={() => {
+									clearAuthTokens();
+									logout();
+									window.location.href = `/login?redirect=/accept-invitation/${token}`;
+								}}
+								variant="outline"
+								className="w-full gap-2 cursor-pointer"
+								size="lg"
+							>
+								Switch Account to {details.email} <ArrowRight className="w-4 h-4" />
 							</Button>
 						</div>
 					) : (
 						/* Action Buttons */
 						<div className="space-y-3">
+							<div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pb-1">
+								<UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+								<span>Signed in as <span className="font-medium text-foreground">{user.email}</span></span>
+							</div>
+
 							<Button
 								onClick={handleAccept}
 								disabled={isSubmitting}
-								className="w-full gap-2 font-semibold"
+								className="w-full gap-2 font-semibold cursor-pointer"
 								size="lg"
 							>
 								<ShieldCheck className="w-5 h-5" />
@@ -246,7 +287,7 @@ export default function AcceptInvitationPage() {
 								onClick={handleDecline}
 								disabled={isSubmitting}
 								variant="outline"
-								className="w-full text-muted-foreground hover:text-destructive hover:border-destructive/50"
+								className="w-full text-muted-foreground hover:text-destructive hover:border-destructive/50 cursor-pointer"
 							>
 								{isSubmitting ? "Processing..." : "Decline"}
 							</Button>

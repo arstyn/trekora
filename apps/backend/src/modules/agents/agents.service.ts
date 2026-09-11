@@ -8,6 +8,7 @@ import { Agent, AgentStatus } from 'src/database/entity/agent.entity';
 import { AgentPayoutStatus, Booking, BookingStatus } from 'src/database/entity/booking.entity';
 import { AgentResponseDto, CreateAgentDto, UpdateAgentDto } from 'src/dto/agent.dto';
 import { Repository } from 'typeorm';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class AgentsService {
@@ -16,14 +17,29 @@ export class AgentsService {
     private agentRepository: Repository<Agent>,
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
-  async create(createAgentDto: CreateAgentDto, organizationId: string): Promise<Agent> {
+  async create(createAgentDto: CreateAgentDto, organizationId: string, userId?: string): Promise<Agent> {
     const agent = this.agentRepository.create({
       ...createAgentDto,
       organizationId,
     });
-    return this.agentRepository.save(agent);
+    const saved = await this.agentRepository.save(agent);
+
+    try {
+      await this.activityLogService.log(
+        organizationId,
+        userId || '',
+        'agent_created',
+        `Created agent partner ${saved.name} (${saved.agencyName || 'Independent'})`,
+        { agentId: saved.id, email: saved.email, phone: saved.phone },
+      );
+    } catch (err) {
+      console.error('Failed to log agent creation:', err);
+    }
+
+    return saved;
   }
 
   async findAll(
@@ -161,6 +177,7 @@ export class AgentsService {
     id: string,
     updateAgentDto: UpdateAgentDto,
     organizationId: string,
+    userId?: string,
   ): Promise<Agent> {
     const agent = await this.agentRepository.findOne({
       where: { id, organizationId },
@@ -171,7 +188,21 @@ export class AgentsService {
     }
 
     Object.assign(agent, updateAgentDto);
-    return this.agentRepository.save(agent);
+    const updated = await this.agentRepository.save(agent);
+
+    try {
+      await this.activityLogService.log(
+        organizationId,
+        userId || '',
+        'agent_updated',
+        `Updated profile details for agent ${updated.name}`,
+        { agentId: id, changes: Object.keys(updateAgentDto) },
+      );
+    } catch (err) {
+      console.error('Failed to log agent update:', err);
+    }
+
+    return updated;
   }
 
   async remove(id: string, organizationId: string): Promise<void> {
@@ -190,6 +221,7 @@ export class AgentsService {
     bookingId: string,
     payoutStatus: AgentPayoutStatus,
     organizationId: string,
+    userId?: string,
   ): Promise<Booking> {
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId, organizationId },
@@ -199,7 +231,29 @@ export class AgentsService {
       throw new NotFoundException('Booking not found');
     }
 
+    const previousStatus = booking.agentPayoutStatus;
     booking.agentPayoutStatus = payoutStatus;
-    return this.bookingRepository.save(booking);
+    const saved = await this.bookingRepository.save(booking);
+
+    try {
+      await this.activityLogService.log(
+        organizationId,
+        userId || '',
+        'agent_payout_updated',
+        `Agent payout status updated to ${payoutStatus} for booking #${booking.bookingNumber}`,
+        {
+          agentId: booking.agentId,
+          bookingId: booking.id,
+          bookingNumber: booking.bookingNumber,
+          previousStatus,
+          newStatus: payoutStatus,
+          amount: booking.agentCommissionAmount,
+        },
+      );
+    } catch (err) {
+      console.error('Failed to log payout status update:', err);
+    }
+
+    return saved;
   }
 }

@@ -38,6 +38,7 @@ import { UserNotificationModule } from './modules/user-notification/user-notific
 import { UserModule } from './modules/user/user.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { ApprovalModule } from './modules/approval/approval.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     BatchBlocksModule,
     AgentsModule,
     BatchOffersModule,
+    ApprovalModule,
   ],
   controllers: [AppController],
   providers: [AppService],

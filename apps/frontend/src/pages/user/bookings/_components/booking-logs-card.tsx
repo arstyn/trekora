@@ -88,6 +88,30 @@ export const BookingLogsCard: React.FC<BookingLogsCardProps> = ({
         }
 
         switch (action) {
+            case "approval_requested":
+                return {
+                    label: "Approval Requested",
+                    icon: Clock,
+                    dotColor: "bg-amber-500",
+                    badgeColor:
+                        "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
+                };
+            case "approval_approved":
+                return {
+                    label: "Approval Granted",
+                    icon: CheckCircle2,
+                    dotColor: "bg-emerald-500",
+                    badgeColor:
+                        "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800",
+                };
+            case "approval_rejected":
+                return {
+                    label: "Approval Rejected",
+                    icon: XCircle,
+                    dotColor: "bg-rose-500",
+                    badgeColor:
+                        "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
+                };
             case "create":
             case "created":
                 return {

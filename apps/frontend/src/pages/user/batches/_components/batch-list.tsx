@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import axiosInstance from "@/lib/axios";
 import type { IBatches } from "@/types/batches.types";
+import { getInitials } from "@/lib/utils";
 import { format } from "date-fns";
 import {
     Calendar,
@@ -314,21 +315,24 @@ export function BatchList({ status, refreshKey }: BatchListProps) {
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="*:data-[slot=avatar]:ring-background flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:grayscale">
+                                    <div className="*:data-[slot=avatar]:ring-background flex -space-x-2 *:data-[slot=avatar]:ring-2">
                                         {batch.coordinators?.map(
                                             (coordinator, index: number) => (
                                                 <HoverCard key={index}>
                                                     <HoverCardTrigger asChild>
                                                         <Avatar>
-                                                            <AvatarImage
-                                                                src={
-                                                                    coordinator.profilePhoto
-                                                                }
-                                                            />
-                                                            <AvatarFallback>
-                                                                {coordinator.name.slice(
-                                                                    0,
-                                                                    2,
+                                                            {coordinator.profilePhoto && (
+                                                                <AvatarImage
+                                                                    src={
+                                                                        coordinator.profilePhoto
+                                                                    }
+                                                                    alt={coordinator.name}
+                                                                />
+                                                            )}
+                                                            <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                                                                {getInitials(
+                                                                    coordinator.name,
+                                                                    coordinator.email,
                                                                 )}
                                                             </AvatarFallback>
                                                         </Avatar>
@@ -336,15 +340,18 @@ export function BatchList({ status, refreshKey }: BatchListProps) {
                                                     <HoverCardContent className="w-80">
                                                         <div className="flex gap-4">
                                                             <Avatar>
-                                                                <AvatarImage
-                                                                    src={
-                                                                        coordinator.profilePhoto
-                                                                    }
-                                                                />
-                                                                <AvatarFallback>
-                                                                    {coordinator.name.slice(
-                                                                        0,
-                                                                        2,
+                                                                {coordinator.profilePhoto && (
+                                                                    <AvatarImage
+                                                                        src={
+                                                                            coordinator.profilePhoto
+                                                                        }
+                                                                        alt={coordinator.name}
+                                                                    />
+                                                                )}
+                                                                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                                                                    {getInitials(
+                                                                        coordinator.name,
+                                                                        coordinator.email,
                                                                     )}
                                                                 </AvatarFallback>
                                                             </Avatar>

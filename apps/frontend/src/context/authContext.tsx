@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { getAccessToken, logout } from "@/lib/auth-utils";
 import axiosInstance from "@/lib/axios";
 import type { IUser } from "@/types/user.types";
@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 	const [loading, setLoading] = useState(true);
 	const [isBackendDown, setIsBackendDown] = useState(false);
 
-	const checkAuth = async () => {
+	const checkAuth = useCallback(async () => {
 		const hasToken = !!localStorage.getItem("accessToken") || !!localStorage.getItem("refreshToken");
 		try {
 			const token = await getAccessToken();
@@ -53,32 +53,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 				setUser(null);
 				setIsBackendDown(false);
 			}
+		} finally {
+			setLoading(false);
 		}
-		setLoading(false);
-	};
+	}, []);
 
 	useEffect(() => {
 		checkAuth();
 		window.addEventListener("storage", checkAuth); // react to login/logout in other tabs
 		return () => window.removeEventListener("storage", checkAuth);
+	}, [checkAuth]);
+
+	const logoutUser = useCallback(() => {
+		logout();
+		setIsAuthenticated(false);
+		setUser(null);
+		setIsBackendDown(false);
 	}, []);
 
+	const value = useMemo(
+		() => ({
+			isAuthenticated,
+			user,
+			loading,
+			isBackendDown,
+			logout: logoutUser,
+			refresh: checkAuth,
+		}),
+		[isAuthenticated, user, loading, isBackendDown, logoutUser, checkAuth]
+	);
+
 	return (
-		<AuthContext.Provider
-			value={{
-				isAuthenticated,
-				user,
-				loading,
-				isBackendDown,
-				logout: () => {
-					logout();
-					setIsAuthenticated(false);
-					setUser(null);
-					setIsBackendDown(false);
-				},
-				refresh: checkAuth,
-			}}
-		>
+		<AuthContext.Provider value={value}>
 			{children}
 		</AuthContext.Provider>
 	);
