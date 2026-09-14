@@ -1,4 +1,3 @@
-import NAText from "@/components/na-text";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -9,9 +8,18 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,48 +32,53 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
 import { BatchOffersService } from "@/services/batch-offers.service";
 import BookingService from "@/services/booking.service";
 import type { IBatchOffer } from "@/types/batch-offers.types";
 import type { IBatches, IBatchLog } from "@/types/batches.types";
-import { BatchLogsCard } from "./_components/batch-logs-card";
 import type { IBooking } from "@/types/booking.types";
 import type { IEmployee } from "@/types/employee.types";
 import { format } from "date-fns";
 import {
+    AlertCircle,
+    ArrowLeft,
     Calendar,
+    Check,
+    CheckCircle2,
     ClipboardList,
+    Clock,
+    Copy,
     DollarSign,
     Download,
     Edit,
-    Info,
+    ExternalLink,
+    Layers,
     Mail,
+    MapPin,
     Phone,
     Plus,
+    Receipt,
+    ShieldCheck,
     Sparkles,
     Tag,
     Timer,
     Trash2,
+    UserCheck,
     Users,
+    UserX,
     XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { NavLink, useParams } from "react-router-dom";
+import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { CancelBookingDialog } from "../bookings/_components/cancel-booking-dialog";
 import { CreateBookingDialog } from "../bookings/_components/create-booking-dialog";
 import { BatchBookingsCard } from "./_components/batch-bookings-card";
+import { BatchCostBreakdownModal } from "./_components/batch-cost-breakdown-modal";
+import { BatchLogsCard } from "./_components/batch-logs-card";
 import { BatchOfferDialog } from "./_components/batch-offer-dialog";
 import { BatchReportModal } from "./_components/batch-report-modal";
 import { BookingModal } from "./_components/booking-modal";
@@ -73,15 +86,14 @@ import { CoordinatorModal } from "./_components/coordinator-modal";
 
 export default function BatchDetailsPage() {
     const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
 
     const [batch, setBatch] = useState<IBatches>();
-    const [selectedBooking, setSelectedBooking] = useState<IBooking | null>(
-        null,
-    );
+    const [loading, setLoading] = useState(true);
+    const [selectedBooking, setSelectedBooking] = useState<IBooking | null>(null);
     const [viewMode, setViewMode] = useState<"detailed" | "table" | "workflow">("table");
     const [cancelledViewMode, setCancelledViewMode] = useState<"detailed" | "table" | "workflow">("table");
-    const [selectedCoordinator, setSelectedCoordinator] =
-        useState<IEmployee | null>(null);
+    const [selectedCoordinator, setSelectedCoordinator] = useState<IEmployee | null>(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [batchLogs, setBatchLogs] = useState<IBatchLog[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
@@ -89,6 +101,8 @@ export default function BatchDetailsPage() {
     const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
     const [showDownloadModal, setShowDownloadModal] = useState(false);
+    const [costBreakdownOpen, setCostBreakdownOpen] = useState(false);
+    const [copiedField, setCopiedField] = useState<string | null>(null);
 
     const [blocks, setBlocks] = useState<any[]>([]);
     const [blockDialogOpen, setBlockDialogOpen] = useState(false);
@@ -111,9 +125,7 @@ export default function BatchDetailsPage() {
     const fetchLogs = useCallback(async () => {
         setLoadingLogs(true);
         try {
-            const res = await axiosInstance.get<IBatchLog[]>(
-                `/batches/${id}/logs`,
-            );
+            const res = await axiosInstance.get<IBatchLog[]>(`/batches/${id}/logs`);
             setBatchLogs(res.data);
         } catch (error) {
             console.error("Failed to fetch logs", error);
@@ -154,98 +166,64 @@ export default function BatchDetailsPage() {
 
     const handleDeleteOffer = async (offerId: string) => {
         if (!id) return;
-        if (!confirm("Are you sure you want to delete this special offer?")) return;
         try {
             await BatchOffersService.deleteBatchOffer(id, offerId);
-            toast.success("Special offer deleted");
+            toast.success("Offer deleted successfully");
             fetchOffers();
         } catch (error: any) {
-            toast.error(error?.response?.data?.message || "Failed to delete special offer");
+            toast.error(error?.response?.data?.message || "Failed to delete offer");
         }
     };
 
-    const getBranch = async () => {
-        try {
-            const batchData = await axiosInstance.get<IBatches>(
-                `/batches/${id}`,
-            );
-            const rawBatch = batchData.data;
-            if (rawBatch && rawBatch.bookings) {
-                rawBatch.bookings = rawBatch.bookings.map((booking: any) => ({
-                    ...booking,
-                    primaryCustomer: booking.primaryCustomer || booking.customer,
-                    customers: booking.customers || booking.bookingCustomers?.map((bc: any) => ({
-                        ...(bc.customer || {}),
-                        status: bc.status || 'active',
-                        cancelledAt: bc.cancelledAt,
-                        cancellationReason: bc.cancellationReason,
-                    })).filter(Boolean) || [],
-                }));
-            }
-            setBatch(rawBatch);
-            fetchLogs();
-            fetchBlocks();
-            fetchOffers();
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                toast.error(error.message);
-            } else {
-                toast.error("Failed to load batches");
-            }
-        }
+    const handleCopy = (text: string, field: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedField(field);
+        toast.success("Copied to clipboard");
+        setTimeout(() => setCopiedField(null), 2000);
     };
+
+    const getBranch = useCallback(async () => {
+        try {
+            const res = await axiosInstance.get<IBatches>(`/batches/${id}`);
+            setBatch(res.data);
+        } catch (error) {
+            console.error("Failed to fetch batch details", error);
+            toast.error("Failed to fetch batch details");
+        } finally {
+            setLoading(false);
+        }
+    }, [id]);
 
     useEffect(() => {
         getBranch();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        fetchLogs();
+        fetchBlocks();
+        fetchOffers();
+    }, [getBranch, fetchLogs, fetchBlocks, fetchOffers]);
 
     const handleStatusUpdate = (newStatus: string) => {
-        if (!batch || newStatus === batch.status) return;
         setPendingStatus(newStatus);
         setShowStatusConfirm(true);
     };
 
     const confirmStatusUpdate = async () => {
-        if (!batch || !pendingStatus) return;
-        const newStatus = pendingStatus;
-
-        // Check if all active bookings have completed workflows before activating batch
-        if (newStatus === "active") {
-            const incompleteBookings = activeBookings.filter((booking) => {
-                const completedSteps =
-                    booking.currentWorkflow?.steps?.filter(
-                        (s) => s.status === "completed",
-                    ).length || 0;
-                const totalSteps = booking.currentWorkflow?.steps?.length || 0;
-                return totalSteps === 0 || completedSteps < totalSteps;
-            });
-
-            if (incompleteBookings.length > 0) {
-                toast.error(
-                    `Cannot activate batch: ${incompleteBookings.length} bookings have incomplete workflows. Please move them to another batch or put them on hold.`,
-                );
-                setShowStatusConfirm(false);
-                setPendingStatus(null);
-                return;
-            }
-        }
-
+        if (!pendingStatus) return;
         setIsUpdatingStatus(true);
+        setShowStatusConfirm(false);
+
         try {
-            await axiosInstance.patch(`/batches/${id}`, { status: newStatus });
-            setBatch((prev) => (prev ? { ...prev, status: newStatus } : prev));
-            toast.success("Batch status updated successfully");
+            await axiosInstance.patch(`/batches/${id}/status`, {
+                status: pendingStatus,
+            });
+            toast.success(`Batch status updated to ${pendingStatus}`);
+            getBranch();
             fetchLogs();
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                toast.error(error.message);
-            } else {
-                toast.error("Failed to update batch status");
-            }
+        } catch (error: any) {
+            toast.error(
+                error.response?.data?.message || "Failed to update status"
+            );
         } finally {
             setIsUpdatingStatus(false);
-            setShowStatusConfirm(false);
             setPendingStatus(null);
         }
     };
@@ -287,330 +265,611 @@ export default function BatchDetailsPage() {
 
         if (diffDays < 0) {
             return {
+                label: "Date Passed",
                 highlightClass: "text-red-600 dark:text-red-400 font-semibold",
-                iconClass: "text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300",
+                iconClass: "text-red-600 dark:text-red-400",
                 tooltipText: "Batch start date has passed. Please mark this as active, completed or archived.",
             };
         } else if (diffDays === 0) {
             return {
+                label: "Starts Today",
                 highlightClass: "text-orange-500 dark:text-orange-400 font-semibold",
-                iconClass: "text-orange-500 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300",
+                iconClass: "text-orange-500 dark:text-orange-400",
                 tooltipText: "Batch starts today!",
             };
         } else if (diffDays <= 3) {
             return {
+                label: `Starts in ${diffDays}d`,
                 highlightClass: "text-orange-500 dark:text-orange-400 font-semibold",
-                iconClass: "text-orange-500 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300",
+                iconClass: "text-orange-500 dark:text-orange-400",
                 tooltipText: `Batch is starting soon (due in ${diffDays} ${diffDays === 1 ? 'day' : 'days'}).`,
             };
         } else if (diffDays <= 7) {
             return {
+                label: `Due in ${diffDays}d`,
                 highlightClass: "text-yellow-500 dark:text-yellow-400 font-semibold",
-                iconClass: "text-yellow-500 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300",
+                iconClass: "text-yellow-500 dark:text-yellow-400",
                 tooltipText: `Batch is approaching start date (due in ${diffDays} days).`,
             };
         }
         return null;
     };
 
-    const getStatusBadge = (status: string) => {
+    const getStatusConfig = (status?: string) => {
         switch (status) {
             case "active":
-                return (
-                    <Badge className="bg-green-100 text-green-800">
-                        Active
-                    </Badge>
-                );
+                return {
+                    label: "Active",
+                    borderAccent: "bg-emerald-500",
+                    badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
+                    dotClass: "bg-emerald-500 animate-pulse",
+                    icon: CheckCircle2,
+                };
             case "upcoming":
-                return (
-                    <Badge className="bg-blue-100 text-blue-800">
-                        Upcoming
-                    </Badge>
-                );
+                return {
+                    label: "Upcoming",
+                    borderAccent: "bg-blue-500",
+                    badgeClass: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
+                    dotClass: "bg-blue-500",
+                    icon: Clock,
+                };
             case "completed":
-                return (
-                    <Badge className="bg-gray-100 text-gray-800">
-                        Completed
-                    </Badge>
-                );
+                return {
+                    label: "Completed",
+                    borderAccent: "bg-muted-foreground",
+                    badgeClass: "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300",
+                    dotClass: "bg-gray-400",
+                    icon: Check,
+                };
             case "on_hold":
-                return (
-                    <Badge className="bg-amber-100 text-amber-800">
-                        On Hold
-                    </Badge>
-                );
+                return {
+                    label: "On Hold",
+                    borderAccent: "bg-amber-500",
+                    badgeClass: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
+                    dotClass: "bg-amber-500",
+                    icon: AlertCircle,
+                };
             case "archived":
-                return (
-                    <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-                        Archived
-                    </Badge>
-                );
+                return {
+                    label: "Archived",
+                    borderAccent: "bg-purple-500",
+                    badgeClass: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800",
+                    dotClass: "bg-purple-500",
+                    icon: XCircle,
+                };
             default:
-                return <Badge variant="secondary">{status}</Badge>;
+                return {
+                    label: status || "Unknown",
+                    borderAccent: "bg-primary",
+                    badgeClass: "bg-muted text-foreground border-border",
+                    dotClass: "bg-primary",
+                    icon: Clock,
+                };
         }
     };
 
-    return (
-        <div className="container mx-auto p-6 space-y-6">
-            <div className="flex items-center justify-between">
+    if (loading || !batch) {
+        return (
+            <div className="container mx-auto p-6 space-y-6">
                 <div className="flex items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold">
-                            {batch?.package?.name}
-                        </h1>
-                        <p className="text-muted-foreground">Batch Details</p>
-                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => navigate("/batches")}>
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Batches
+                    </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                    {batch && getStatusBadge(batch.status)}
-                    {batch && (
-                        (() => {
-                            const dueInfo = getBatchDueInfo(batch);
-                            if (!dueInfo) return null;
-                            return (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className={`inline-flex items-center justify-center p-1 rounded-full cursor-help shrink-0 ${dueInfo.iconClass}`}>
-                                            <Info className="w-4 h-4" />
-                                        </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        {dueInfo.tooltipText}
-                                    </TooltipContent>
-                                </Tooltip>
-                            );
-                        })()
-                    )}
-                    <div className="flex items-center gap-2">
+                <Card className="p-8">
+                    <div className="space-y-4 animate-pulse">
+                        <div className="h-8 w-1/3 bg-muted rounded" />
+                        <div className="h-4 w-1/4 bg-muted rounded" />
+                        <div className="grid grid-cols-3 gap-6 pt-4">
+                            <div className="h-24 bg-muted rounded" />
+                            <div className="h-24 bg-muted rounded" />
+                            <div className="h-24 bg-muted rounded" />
+                        </div>
+                    </div>
+                </Card>
+            </div>
+        );
+    }
+
+    const statusConfig = getStatusConfig(batch.status);
+    const StatusIcon = statusConfig.icon;
+    const dueInfo = getBatchDueInfo(batch);
+
+    // Capacity numbers
+    const totalSeats = batch.totalSeats || 0;
+    const bookedSeats = batch.bookedSeats || 0;
+    const blockedSeats = batch.blockedSeats || 0;
+    const availableSeats = Math.max(0, totalSeats - bookedSeats - blockedSeats);
+    const occupancyRate = totalSeats > 0 ? Math.round((bookedSeats / totalSeats) * 100) : 0;
+
+    // Resolve adult floor price from costSheet or fallback
+    const defaultTier =
+        batch.costSheet?.tiers?.find((t: any) => t.isDefault) ||
+        batch.costSheet?.tiers?.[0];
+    const adultCat =
+        defaultTier?.ageCategories?.find(
+            (c: any) =>
+                c.categoryKey === "adult" ||
+                (c.name && c.name.toLowerCase().includes("adult"))
+        ) || defaultTier?.ageCategories?.[0];
+
+    const adultFloorPrice = adultCat
+        ? adultCat.items.reduce((s: number, i: any) => s + (Number(i.cost) || 0), 0)
+        : Number(batch.package?.packageTiers?.[0]?.adultCost) || 0;
+
+    return (
+        <div className="container mx-auto p-4 sm:p-6 space-y-6">
+            {/* Top Navigation & Breadcrumb Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <Breadcrumb>
+                    <BreadcrumbList>
+                        <BreadcrumbItem>
+                            <BreadcrumbLink asChild>
+                                <NavLink to="/batches" className="flex items-center gap-1">
+                                    <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                                    Batches
+                                </NavLink>
+                            </BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbPage className="font-semibold text-foreground">
+                                {batch.package?.name || "Batch Details"}
+                            </BreadcrumbPage>
+                        </BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
+
+                {/* Header Action Buttons */}
+                <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                    {/* Status Dropdown */}
+                    <div className="flex items-center">
                         <Select
-                            value={batch?.status}
+                            value={batch.status}
                             onValueChange={handleStatusUpdate}
                             disabled={isUpdatingStatus}
                         >
-                            <SelectTrigger className="w-32">
+                            <SelectTrigger className="h-9 w-32 font-semibold text-xs border-border/80">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="upcoming">
-                                    Upcoming
-                                </SelectItem>
+                                <SelectItem value="upcoming">Upcoming</SelectItem>
                                 <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="completed">
-                                    Completed
-                                </SelectItem>
-                                <SelectItem value="archived">
-                                    Archived
-                                </SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="on_hold">On Hold</SelectItem>
+                                <SelectItem value="archived">Archived</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
-                    <Button variant="outline" onClick={() => setShowDownloadModal(true)}>
-                        <Download className="w-4 h-4 mr-2" />
-                        Download Report
+
+                    {/* Download Report button */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDownloadModal(true)}
+                        className="h-9 text-xs font-semibold"
+                    >
+                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                        Report
                     </Button>
+
+                    {/* Edit Batch CTA */}
                     <NavLink to={`/batches/edit/${id}`}>
-                        <Button>
-                            <Edit className="w-4 h-4 mr-2" />
+                        <Button size="sm" className="h-9 text-xs font-semibold">
+                            <Edit className="w-3.5 h-3.5 mr-1.5" />
                             Edit Batch
                         </Button>
                     </NavLink>
+
+                    {/* New Booking CTA */}
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setBookingBlockOpen(true)}
+                        className="h-9 text-xs font-semibold"
+                    >
+                        <Plus className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                        New Booking
+                    </Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Batch Overview */}
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Batch Overview</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {/* General Info */}
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="flex items-center gap-2">
-                                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">
-                                            Start Date
-                                        </p>
-                                        <p className="font-medium">
-                                            {batch?.startDate
-                                                ? format(new Date(batch.startDate), "dd-MM-yyyy")
-                                                : "N/A"}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">
-                                            End Date
-                                        </p>
-                                        <p className="font-medium">
-                                            {batch?.endDate
-                                                ? format(new Date(batch.endDate), "dd-MM-yyyy")
-                                                : "N/A"}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4 text-muted-foreground" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">
-                                        Capacity Status
-                                    </p>
-                                    <p className="font-medium">
-                                        {batch && batch.bookedSeats} booked / {batch && (batch.blockedSeats || 0)} blocked / {batch && batch.totalSeats} total capacity
-                                    </p>
-                                </div>
-                            </div>
-                            {batch?.seatChangeReason && (
-                                <div className="flex items-start gap-2 pt-2 mt-2 border-t">
-                                    <ClipboardList className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">
-                                            Seat Change Reason
-                                        </p>
-                                        <p className="font-medium text-sm">
-                                            {batch.seatChangeReason}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+            {/* Hero Summary Card */}
+            <Card className="border-border/80 shadow-xs overflow-hidden relative">
+                {/* Status glow border accent */}
+                <div
+                    className={`absolute top-0 left-0 right-0 h-1.5 ${statusConfig.borderAccent}`}
+                />
 
-                        <Separator />
+                <CardContent className="p-6 md:p-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        {/* Primary Identifiers & Metrics */}
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-2.5">
+                                <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-muted text-muted-foreground border">
+                                    #{batch.id.slice(0, 8)}
+                                </span>
 
-                        {/* Financial Summary */}
-                        <div className="space-y-4">
-                            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                                Batch Financials
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-muted/30 p-4 rounded-xl border">
-                                <div>
-                                    <p className="text-xs text-muted-foreground font-medium mb-1">Total Expected</p>
-                                    <p className="text-xl font-black">
-                                        {BookingService.formatCurrency(totalBatchExpected)}
-                                    </p>
-                                </div>
-                                <div className="border-t pt-3 sm:border-t-0 sm:pt-0 sm:border-l sm:pl-4 border-muted">
-                                    <p className="text-xs text-muted-foreground font-medium mb-1">Total Collected</p>
-                                    <p className="text-xl font-black text-emerald-600">
-                                        {BookingService.formatCurrency(totalBatchPaid)}
-                                    </p>
-                                </div>
-                                <div className="border-t pt-3 sm:border-t-0 sm:pt-0 sm:border-l sm:pl-4 border-muted">
-                                    <p className="text-xs text-muted-foreground font-medium mb-1">Total Pending</p>
-                                    <p className="text-xl font-black text-red-600">
-                                        {BookingService.formatCurrency(totalBatchRemaining)}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-xs font-bold">
-                                    <span>Collection Progress</span>
-                                    <span>
-                                        {totalBatchExpected > 0 ? Math.round((totalBatchPaid / totalBatchExpected) * 100) : 0}%
-                                    </span>
-                                </div>
-                                <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-emerald-500 transition-all duration-500"
-                                        style={{
-                                            width: `${totalBatchExpected > 0 ? Math.min(100, Math.round((totalBatchPaid / totalBatchExpected) * 100)) : 0}%`,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                                <button
+                                    onClick={() => handleCopy(batch.id, "batchId")}
+                                    className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
+                                    title="Copy Batch ID"
+                                >
+                                    {copiedField === "batchId" ? (
+                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                    ) : (
+                                        <Copy className="w-3.5 h-3.5" />
+                                    )}
+                                </button>
 
-                {/* Package Details */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Package Details</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <p className="text-sm text-muted-foreground mb-2">
-                                Description
-                            </p>
-                            <p className="text-sm">
-                                {batch && batch.package?.description}
-                            </p>
-                        </div>
-                        <Separator />
-                        <div>
-                            <p className="text-sm text-muted-foreground mb-2">
-                                Destinations
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                                <Badge variant="outline">
-                                    {batch && batch.package?.destination}
-                                </Badge>
-                            </div>
-                        </div>
-                        <Separator />
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm font-semibold text-foreground">
-                                    {batch?.costSheet?.tiers?.length ? "Batch Cost Sheet & Pricing" : "Package Tiers"}
-                                </p>
-                                {batch?.costSheet?.hasTiers && (
-                                    <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
-                                        Multi-Tier ({batch.costSheet.tiers.length})
+                                {/* Status Pill */}
+                                <div
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig.badgeClass}`}
+                                >
+                                    <span className={`w-2 h-2 rounded-full ${statusConfig.dotClass}`} />
+                                    <StatusIcon className="w-3.5 h-3.5" />
+                                    {statusConfig.label}
+                                </div>
+
+                                {/* Due / Start countdown pill */}
+                                {dueInfo && (
+                                    <Badge
+                                        variant="outline"
+                                        className={`text-xs font-semibold flex items-center gap-1 border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300`}
+                                        title={dueInfo.tooltipText}
+                                    >
+                                        <Timer className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                        {dueInfo.label}
+                                    </Badge>
+                                )}
+
+                                {/* Package Destination Badge */}
+                                {batch.package?.destination && (
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                        <MapPin className="w-3 h-3 mr-1 text-primary" />
+                                        {batch.package.destination}
+                                    </Badge>
+                                )}
+
+                                {/* Duration Badge */}
+                                {batch.package?.days && (
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                        <Clock className="w-3 h-3 mr-1 text-muted-foreground" />
+                                        {batch.package.days} Days / {batch.package.nights} Nights
                                     </Badge>
                                 )}
                             </div>
 
-                            {batch?.costSheet?.maxDiscountEnabled && (
-                                <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex items-center justify-between text-xs mb-3">
-                                    <span className="font-semibold text-emerald-800 dark:text-emerald-200 flex items-center gap-1.5">
-                                        <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                        Max Discount Cap:
+                            {/* Primary Metric: Floor Rate or Expected Revenue */}
+                            <div className="flex items-baseline gap-2">
+                                <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground font-mono">
+                                    {BookingService.formatCurrency(adultFloorPrice)}
+                                </h2>
+                                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                    Starting Adult Rate
+                                </span>
+                            </div>
+
+                            {/* Subtitle Details Line */}
+                            <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span>
+                                    Tour:{" "}
+                                    <NavLink
+                                        to={`/packages/${batch.packageId}`}
+                                        className="font-bold text-foreground hover:underline inline-flex items-center gap-0.5"
+                                    >
+                                        {batch.package?.name}
+                                        <ExternalLink className="w-3 h-3 ml-0.5 opacity-60" />
+                                    </NavLink>
+                                </span>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-muted-foreground" />
+                                    {format(new Date(batch.startDate), "MMM d, yyyy")} -{" "}
+                                    {format(new Date(batch.endDate), "MMM d, yyyy")}
+                                </span>
+                                <span>•</span>
+                                <span>
+                                    <strong>{bookedSeats}</strong> of {totalSeats} Seats Booked
+                                </span>
+                            </p>
+                        </div>
+
+                        {/* Right Quick Occupancy Indicator */}
+                        <div className="flex flex-col items-start lg:items-end justify-center gap-3 shrink-0 p-4 rounded-xl bg-muted/30 border min-w-[260px]">
+                            <div className="w-full flex items-center justify-between text-xs">
+                                <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-primary" />
+                                    Seat Occupancy
+                                </span>
+                                <span className="font-bold font-mono text-foreground">
+                                    {occupancyRate}% Full
+                                </span>
+                            </div>
+
+                            <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden border">
+                                <div
+                                    className={`h-full transition-all duration-500 ${
+                                        occupancyRate >= 90
+                                            ? "bg-red-500"
+                                            : occupancyRate >= 60
+                                                ? "bg-amber-500"
+                                                : "bg-emerald-500"
+                                    }`}
+                                    style={{ width: `${Math.min(100, occupancyRate)}%` }}
+                                />
+                            </div>
+
+                            <div className="w-full flex items-center justify-between text-[11px] text-muted-foreground">
+                                <span>
+                                    {availableSeats > 0 ? (
+                                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                            {availableSeats} seats available
+                                        </span>
+                                    ) : (
+                                        <span className="text-red-600 font-semibold">
+                                            Fully Booked
+                                        </span>
+                                    )}
+                                </span>
+                                {blockedSeats > 0 && (
+                                    <span className="text-amber-600 font-medium">
+                                        ({blockedSeats} reserved)
                                     </span>
-                                    <Badge variant="outline" className="text-[11px] bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold">
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* 2-Column Responsive Grid Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Primary Column (Left 2-Cols) */}
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Capacity & Financial Progress Card */}
+                    <Card className="border-border/80 shadow-xs">
+                        <CardHeader className="pb-4 border-b">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                                        <DollarSign className="w-4 h-4 text-emerald-600" />
+                                        Capacity & Financial Progress
+                                    </CardTitle>
+                                    <CardDescription className="text-xs">
+                                        Occupancy load and revenue collection pipeline for this batch
+                                    </CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                            {/* Seat Allocation Stats */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                                    <span>Seat Allocations</span>
+                                    <span>
+                                        {bookedSeats} booked • {blockedSeats} blocked • {availableSeats} remaining
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="p-3 rounded-xl bg-muted/30 border text-center">
+                                        <span className="text-[11px] text-muted-foreground block font-medium">
+                                            Booked
+                                        </span>
+                                        <span className="text-xl font-extrabold text-foreground font-mono">
+                                            {bookedSeats}
+                                        </span>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+                                        <span className="text-[11px] text-amber-800 dark:text-amber-300 block font-medium">
+                                            Blocked
+                                        </span>
+                                        <span className="text-xl font-extrabold text-amber-700 dark:text-amber-300 font-mono">
+                                            {blockedSeats}
+                                        </span>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                                        <span className="text-[11px] text-emerald-800 dark:text-emerald-300 block font-medium">
+                                            Available
+                                        </span>
+                                        <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 font-mono">
+                                            {availableSeats}
+                                        </span>
+                                    </div>
+                                </div>
+                                {batch.seatChangeReason && (
+                                    <div className="p-3 bg-muted/40 rounded-lg border text-xs text-muted-foreground flex items-start gap-2 mt-2">
+                                        <ClipboardList className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                                        <div>
+                                            <span className="font-semibold text-foreground">Capacity Adjustment Reason: </span>
+                                            {batch.seatChangeReason}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <Separator />
+
+                            {/* Financial Progress */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                                    <span>Revenue Pipeline</span>
+                                    <span>
+                                        Collection:{" "}
+                                        <strong className="text-foreground">
+                                            {totalBatchExpected > 0
+                                                ? Math.round((totalBatchPaid / totalBatchExpected) * 100)
+                                                : 0}
+                                            %
+                                        </strong>
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-muted/20 p-4 rounded-xl border">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground font-medium mb-1">
+                                            Total Expected
+                                        </p>
+                                        <p className="text-xl font-extrabold font-mono text-foreground">
+                                            {BookingService.formatCurrency(totalBatchExpected)}
+                                        </p>
+                                    </div>
+                                    <div className="border-t pt-3 sm:border-t-0 sm:pt-0 sm:border-l sm:pl-4 border-border">
+                                        <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mb-1">
+                                            Total Collected
+                                        </p>
+                                        <p className="text-xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
+                                            {BookingService.formatCurrency(totalBatchPaid)}
+                                        </p>
+                                    </div>
+                                    <div className="border-t pt-3 sm:border-t-0 sm:pt-0 sm:border-l sm:pl-4 border-border">
+                                        <p className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">
+                                            Balance Pending
+                                        </p>
+                                        <p className="text-xl font-extrabold font-mono text-red-600 dark:text-red-400">
+                                            {BookingService.formatCurrency(totalBatchRemaining)}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden border">
+                                        <div
+                                            className="h-full bg-emerald-500 transition-all duration-500"
+                                            style={{
+                                                width: `${
+                                                    totalBatchExpected > 0
+                                                        ? Math.min(
+                                                              100,
+                                                              Math.round(
+                                                                  (totalBatchPaid / totalBatchExpected) * 100
+                                                              )
+                                                          )
+                                                        : 0
+                                                }%`,
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Batch Cost Sheet & Dynamic Pricing Card */}
+                    <Card className="border-border/80 shadow-xs">
+                        <CardHeader className="pb-4 border-b">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                                        <Receipt className="w-4 h-4 text-primary" />
+                                        Batch Cost Sheet & Dynamic Pricing
+                                        {batch.costSheet?.hasTiers && (
+                                            <Badge
+                                                variant="outline"
+                                                className="text-[11px] font-semibold bg-primary/5 text-primary border-primary/20 ml-1.5"
+                                            >
+                                                <Layers className="w-3 h-3 mr-1" />
+                                                Multi-Tier ({batch.costSheet.tiers.length})
+                                            </Badge>
+                                        )}
+                                    </CardTitle>
+                                    <CardDescription className="text-xs">
+                                        Itemized expense schedule, operator margin, and traveler age rates
+                                    </CardDescription>
+                                </div>
+
+                                {/* Prominent "View Cost Breakdown" CTA Button */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCostBreakdownOpen(true)}
+                                    className="border-primary/30 text-primary hover:bg-primary/10 font-semibold text-xs h-8.5 shrink-0"
+                                >
+                                    <Receipt className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                                    View Cost Breakdown
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4">
+                            {/* Max Discount Policy Banner if enabled */}
+                            {batch.costSheet?.maxDiscountEnabled && (
+                                <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-center justify-between text-xs">
+                                    <span className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                                        <Tag className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                        Active Maximum Discount Cap:
+                                    </span>
+                                    <Badge
+                                        variant="outline"
+                                        className="text-xs bg-amber-500/20 border-amber-500/30 text-amber-900 dark:text-amber-200 font-bold"
+                                    >
                                         {batch.costSheet.maxDiscountType === "percentage"
                                             ? `${batch.costSheet.maxDiscountPercentage ?? batch.costSheet.maxDiscountValue}% Off`
                                             : `₹${(batch.costSheet.maxDiscountValue || 0).toLocaleString("en-IN")} Off`}
                                         {" "}
-                                        {batch.costSheet.maxDiscountScope === "passenger" ? "/ Passenger" : "Total Booking"}
+                                        {batch.costSheet.maxDiscountScope === "passenger"
+                                            ? "/ Passenger"
+                                            : "Total Booking"}
                                     </Badge>
                                 </div>
                             )}
 
-                            {batch?.costSheet?.tiers && batch.costSheet.tiers.length > 0 ? (
-                                <div className="space-y-3">
-                                    {batch.costSheet.tiers.map((tier) => (
-                                        <div key={tier.id} className="bg-muted/30 p-3 rounded-lg border space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <p className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-                                                    {tier.name}
+                            {/* Tiers & Age Categories Grid */}
+                            {batch.costSheet?.tiers && batch.costSheet.tiers.length > 0 ? (
+                                <div className="space-y-4">
+                                    {batch.costSheet.tiers.map((tier: any) => (
+                                        <div
+                                            key={tier.id}
+                                            className="p-4 rounded-xl border border-border/80 bg-card space-y-3"
+                                        >
+                                            <div className="flex items-center justify-between border-b pb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm text-foreground">
+                                                        {tier.name}
+                                                    </span>
                                                     {tier.isDefault && (
-                                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Default</Badge>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="text-[10px] px-1.5 py-0"
+                                                        >
+                                                            Default Tier
+                                                        </Badge>
                                                     )}
-                                                </p>
+                                                </div>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {tier.ageCategories?.length || 0} Rate Categories
+                                                </span>
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                                                {tier.ageCategories.map((cat) => {
-                                                    const total = cat.items.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
-                                                    const marginItem = cat.items.find((i) => i.isMargin);
+
+                                            {/* Age Categories Cards */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                                                {tier.ageCategories?.map((cat: any) => {
+                                                    const catTotal = cat.items.reduce(
+                                                        (sum: number, item: any) =>
+                                                            sum + (Number(item.cost) || 0),
+                                                        0
+                                                    );
+                                                    const marginItem = cat.items.find(
+                                                        (i: any) => i.isMargin
+                                                    );
+
                                                     return (
-                                                        <div key={cat.id || cat.categoryKey || cat.name} className="bg-background/80 p-2 rounded border text-xs flex justify-between items-center">
-                                                            <div>
-                                                                <span className="font-medium text-foreground">{cat.label || cat.name}</span>
+                                                        <div
+                                                            key={cat.id || cat.categoryKey || cat.name}
+                                                            className="p-3 rounded-lg border bg-muted/20 space-y-1"
+                                                        >
+                                                            <div className="flex justify-between items-center text-xs">
+                                                                <span className="font-semibold text-foreground">
+                                                                    {cat.label || cat.name}
+                                                                </span>
                                                                 {marginItem && (
-                                                                    <span className="block text-[10px] text-emerald-600">
-                                                                        Margin: ₹{Number(marginItem.cost).toLocaleString()}
+                                                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                                                        +₹{Number(marginItem.cost).toLocaleString()} margin
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <span className="font-bold text-foreground">
-                                                                {BookingService.formatCurrency(total)}
-                                                            </span>
+                                                            <div className="text-lg font-extrabold font-mono text-foreground">
+                                                                {BookingService.formatCurrency(catTotal)}
+                                                            </div>
                                                         </div>
                                                     );
                                                 })}
@@ -618,390 +877,461 @@ export default function BatchDetailsPage() {
                                         </div>
                                     ))}
                                 </div>
-                            ) : batch?.package?.packageTiers && batch.package.packageTiers.length > 0 ? (
-                                <div className="space-y-2">
-                                    {batch.package.packageTiers.map((tier) => {
-                                        return (
-                                            <div key={tier.id || tier.name} className="flex justify-between items-center bg-muted/30 p-2 rounded-md border">
-                                                <p className="font-medium text-sm">{tier.name}</p>
-                                                <div className="text-right">
-                                                    <p className="text-sm">Adult: {BookingService.formatCurrency(Number(tier.adultCost) || 0)}</p>
-                                                    <p className="text-sm">Child: {tier.childCostType === 'percentage' ? `${tier.childCostValue}%` : BookingService.formatCurrency(Number(tier.childCostValue || 0))}</p>
-                                                    <p className="text-sm">Infant: {tier.infantCostType === 'percentage' ? `${tier.infantCostValue}%` : BookingService.formatCurrency(Number(tier.infantCostValue || 0))}</p>
+                            ) : batch.package?.packageTiers && batch.package.packageTiers.length > 0 ? (
+                                <div className="space-y-3">
+                                    <div className="text-xs text-muted-foreground">
+                                        This batch uses legacy package pricing tiers:
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {batch.package.packageTiers.map((tier: any) => (
+                                            <div
+                                                key={tier.id || tier.name}
+                                                className="p-3 rounded-xl border bg-muted/20 space-y-1"
+                                            >
+                                                <div className="font-bold text-xs">{tier.name}</div>
+                                                <div className="text-sm font-mono font-extrabold text-foreground">
+                                                    Adult: {BookingService.formatCurrency(Number(tier.adultCost) || 0)}
                                                 </div>
                                             </div>
-                                        );
-                                    })}
+                                        ))}
+                                    </div>
                                 </div>
                             ) : (
-                                <p className="text-sm font-medium">
-                                    {batch && BookingService.formatCurrency(
-                                        Number(batch.package?.packageTiers?.[0]?.adultCost) || 0
-                                    )}
-                                </p>
+                                <div className="p-6 text-center text-muted-foreground text-xs space-y-2">
+                                    <p>No dynamic cost sheet configured for this batch.</p>
+                                    <NavLink to={`/batches/edit/${id}`}>
+                                        <Button variant="outline" size="sm" className="text-xs">
+                                            Configure Cost Sheet in Edit Batch
+                                        </Button>
+                                    </NavLink>
+                                </div>
                             )}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                        </CardContent>
+                    </Card>
 
-            {/* Coordinators */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Batch Coordinators</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Specialization</TableHead>
-                                <TableHead>Contact</TableHead>
-                                <TableHead>Experience</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {batch &&
-                                batch.coordinators?.map((coordinator) => (
-                                    <TableRow
-                                        key={coordinator.id}
-                                        className="cursor-pointer hover:bg-muted/50"
-                                        onClick={() =>
-                                            setSelectedCoordinator(coordinator)
-                                        }
-                                    >
-                                        <TableCell className="font-medium">
-                                            {coordinator.name || <NAText />}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">
-                                                {coordinator.specialization || (
-                                                    <NAText />
-                                                )}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-1 text-sm">
-                                                    <Phone className="w-3 h-3" />
-                                                    {coordinator.phone || (
-                                                        <NAText />
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center gap-1 text-sm">
-                                                    <Mail className="w-3 h-3" />
-                                                    {coordinator.email || (
-                                                        <NAText />
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {coordinator.experience || (
-                                                <NAText />
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                        </TableBody>
-                    </Table>
-                    {batch && batch.coordinators?.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No coordinators were added
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                    {/* Bookings & Passenger Roster Section */}
+                    <div className="space-y-4">
+                        <BatchBookingsCard
+                            title="Active Batch Bookings"
+                            count={activeBookings.length}
+                            icon={<Users className="w-5 h-5 text-primary" />}
+                            bookings={activeBookings}
+                            viewMode={viewMode}
+                            onViewModeChange={setViewMode}
+                            onSelectBooking={setSelectedBooking}
+                            onCancelBooking={handleOpenCancelDialog}
+                        />
 
-            {/* Temporary Slot Blocking */}
-            <Card className="border shadow-md rounded-2xl overflow-hidden bg-card">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <CardTitle className="text-lg font-black flex items-center gap-3">
-                        <Timer className="w-6 h-6 text-primary" />
-                        Temporary Slot Blocking
-                    </CardTitle>
-                    <Button
-                        size="sm"
-                        onClick={() => {
-                            setBlockSlotsCount(1);
-                            setBlockReason("");
-                            setBlockDialogOpen(true);
-                        }}
-                        className="cursor-pointer"
-                    >
-                        Block Slots
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    {blocks.filter(b => b.status === "active").length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground border border-dashed rounded-xl p-4">
-                            No active temporary blocks configured for this batch.
-                        </div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Slots</TableHead>
-                                    <TableHead>Reason</TableHead>
-                                    <TableHead>Blocked By</TableHead>
-                                    <TableHead>Expires At</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {blocks
-                                    .filter(b => b.status === "active")
-                                    .map((block) => {
-                                        const expiryDate = new Date(block.expiresAt);
-                                        const now = new Date();
-                                        const diffMs = expiryDate.getTime() - now.getTime();
-                                        const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
-                                        const diffDays = Math.floor(diffHours / 24);
-                                        const remainingText = diffDays > 0
-                                            ? `${diffDays}d ${diffHours % 24}h remaining`
-                                            : `${diffHours}h remaining`;
+                        {cancelledBookings.length > 0 && (
+                            <BatchBookingsCard
+                                title="Cancelled Bookings Archive"
+                                count={cancelledBookings.length}
+                                icon={<UserX className="w-5 h-5 text-red-500" />}
+                                bookings={cancelledBookings}
+                                viewMode={cancelledViewMode}
+                                onViewModeChange={setCancelledViewMode}
+                                onSelectBooking={setSelectedBooking}
+                                onCancelBooking={handleOpenCancelDialog}
+                                isCancelled={true}
+                                emptyText="No cancelled bookings found"
+                            />
+                        )}
+                    </div>
 
-                                        return (
-                                            <TableRow key={block.id}>
-                                                <TableCell className="font-bold text-base">
-                                                    {block.slots} seats
-                                                </TableCell>
-                                                <TableCell className="max-w-xs truncate">
-                                                    {block.reason || <span className="text-muted-foreground italic">No reason provided</span>}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {block.createdBy?.name || "Automated System"}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-medium">
-                                                            {format(expiryDate, "dd-MM-yyyy")}
-                                                        </span>
-                                                        <span className="text-xs text-rose-500 font-semibold">
-                                                            {remainingText}
-                                                        </span>
+                    {/* Seat Blocks & Special Offers Tabs */}
+                    <Card className="border-border/80 shadow-xs">
+                        <CardHeader className="pb-3 border-b">
+                            <CardTitle className="text-base font-bold flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-primary" />
+                                Seat Reservations & Special Offers
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <Tabs defaultValue="blocks" className="space-y-4">
+                                <TabsList className="grid grid-cols-2 max-w-sm">
+                                    <TabsTrigger value="blocks" className="text-xs font-semibold">
+                                        Seat Blocks ({blocks.length})
+                                    </TabsTrigger>
+                                    <TabsTrigger value="offers" className="text-xs font-semibold">
+                                        Special Offers ({offers.length})
+                                    </TabsTrigger>
+                                </TabsList>
+
+                                {/* Seat Blocks Tab */}
+                                <TabsContent value="blocks" className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-muted-foreground">
+                                            Temporarily reserve slots for high-priority inquiries or groups.
+                                        </p>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setBlockDialogOpen(true)}
+                                            className="text-xs h-8"
+                                        >
+                                            <Plus className="w-3.5 h-3.5 mr-1" />
+                                            Block Slots
+                                        </Button>
+                                    </div>
+
+                                    {blocks.length === 0 ? (
+                                        <div className="p-8 text-center text-muted-foreground text-xs border rounded-xl border-dashed">
+                                            No active seat reservations.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2.5">
+                                            {blocks.map((block) => (
+                                                <div
+                                                    key={block.id}
+                                                    className="p-3.5 rounded-xl border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                                                >
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-xs">
+                                                                {block.slots} Slot{block.slots > 1 ? "s" : ""} Reserved
+                                                            </span>
+                                                            <Badge variant="outline" className="text-[10px]">
+                                                                {block.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                                            {block.reason || "No details provided"}
+                                                        </p>
                                                     </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={async () => {
-                                                                if (!confirm("Are you sure you want to release these blocked slots? Batch capacity will decrease accordingly.")) return;
-                                                                try {
-                                                                    await axiosInstance.post(`/batches/${id}/release-block/${block.id}`);
-                                                                    toast.success("Blocked slots released successfully");
-                                                                    getBranch();
-                                                                } catch (error) {
-                                                                    toast.error("Failed to release blocked slots");
-                                                                }
-                                                            }}
-                                                            className="cursor-pointer border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                                                        >
-                                                            Release
-                                                        </Button>
+                                                    <div className="flex items-center gap-2">
                                                         <Button
                                                             size="sm"
+                                                            variant="secondary"
                                                             onClick={() => {
                                                                 setSelectedBlockId(block.id);
                                                                 setSelectedBlockSlots(block.slots);
                                                                 setBookingBlockOpen(true);
                                                             }}
-                                                            className="cursor-pointer"
+                                                            className="text-xs h-8"
                                                         >
-                                                            Convert to Booking
+                                                            Book These Slots
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await axiosInstance.delete(
+                                                                        `/batches/${id}/block/${block.id}`
+                                                                    );
+                                                                    toast.success("Block released");
+                                                                    fetchBlocks();
+                                                                    getBranch();
+                                                                } catch (error) {
+                                                                    toast.error("Failed to release block");
+                                                                }
+                                                            }}
+                                                            className="text-xs text-red-600 hover:text-red-700 h-8"
+                                                        >
+                                                            Release
                                                         </Button>
                                                     </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </TabsContent>
 
-            {/* Special Offers & Discounts */}
-            <Card className="border shadow-md rounded-2xl overflow-hidden bg-card">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <CardTitle className="text-lg font-black flex items-center gap-3">
-                        <Sparkles className="w-6 h-6 text-amber-500" />
-                        Special Offers & Discounts ({offers.filter(o => o.isActive).length} Active)
-                    </CardTitle>
-                    {canCreateOffer && (
-                        <Button
-                            size="sm"
-                            onClick={() => {
-                                setSelectedOfferToEdit(null);
-                                setOfferDialogOpen(true);
-                            }}
-                            className="cursor-pointer bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Add Special Offer
-                        </Button>
-                    )}
-                </CardHeader>
-                <CardContent>
-                    {offers.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground border border-dashed rounded-xl p-4 space-y-2">
-                            <p className="font-medium text-foreground">No special offers configured for this batch.</p>
-                            <p className="text-xs">
-                                Create time-limited discounts or group size offers when this batch needs a boost in bookings.
-                            </p>
-                        </div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Offer Name</TableHead>
-                                    <TableHead>Discount Value</TableHead>
-                                    <TableHead>Scope</TableHead>
-                                    <TableHead>Group Requirement</TableHead>
-                                    <TableHead>Validity</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {offers.map((offer) => {
-                                    const isExpired = offer.validUntil && new Date(offer.validUntil) < new Date();
-                                    return (
-                                        <TableRow key={offer.id} className={!offer.isActive || isExpired ? "opacity-60" : ""}>
-                                            <TableCell>
-                                                <div className="font-semibold flex items-center gap-2">
-                                                    <Tag className="w-4 h-4 text-amber-500" />
-                                                    {offer.name}
-                                                </div>
-                                                {offer.description && (
-                                                    <div className="text-xs text-muted-foreground truncate max-w-xs">
-                                                        {offer.description}
+                                {/* Special Offers Tab */}
+                                <TabsContent value="offers" className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-muted-foreground">
+                                            Promotional discounts and targeted batch incentives.
+                                        </p>
+                                        {canCreateOffer && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setSelectedOfferToEdit(null);
+                                                    setOfferDialogOpen(true);
+                                                }}
+                                                className="text-xs h-8"
+                                            >
+                                                <Plus className="w-3.5 h-3.5 mr-1" />
+                                                Add Offer
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {offers.length === 0 ? (
+                                        <div className="p-8 text-center text-muted-foreground text-xs border rounded-xl border-dashed">
+                                            No special promotional offers active for this batch.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2.5">
+                                            {offers.map((offer) => (
+                                                <div
+                                                    key={offer.id}
+                                                    className="p-3.5 rounded-xl border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                                                >
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-xs">
+                                                                {offer.name}
+                                                            </span>
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-[10px] font-mono text-emerald-600 border-emerald-300"
+                                                            >
+                                                                {offer.discountType === "percentage"
+                                                                    ? `${offer.discountValue}% OFF`
+                                                                    : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Min {offer.minTravelers} traveler{offer.minTravelers > 1 ? "s" : ""}
+                                                            {offer.validUntil
+                                                                ? ` • Valid until ${format(new Date(offer.validUntil), "MMM d, yyyy")}`
+                                                                : ""}
+                                                        </p>
                                                     </div>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="font-mono bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200">
-                                                    {offer.discountMode === "range" && offer.minDiscountValue !== undefined && offer.minDiscountValue !== null
-                                                        ? offer.discountType === "percentage"
-                                                            ? `${offer.minDiscountValue}% - ${offer.maxDiscountValue}% OFF`
-                                                            : `₹${Number(offer.minDiscountValue).toLocaleString("en-IN")} - ₹${Number(offer.maxDiscountValue).toLocaleString("en-IN")} OFF`
-                                                        : offer.discountType === "percentage"
-                                                            ? `${offer.discountValue}% OFF`
-                                                            : `₹${Number(offer.discountValue).toLocaleString("en-IN")} OFF`}
-                                                </Badge>
-                                                {offer.maxDiscountCap && (
-                                                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                                                        Cap: ₹{Number(offer.maxDiscountCap).toLocaleString("en-IN")}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <span className="text-xs capitalize font-medium">
-                                                    {offer.discountScope === "passenger" ? "Per Passenger" : "Total Booking"}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="text-xs flex items-center gap-1">
-                                                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                                                    {offer.minTravelers > 1 ? `Min ${offer.minTravelers} Travelers` : "All Bookings"}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="text-xs space-y-0.5">
-                                                    {offer.validUntil ? (
-                                                        <span className={isExpired ? "text-destructive font-medium" : "text-muted-foreground"}>
-                                                            {isExpired ? "Expired: " : "Until: "}
-                                                            {new Date(offer.validUntil).toLocaleDateString()}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">No Expiry</span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    {canUpdateOffer ? (
+                                                    <div className="flex items-center gap-2 self-start sm:self-auto">
                                                         <Switch
                                                             checked={offer.isActive}
                                                             onCheckedChange={() => handleToggleOffer(offer.id)}
+                                                            title={offer.isActive ? "Deactivate offer" : "Activate offer"}
                                                         />
-                                                    ) : (
-                                                        <Badge variant={offer.isActive ? "default" : "secondary"}>
-                                                            {offer.isActive ? "Active" : "Inactive"}
-                                                        </Badge>
-                                                    )}
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {offer.isActive ? (isExpired ? "Expired" : "Active") : "Disabled"}
-                                                    </span>
+                                                        {canUpdateOffer && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => {
+                                                                    setSelectedOfferToEdit(offer);
+                                                                    setOfferDialogOpen(true);
+                                                                }}
+                                                                className="h-8 w-8 p-0"
+                                                            >
+                                                                <Edit className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        )}
+                                                        {canDeleteOffer && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => handleDeleteOffer(offer.id)}
+                                                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    {canUpdateOffer && (
-                                                        <Button
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            onClick={() => {
-                                                                setSelectedOfferToEdit(offer);
-                                                                setOfferDialogOpen(true);
-                                                            }}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                                        >
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                    )}
-                                                    {canDeleteOffer && (
-                                                        <Button
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            onClick={() => handleDeleteOffer(offer.id)}
-                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
+                                            ))}
+                                        </div>
+                                    )}
+                                </TabsContent>
+                            </Tabs>
+                        </CardContent>
+                    </Card>
 
-            {/* Active Bookings & Workflow Progress */}
-            <BatchBookingsCard
-                title="Bookings & Workflow Progress"
-                count={activeBookings.length}
-                icon={<ClipboardList className="w-5 h-5 text-primary" />}
-                bookings={activeBookings}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-                onSelectBooking={setSelectedBooking}
-                onCancelBooking={handleOpenCancelDialog}
-                emptyText="No active bookings found"
+                    {/* Tour Package Reference Card */}
+                    <Card className="border-border/80 shadow-xs">
+                        <CardHeader className="pb-3 border-b">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-base font-bold flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-primary" />
+                                    Tour Package Overview
+                                </CardTitle>
+                                <NavLink to={`/packages/${batch.packageId}`}>
+                                    <Button variant="ghost" size="sm" className="text-xs h-8">
+                                        View Full Package
+                                        <ExternalLink className="w-3 h-3 ml-1" />
+                                    </Button>
+                                </NavLink>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4">
+                            <div className="space-y-1">
+                                <h3 className="font-bold text-sm text-foreground">
+                                    {batch.package?.name}
+                                </h3>
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {batch.package?.description || "No package description provided."}
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                <Badge variant="outline" className="text-xs">
+                                    <MapPin className="w-3 h-3 mr-1 text-primary" />
+                                    {batch.package?.destination || "Destination N/A"}
+                                </Badge>
+                                {batch.package?.days && (
+                                    <Badge variant="outline" className="text-xs">
+                                        <Clock className="w-3 h-3 mr-1 text-muted-foreground" />
+                                        {batch.package.days} Days / {batch.package.nights} Nights
+                                    </Badge>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Sidebar Column (Right 1-Col) */}
+                <div className="space-y-8">
+                    {/* Quick Actions Card */}
+                    <Card className="border-border/80 shadow-xs">
+                        <CardHeader className="pb-3 border-b">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-primary" />
+                                Quick Operations
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-2">
+                            <Button
+                                className="w-full justify-start text-xs font-semibold"
+                                onClick={() => setBookingBlockOpen(true)}
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                New Booking for this Batch
+                            </Button>
+                            <NavLink to={`/batches/edit/${id}`} className="block">
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start text-xs font-semibold"
+                                >
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Batch Configuration
+                                </Button>
+                            </NavLink>
+                            <Button
+                                variant="outline"
+                                className="w-full justify-start text-xs font-semibold"
+                                onClick={() => setCostBreakdownOpen(true)}
+                            >
+                                <Receipt className="w-4 h-4 mr-2 text-primary" />
+                                View Full Cost Breakdown
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="w-full justify-start text-xs font-semibold"
+                                onClick={() => setBlockDialogOpen(true)}
+                            >
+                                <ShieldCheck className="w-4 h-4 mr-2" />
+                                Temporarily Reserve Seats
+                            </Button>
+                            {canCreateOffer && (
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start text-xs font-semibold"
+                                    onClick={() => {
+                                        setSelectedOfferToEdit(null);
+                                        setOfferDialogOpen(true);
+                                    }}
+                                >
+                                    <Tag className="w-4 h-4 mr-2" />
+                                    Create Special Offer
+                                </Button>
+                            )}
+                            <Button
+                                variant="outline"
+                                className="w-full justify-start text-xs font-semibold"
+                                onClick={() => setShowDownloadModal(true)}
+                            >
+                                <Download className="w-4 h-4 mr-2" />
+                                Download Batch Report
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* Batch Coordinators Card */}
+                    <Card className="border-border/80 shadow-xs">
+                        <CardHeader className="pb-3 border-b">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <UserCheck className="w-4 h-4 text-primary" />
+                                    Assigned Coordinators
+                                </CardTitle>
+                                <Badge variant="outline" className="text-xs font-mono">
+                                    {batch.coordinators?.length || 0}
+                                </Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-4">
+                            {!batch.coordinators || batch.coordinators.length === 0 ? (
+                                <div className="py-6 text-center text-muted-foreground text-xs">
+                                    No coordinators assigned yet.
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {batch.coordinators.map((coordinator) => (
+                                        <div
+                                            key={coordinator.id}
+                                            className="p-3 rounded-xl border bg-muted/20 flex items-center justify-between gap-3 hover:bg-muted/40 transition-colors"
+                                        >
+                                            <div
+                                                className="flex items-center gap-3 cursor-pointer min-w-0"
+                                                onClick={() => setSelectedCoordinator(coordinator)}
+                                            >
+                                                <Avatar className="w-9 h-9 border shrink-0">
+                                                    <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
+                                                        {coordinator.name
+                                                            ? coordinator.name
+                                                                  .split(" ")
+                                                                  .map((n) => n[0])
+                                                                  .join("")
+                                                                  .slice(0, 2)
+                                                                  .toUpperCase()
+                                                            : "CO"}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-xs text-foreground truncate">
+                                                        {coordinator.name}
+                                                    </p>
+                                                    <p className="text-[11px] text-muted-foreground truncate">
+                                                        {coordinator.phone || coordinator.email || "Lead Coordinator"}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                {coordinator.phone && (
+                                                    <a
+                                                        href={`tel:${coordinator.phone}`}
+                                                        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+                                                        title="Call Coordinator"
+                                                    >
+                                                        <Phone className="w-3.5 h-3.5" />
+                                                    </a>
+                                                )}
+                                                {coordinator.email && (
+                                                    <a
+                                                        href={`mailto:${coordinator.email}`}
+                                                        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+                                                        title="Email Coordinator"
+                                                    >
+                                                        <Mail className="w-3.5 h-3.5" />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Batch Activity & Audit Logs Card */}
+                    <div>
+                        <BatchLogsCard logs={batchLogs} loading={loadingLogs} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Itemized Cost Breakdown Modal */}
+            <BatchCostBreakdownModal
+                open={costBreakdownOpen}
+                onOpenChange={setCostBreakdownOpen}
+                costSheet={batch.costSheet}
+                packageName={batch.package?.name}
             />
 
-            {/* Cancelled Bookings */}
-            {cancelledBookings.length > 0 && (
-                <BatchBookingsCard
-                    title="Cancelled Bookings"
-                    count={cancelledBookings.length}
-                    icon={<XCircle className="w-5 h-5 text-destructive" />}
-                    bookings={cancelledBookings}
-                    viewMode={cancelledViewMode}
-                    onViewModeChange={setCancelledViewMode}
-                    onSelectBooking={setSelectedBooking}
-                    isCancelled={true}
-                    emptyText="No cancelled bookings found"
-                />
-            )}
-
-            {/* Modals */}
+            {/* Modals & Dialogs */}
             {selectedBooking && batch && (
                 <BookingModal
                     booking={selectedBooking}
@@ -1070,11 +1400,6 @@ export default function BatchDetailsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-            {/* Audit Trail & History */}
-            <div className="mt-8">
-                <BatchLogsCard logs={batchLogs} loading={loadingLogs} />
-            </div>
 
             {selectedCoordinator && (
                 <CoordinatorModal
@@ -1198,4 +1523,3 @@ export default function BatchDetailsPage() {
         </div>
     );
 }
-
