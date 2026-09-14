@@ -1,13 +1,3 @@
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,13 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,6 +31,7 @@ import {
     Calendar,
     Check,
     CheckCircle2,
+    ChevronDown,
     ClipboardList,
     Clock,
     Copy,
@@ -61,6 +45,7 @@ import {
     Phone,
     Plus,
     Receipt,
+    RefreshCw,
     ShieldCheck,
     Sparkles,
     Tag,
@@ -81,6 +66,7 @@ import { BatchCostBreakdownModal } from "./_components/batch-cost-breakdown-moda
 import { BatchLogsCard } from "./_components/batch-logs-card";
 import { BatchOfferDialog } from "./_components/batch-offer-dialog";
 import { BatchReportModal } from "./_components/batch-report-modal";
+import { BatchStatusModal } from "./_components/batch-status-modal";
 import { BookingModal } from "./_components/booking-modal";
 import { CoordinatorModal } from "./_components/coordinator-modal";
 
@@ -94,11 +80,9 @@ export default function BatchDetailsPage() {
     const [viewMode, setViewMode] = useState<"detailed" | "table" | "workflow">("table");
     const [cancelledViewMode, setCancelledViewMode] = useState<"detailed" | "table" | "workflow">("table");
     const [selectedCoordinator, setSelectedCoordinator] = useState<IEmployee | null>(null);
-    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [batchLogs, setBatchLogs] = useState<IBatchLog[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
-    const [showStatusConfirm, setShowStatusConfirm] = useState(false);
-    const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+    const [statusModalOpen, setStatusModalOpen] = useState(false);
 
     const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [costBreakdownOpen, setCostBreakdownOpen] = useState(false);
@@ -201,31 +185,9 @@ export default function BatchDetailsPage() {
         fetchOffers();
     }, [getBranch, fetchLogs, fetchBlocks, fetchOffers]);
 
-    const handleStatusUpdate = (newStatus: string) => {
-        setPendingStatus(newStatus);
-        setShowStatusConfirm(true);
-    };
-
-    const confirmStatusUpdate = async () => {
-        if (!pendingStatus) return;
-        setIsUpdatingStatus(true);
-        setShowStatusConfirm(false);
-
-        try {
-            await axiosInstance.patch(`/batches/${id}/status`, {
-                status: pendingStatus,
-            });
-            toast.success(`Batch status updated to ${pendingStatus}`);
-            getBranch();
-            fetchLogs();
-        } catch (error: any) {
-            toast.error(
-                error.response?.data?.message || "Failed to update status"
-            );
-        } finally {
-            setIsUpdatingStatus(false);
-            setPendingStatus(null);
-        }
+    const handleStatusUpdated = () => {
+        getBranch();
+        fetchLogs();
     };
 
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -423,25 +385,19 @@ export default function BatchDetailsPage() {
 
                 {/* Header Action Buttons */}
                 <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                    {/* Status Dropdown */}
-                    <div className="flex items-center">
-                        <Select
-                            value={batch.status}
-                            onValueChange={handleStatusUpdate}
-                            disabled={isUpdatingStatus}
-                        >
-                            <SelectTrigger className="h-9 w-32 font-semibold text-xs border-border/80">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="upcoming">Upcoming</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                                <SelectItem value="on_hold">On Hold</SelectItem>
-                                <SelectItem value="archived">Archived</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {/* Change Status Modal Trigger Button */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setStatusModalOpen(true)}
+                        className="h-9 text-xs font-semibold gap-2 border-border/80 hover:bg-muted/80"
+                        title="Click to change batch operational status"
+                    >
+                        <span className={`w-2 h-2 rounded-full ${statusConfig.dotClass}`} />
+                        <span className="text-muted-foreground font-normal">Status:</span>
+                        <span className="capitalize font-bold">{statusConfig.label}</span>
+                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-0.5" />
+                    </Button>
 
                     {/* Download Report button */}
                     <Button
@@ -503,14 +459,18 @@ export default function BatchDetailsPage() {
                                     )}
                                 </button>
 
-                                {/* Status Pill */}
-                                <div
-                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig.badgeClass}`}
+                                {/* Status Pill (Clickable) */}
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusModalOpen(true)}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig.badgeClass} hover:opacity-90 hover:ring-2 hover:ring-primary/20 transition-all cursor-pointer shadow-xs`}
+                                    title="Click to update status"
                                 >
                                     <span className={`w-2 h-2 rounded-full ${statusConfig.dotClass}`} />
                                     <StatusIcon className="w-3.5 h-3.5" />
-                                    {statusConfig.label}
-                                </div>
+                                    <span>{statusConfig.label}</span>
+                                    <Edit className="w-2.5 h-2.5 ml-0.5 opacity-60" />
+                                </button>
 
                                 {/* Due / Start countdown pill */}
                                 {dueInfo && (
@@ -1201,6 +1161,14 @@ export default function BatchDetailsPage() {
                             <Button
                                 variant="outline"
                                 className="w-full justify-start text-xs font-semibold"
+                                onClick={() => setStatusModalOpen(true)}
+                            >
+                                <RefreshCw className="w-4 h-4 mr-2 text-primary" />
+                                Update Batch Status
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="w-full justify-start text-xs font-semibold"
                                 onClick={() => setCostBreakdownOpen(true)}
                             >
                                 <Receipt className="w-4 h-4 mr-2 text-primary" />
@@ -1349,57 +1317,14 @@ export default function BatchDetailsPage() {
                 />
             )}
 
-            <AlertDialog
-                open={showStatusConfirm}
-                onOpenChange={setShowStatusConfirm}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Update Batch Status</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <span className="block mb-2">
-                                Are you sure you want to change the batch status to{" "}
-                                <span className="font-bold underline capitalize">
-                                    {pendingStatus}
-                                </span>?
-                            </span>
-                            {batch && activeBookings.length === 0 && (
-                                <span className="block text-amber-600 font-medium mb-1 italic">
-                                    ⚠️ This batch has no active bookings.
-                                </span>
-                            )}
-                            {batch &&
-                                batch.bookedSeats < batch.totalSeats &&
-                                activeBookings.length > 0 && (
-                                    <span className="block text-amber-600 font-medium mb-1 italic">
-                                        ⚠️ This batch is not full yet ({batch.bookedSeats}/
-                                        {batch.totalSeats} seats booked).
-                                    </span>
-                                )}
-                            <span className="block mt-2">
-                                This action may affect the visibility and workflow of
-                                related bookings.
-                            </span>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            onClick={() => {
-                                setShowStatusConfirm(false);
-                                setPendingStatus(null);
-                            }}
-                        >
-                            Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={confirmStatusUpdate}
-                            disabled={isUpdatingStatus}
-                        >
-                            {isUpdatingStatus ? "Updating..." : "Confirm Change"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {batch && (
+                <BatchStatusModal
+                    open={statusModalOpen}
+                    onOpenChange={setStatusModalOpen}
+                    batch={batch}
+                    onStatusUpdated={handleStatusUpdated}
+                />
+            )}
 
             {selectedCoordinator && (
                 <CoordinatorModal

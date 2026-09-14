@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -71,6 +72,18 @@ export class BatchesController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.batchService.findOne(id);
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateBatchDto,
+    @Request() req: ApiRequestJWT,
+  ) {
+    if (!dto.status) {
+      throw new BadRequestException('Status is required');
+    }
+    return this.batchService.updateStatus(id, dto.status, req.user.userId, dto.reason);
   }
 
   @Patch(':id')

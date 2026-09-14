@@ -20,17 +20,14 @@ import BookingService from "@/services/booking.service";
 import type { IBatchCostSheet, ICostSheetTier } from "@/types/cost-sheet.types";
 import {
     BarChart3,
-    Check,
-    Copy,
     Layers,
     Receipt,
     ShieldCheck,
     Tag,
     TrendingUp,
-    Users,
+    Users
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 interface BatchCostBreakdownModalProps {
     open: boolean;
@@ -50,7 +47,6 @@ export function BatchCostBreakdownModal({
         tiers[0]?.id || ""
     );
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
-    const [copiedSummary, setCopiedSummary] = useState(false);
 
     // Active tier resolution
     const activeTier =
@@ -128,35 +124,6 @@ export function BatchCostBreakdownModal({
 
     const floorAfterDiscount = Math.max(0, finalSellingPrice - (discountScope === "passenger" ? maxDiscountPerPerson : (discountType === "percentage" ? maxDiscountPerPerson : 0)));
 
-    // Copy formatted summary to clipboard
-    const handleCopySummary = () => {
-        const lines = [
-            `========================================`,
-            `BATCH COST BREAKDOWN - ${packageName || "Master Batch"}`,
-            `Tier: ${activeTier?.name || "Standard"}`,
-            `Category: ${activeCategory?.label || activeCategory?.name || "Adult"}`,
-            `========================================`,
-            `Direct Expenses:`,
-            ...expenseItems.map(
-                (item, idx) => `  ${idx + 1}. ${item.title}: ₹${Number(item.cost).toLocaleString("en-IN")}`
-            ),
-            `----------------------------------------`,
-            `Base Expenses Subtotal: ₹${baseExpensesSubtotal.toLocaleString("en-IN")} (${baseExpensePercent}%)`,
-            `Operator Margin (Profit): ₹${operatorMarginCost.toLocaleString("en-IN")} (${effectiveMarginPercent}%)`,
-            `----------------------------------------`,
-            `TOTAL SELLING PRICE: ₹${finalSellingPrice.toLocaleString("en-IN")}`,
-            isDiscountActive
-                ? `Max Discount Limit: ${discountType === "percentage" ? `${discountVal}%` : `₹${discountVal.toLocaleString("en-IN")}`} (${discountScope === "passenger" ? "per pax" : "group total"})`
-                : `Max Discount Limit: None enforced`,
-            `========================================`,
-        ];
-
-        navigator.clipboard.writeText(lines.join("\n"));
-        setCopiedSummary(true);
-        toast.success("Cost breakdown summary copied to clipboard");
-        setTimeout(() => setCopiedSummary(false), 2500);
-    };
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="w-[96vw] max-w-5xl lg:max-w-6xl max-h-[92vh] overflow-y-auto p-0 gap-0 border-border/80 shadow-2xl rounded-2xl">
@@ -194,28 +161,6 @@ export function BatchCostBreakdownModal({
                                     </DialogDescription>
                                 </div>
                             </div>
-
-                            {/* Actions on Header Right */}
-                            <div className="flex items-center gap-2 self-start sm:self-auto">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleCopySummary}
-                                    className="text-xs h-8.5 font-semibold"
-                                >
-                                    {copiedSummary ? (
-                                        <>
-                                            <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-                                            Copied
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Copy className="w-3.5 h-3.5 mr-1.5" />
-                                            Copy Summary
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
                         </div>
 
                         {/* Tier Switcher Pills if Multi-Tier */}
@@ -236,11 +181,10 @@ export function BatchCostBreakdownModal({
                                                 setSelectedTierId(tier.id);
                                                 setSelectedCategoryId("");
                                             }}
-                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 ${
-                                                isSelected
-                                                    ? "bg-primary text-primary-foreground shadow-xs font-bold"
-                                                    : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                            }`}
+                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 ${isSelected
+                                                ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                                                : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                }`}
                                         >
                                             <span>{tier.name}</span>
                                             {tier.isDefault && (
@@ -356,11 +300,10 @@ export function BatchCostBreakdownModal({
                                                 key={catKey}
                                                 type="button"
                                                 onClick={() => setSelectedCategoryId(catKey)}
-                                                className={`p-3.5 rounded-xl border text-left transition-all relative ${
-                                                    isCatSelected
-                                                        ? "border-primary bg-primary/5 shadow-xs ring-2 ring-primary/20"
-                                                        : "border-border/80 bg-card hover:bg-muted/40 hover:border-border"
-                                                }`}
+                                                className={`p-3.5 rounded-xl border text-left transition-all relative ${isCatSelected
+                                                    ? "border-primary bg-primary/5 shadow-xs ring-2 ring-primary/20"
+                                                    : "border-border/80 bg-card hover:bg-muted/40 hover:border-border"
+                                                    }`}
                                             >
                                                 <div className="flex justify-between items-start mb-1">
                                                     <div>
@@ -442,8 +385,8 @@ export function BatchCostBreakdownModal({
                                                     const itemShare =
                                                         baseExpensesSubtotal > 0
                                                             ? Math.round(
-                                                                  (itemCost / baseExpensesSubtotal) * 100
-                                                              )
+                                                                (itemCost / baseExpensesSubtotal) * 100
+                                                            )
                                                             : 0;
 
                                                     return (
@@ -629,11 +572,10 @@ export function BatchCostBreakdownModal({
                                                     <TableRow
                                                         key={catKey}
                                                         onClick={() => setSelectedCategoryId(catKey)}
-                                                        className={`cursor-pointer transition-colors ${
-                                                            isCurrent
-                                                                ? "bg-primary/10 font-bold"
-                                                                : "hover:bg-muted/30"
-                                                        }`}
+                                                        className={`cursor-pointer transition-colors ${isCurrent
+                                                            ? "bg-primary/10 font-bold"
+                                                            : "hover:bg-muted/30"
+                                                            }`}
                                                     >
                                                         <TableCell className="py-2 text-xs">
                                                             <span className="font-semibold text-foreground">

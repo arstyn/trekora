@@ -361,6 +361,28 @@ export class BatchesService {
     return saved;
   }
 
+  async updateStatus(
+    id: string,
+    status: BatchStatus,
+    userId: string,
+    reason?: string,
+  ): Promise<Batch> {
+    const batch = await this.findOne(id);
+    const prevStatus = batch.status;
+    if (prevStatus === status) return batch;
+
+    batch.status = status;
+    const saved = await this.batchRepo.save(batch);
+    await this.logAction(
+      id,
+      userId,
+      'status_change',
+      { status: prevStatus },
+      { status, reason: reason || undefined },
+    );
+    return saved;
+  }
+
   async addCoordinator(batchId: string, employeeId: string, userId: string): Promise<Batch> {
     const batch = await this.findOne(batchId);
     const employee = await this.empRepo.findOneBy({ id: employeeId });
