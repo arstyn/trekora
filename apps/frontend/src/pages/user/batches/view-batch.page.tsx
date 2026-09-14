@@ -550,13 +550,12 @@ export default function BatchDetailsPage() {
 
                             <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden border">
                                 <div
-                                    className={`h-full transition-all duration-500 ${
-                                        occupancyRate >= 90
+                                    className={`h-full transition-all duration-500 ${occupancyRate >= 90
                                             ? "bg-red-500"
                                             : occupancyRate >= 60
                                                 ? "bg-amber-500"
                                                 : "bg-emerald-500"
-                                    }`}
+                                        }`}
                                     style={{ width: `${Math.min(100, occupancyRate)}%` }}
                                 />
                             </div>
@@ -697,16 +696,15 @@ export default function BatchDetailsPage() {
                                         <div
                                             className="h-full bg-emerald-500 transition-all duration-500"
                                             style={{
-                                                width: `${
-                                                    totalBatchExpected > 0
+                                                width: `${totalBatchExpected > 0
                                                         ? Math.min(
-                                                              100,
-                                                              Math.round(
-                                                                  (totalBatchPaid / totalBatchExpected) * 100
-                                                              )
-                                                          )
+                                                            100,
+                                                            Math.round(
+                                                                (totalBatchPaid / totalBatchExpected) * 100
+                                                            )
+                                                        )
                                                         : 0
-                                                }%`,
+                                                    }%`,
                                             }}
                                         />
                                     </div>
@@ -1089,46 +1087,6 @@ export default function BatchDetailsPage() {
                             </Tabs>
                         </CardContent>
                     </Card>
-
-                    {/* Tour Package Reference Card */}
-                    <Card className="border-border/80 shadow-xs">
-                        <CardHeader className="pb-3 border-b">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-base font-bold flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-primary" />
-                                    Tour Package Overview
-                                </CardTitle>
-                                <NavLink to={`/packages/${batch.packageId}`}>
-                                    <Button variant="ghost" size="sm" className="text-xs h-8">
-                                        View Full Package
-                                        <ExternalLink className="w-3 h-3 ml-1" />
-                                    </Button>
-                                </NavLink>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-6 space-y-4">
-                            <div className="space-y-1">
-                                <h3 className="font-bold text-sm text-foreground">
-                                    {batch.package?.name}
-                                </h3>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {batch.package?.description || "No package description provided."}
-                                </p>
-                            </div>
-                            <div className="flex flex-wrap gap-2 pt-1">
-                                <Badge variant="outline" className="text-xs">
-                                    <MapPin className="w-3 h-3 mr-1 text-primary" />
-                                    {batch.package?.destination || "Destination N/A"}
-                                </Badge>
-                                {batch.package?.days && (
-                                    <Badge variant="outline" className="text-xs">
-                                        <Clock className="w-3 h-3 mr-1 text-muted-foreground" />
-                                        {batch.package.days} Days / {batch.package.nights} Nights
-                                    </Badge>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
 
                 {/* Sidebar Column (Right 1-Col) */}
@@ -1239,11 +1197,11 @@ export default function BatchDetailsPage() {
                                                     <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
                                                         {coordinator.name
                                                             ? coordinator.name
-                                                                  .split(" ")
-                                                                  .map((n) => n[0])
-                                                                  .join("")
-                                                                  .slice(0, 2)
-                                                                  .toUpperCase()
+                                                                .split(" ")
+                                                                .map((n) => n[0])
+                                                                .join("")
+                                                                .slice(0, 2)
+                                                                .toUpperCase()
                                                             : "CO"}
                                                     </AvatarFallback>
                                                 </Avatar>
