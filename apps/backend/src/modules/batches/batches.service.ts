@@ -34,12 +34,24 @@ export class BatchesService {
     await this.logRepo.save(log);
   }
 
-  async getLogs(batchId: string) {
-    return this.logRepo.find({
+  async getLogs(batchId: string, page: number = 1, limit: number = 5, offset?: number) {
+    const skip = offset !== undefined ? offset : (page - 1) * limit;
+    const [data, total] = await this.logRepo.findAndCount({
       where: { batchId },
       relations: ['changedBy'],
       order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      offset: skip,
+      hasMore: skip + data.length < total,
+    };
   }
 
   async create(data: CreateBatchDto, organizationId: string, userId: string): Promise<Batch> {

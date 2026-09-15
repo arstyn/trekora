@@ -29,6 +29,7 @@ export class CustomerService {
 
     try {
       const customerId = randomUUID();
+      const customerNumber = await this.generateCustomerNumber(organizationId);
 
       // Handle file uploads
       const fileUploads = await this.handleFileUploads(customerId, files);
@@ -37,6 +38,7 @@ export class CustomerService {
       const customerData = {
         ...data,
         id: customerId,
+        customerNumber,
         createdById: userId,
         organizationId: organizationId,
         profilePhoto: fileUploads.profilePhoto,
@@ -143,7 +145,7 @@ export class CustomerService {
 
     if (search) {
       queryBuilder.andWhere(
-        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search)',
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search OR customer.customerNumber ILIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -195,7 +197,7 @@ export class CustomerService {
 
     if (search) {
       queryBuilder.andWhere(
-        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search)',
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search OR customer.customerNumber ILIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -364,5 +366,33 @@ export class CustomerService {
       }
     }
     return updated;
+  }
+
+  private async generateCustomerNumber(organizationId: string): Promise<string> {
+    const today = new Date();
+    const year = today.getFullYear().toString().slice(-2);
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `CUST${year}${month}`;
+
+    const latest = await this.customerRepository
+      .createQueryBuilder('customer')
+      .where('customer.customerNumber LIKE :prefix', { prefix: `${prefix}%` })
+      .orderBy('customer.customerNumber', 'DESC')
+      .getOne();
+
+    let seq = 1;
+    if (latest && latest.customerNumber) {
+      const lastSeqStr = latest.customerNumber.replace(prefix, '');
+      const parsed = parseInt(lastSeqStr, 10);
+      if (!isNaN(parsed)) {
+        seq = parsed + 1;
+      }
+    } else {
+      const count = await this.customerRepository.count();
+      seq = count + 1;
+    }
+
+    const sequence = seq.toString().padStart(4, '0');
+    return `${prefix}${sequence}`;
   }
 }

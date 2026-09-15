@@ -81,6 +81,7 @@ export default function BatchDetailsPage() {
     const [cancelledViewMode, setCancelledViewMode] = useState<"detailed" | "table" | "workflow">("table");
     const [selectedCoordinator, setSelectedCoordinator] = useState<IEmployee | null>(null);
     const [batchLogs, setBatchLogs] = useState<IBatchLog[]>([]);
+    const [batchLogsTotal, setBatchLogsTotal] = useState<number>(0);
     const [loadingLogs, setLoadingLogs] = useState(false);
     const [statusModalOpen, setStatusModalOpen] = useState(false);
 
@@ -109,8 +110,16 @@ export default function BatchDetailsPage() {
     const fetchLogs = useCallback(async () => {
         setLoadingLogs(true);
         try {
-            const res = await axiosInstance.get<IBatchLog[]>(`/batches/${id}/logs`);
-            setBatchLogs(res.data);
+            const res = await axiosInstance.get<{
+                data: IBatchLog[];
+                total: number;
+            }>(`/batches/${id}/logs`, {
+                params: { page: 1, limit: 5 },
+            });
+            const logs = Array.isArray(res.data) ? res.data : (res.data.data || []);
+            const total = Array.isArray(res.data) ? res.data.length : (res.data.total ?? logs.length);
+            setBatchLogs(logs);
+            setBatchLogsTotal(total);
         } catch (error) {
             console.error("Failed to fetch logs", error);
         } finally {
@@ -1244,7 +1253,12 @@ export default function BatchDetailsPage() {
 
                     {/* Batch Activity & Audit Logs Card */}
                     <div>
-                        <BatchLogsCard logs={batchLogs} loading={loadingLogs} />
+                        <BatchLogsCard
+                            logs={batchLogs}
+                            loading={loadingLogs}
+                            entityId={id}
+                            totalCount={batchLogsTotal}
+                        />
                     </div>
                 </div>
             </div>

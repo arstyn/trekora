@@ -19,8 +19,26 @@ export class BatchService {
         return response.data;
     }
 
-    static async getBatchLogs(id: string): Promise<IBatchLog[]> {
-        const response = await axiosInstance.get<IBatchLog[]>(`/batches/${id}/logs`);
+    static async getBatchLogs(
+        id: string,
+        page: number = 1,
+        limit: number = 5,
+        offset?: number,
+    ): Promise<{ data: IBatchLog[]; total: number; hasMore: boolean }> {
+        const response = await axiosInstance.get<{
+            data: IBatchLog[];
+            total: number;
+            hasMore: boolean;
+        }>(`/batches/${id}/logs`, {
+            params: { page, limit, ...(offset !== undefined ? { offset } : {}) },
+        });
+        if (Array.isArray(response.data)) {
+            return {
+                data: response.data,
+                total: (response.data as IBatchLog[]).length,
+                hasMore: false,
+            };
+        }
         return response.data;
     }
 

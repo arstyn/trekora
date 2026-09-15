@@ -45,6 +45,7 @@ export interface IBookingPayment {
 
 export interface ICustomer {
     id?: string;
+    customerNumber?: string;
     bookingCustomerId?: string;
     firstName: string;
     lastName?: string;
@@ -295,3 +296,25 @@ export interface IBookingLog {
         email: string;
     };
 }
+
+export interface IEntityMeta {
+    id: string;
+    type: 'customer' | 'payment' | 'batch' | 'package' | 'agent' | 'user';
+    displayId?: string;
+    title: string;
+    subtitle?: string;
+    link?: string;
+    details?: Record<string, any>;
+}
+
+export interface IBookingLogsResponse {
+    data: IBookingLog[];
+    total: number;
+    page: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+    entityMeta?: Record<string, IEntityMeta>;
+}
+
+

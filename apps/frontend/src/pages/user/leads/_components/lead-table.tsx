@@ -85,6 +85,11 @@ export function LeadTable({ leads, isLoading, onStatusChange, onLeadClick }: Lea
 								{name}
 							</Link>
 						) : null}
+						{row.original.leadNumber && (
+							<Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">
+								#{row.original.leadNumber}
+							</Badge>
+						)}
 						{company ? (
 							name ? (
 								<Badge variant="outline" className="text-xs bg-muted/50 font-normal">

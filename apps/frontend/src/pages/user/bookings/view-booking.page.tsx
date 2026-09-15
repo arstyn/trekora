@@ -51,6 +51,7 @@ import type {
     BookingStatus,
     IBooking,
     IBookingLog,
+    IEntityMeta,
 } from "@/types/booking.types";
 import { format } from "date-fns";
 import {
@@ -102,6 +103,8 @@ export default function BookingDetailsPage() {
     const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<any>(null);
     const [bookingLogs, setBookingLogs] = useState<IBookingLog[]>([]);
+    const [bookingLogsTotal, setBookingLogsTotal] = useState<number>(0);
+    const [bookingLogsMeta, setBookingLogsMeta] = useState<Record<string, IEntityMeta>>({});
     const [availableBatches, setAvailableBatches] = useState<IBatches[]>([]);
     const [isMoving, setIsMoving] = useState(false);
     const [selectedBatchId, setSelectedBatchId] = useState<string>("");
@@ -128,8 +131,12 @@ export default function BookingDetailsPage() {
     const fetchBookingLogs = useCallback(async () => {
         if (!id) return;
         try {
-            const logs = await BookingService.getBookingLogs(id);
-            setBookingLogs(logs);
+            const res = await BookingService.getBookingLogs(id, 1, 5);
+            setBookingLogs(res.data);
+            setBookingLogsTotal(res.total);
+            if (res.entityMeta) {
+                setBookingLogsMeta(res.entityMeta);
+            }
         } catch (err) {
             console.error("Error fetching booking logs:", err);
         }
@@ -1323,7 +1330,14 @@ export default function BookingDetailsPage() {
                     </Card>
 
                     {/* Booking Audit Logs & Activity Timeline */}
-                    <BookingLogsCard logs={bookingLogs} loading={loading} />
+                    <BookingLogsCard
+                        logs={bookingLogs}
+                        loading={loading}
+                        entityId={id}
+                        totalCount={bookingLogsTotal}
+                        initialEntityMeta={bookingLogsMeta}
+                        booking={booking || undefined}
+                    />
                 </div>
             </div>
 

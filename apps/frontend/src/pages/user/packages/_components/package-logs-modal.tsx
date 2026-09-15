@@ -6,7 +6,6 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import axiosInstance from "@/lib/axios";
@@ -60,10 +59,12 @@ export function PackageLogsModal({
     const fetchActivities = async () => {
         setIsLoading(true);
         try {
-            const res = await axiosInstance.get<PackageActivity[]>(
+            const res = await axiosInstance.get(
                 `/packages/${packageId}/logs`,
+                { params: { page: 1, limit: 100 } }
             );
-            setActivities(res.data);
+            const list = Array.isArray(res.data) ? res.data : (res.data.data || []);
+            setActivities(list);
         } catch (error) {
             toast.error("Failed to load activity logs");
         } finally {
@@ -104,18 +105,18 @@ export function PackageLogsModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
+            <DialogContent className="max-w-2xl sm:max-w-2xl w-[95vw] h-[80vh] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+                <DialogHeader className="p-4 sm:p-5 border-b shrink-0">
                     <div className="flex items-center gap-2">
                         <History className="w-5 h-5 text-primary" />
                         <DialogTitle>Activity Logs</DialogTitle>
                     </div>
-                    <DialogDescription>
+                    <DialogDescription className="text-xs text-muted-foreground mt-0.5">
                         Audit trail for {packageName || "this package"}
                     </DialogDescription>
                 </DialogHeader>
 
-                <ScrollArea className="max-h-[60vh] pr-4 mt-4">
+                <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-6">
                     {isLoading ? (
                         <div className="flex flex-col gap-4 py-4">
                             {[1, 2, 3].map((i) => (
@@ -195,11 +196,11 @@ export function PackageLogsModal({
                             <p className="text-sm">No activity records found</p>
                         </div>
                     )}
-                </ScrollArea>
-                <div className="flex justify-end pt-4 border-t">
+                </div>
+                <div className="p-3 px-5 border-t bg-muted/10 flex justify-end shrink-0">
                     <button
                         onClick={onClose}
-                        className="text-sm font-medium hover:underline px-4 py-2"
+                        className="text-xs font-medium hover:underline px-4 py-1.5"
                     >
                         Close
                     </button>

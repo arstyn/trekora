@@ -23,7 +23,6 @@ import {
 import React, { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { PackageLogsModal } from "./_components/package-logs-modal";
 import { PackageLogsCard, type IPackageActivity } from "./_components/package-logs-card";
 import {
     HeroSkeleton,
@@ -70,6 +69,7 @@ export default function ViewPackagePage() {
     const [loadingDetails, setLoadingDetails] = useState(true);
     const [isLogsOpen, setIsLogsOpen] = useState(false);
     const [packageLogs, setPackageLogs] = useState<IPackageActivity[]>([]);
+    const [packageLogsTotal, setPackageLogsTotal] = useState<number>(0);
     const [loadingLogs, setLoadingLogs] = useState(false);
 
     useEffect(() => {
@@ -164,10 +164,16 @@ export default function ViewPackagePage() {
         const fetchLogs = async () => {
             setLoadingLogs(true);
             try {
-                const res = await axiosInstance.get<IPackageActivity[]>(
-                    `/packages/${id}/logs`,
-                );
-                setPackageLogs(res.data);
+                const res = await axiosInstance.get<{
+                    data: IPackageActivity[];
+                    total: number;
+                }>(`/packages/${id}/logs`, {
+                    params: { page: 1, limit: 5 },
+                });
+                const logs = Array.isArray(res.data) ? res.data : (res.data.data || []);
+                const total = Array.isArray(res.data) ? res.data.length : (res.data.total ?? logs.length);
+                setPackageLogs(logs);
+                setPackageLogsTotal(total);
             } catch (error: any) {
                 console.error("Failed to load logs:", error);
             } finally {
@@ -1132,18 +1138,18 @@ export default function ViewPackagePage() {
                         )}
                         {/* Right Sidebar - Package Activity & Audit Logs */}
                         <div className="space-y-8">
-                            <PackageLogsCard logs={packageLogs} loading={loadingLogs} />
+                            <PackageLogsCard
+                                logs={packageLogs}
+                                loading={loadingLogs}
+                                entityId={id}
+                                totalCount={packageLogsTotal}
+                                externalOpen={isLogsOpen}
+                                onExternalOpenChange={setIsLogsOpen}
+                            />
                         </div>
                     </div>
                 </div>
             </main>
-
-            <PackageLogsModal
-                packageId={id!}
-                packageName={basicData?.name}
-                isOpen={isLogsOpen}
-                onClose={() => setIsLogsOpen(false)}
-            />
         </div>
     );
 }

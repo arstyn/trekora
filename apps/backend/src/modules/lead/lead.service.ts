@@ -14,8 +14,10 @@ export class LeadService {
     user: { organizationId: string; userId: string },
     leadData: Partial<Lead>,
   ): Promise<Lead> {
+    const leadNumber = await this.generateLeadNumber(user.organizationId);
     const lead = this.leadRepository.create({
       ...leadData,
+      leadNumber,
       createdById: user.userId,
       organizationId: user.organizationId,
     });
@@ -85,5 +87,33 @@ export class LeadService {
 
   async remove(id: string): Promise<void> {
     await this.leadRepository.delete(id);
+  }
+
+  private async generateLeadNumber(organizationId: string): Promise<string> {
+    const today = new Date();
+    const year = today.getFullYear().toString().slice(-2);
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `LEAD${year}${month}`;
+
+    const latest = await this.leadRepository
+      .createQueryBuilder('lead')
+      .where('lead.leadNumber LIKE :prefix', { prefix: `${prefix}%` })
+      .orderBy('lead.leadNumber', 'DESC')
+      .getOne();
+
+    let seq = 1;
+    if (latest && latest.leadNumber) {
+      const lastSeqStr = latest.leadNumber.replace(prefix, '');
+      const parsed = parseInt(lastSeqStr, 10);
+      if (!isNaN(parsed)) {
+        seq = parsed + 1;
+      }
+    } else {
+      const count = await this.leadRepository.count();
+      seq = count + 1;
+    }
+
+    const sequence = seq.toString().padStart(4, '0');
+    return `${prefix}${sequence}`;
   }
 }

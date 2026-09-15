@@ -8,14 +8,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { IWorkflowStep } from "@/types/workflow.types";
+import { format } from "date-fns";
 import {
-    Activity,
     CheckCircle2,
+    FileEdit,
     History,
     Loader2,
-    UserCheck
+    UserCheck,
 } from "lucide-react";
 
 interface TaskHistoryDialogProps {
@@ -45,8 +45,8 @@ export function TaskHistoryDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-xl max-h-[80vh] flex flex-col p-0 overflow-hidden rounded-xl">
-                <DialogHeader className="p-5 pb-3 border-b bg-muted/20">
+            <DialogContent className="max-w-xl sm:max-w-xl w-[95vw] h-[80vh] max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-xl">
+                <DialogHeader className="p-5 pb-3 border-b bg-muted/20 shrink-0">
                     <div className="flex items-center justify-between gap-2">
                         <DialogTitle className="text-lg font-semibold flex items-center gap-2">
                             <History className="h-4 w-4 text-primary" />
@@ -66,7 +66,7 @@ export function TaskHistoryDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <ScrollArea className="flex-1 p-5">
+                <div className="flex-1 overflow-y-auto min-h-0 p-5">
                     {loadingHistory ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-3">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -99,64 +99,58 @@ export function TaskHistoryDialog({
                                             ) : isAssignedChange ? (
                                                 <UserCheck className="h-3.5 w-3.5 text-blue-500" />
                                             ) : (
-                                                <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <FileEdit className="h-3.5 w-3.5 text-muted-foreground" />
                                             )}
                                         </div>
 
-                                        {/* Content */}
-                                        <div className="flex-1 space-y-1 pt-0.5">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className="text-xs font-semibold text-foreground">
-                                                    {log.action === "create"
-                                                        ? "Task Created"
-                                                        : isStatusChange
-                                                            ? "Status Changed"
-                                                            : isAssignedChange
-                                                                ? "Assignee Updated"
-                                                                : "Task Updated"}
+                                        {/* Log details */}
+                                        <div className="flex-1 space-y-1 bg-muted/30 p-3 rounded-lg border border-border/50">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-semibold text-foreground">
+                                                    {log.action}
                                                 </span>
-                                                <time className="text-[10px] text-muted-foreground font-mono">
-                                                    {new Date(
-                                                        log.createdAt,
-                                                    ).toLocaleString(undefined, {
-                                                        month: "short",
-                                                        day: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
-                                                </time>
-                                            </div>
-
-                                            {/* Details */}
-                                            <div className="text-xs text-muted-foreground">
-                                                {isStatusChange && (
-                                                    <span className="inline-flex items-center gap-1.5">
-                                                        Status updated to{" "}
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className="text-[10px] h-4 px-1.5 capitalize font-medium"
-                                                        >
-                                                            {log.newData.status}
-                                                        </Badge>
-                                                    </span>
-                                                )}
-                                                {isAssignedChange && (
-                                                    <span>
-                                                        Task reassigned to a team member
-                                                    </span>
-                                                )}
-                                                {!isStatusChange &&
-                                                    !isAssignedChange && (
-                                                        <span>
-                                                            Task details or configuration updated
-                                                        </span>
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {format(
+                                                        new Date(log.createdAt),
+                                                        "MMM d, h:mm a",
                                                     )}
+                                                </span>
                                             </div>
 
-                                            {/* User */}
-                                            <div className="flex items-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
-                                                <Avatar className="h-4 w-4 text-[8px]">
-                                                    <AvatarFallback className="text-[8px]">
+                                            {/* Details text */}
+                                            {log.details && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    {log.details}
+                                                </p>
+                                            )}
+
+                                            {/* Status Badge changed */}
+                                            {isStatusChange && (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="text-[10px] font-normal"
+                                                    >
+                                                        {log.previousData
+                                                            ?.status ||
+                                                            "Previous"}
+                                                    </Badge>
+                                                    <span className="text-muted-foreground text-xs">
+                                                        →
+                                                    </span>
+                                                    <Badge
+                                                        variant="default"
+                                                        className="text-[10px] font-normal bg-emerald-600"
+                                                    >
+                                                        {log.newData.status}
+                                                    </Badge>
+                                                </div>
+                                            )}
+
+                                            {/* Changed By Footer */}
+                                            <div className="flex items-center gap-1.5 pt-1 mt-1 border-t border-border/30 text-[10px] text-muted-foreground">
+                                                <Avatar className="h-4 w-4">
+                                                    <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
                                                         {getInitials(
                                                             log.changedBy?.name,
                                                         )}
@@ -173,9 +167,9 @@ export function TaskHistoryDialog({
                             })}
                         </div>
                     )}
-                </ScrollArea>
+                </div>
 
-                <div className="p-3 bg-muted/20 border-t flex justify-end">
+                <div className="p-3 bg-muted/20 border-t flex justify-end shrink-0">
                     <Button
                         variant="outline"
                         size="sm"

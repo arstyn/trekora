@@ -85,20 +85,27 @@ export default function CustomerList({
                         className="w-8 h-8 rounded-full object-cover"
                     />
 
-                    <span
-                        className="font-medium text-primary hover:underline cursor-pointer flex items-center gap-1.5"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/customers/${row.original.id}`);
-                        }}
-                    >
-                        {[row.original.firstName, row.original.middleName, row.original.lastName].filter(Boolean).join(" ")}
-                        {row.original.isBlacklisted && (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 font-semibold">
-                                Blacklisted
-                            </Badge>
+                    <div className="flex flex-col">
+                        <span
+                            className="font-medium text-primary hover:underline cursor-pointer flex items-center gap-1.5"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/customers/${row.original.id}`);
+                            }}
+                        >
+                            {[row.original.firstName, row.original.middleName, row.original.lastName].filter(Boolean).join(" ")}
+                            {row.original.isBlacklisted && (
+                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 font-semibold">
+                                    Blacklisted
+                                </Badge>
+                            )}
+                        </span>
+                        {row.original.customerNumber && (
+                            <span className="text-[11px] font-mono text-muted-foreground">
+                                #{row.original.customerNumber}
+                            </span>
                         )}
-                    </span>
+                    </div>
                 </div>
             ),
         },

@@ -67,19 +67,45 @@ export class ActivityLogService {
     };
   }
 
-  async findByEmployee(organizationId: string, employeeId: string): Promise<ActivityLog[]> {
-    return this.activityLogRepository
+  async findByEmployee(
+    organizationId: string,
+    employeeId: string,
+    page: number = 1,
+    limit: number = 5,
+    offset?: number,
+  ) {
+    const skip = offset !== undefined ? offset : (page - 1) * limit;
+    const [data, total] = await this.activityLogRepository
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.performedBy', 'performedBy')
       .where('log.organizationId = :organizationId', { organizationId })
       .andWhere("log.metadata ->> 'employeeId' = :employeeId", { employeeId })
       .orderBy('log.createdAt', 'DESC')
-      .getMany();
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      offset: skip,
+      hasMore: skip + data.length < total,
+    };
   }
 
-  async findByEntity(organizationId: string, entityType: string, entityId: string): Promise<ActivityLog[]> {
+  async findByEntity(
+    organizationId: string,
+    entityType: string,
+    entityId: string,
+    page: number = 1,
+    limit: number = 5,
+    offset?: number,
+  ) {
     const idKey = `${entityType}Id`;
-    return this.activityLogRepository
+    const skip = offset !== undefined ? offset : (page - 1) * limit;
+    const [data, total] = await this.activityLogRepository
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.performedBy', 'performedBy')
       .where('log.organizationId = :organizationId', { organizationId })
@@ -88,7 +114,18 @@ export class ActivityLogService {
         { idKey, entityId },
       )
       .orderBy('log.createdAt', 'DESC')
-      .getMany();
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      offset: skip,
+      hasMore: skip + data.length < total,
+    };
   }
 
   async findByAction(organizationId: string, action: string): Promise<ActivityLog[]> {

@@ -129,7 +129,15 @@ export class BatchesController {
   }
 
   @Get(':id/logs')
-  getLogs(@Param('id') id: string) {
-    return this.batchService.getLogs(id);
+  getLogs(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '5', 10);
+    const offsetNum = offset !== undefined ? parseInt(offset, 10) : undefined;
+    return this.batchService.getLogs(id, pageNum, limitNum, offsetNum);
   }
 }

@@ -143,3 +143,10 @@ apps/backend/src/modules/[feature]/
    - Centralize API requests in dedicated services under `apps/frontend/src/services/` instead of executing scattered Axios calls directly inside components.
 5. **User Feedback**:
    - Always notify the user of async outcomes using Sonner (`toast.success` / `toast.error`).
+6. **Time & Date Formatting (12-Hour Format)**:
+   - Always display time in **12-hour format with AM/PM** across the entire application (e.g., `h:mm a` or `hh:mm a`, such as `1:50 PM`).
+   - Strictly avoid 24-hour format (e.g., do not use `HH:mm` or `HH:mm:ss`).
+   - Standard patterns with `date-fns`:
+     - Combined Date & Time: `format(date, "MMM d, yyyy • h:mm a")` (e.g., `Aug 27, 2026 • 1:50 PM`)
+     - Time only: `format(date, "h:mm a")` (e.g., `1:50 PM`)
+     - When using native `toLocaleTimeString`: always include `{ hour: 'numeric', minute: '2-digit', hour12: true }`.

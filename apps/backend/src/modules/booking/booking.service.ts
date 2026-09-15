@@ -23,6 +23,7 @@ import { Booking, BookingStatus, AgentPayoutStatus } from 'src/database/entity/b
 import { BookingPaymentAllocation } from 'src/database/entity/booking-payment-allocation.entity';
 import { Customer } from 'src/database/entity/customer.entity';
 import { Package } from 'src/database/entity/package-related/package.entity';
+import { User } from 'src/database/entity/user.entity';
 import {
   BookingCustomerResponseDto,
   BookingPaymentAllocationResponseDto,
@@ -64,12 +65,299 @@ export class BookingService {
   ) { }
 
 
-  async getLogs(bookingId: string) {
-    return this.logRepository.find({
+  async getLogs(bookingId: string, page: number = 1, limit: number = 5, offset?: number) {
+    const skip = offset !== undefined ? offset : (page - 1) * limit;
+    const [data, total] = await this.logRepository.findAndCount({
       where: { bookingId },
       relations: ['changedBy'],
       order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
     });
+
+    const entityMeta: Record<
+      string,
+      {
+        id: string;
+        type: 'customer' | 'payment' | 'batch' | 'package' | 'agent' | 'user';
+        displayId?: string;
+        title: string;
+        subtitle?: string;
+        link?: string;
+        details?: Record<string, any>;
+      }
+    > = {};
+
+    const customerIds = new Set<string>();
+    const paymentIds = new Set<string>();
+    const batchIds = new Set<string>();
+    const packageIds = new Set<string>();
+    const agentIds = new Set<string>();
+    const userIds = new Set<string>();
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    const processPayload = (payload: any) => {
+      if (!payload || typeof payload !== 'object') return;
+
+      if (typeof payload.customerId === 'string' && uuidRegex.test(payload.customerId)) {
+        customerIds.add(payload.customerId);
+      }
+      if (Array.isArray(payload.customerIds)) {
+        payload.customerIds.forEach((id: any) => {
+          if (typeof id === 'string' && uuidRegex.test(id)) customerIds.add(id);
+        });
+      }
+      if (Array.isArray(payload.cancelledCustomerIds)) {
+        payload.cancelledCustomerIds.forEach((id: any) => {
+          if (typeof id === 'string' && uuidRegex.test(id)) customerIds.add(id);
+        });
+      }
+
+      if (typeof payload.refundPaymentId === 'string' && uuidRegex.test(payload.refundPaymentId)) {
+        paymentIds.add(payload.refundPaymentId);
+      }
+      if (typeof payload.paymentId === 'string' && uuidRegex.test(payload.paymentId)) {
+        paymentIds.add(payload.paymentId);
+      }
+
+      if (typeof payload.batchId === 'string' && uuidRegex.test(payload.batchId)) {
+        batchIds.add(payload.batchId);
+      }
+      if (typeof payload.targetBatchId === 'string' && uuidRegex.test(payload.targetBatchId)) {
+        batchIds.add(payload.targetBatchId);
+      }
+
+      if (typeof payload.packageId === 'string' && uuidRegex.test(payload.packageId)) {
+        packageIds.add(payload.packageId);
+      }
+
+      if (typeof payload.agentId === 'string' && uuidRegex.test(payload.agentId)) {
+        agentIds.add(payload.agentId);
+      }
+
+      if (typeof payload.assignedToId === 'string' && uuidRegex.test(payload.assignedToId)) {
+        userIds.add(payload.assignedToId);
+      }
+    };
+
+    for (const log of data) {
+      processPayload(log.previousData);
+      processPayload(log.newData);
+    }
+
+    const [customers, payments, batches, packages, agents, users] = await Promise.all([
+      customerIds.size > 0
+        ? this.customerRepository.find({ where: { id: In(Array.from(customerIds)) } })
+        : Promise.resolve([]),
+      paymentIds.size > 0
+        ? this.paymentRepository.find({ where: { id: In(Array.from(paymentIds)) } })
+        : Promise.resolve([]),
+      batchIds.size > 0
+        ? this.batchRepository.find({
+            where: { id: In(Array.from(batchIds)) },
+            relations: ['package'],
+          })
+        : Promise.resolve([]),
+      packageIds.size > 0
+        ? this.packageRepository.find({ where: { id: In(Array.from(packageIds)) } })
+        : Promise.resolve([]),
+      agentIds.size > 0
+        ? this.dataSource.getRepository(Agent).find({ where: { id: In(Array.from(agentIds)) } })
+        : Promise.resolve([]),
+      userIds.size > 0
+        ? this.dataSource.getRepository(User).find({ where: { id: In(Array.from(userIds)) } })
+        : Promise.resolve([]),
+    ]);
+
+    for (const c of customers) {
+      const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Customer';
+      entityMeta[c.id] = {
+        id: c.id,
+        type: 'customer',
+        displayId: c.customerNumber,
+        title: fullName,
+        subtitle: c.email || c.phone || 'Customer',
+        link: `/customers/${c.id}`,
+        details: {
+          name: fullName,
+          email: c.email,
+          phone: c.phone,
+          customerNumber: c.customerNumber,
+          gender: c.gender,
+          isBlacklisted: c.isBlacklisted,
+        },
+      };
+    }
+
+    for (const p of payments) {
+      entityMeta[p.id] = {
+        id: p.id,
+        type: 'payment',
+        displayId: p.paymentNumber,
+        title: `₹${Number(p.amount || 0).toLocaleString('en-IN')}`,
+        subtitle: `${p.paymentType ? p.paymentType.toUpperCase() : 'Payment'} • ${p.paymentMethod || 'N/A'}`,
+        link: `/payments/${p.id}`,
+        details: {
+          paymentNumber: p.paymentNumber,
+          amount: p.amount,
+          paymentType: p.paymentType,
+          paymentMethod: p.paymentMethod,
+          status: p.status,
+          transactionId: p.transactionId,
+          paymentDate: p.paymentDate,
+        },
+      };
+    }
+
+    for (const b of batches) {
+      const pkgName = b.package?.name;
+      const start = b.startDate ? new Date(b.startDate).toLocaleDateString() : '';
+      const end = b.endDate ? new Date(b.endDate).toLocaleDateString() : '';
+      const dateRange = start && end ? `${start} - ${end}` : '';
+      entityMeta[b.id] = {
+        id: b.id,
+        type: 'batch',
+        title: pkgName ? `${pkgName} Batch` : 'Trip Batch',
+        subtitle: dateRange || undefined,
+        details: {
+          packageName: pkgName,
+          dateRange,
+          totalSeats: b.totalSeats,
+          bookedSeats: b.bookedSeats,
+          status: b.status,
+        },
+      };
+    }
+
+    for (const pkg of packages) {
+      const daysNights = pkg.days || pkg.nights ? `${pkg.days || 0}D / ${pkg.nights || 0}N` : '';
+      const subtitle = [pkg.destination, daysNights].filter(Boolean).join(' • ') || 'Package';
+      entityMeta[pkg.id] = {
+        id: pkg.id,
+        type: 'package',
+        title: pkg.name || 'Package',
+        subtitle,
+        link: `/packages/${pkg.id}`,
+        details: {
+          name: pkg.name,
+          destination: pkg.destination,
+          days: pkg.days,
+          nights: pkg.nights,
+          status: pkg.status,
+        },
+      };
+    }
+
+    for (const a of agents) {
+      entityMeta[a.id] = {
+        id: a.id,
+        type: 'agent',
+        title: a.name,
+        subtitle: a.agencyName || a.email || a.phone || 'Travel Agent',
+        link: `/agents/${a.id}`,
+        details: {
+          name: a.name,
+          agencyName: a.agencyName,
+          email: a.email,
+          phone: a.phone,
+          status: a.status,
+        },
+      };
+    }
+
+    for (const u of users) {
+      entityMeta[u.id] = {
+        id: u.id,
+        type: 'user',
+        title: u.name || u.email,
+        subtitle: u.email || undefined,
+        details: {
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+        },
+      };
+    }
+
+    // Also enrich from the current booking if available
+    if (bookingId && uuidRegex.test(bookingId)) {
+      const booking = await this.bookingRepository.findOne({
+        where: { id: bookingId },
+        relations: ['customer', 'package', 'batch', 'batch.package'],
+      });
+      if (booking) {
+        if (booking.customer && !entityMeta[booking.customer.id]) {
+          const c = booking.customer;
+          const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Customer';
+          entityMeta[c.id] = {
+            id: c.id,
+            type: 'customer',
+            displayId: c.customerNumber,
+            title: fullName,
+            subtitle: c.email || c.phone || 'Customer',
+            link: `/customers/${c.id}`,
+            details: {
+              name: fullName,
+              email: c.email,
+              phone: c.phone,
+              customerNumber: c.customerNumber,
+              gender: c.gender,
+              isBlacklisted: c.isBlacklisted,
+            },
+          };
+        }
+        if (booking.batch && !entityMeta[booking.batch.id]) {
+          const b = booking.batch;
+          const pkgName = b.package?.name || booking.package?.name;
+          const start = b.startDate ? new Date(b.startDate).toLocaleDateString() : '';
+          const end = b.endDate ? new Date(b.endDate).toLocaleDateString() : '';
+          const dateRange = start && end ? `${start} - ${end}` : '';
+          entityMeta[b.id] = {
+            id: b.id,
+            type: 'batch',
+            title: pkgName ? `${pkgName} Batch` : 'Trip Batch',
+            subtitle: dateRange || undefined,
+            details: {
+              packageName: pkgName,
+              dateRange,
+              totalSeats: b.totalSeats,
+              bookedSeats: b.bookedSeats,
+              status: b.status,
+            },
+          };
+        }
+        if (booking.package && !entityMeta[booking.package.id]) {
+          const pkg = booking.package;
+          const daysNights = pkg.days || pkg.nights ? `${pkg.days || 0}D / ${pkg.nights || 0}N` : '';
+          const subtitle = [pkg.destination, daysNights].filter(Boolean).join(' • ') || 'Package';
+          entityMeta[pkg.id] = {
+            id: pkg.id,
+            type: 'package',
+            title: pkg.name || 'Package',
+            subtitle,
+            link: `/packages/${pkg.id}`,
+            details: {
+              name: pkg.name,
+              destination: pkg.destination,
+              days: pkg.days,
+              nights: pkg.nights,
+              status: pkg.status,
+            },
+          };
+        }
+      }
+    }
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      offset: skip,
+      hasMore: skip + data.length < total,
+      entityMeta,
+    };
   }
 
   async create(

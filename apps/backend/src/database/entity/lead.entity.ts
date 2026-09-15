@@ -16,6 +16,9 @@ export class Lead {
   @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;
 
+  @Column({ unique: true, name: 'lead_number' })
+  leadNumber: string;
+
   @Column({ name: 'name' })
   name: string;
 

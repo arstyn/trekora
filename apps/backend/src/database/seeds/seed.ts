@@ -515,7 +515,8 @@ async function seed() {
 
     // Create leads
     console.log('Seeding leads...');
-    for (const leadData of leads) {
+    for (let i = 0; i < leads.length; i++) {
+      const leadData = leads[i];
       const org = await queryRunner.manager.findOne(Organization, {
         where: { domain: leadData.organizationDomain },
       });
@@ -541,6 +542,7 @@ async function seed() {
       const randomEmployee = validEmployees[Math.floor(Math.random() * validEmployees.length)];
 
       const lead = queryRunner.manager.create(Lead, {
+        leadNumber: `LEAD2609${(i + 1).toString().padStart(4, '0')}`,
         name: leadData.name,
         email: leadData.email,
         phone: leadData.phone,
@@ -557,7 +559,8 @@ async function seed() {
 
     // Create customers
     console.log('Seeding customers...');
-    for (const customerData of customers) {
+    for (let i = 0; i < customers.length; i++) {
+      const customerData = customers[i];
       const org = await queryRunner.manager.findOne(Organization, {
         where: { domain: customerData.organizationDomain },
       });
@@ -583,6 +586,7 @@ async function seed() {
       const randomEmployee = validEmployees[Math.floor(Math.random() * validEmployees.length)];
 
       const customer = queryRunner.manager.create(Customer, {
+        customerNumber: `CUST2609${(i + 1).toString().padStart(4, '0')}`,
         // Personal Details
         firstName: customerData.firstName,
         lastName: customerData.lastName,

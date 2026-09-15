@@ -517,8 +517,9 @@ export default function ApprovalsPage() {
                           <p className="text-[11px] text-muted-foreground">
                             {new Date(req.createdAt).toLocaleDateString()} at{' '}
                             {new Date(req.createdAt).toLocaleTimeString([], {
-                              hour: '2-digit',
+                              hour: 'numeric',
                               minute: '2-digit',
+                              hour12: true,
                             })}
                           </p>
                         </div>
