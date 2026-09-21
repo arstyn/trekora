@@ -88,6 +88,7 @@ export default function PaymentDetailsPage() {
     const [paymentData, setPaymentData] = useState<Payment | null>(null);
     const [receiptFiles, setReceiptFiles] = useState<FileManager[]>([]);
     const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
+    const [paymentLogsTotal, setPaymentLogsTotal] = useState<number>(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
@@ -108,15 +109,16 @@ export default function PaymentDetailsPage() {
             setLoading(true);
             setError(null);
 
-            const [payment, receipts, logs] = await Promise.all([
+            const [payment, receipts, logsRes] = await Promise.all([
                 PaymentService.getPaymentById(id, true),
                 PaymentService.getPaymentReceipts(id).catch(() => []),
-                PaymentService.getPaymentLogs(id).catch(() => []),
+                PaymentService.getPaymentLogs(id, 1, 5).catch(() => ({ data: [], total: 0, hasMore: false })),
             ]);
 
             setPaymentData(payment);
             setReceiptFiles(receipts);
-            setPaymentLogs(logs);
+            setPaymentLogs(logsRes.data || []);
+            setPaymentLogsTotal(logsRes.total ?? 0);
         } catch (err: any) {
             console.error("Error loading payment details:", err);
             const errorMessage =
@@ -1203,7 +1205,7 @@ export default function PaymentDetailsPage() {
                                             <p className="text-emerald-800/80 dark:text-emerald-300/80">
                                                 Verified by <strong>{paymentData.verifiedBy.firstName} {paymentData.verifiedBy.lastName}</strong>
                                                 {paymentData.verifiedAt && (
-                                                    <> on {format(new Date(paymentData.verifiedAt), "MMM d, yyyy • HH:mm")}</>
+                                                    <> on {format(new Date(paymentData.verifiedAt), "MMM d, yyyy • h:mm a")}</>
                                                 )}
                                             </p>
                                         )}
@@ -1271,7 +1273,12 @@ export default function PaymentDetailsPage() {
                     </Card>
 
                     {/* Centered Audit & Activity Logs */}
-                    <PaymentLogsCard logs={paymentLogs} loading={loading} />
+                    <PaymentLogsCard
+                        logs={paymentLogs}
+                        loading={loading}
+                        entityId={id}
+                        totalCount={paymentLogsTotal}
+                    />
                 </div>
             </div>
 

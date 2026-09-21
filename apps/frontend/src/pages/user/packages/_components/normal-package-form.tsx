@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import axiosInstance from "@/lib/axios";
-import { cn, getFileUrl } from "@/lib/utils";
+import { getFileUrl } from "@/lib/utils";
 import CancellationTierForm from "@/pages/user/cancellation-tiers/_components/cancellation-tier-form";
 import PaymentStructureForm from "@/pages/user/payment-structures/_components/payment-structure-form";
 import type { ICancellationTierTemplate } from "@/services/cancellation-tiers.service";
@@ -20,7 +20,7 @@ import {
     type PackageFormData,
 } from "@/types/package.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Edit, Globe, IndianRupee, Landmark, Loader2, MapPin, Percent, Plus, Save, User, Users } from "lucide-react";
+import { Building2, Edit, Globe, IndianRupee, Landmark, Loader2, MapPin, Plus, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -648,240 +648,19 @@ export function NormalPackageForm({
                         </CardContent>
                     </Card>
 
-                    {/* Package Pricing Section */}
-                    <Card className="border border-border/60 shadow-sm rounded-xl">
-                        <CardHeader>
-                            <CardTitle className="text-xl flex items-center gap-2">
-                                <IndianRupee className="w-5 h-5 text-primary" />
-                                Package Pricing
-                            </CardTitle>
-                            <CardDescription>Define the base pricing for adults, children, and infants.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <FormField
-                                    control={form.control}
-                                    name="packageTiers.0.adultCost"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Adult Price (₹)</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    placeholder="e.g. 30000"
-                                                    {...field}
-                                                    value={field.value ?? ""}
-                                                    onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="packageTiers.0.childCostValue"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Child Price (₹)</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    placeholder="e.g. 25000"
-                                                    {...field}
-                                                    value={field.value ?? ""}
-                                                    onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="packageTiers.0.infantCostValue"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Infant Price (₹)</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    placeholder="e.g. 13000"
-                                                    {...field}
-                                                    value={field.value ?? ""}
-                                                    onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                    {/* Batch Pricing Banner */}
+                    <Card className="border border-primary/20 bg-primary/5 shadow-xs rounded-xl">
+                        <CardContent className="p-4 flex items-center gap-3">
+                            <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
+                                <IndianRupee className="w-5 h-5" />
                             </div>
-
-                            {/* Max Discount Configuration Section Below Prices */}
-                            <div className="pt-4 border-t space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/40 border p-4 rounded-xl">
-                                    <div className="space-y-0.5">
-                                        <div className="flex items-center gap-2">
-                                            <Percent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                            <h4 className="text-sm font-semibold">Maximum Discount Limit</h4>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            Set the maximum allowed discount that can be offered for this package during booking.
-                                        </p>
-                                    </div>
-
-                                    <FormField
-                                        control={form.control}
-                                        name="maxDiscountType"
-                                        render={({ field: typeField }) => {
-                                            const currentType = typeField.value || "amount";
-                                            return (
-                                                <div className="flex flex-wrap items-center gap-4 shrink-0">
-                                                    {/* Discount Scope Switcher (Group vs Passenger) */}
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="maxDiscountScope"
-                                                        render={({ field: scopeField }) => {
-                                                            const currentScope = scopeField.value || "group";
-                                                            return (
-                                                                <div className="inline-flex items-center bg-background p-1 rounded-lg border text-xs gap-1">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            scopeField.onChange("group");
-                                                                            form.setValue("maxDiscountScope", "group");
-                                                                        }}
-                                                                        className={cn(
-                                                                            "px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1 cursor-pointer",
-                                                                            currentScope === "group"
-                                                                                ? "bg-primary text-primary-foreground shadow-xs"
-                                                                                : "text-muted-foreground hover:text-foreground"
-                                                                        )}
-                                                                    >
-                                                                        <Users className="w-3.5 h-3.5" />
-                                                                        Group Total
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            scopeField.onChange("passenger");
-                                                                            form.setValue("maxDiscountScope", "passenger");
-                                                                        }}
-                                                                        className={cn(
-                                                                            "px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1 cursor-pointer",
-                                                                            currentScope === "passenger"
-                                                                                ? "bg-primary text-primary-foreground shadow-xs"
-                                                                                : "text-muted-foreground hover:text-foreground"
-                                                                        )}
-                                                                    >
-                                                                        <User className="w-3.5 h-3.5" />
-                                                                        Per Passenger
-                                                                    </button>
-                                                                </div>
-                                                            );
-                                                        }}
-                                                    />
-
-                                                    {/* Unit Selector (Amount vs Percentage) */}
-                                                    <div className="inline-flex items-center bg-background p-1 rounded-lg border text-xs">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                typeField.onChange("amount");
-                                                                form.setValue("maxDiscountType", "amount");
-                                                            }}
-                                                            className={cn(
-                                                                "px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer",
-                                                                currentType === "amount"
-                                                                    ? "bg-primary text-primary-foreground shadow-xs"
-                                                                    : "text-muted-foreground hover:text-foreground"
-                                                            )}
-                                                        >
-                                                            Amount (₹)
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                typeField.onChange("percentage");
-                                                                form.setValue("maxDiscountType", "percentage");
-                                                            }}
-                                                            className={cn(
-                                                                "px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer",
-                                                                currentType === "percentage"
-                                                                    ? "bg-primary text-primary-foreground shadow-xs"
-                                                                    : "text-muted-foreground hover:text-foreground"
-                                                            )}
-                                                        >
-                                                            Percent (%)
-                                                        </button>
-                                                    </div>
-
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="maxDiscountValue"
-                                                        render={({ field: valField }) => (
-                                                            <div className="w-36">
-                                                                <Input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    max={currentType === "percentage" ? "100" : undefined}
-                                                                    step={currentType === "percentage" ? "0.01" : "1"}
-                                                                    placeholder={currentType === "amount" ? "e.g. 500" : "e.g. 10"}
-                                                                    {...valField}
-                                                                    value={valField.value ?? ""}
-                                                                    onChange={(e) => {
-                                                                        const numVal = e.target.value === "" ? 0 : Number(e.target.value);
-                                                                        valField.onChange(numVal);
-                                                                        if (currentType === "percentage") {
-                                                                            form.setValue("maxDiscountPercentage", numVal);
-                                                                        }
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    />
-                                                </div>
-                                            );
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Live Discount Rules & Calculation Preview Banner */}
-                                {(() => {
-                                    const discountType = form.watch("maxDiscountType") || "amount";
-                                    const discountScope = form.watch("maxDiscountScope") || "group";
-                                    const discountVal = form.watch("maxDiscountValue") ?? form.watch("maxDiscountPercentage") ?? 0;
-
-                                    if (discountVal <= 0) return null;
-
-                                    return (
-                                        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-emerald-900 dark:text-emerald-200">
-                                            <div className="font-medium flex items-center gap-1.5">
-                                                <span className="font-bold">Max Discount Rule Active:</span>
-                                                <span className="text-[11px] opacity-90">
-                                                    {discountScope === "passenger"
-                                                        ? `${discountType === "percentage" ? `${discountVal}%` : `₹${discountVal}`} limit per passenger (multiplied by total travelers)`
-                                                        : `Fixed ${discountType === "percentage" ? `${discountVal}%` : `₹${discountVal}`} limit total per booking`}
-                                                </span>
-                                            </div>
-                                            {discountScope === "passenger" && (
-                                                <div className="flex flex-wrap items-center gap-3 font-semibold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 text-[11px]">
-                                                    <span>1 Traveler = {discountType === "percentage" ? `${discountVal}%` : `₹${discountVal}`}</span>
-                                                    <span>•</span>
-                                                    <span>2 Travelers = {discountType === "percentage" ? `${discountVal}%` : `₹${discountVal * 2}`}</span>
-                                                    <span>•</span>
-                                                    <span>3 Travelers = {discountType === "percentage" ? `${discountVal}%` : `₹${discountVal * 3}`}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })()}
+                            <div className="space-y-0.5">
+                                <h4 className="text-sm font-bold text-foreground">
+                                    Dynamic Batch Cost Sheets & Pricing
+                                </h4>
+                                <p className="text-xs text-muted-foreground">
+                                    Base prices, traveler age rates, and discount caps are configured per batch via Cost Sheets in the Batches section. Configure milestone payments and cancellation terms below.
+                                </p>
                             </div>
                         </CardContent>
                     </Card>

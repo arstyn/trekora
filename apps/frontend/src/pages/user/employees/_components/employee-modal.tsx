@@ -274,8 +274,8 @@ export function EmployeeModal({
 		if (!employee?.id) return;
 		try {
 			setLoadingLogs(true);
-			const res = await axiosInstance.get<IActivityLog[]>(`/activity-log/employee/${employee.id}`);
-			setLogs(res.data);
+			const res = await axiosInstance.get<any>(`/activity-log/employee/${employee.id}`);
+			setLogs(Array.isArray(res.data) ? res.data : (res.data?.data || []));
 		} catch (error) {
 			console.error("Failed to load activity logs:", error);
 		} finally {

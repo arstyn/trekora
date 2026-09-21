@@ -14,6 +14,7 @@ import {
   CreateWorkflowDto,
   CreateWorkflowStepDto,
   UpdateWorkflowStepDto,
+  WorkflowStepFilterDto,
 } from '../../dto/workflow.dto';
 import { Booking, BookingStatus } from '../../database/entity/booking.entity';
 
@@ -351,4 +352,182 @@ export class WorkflowService {
 
     return summary;
   }
+
+  async findAllStepsPaginated(
+    organizationId: string,
+    filter: WorkflowStepFilterDto,
+    userId?: string,
+  ) {
+    const page = Math.max(1, parseInt(filter.page || '1', 10));
+    const limit = Math.max(
+      1,
+      Math.min(100, parseInt(filter.limit || '10', 10)),
+    );
+
+    const qb = this.stepRepository
+      .createQueryBuilder('step')
+      .leftJoinAndSelect('step.workflow', 'workflow')
+      .leftJoinAndSelect('step.assignedTo', 'assignedTo')
+      .leftJoinAndSelect('step.completedBy', 'completedBy')
+      .where('workflow.organizationId = :organizationId', { organizationId });
+
+    if (filter.tab === 'my-tasks' && userId) {
+      qb.andWhere('step.assignedToId = :userId', { userId });
+    } else if (filter.tab === 'unassigned') {
+      qb.andWhere('step.assignedToId IS NULL');
+    }
+
+    if (filter.status && filter.status !== 'all') {
+      qb.andWhere('step.status = :status', { status: filter.status });
+    }
+
+    if (filter.type && filter.type !== 'all') {
+      qb.andWhere('step.type = :type', { type: filter.type });
+    }
+
+    if (filter.workflowId && filter.workflowId !== 'all') {
+      qb.andWhere('step.workflowId = :workflowId', {
+        workflowId: filter.workflowId,
+      });
+    }
+
+    if (filter.assignedToId && filter.assignedToId !== 'all') {
+      if (filter.assignedToId === 'unassigned') {
+        qb.andWhere('step.assignedToId IS NULL');
+      } else {
+        qb.andWhere('step.assignedToId = :assignedToId', {
+          assignedToId: filter.assignedToId,
+        });
+      }
+    }
+
+    if (filter.isMandatory && filter.isMandatory !== 'all') {
+      const isMandatory = filter.isMandatory === 'mandatory';
+      qb.andWhere('step.isMandatory = :isMandatory', { isMandatory });
+    }
+
+    if (filter.search && filter.search.trim()) {
+      const search = `%${filter.search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        '(LOWER(step.label) LIKE :search OR LOWER(step.description) LIKE :search OR LOWER(workflow.name) LIKE :search OR LOWER(assignedTo.name) LIKE :search)',
+        { search },
+      );
+    }
+
+    const [data, total] = await qb
+      .orderBy('step.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  async findAssignedStepsPaginated(
+    userId: string,
+    filter: WorkflowStepFilterDto,
+  ) {
+    const page = Math.max(1, parseInt(filter.page || '1', 10));
+    const limit = Math.max(
+      1,
+      Math.min(100, parseInt(filter.limit || '10', 10)),
+    );
+
+    const qb = this.stepRepository
+      .createQueryBuilder('step')
+      .leftJoinAndSelect('step.workflow', 'workflow')
+      .leftJoinAndSelect('step.assignedTo', 'assignedTo')
+      .leftJoinAndSelect('step.completedBy', 'completedBy')
+      .where('step.assignedToId = :userId', { userId });
+
+    if (filter.status && filter.status !== 'all') {
+      qb.andWhere('step.status = :status', { status: filter.status });
+    }
+
+    if (filter.type && filter.type !== 'all') {
+      qb.andWhere('step.type = :type', { type: filter.type });
+    }
+
+    if (filter.workflowId && filter.workflowId !== 'all') {
+      qb.andWhere('step.workflowId = :workflowId', {
+        workflowId: filter.workflowId,
+      });
+    }
+
+    if (filter.isMandatory && filter.isMandatory !== 'all') {
+      const isMandatory = filter.isMandatory === 'mandatory';
+      qb.andWhere('step.isMandatory = :isMandatory', { isMandatory });
+    }
+
+    if (filter.search && filter.search.trim()) {
+      const search = `%${filter.search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        '(LOWER(step.label) LIKE :search OR LOWER(step.description) LIKE :search OR LOWER(workflow.name) LIKE :search)',
+        { search },
+      );
+    }
+
+    const [data, total] = await qb
+      .orderBy('step.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  async getStepCounts(
+    organizationId: string,
+    userId: string,
+  ): Promise<{ myTasks: number; unassigned: number; allTasks: number }> {
+    const allTasks = await this.stepRepository
+      .createQueryBuilder('step')
+      .leftJoin('step.workflow', 'workflow')
+      .where('workflow.organizationId = :organizationId', { organizationId })
+      .getCount();
+
+    const myTasks = await this.stepRepository
+      .createQueryBuilder('step')
+      .leftJoin('step.workflow', 'workflow')
+      .where('workflow.organizationId = :organizationId', { organizationId })
+      .andWhere('step.assignedToId = :userId', { userId })
+      .getCount();
+
+    const unassigned = await this.stepRepository
+      .createQueryBuilder('step')
+      .leftJoin('step.workflow', 'workflow')
+      .where('workflow.organizationId = :organizationId', { organizationId })
+      .andWhere('step.assignedToId IS NULL')
+      .getCount();
+
+    return { myTasks, unassigned, allTasks };
+  }
+
+  async getWorkflowsForOrg(
+    organizationId: string,
+  ): Promise<{ id: string; name: string }[]> {
+    const workflows = await this.workflowRepository.find({
+      where: { organizationId, isActive: true },
+      select: ['id', 'name'],
+      order: { name: 'ASC' },
+    });
+    return workflows.map((w) => ({ id: w.id, name: w.name }));
+  }
 }
+

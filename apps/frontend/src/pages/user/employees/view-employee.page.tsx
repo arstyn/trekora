@@ -59,6 +59,7 @@ export default function ViewEmployeePage() {
 
     const [employee, setEmployee] = useState<IEmployee | null>(null);
     const [logs, setLogs] = useState<IActivityLog[]>([]);
+    const [logsTotal, setLogsTotal] = useState<number>(0);
     const [loading, setLoading] = useState(true);
     const [loadingLogs, setLoadingLogs] = useState(false);
 
@@ -88,8 +89,16 @@ export default function ViewEmployeePage() {
         if (!id) return;
         try {
             setLoadingLogs(true);
-            const res = await axiosInstance.get<IActivityLog[]>(`/activity-log/employee/${id}`);
-            setLogs(res.data);
+            const res = await axiosInstance.get<{
+                data: IActivityLog[];
+                total: number;
+            }>(`/activity-log/employee/${id}`, {
+                params: { page: 1, limit: 5 },
+            });
+            const dataLogs = Array.isArray(res.data) ? res.data : (res.data.data || []);
+            const total = Array.isArray(res.data) ? res.data.length : (res.data.total ?? dataLogs.length);
+            setLogs(dataLogs);
+            setLogsTotal(total);
         } catch (error) {
             console.error("Failed to load activity logs:", error);
         } finally {
@@ -515,7 +524,12 @@ export default function ViewEmployeePage() {
                     </Card>
 
                     {/* Timeline Activity History */}
-                    <EmployeeLogsCard logs={logs} loading={loadingLogs} />
+                    <EmployeeLogsCard
+                        logs={logs}
+                        loading={loadingLogs}
+                        entityId={id}
+                        totalCount={logsTotal}
+                    />
                 </div>
             </div>
 

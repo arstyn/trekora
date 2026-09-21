@@ -43,6 +43,7 @@ export default function ViewAgentPage() {
   const [agent, setAgent] = useState<IAgentDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [agentLogs, setAgentLogs] = useState<IAgentLog[]>([]);
+  const [agentLogsTotal, setAgentLogsTotal] = useState<number>(0);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
   const [payoutModal, setPayoutModal] = useState<{
@@ -77,10 +78,16 @@ export default function ViewAgentPage() {
     if (!id) return;
     try {
       setLoadingLogs(true);
-      const res = await axiosInstance.get<IAgentLog[]>(
-        `/activity-log/entity/agent/${id}`,
-      );
-      setAgentLogs(res.data);
+      const res = await axiosInstance.get<{
+        data: IAgentLog[];
+        total: number;
+      }>(`/activity-log/entity/agent/${id}`, {
+        params: { page: 1, limit: 5 },
+      });
+      const logs = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      const total = Array.isArray(res.data) ? res.data.length : (res.data.total ?? logs.length);
+      setAgentLogs(logs);
+      setAgentLogsTotal(total);
     } catch (error) {
       console.error("Failed to load agent logs:", error);
     } finally {
@@ -370,7 +377,12 @@ export default function ViewAgentPage() {
       </Card>
 
       {/* Activity & Audit Logs */}
-      <AgentLogsCard logs={agentLogs} loading={loadingLogs} />
+      <AgentLogsCard
+        logs={agentLogs}
+        loading={loadingLogs}
+        entityId={id}
+        totalCount={agentLogsTotal}
+      />
 
       <PayoutDialog
         open={payoutModal.open}

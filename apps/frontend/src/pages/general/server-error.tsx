@@ -72,12 +72,20 @@ export default function ServerErrorPage({ onRetry }: ServerErrorPageProps) {
 					</h3>
 					<ul className="space-y-2.5 text-xs text-muted-foreground">
 						<li className="flex items-start gap-2">
+							<span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-border text-[10px] font-bold text-foreground mt-0.5">1</span>
+							<span>Verify that your internet connection is active and stable.</span>
+						</li>
+						<li className="flex items-start gap-2">
 							<span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-border text-[10px] font-bold text-foreground mt-0.5">2</span>
-							<span>Verify that your internet connection is active.</span>
+							<span>Wait a few moments, then click <strong>Retry Connection</strong> or refresh the page.</span>
 						</li>
 						<li className="flex items-start gap-2">
 							<span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-border text-[10px] font-bold text-foreground mt-0.5">3</span>
-							<span>Verify that backend port matches your configuration settings.</span>
+							<span>If connected to a corporate VPN, proxy, or firewall, verify it allows access to Trekora services.</span>
+						</li>
+						<li className="flex items-start gap-2">
+							<span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-border text-[10px] font-bold text-foreground mt-0.5">4</span>
+							<span>If the issue persists, the service may be undergoing maintenance. Please reach out to support.</span>
 						</li>
 					</ul>
 				</div>

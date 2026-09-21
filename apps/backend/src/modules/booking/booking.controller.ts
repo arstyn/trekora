@@ -362,7 +362,15 @@ export class BookingController {
   }
   @Get(':id/logs')
   @RequirePermission('booking', 'read')
-  getLogs(@Param('id') id: string) {
-    return this.bookingService.getLogs(id);
+  getLogs(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '5', 10);
+    const offsetNum = offset !== undefined ? parseInt(offset, 10) : undefined;
+    return this.bookingService.getLogs(id, pageNum, limitNum, offsetNum);
   }
 }

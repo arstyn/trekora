@@ -97,3 +97,42 @@ export class WorkflowHistoryDto {
   changedByName: string;
   createdAt: Date;
 }
+
+export class WorkflowStepFilterDto {
+  @IsOptional()
+  @IsString()
+  page?: string;
+
+  @IsOptional()
+  @IsString()
+  limit?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @IsOptional()
+  @IsString()
+  workflowId?: string;
+
+  @IsOptional()
+  @IsString()
+  assignedToId?: string;
+
+  @IsOptional()
+  @IsString()
+  isMandatory?: string;
+
+  @IsOptional()
+  @IsString()
+  tab?: 'my-tasks' | 'unassigned' | 'all-tasks';
+}
+

@@ -46,7 +46,6 @@ import {
     AlertCircle,
     ArrowLeft,
     ArrowRight,
-    Baby,
     Calendar,
     Check,
     ChevronRight,
@@ -54,7 +53,6 @@ import {
     Info,
     Loader2,
     Package as PackageIcon,
-    PersonStanding,
     Plus,
     Search,
     ShieldAlert,
@@ -68,7 +66,7 @@ import {
     X
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BatchOffersService } from "@/services/batch-offers.service";
 import type { IBatchOffer } from "@/types/batch-offers.types";
@@ -102,7 +100,7 @@ export interface ICreateBookingFormData {
     paymentScreenshot: File | null;
     specialRequests: string;
     isCommonTier: boolean;
-    customerSelections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>;
+    customerSelections: Record<string, { tierId: string, ageCategory: string }>;
     paymentStructureId: string;
     isPaymentOverridden: boolean;
     paymentOverrideReason: string;
@@ -230,6 +228,101 @@ export function CreateBookingDialog({
         };
     };
 
+    const availableTiers = useMemo(() => {
+        if (selectedBatch?.costSheet?.tiers && selectedBatch.costSheet.tiers.length > 0) {
+            return selectedBatch.costSheet.tiers.map((t) => {
+                const adultCat = t.ageCategories.find((c: any) => c.categoryKey === "adult" || c.name?.toLowerCase() === "adult") || t.ageCategories[0];
+                const adultCost = adultCat ? adultCat.items.reduce((s: number, i: any) => s + (Number(i.cost) || 0), 0) : 0;
+                return {
+                    id: t.id,
+                    name: t.name,
+                    adultCost,
+                    isCustom: false,
+                    baseAdultCost: adultCost,
+                    baseChildCost: 0,
+                    baseInfantCost: 0,
+                    childCost: 0,
+                    infantCost: 0,
+                    ageCategories: t.ageCategories.map((c: any) => ({
+                        categoryKey: c.categoryKey || c.id || c.name?.toLowerCase(),
+                        label: c.label || c.name,
+                        cost: c.items.reduce((sum: number, it: any) => sum + (Number(it.cost) || 0), 0),
+                    })),
+                    isCostSheet: true,
+                };
+            });
+        }
+        if (selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0) {
+            return selectedPackage.packageTiers.map((tier) => {
+                const prices = getTierPrices(tier);
+                return {
+                    id: tier.id!,
+                    name: tier.name!,
+                    adultCost: prices.adultCost,
+                    childCost: prices.childCost,
+                    infantCost: prices.infantCost,
+                    isCustom: prices.isCustom,
+                    baseAdultCost: prices.baseAdultCost,
+                    baseChildCost: prices.baseChildCost,
+                    baseInfantCost: prices.baseInfantCost,
+                    ageCategories: [
+                        { categoryKey: "adult", label: "Adult", cost: prices.adultCost },
+                        { categoryKey: "child", label: "Child", cost: prices.childCost },
+                        { categoryKey: "infant", label: "Infant", cost: prices.infantCost },
+                    ],
+                    isCostSheet: false,
+                };
+            });
+        }
+        return [];
+    }, [selectedBatch, selectedPackage]);
+
+    const getTravelerCost = (
+        _customer: ICustomer,
+        selection: { tierId: string; ageCategory: string },
+        isCommon: boolean,
+        commonTierId: string,
+        pkg: IPackage | undefined,
+        batch: IBatches | undefined
+    ): number => {
+        if (!pkg && !batch) return 0;
+        const effectiveTierId = isCommon ? commonTierId : selection.tierId;
+        const ageCategory = selection.ageCategory || "adult";
+
+        if (batch?.costSheet?.tiers && batch.costSheet.tiers.length > 0) {
+            const costTiers = batch.costSheet.tiers;
+            const tier = costTiers.find((t) => t.id === effectiveTierId) || costTiers[0];
+            if (tier) {
+                const ageCat = tier.ageCategories.find((c: any) => c.categoryKey === ageCategory || c.name?.toLowerCase() === ageCategory?.toLowerCase()) || tier.ageCategories[0];
+                if (ageCat) {
+                    return ageCat.items.reduce((sum: number, item: any) => sum + (Number(item.cost) || 0), 0);
+                }
+            }
+            return 0;
+        }
+
+        if (pkg?.packageTiers && effectiveTierId) {
+            const packageTier = pkg.packageTiers.find((t) => t.id === effectiveTierId);
+            const batchTier = batch?.batchTiers?.find((t: any) => t.packageTierId === effectiveTierId);
+            const tier = batchTier || packageTier;
+            if (tier) {
+                const adultCost = Number(tier.adultCost || 0);
+                if (ageCategory === "adult") {
+                    return adultCost;
+                } else if (ageCategory === "child") {
+                    return tier.childCostType === "percentage"
+                        ? adultCost * (Number(tier.childCostValue || 0) / 100)
+                        : Number(tier.childCostValue || 0);
+                } else if (ageCategory === "infant") {
+                    return tier.infantCostType === "percentage"
+                        ? adultCost * (Number(tier.infantCostValue || 0) / 100)
+                        : Number(tier.infantCostValue || 0);
+                }
+            }
+        }
+        return 0;
+    };
+
     const checkPassportStatus = (customer: ICustomer) => {
         if (!selectedPackage || selectedPackage.packageLocation?.type !== 'international') {
             return { hasWarning: false, isMissingDetails: false, isExpirySoon: false };
@@ -318,7 +411,7 @@ export function CreateBookingDialog({
             if (!formData.packageId) newErrors.packageId = "Please select a tour package";
             if (!formData.batchId) newErrors.batchId = "Please select a batch";
 
-            if (formData.isCommonTier && !formData.packageTierId && selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0) {
+            if (formData.isCommonTier && !formData.packageTierId && availableTiers.length > 0) {
                 newErrors.packageTierId = "Please select a package price tier";
             }
         }
@@ -327,9 +420,10 @@ export function CreateBookingDialog({
             if (formData.customers.length === 0) {
                 newErrors.customers = "Please select at least one customer";
             } else {
-                if (!formData.isCommonTier && selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0) {
+                if (!formData.isCommonTier && availableTiers.length > 0) {
                     const missingTier = formData.customers.some(c => {
-                        const selection = formData.customerSelections[c.id || ''];
+                        const custId = c.id || c.email || c.phone || c.firstName || '';
+                        const selection = formData.customerSelections[custId];
                         return !selection || !selection.tierId;
                     });
                     if (missingTier) {
@@ -723,7 +817,7 @@ export function CreateBookingDialog({
         pkgId: string,
         commonTierId: string,
         isCommon: boolean,
-        selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
+        selections: Record<string, { tierId: string, ageCategory: string }>,
         currentCustomers: ICustomer[],
         discount: number = formData.discountAmount || 0,
         specialDiscount: number = formData.specialOfferDiscount || 0,
@@ -733,39 +827,13 @@ export function CreateBookingDialog({
         if (!pkg) return 0;
 
         let total = 0;
-        const selectedBatch = availableBatches.find(b => b.id === formData.batchId);
+        const currentBatch = availableBatches.find(b => b.id === formData.batchId) || selectedBatch;
 
         currentCustomers.forEach(customer => {
-            const custId = customer.id || customer.email || customer.phone || customer.firstName;
-            const selection = selections[custId] || { tierId: commonTierId, ageCategory: 'adult' };
-            const effectiveTierId = isCommon ? commonTierId : selection.tierId;
-            const ageCategory = selection.ageCategory || 'adult';
-
-            if (pkg.packageTiers && effectiveTierId) {
-                const packageTier = pkg.packageTiers.find((t) => t.id === effectiveTierId);
-                const batchTier = selectedBatch?.batchTiers?.find((t: any) => t.packageTierId === effectiveTierId);
-                const tier = batchTier || packageTier;
-
-                if (tier) {
-                    const adultCost = Number(tier.adultCost || 0);
-
-                    if (ageCategory === 'adult') {
-                        total += adultCost;
-                    } else if (ageCategory === 'child') {
-                        if (tier.childCostType === 'percentage') {
-                            total += adultCost * (Number(tier.childCostValue || 0) / 100);
-                        } else {
-                            total += Number(tier.childCostValue || 0);
-                        }
-                    } else if (ageCategory === 'infant') {
-                        if (tier.infantCostType === 'percentage') {
-                            total += adultCost * (Number(tier.infantCostValue || 0) / 100);
-                        } else {
-                            total += Number(tier.infantCostValue || 0);
-                        }
-                    }
-                }
-            }
+            const custId = customer.id || customer.email || customer.phone || customer.firstName || "";
+            const defaultTierId = currentBatch?.costSheet?.tiers?.[0]?.id || commonTierId;
+            const selection = selections[custId] || { tierId: defaultTierId, ageCategory: 'adult' };
+            total += getTravelerCost(customer, selection, isCommon, commonTierId, pkg, currentBatch);
         });
 
         return Math.max(0, total + adjustment - discount - specialDiscount);
@@ -775,7 +843,7 @@ export function CreateBookingDialog({
         pkgId: string,
         commonTierId: string,
         isCommon: boolean,
-        selections: Record<string, { tierId: string, ageCategory: 'adult' | 'child' | 'infant' }>,
+        selections: Record<string, { tierId: string, ageCategory: string }>,
         currentCustomers: ICustomer[]
     ) => {
         return calculateTotalAmount(pkgId, commonTierId, isCommon, selections, currentCustomers, 0, 0, 0);
@@ -785,42 +853,18 @@ export function CreateBookingDialog({
         const pkg = packages.find((p) => p.id === formData.packageId);
         if (!pkg || formData.customers.length === 0) return {};
 
-        const selectedBatch = availableBatches.find((b) => b.id === formData.batchId);
+        const currentBatch = availableBatches.find((b) => b.id === formData.batchId) || selectedBatch;
         const rawCosts: Record<string, number> = {};
         let totalRaw = 0;
 
         formData.customers.forEach((customer) => {
             const custId = customer.id || customer.email || customer.phone || customer.firstName || "";
+            const defaultTierId = currentBatch?.costSheet?.tiers?.[0]?.id || formData.packageTierId;
             const selection = formData.customerSelections[custId] || {
-                tierId: formData.packageTierId,
+                tierId: defaultTierId,
                 ageCategory: "adult",
             };
-            const effectiveTierId = formData.isCommonTier ? formData.packageTierId : selection.tierId;
-            const ageCategory = selection.ageCategory || "adult";
-
-            let cost = 0;
-            if (pkg.packageTiers && effectiveTierId) {
-                const packageTier = pkg.packageTiers.find((t) => t.id === effectiveTierId);
-                const batchTier = selectedBatch?.batchTiers?.find((t: any) => t.packageTierId === effectiveTierId);
-                const tier = batchTier || packageTier;
-
-                if (tier) {
-                    const adultCost = Number(tier.adultCost || 0);
-                    if (ageCategory === "adult") {
-                        cost = adultCost;
-                    } else if (ageCategory === "child") {
-                        cost =
-                            tier.childCostType === "percentage"
-                                ? adultCost * (Number(tier.childCostValue || 0) / 100)
-                                : Number(tier.childCostValue || 0);
-                    } else if (ageCategory === "infant") {
-                        cost =
-                            tier.infantCostType === "percentage"
-                                ? adultCost * (Number(tier.infantCostValue || 0) / 100)
-                                : Number(tier.infantCostValue || 0);
-                    }
-                }
-            }
+            const cost = getTravelerCost(customer, selection, formData.isCommonTier, formData.packageTierId, pkg, currentBatch);
             rawCosts[custId] = cost;
             totalRaw += cost;
         });
@@ -956,10 +1000,11 @@ export function CreateBookingDialog({
             const newCount = formData.customers.length + 1;
             setFormData((prev) => {
                 const pkg = packages.find(p => p.id === prev.packageId);
-                const defaultTierId = prev.packageTierId || (pkg?.packageTiers && pkg.packageTiers.length > 0 ? (pkg.packageTiers[0].id || "") : "");
+                const batch = availableBatches.find(b => b.id === prev.batchId);
+                const defaultTierId = prev.packageTierId || (batch?.costSheet?.tiers?.[0]?.id) || (pkg?.packageTiers && pkg.packageTiers.length > 0 ? (pkg.packageTiers[0].id || "") : "");
                 const newSelections = {
                     ...prev.customerSelections,
-                    [custId]: { tierId: defaultTierId, ageCategory: 'adult' as const }
+                    [custId]: { tierId: defaultTierId, ageCategory: 'adult' }
                 };
                 const newCustomers = [...prev.customers, customer];
                 return {
@@ -1152,11 +1197,21 @@ export function CreateBookingDialog({
                 adjustmentAmount: formData.adjustmentAmount || 0,
                 specialRequests: formData.specialRequests,
                 isCommonTier: formData.isCommonTier,
-                customerSelections: Object.entries(formData.customerSelections).map(([customerId, selection]) => ({
-                    customerId,
-                    tierId: selection.tierId,
-                    ageCategory: selection.ageCategory
-                })),
+                customerSelections: formData.customers.map((c) => {
+                    const custId = c.id || c.email || c.phone || c.firstName || "";
+                    const selection = formData.customerSelections[custId] || {
+                        tierId: formData.packageTierId || availableTiers[0]?.id || "",
+                        ageCategory: "adult",
+                    };
+                    const effectiveTierId = formData.isCommonTier ? (formData.packageTierId || availableTiers[0]?.id || "") : selection.tierId;
+                    const matchedTier = availableTiers.find((t) => t.id === effectiveTierId);
+                    return {
+                        customerId: c.id || custId,
+                        tierId: effectiveTierId,
+                        tierName: matchedTier?.name || undefined,
+                        ageCategory: selection.ageCategory || "adult",
+                    };
+                }),
                 paymentStructureId: formData.paymentStructureId || undefined,
                 isPaymentOverridden: formData.isPaymentOverridden,
                 paymentOverrideReason: formData.paymentOverrideReason || undefined,
@@ -1542,7 +1597,25 @@ export function CreateBookingDialog({
                                                                         key={batch.id}
                                                                         className={`relative p-4 border rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-between hover:border-primary/50 hover:shadow-xs ${isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "bg-card border-border"}`}
                                                                         onClick={() => {
-                                                                            setFormData(prev => ({ ...prev, batchId: batch.id }));
+                                                                            let nextTierId = formData.packageTierId;
+                                                                            if (batch.costSheet?.tiers && batch.costSheet.tiers.length > 0) {
+                                                                                nextTierId = batch.costSheet.tiers[0].id;
+                                                                            }
+                                                                            const newSelections = { ...formData.customerSelections };
+                                                                            formData.customers.forEach((c) => {
+                                                                                const custId = c.id || c.email || c.phone || c.firstName || "";
+                                                                                newSelections[custId] = {
+                                                                                    tierId: nextTierId,
+                                                                                    ageCategory: newSelections[custId]?.ageCategory || "adult",
+                                                                                };
+                                                                            });
+                                                                            setFormData(prev => ({
+                                                                                ...prev,
+                                                                                batchId: batch.id,
+                                                                                packageTierId: nextTierId,
+                                                                                customerSelections: newSelections,
+                                                                                totalAmount: calculateTotalAmount(prev.packageId, nextTierId, prev.isCommonTier, newSelections, prev.customers)
+                                                                            }));
                                                                             setError(null);
                                                                             if (errors.batchId) setErrors(prev => ({ ...prev, batchId: "" }));
                                                                         }}
@@ -1550,7 +1623,14 @@ export function CreateBookingDialog({
                                                                         <div className="flex items-center gap-3">
                                                                             <Calendar className="h-4.5 w-4.5 text-primary flex-shrink-0" />
                                                                             <div className="space-y-0.5">
-                                                                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Travel Dates</p>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Travel Dates</p>
+                                                                                    {batch.costSheet?.tiers && batch.costSheet.tiers.length > 0 && (
+                                                                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">
+                                                                                            {batch.costSheet.hasTiers ? `${batch.costSheet.tiers.length} Tiers` : "Cost Sheet"}
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                </div>
                                                                                 <p className="text-sm font-bold text-foreground">
                                                                                     {new Date(batch.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                                                                     <span className="text-xs font-semibold text-muted-foreground mx-1.5">to</span>
@@ -1822,7 +1902,7 @@ export function CreateBookingDialog({
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between border-b pb-2">
                                                     <h4 className="text-sm font-semibold text-foreground">2. Traveler Pricing & Configurations</h4>
-                                                    {selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 1 && (
+                                                    {availableTiers.length > 1 && (
                                                         <div className="flex items-center gap-2 bg-muted/40 px-3 py-1.5 rounded-lg border">
                                                             <Label htmlFor="common-tier-mode" className="text-xs font-semibold cursor-pointer text-muted-foreground">Use same tier for all</Label>
                                                             <Switch
@@ -1840,66 +1920,45 @@ export function CreateBookingDialog({
                                                     )}
                                                 </div>
 
-                                                {formData.isCommonTier && selectedPackage?.packageTiers && selectedPackage.packageTiers.length > 0 && (
+                                                {formData.isCommonTier && availableTiers.length > 0 && (
                                                     <div className="p-4 bg-muted/30 border rounded-xl space-y-2">
                                                         <Label className="text-xs font-bold text-muted-foreground">Package Price Tier</Label>
-                                                        {selectedPackage.packageTiers.length === 1 ? (
+                                                        {availableTiers.length === 1 ? (
                                                             (() => {
-                                                                const tier = selectedPackage.packageTiers[0];
-                                                                const { isCustom, baseAdultCost, baseChildCost, baseInfantCost, adultCost, childCost, infantCost } = getTierPrices(tier);
+                                                                const tier = availableTiers[0];
                                                                 return (
                                                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3.5 bg-background border rounded-xl gap-3">
                                                                         <span className="font-semibold text-sm text-foreground">{tier.name}</span>
-                                                                        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                                                                            <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-500" />
-                                                                                {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
-                                                                                <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
-                                                                            </span>
-                                                                            <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-slate-500" />
-                                                                                {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
-                                                                                <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
-                                                                            </span>
-                                                                            <span className="flex items-center gap-1.5"><Baby className="w-4 h-4 text-slate-500" />
-                                                                                {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
-                                                                                <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
-                                                                            </span>
+                                                                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                                                                            {tier.ageCategories.map((cat) => (
+                                                                                <Badge key={cat.categoryKey} variant="secondary" className="font-medium text-xs px-2.5 py-1">
+                                                                                    {cat.label}: <span className="font-bold ml-1">{BookingService.formatCurrency(cat.cost)}</span>
+                                                                                </Badge>
+                                                                            ))}
                                                                         </div>
                                                                     </div>
                                                                 );
                                                             })()
                                                         ) : (
                                                             <Select
-                                                                value={formData.packageTierId}
+                                                                value={formData.packageTierId || availableTiers[0]?.id}
                                                                 onValueChange={handleTierSelect}
                                                             >
                                                                 <SelectTrigger className="h-10 bg-background">
                                                                     <SelectValue placeholder="Select common tier" />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    {selectedPackage.packageTiers.map(tier => {
-                                                                        const { isCustom, baseAdultCost, baseChildCost, baseInfantCost, adultCost, childCost, infantCost } = getTierPrices(tier);
-
-                                                                        return (
-                                                                            <SelectItem key={tier.id} value={tier.id!}>
-                                                                                <span className="flex items-center gap-3">
-                                                                                    <span className="font-semibold">{tier.name}</span>
-                                                                                    <span className="text-muted-foreground">|</span>
-                                                                                    <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />
-                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
-                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
-                                                                                    </span>
-                                                                                    <span className="flex items-center gap-1"><PersonStanding className="w-3.5 h-3.5" />
-                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
-                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
-                                                                                    </span>
-                                                                                    <span className="flex items-center gap-1"><Baby className="w-3.5 h-3.5" />
-                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
-                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
-                                                                                    </span>
+                                                                    {availableTiers.map(tier => (
+                                                                        <SelectItem key={tier.id} value={tier.id}>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="font-semibold">{tier.name}</span>
+                                                                                <span className="text-muted-foreground">|</span>
+                                                                                <span className="text-xs text-muted-foreground">
+                                                                                    {tier.ageCategories.map(c => `${c.label}: ${BookingService.formatCurrency(c.cost)}`).join(" • ")}
                                                                                 </span>
-                                                                            </SelectItem>
-                                                                        );
-                                                                    })}
+                                                                            </div>
+                                                                        </SelectItem>
+                                                                    ))}
                                                                 </SelectContent>
                                                             </Select>
                                                         )}
@@ -1909,7 +1968,17 @@ export function CreateBookingDialog({
 
                                                 <div className="space-y-3">
                                                     {formData.customers.map((c, index) => {
-                                                        const selection = formData.customerSelections[c.id!] || { tierId: formData.packageTierId, ageCategory: 'adult' };
+                                                        const custId = c.id || c.email || c.phone || c.firstName || '';
+                                                        const defaultTierId = availableTiers[0]?.id || formData.packageTierId;
+                                                        const selection = formData.customerSelections[custId] || { tierId: defaultTierId, ageCategory: 'adult' };
+                                                        const effectiveTierId = formData.isCommonTier ? (formData.packageTierId || defaultTierId) : selection.tierId;
+                                                        const activeTier = availableTiers.find((t) => t.id === effectiveTierId) || availableTiers[0];
+                                                        const ageCategories = activeTier?.ageCategories || [
+                                                            { categoryKey: 'adult', label: 'Adult', cost: 0 },
+                                                            { categoryKey: 'child', label: 'Child', cost: 0 },
+                                                            { categoryKey: 'infant', label: 'Infant', cost: 0 },
+                                                        ];
+
                                                         return (
                                                             <div key={c.id || index} className="flex flex-col p-3 bg-card border rounded-xl hover:shadow-xs transition-shadow gap-3">
                                                                 <div className="flex items-center justify-between">
@@ -1932,13 +2001,13 @@ export function CreateBookingDialog({
                                                                         </div>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
-                                                                        {!formData.isCommonTier && selectedPackage?.packageTiers && (
+                                                                        {!formData.isCommonTier && availableTiers.length > 1 && (
                                                                             <Select
-                                                                                value={selection.tierId}
+                                                                                value={selection.tierId || availableTiers[0]?.id}
                                                                                 onValueChange={(val) => {
                                                                                     if (errors.customerTiers) setErrors(prev => ({ ...prev, customerTiers: "" }));
                                                                                     setFormData(prev => {
-                                                                                        const customerKey = c.id || '';
+                                                                                        const customerKey = custId;
                                                                                         const newSelections = { ...prev.customerSelections, [customerKey]: { ...selection, tierId: val } };
                                                                                         return {
                                                                                             ...prev,
@@ -1948,43 +2017,24 @@ export function CreateBookingDialog({
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <SelectTrigger className="w-40 h-9 text-xs bg-background">
+                                                                                <SelectTrigger className="w-36 h-9 text-xs bg-background">
                                                                                     <SelectValue placeholder="Tier" />
                                                                                 </SelectTrigger>
                                                                                 <SelectContent>
-                                                                                    {selectedPackage.packageTiers.map(tier => {
-                                                                                        const { isCustom, baseAdultCost, baseChildCost, baseInfantCost, adultCost, childCost, infantCost } = getTierPrices(tier);
-
-                                                                                        return (
-                                                                                            <SelectItem key={tier.id} value={tier.id!}>
-                                                                                                <span className="flex items-center gap-2">
-                                                                                                    <span className="font-semibold">{tier.name}</span>
-                                                                                                    <span className="text-muted-foreground">|</span>
-                                                                                                    <span className="flex items-center gap-0.5"><User className="w-3 h-3 text-slate-500" />
-                                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseAdultCost)}</span>}
-                                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(adultCost)}</span>
-                                                                                                    </span>
-                                                                                                    <span className="flex items-center gap-0.5"><PersonStanding className="w-3 h-3 text-slate-500" />
-                                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseChildCost)}</span>}
-                                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(childCost)}</span>
-                                                                                                    </span>
-                                                                                                    <span className="flex items-center gap-0.5"><Baby className="w-3 h-3 text-slate-500" />
-                                                                                                        {isCustom && <span className="line-through text-muted-foreground/60">{BookingService.formatCurrency(baseInfantCost)}</span>}
-                                                                                                        <span className={isCustom ? "text-amber-600 font-medium" : ""}>{BookingService.formatCurrency(infantCost)}</span>
-                                                                                                    </span>
-                                                                                                </span>
-                                                                                            </SelectItem>
-                                                                                        );
-                                                                                    })}
+                                                                                    {availableTiers.map(tier => (
+                                                                                        <SelectItem key={tier.id} value={tier.id}>
+                                                                                            <span className="font-semibold">{tier.name}</span>
+                                                                                        </SelectItem>
+                                                                                    ))}
                                                                                 </SelectContent>
                                                                             </Select>
                                                                         )}
                                                                         <Select
                                                                             value={selection.ageCategory || 'adult'}
-                                                                            onValueChange={(val: 'adult' | 'child' | 'infant') => {
-                                                                                if (!c.id) return;
+                                                                            onValueChange={(val: string) => {
+                                                                                if (!custId) return;
                                                                                 setFormData(prev => {
-                                                                                    const newSelections = { ...prev.customerSelections, [c.id!]: { ...selection, ageCategory: val } };
+                                                                                    const newSelections = { ...prev.customerSelections, [custId]: { ...selection, ageCategory: val } };
                                                                                     return {
                                                                                         ...prev,
                                                                                         customerSelections: newSelections,
@@ -1993,13 +2043,15 @@ export function CreateBookingDialog({
                                                                                 });
                                                                             }}
                                                                         >
-                                                                            <SelectTrigger className="w-24 h-9 text-xs bg-background">
+                                                                            <SelectTrigger className="min-w-32 w-auto h-9 text-xs bg-background">
                                                                                 <SelectValue placeholder="Age" />
                                                                             </SelectTrigger>
                                                                             <SelectContent>
-                                                                                <SelectItem value="adult">Adult</SelectItem>
-                                                                                <SelectItem value="child">Child</SelectItem>
-                                                                                <SelectItem value="infant">Infant</SelectItem>
+                                                                                {ageCategories.map((cat) => (
+                                                                                    <SelectItem key={cat.categoryKey} value={cat.categoryKey}>
+                                                                                        <span>{cat.label} ({BookingService.formatCurrency(cat.cost)})</span>
+                                                                                    </SelectItem>
+                                                                                ))}
                                                                             </SelectContent>
                                                                         </Select>
                                                                         <Button
@@ -2215,30 +2267,20 @@ export function CreateBookingDialog({
                                                     <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Traveler Price Details</h5>
                                                     <div className="space-y-2 divide-y divide-muted/30">
                                                         {formData.customers.map((c) => {
-                                                            const selection = formData.customerSelections[c.id!] || { tierId: formData.packageTierId, ageCategory: 'adult' };
-                                                            const effectiveTierId = formData.isCommonTier ? formData.packageTierId : selection.tierId;
-                                                            const ageCategory = selection.ageCategory || 'adult';
-                                                            const tier = selectedPackage.packageTiers?.find((t) => t.id === effectiveTierId);
-
-                                                            let cost = 0;
-                                                            if (tier) {
-                                                                const { adultCost, childCost, infantCost } = getTierPrices(tier);
-                                                                if (ageCategory === 'adult') {
-                                                                    cost = adultCost;
-                                                                } else if (ageCategory === 'child') {
-                                                                    cost = childCost;
-                                                                } else if (ageCategory === 'infant') {
-                                                                    cost = infantCost;
-                                                                }
-                                                            }
+                                                            const custId = c.id || c.email || c.phone || c.firstName || '';
+                                                            const defaultTierId = availableTiers[0]?.id || formData.packageTierId;
+                                                            const selection = formData.customerSelections[custId] || { tierId: defaultTierId, ageCategory: 'adult' };
+                                                            const effectiveTierId = formData.isCommonTier ? (formData.packageTierId || defaultTierId) : selection.tierId;
+                                                            const tier = availableTiers.find((t) => t.id === effectiveTierId) || availableTiers[0];
+                                                            const cost = getTravelerCost(c, selection, formData.isCommonTier, formData.packageTierId, selectedPackage, selectedBatch);
 
                                                             return (
-                                                                <div key={c.id} className="flex justify-between items-center text-xs py-2 first:pt-0">
+                                                                <div key={c.id || custId} className="flex justify-between items-center text-xs py-2 first:pt-0">
                                                                     <div className="space-y-0.5">
                                                                         <p className="font-semibold text-foreground">{c.firstName} {c.lastName}</p>
-                                                                        <p className="text-[10px] text-muted-foreground uppercase">{ageCategory} • {tier?.name || 'No tier'}</p>
+                                                                        <p className="text-[10px] text-muted-foreground uppercase">{selection.ageCategory || 'Adult'} • {tier?.name || 'Standard'}</p>
                                                                     </div>
-                                                                    <span className="font-semibold text-foreground">{BookingService.formatCurrency(cost)}</span>
+                                                                    <span className="font-bold text-foreground">{BookingService.formatCurrency(cost)}</span>
                                                                 </div>
                                                             );
                                                         })}
@@ -2466,15 +2508,25 @@ export function CreateBookingDialog({
                                                 formData.customerSelections,
                                                 formData.customers
                                             );
-                                            const pkgDiscountType = selectedPackage?.maxDiscountType || (selectedPackage?.maxDiscountPercentage ? "percentage" : "amount");
-                                            const pkgDiscountScope = selectedPackage?.maxDiscountScope || "group";
-                                            const effectiveDiscountScope = pkgDiscountScope === "passenger" ? "individual" : "group";
-                                            const pkgMaxVal = selectedPackage?.maxDiscountValue ?? selectedPackage?.maxDiscountPercentage ?? 0;
+                                            const batchCostSheet = selectedBatch?.costSheet;
+                                            const hasBatchCostSheetDiscount = !!batchCostSheet?.maxDiscountEnabled;
+                                            const effectiveDiscountType = hasBatchCostSheetDiscount
+                                                ? (batchCostSheet?.maxDiscountType || "amount")
+                                                : (selectedPackage?.maxDiscountType || (selectedPackage?.maxDiscountPercentage ? "percentage" : "amount"));
+                                            const effectiveDiscountScope = hasBatchCostSheetDiscount
+                                                ? (batchCostSheet?.maxDiscountScope || "group")
+                                                : (selectedPackage?.maxDiscountScope || "group");
+                                            const effectiveInputScope = effectiveDiscountScope === "passenger" ? "individual" : "group";
+                                            const effectiveMaxVal = hasBatchCostSheetDiscount
+                                                ? (effectiveDiscountType === "percentage"
+                                                    ? (batchCostSheet?.maxDiscountPercentage ?? batchCostSheet?.maxDiscountValue ?? 0)
+                                                    : (batchCostSheet?.maxDiscountValue ?? 0))
+                                                : (selectedPackage?.maxDiscountValue ?? selectedPackage?.maxDiscountPercentage ?? 0);
                                             const travelerCount = formData.customers.length || 1;
 
-                                            const maxDiscountAmount = pkgDiscountScope === "passenger"
-                                                ? (pkgDiscountType === "percentage" ? Math.round((baseTotal * pkgMaxVal) / 100) : pkgMaxVal * travelerCount)
-                                                : (pkgDiscountType === "percentage" ? Math.round((baseTotal * pkgMaxVal) / 100) : pkgMaxVal);
+                                            const maxDiscountAmount = effectiveDiscountScope === "passenger"
+                                                ? (effectiveDiscountType === "percentage" ? Math.round((baseTotal * effectiveMaxVal) / 100) : effectiveMaxVal * travelerCount)
+                                                : (effectiveDiscountType === "percentage" ? Math.round((baseTotal * effectiveMaxVal) / 100) : effectiveMaxVal);
 
                                             const isDiscountExceeded = (formData.discountAmount || 0) > maxDiscountAmount && maxDiscountAmount > 0;
 
@@ -2491,21 +2543,21 @@ export function CreateBookingDialog({
                                                                 Booking Discount
                                                             </Label>
                                                             <p className="text-[11px] text-muted-foreground">
-                                                                {pkgDiscountScope === "passenger"
-                                                                    ? "Discount is configured per passenger for this package."
+                                                                {effectiveDiscountScope === "passenger"
+                                                                    ? `Discount is configured per passenger for this ${hasBatchCostSheetDiscount ? "batch" : "package"}.`
                                                                     : "Discount is configured for the entire booking group."}
                                                                 {maxDiscountAmount > 0 && (
                                                                     <span className="font-semibold text-emerald-600 dark:text-emerald-400 ml-1">
-                                                                        Max allowed: {pkgDiscountScope === "passenger"
-                                                                            ? `${pkgDiscountType === "percentage" ? `${pkgMaxVal}%` : `₹${pkgMaxVal}`} / passenger × ${travelerCount} travelers = ${BookingService.formatCurrency(maxDiscountAmount)} Max`
-                                                                            : `${pkgDiscountType === "percentage" ? `${pkgMaxVal}%` : `₹${pkgMaxVal}`} Total (${BookingService.formatCurrency(maxDiscountAmount)})`}
+                                                                        Max allowed: {effectiveDiscountScope === "passenger"
+                                                                            ? `${effectiveDiscountType === "percentage" ? `${effectiveMaxVal}%` : `₹${effectiveMaxVal}`} / passenger × ${travelerCount} travelers = ${BookingService.formatCurrency(maxDiscountAmount)} Max`
+                                                                            : `${effectiveDiscountType === "percentage" ? `${effectiveMaxVal}%` : `₹${effectiveMaxVal}`} Total (${BookingService.formatCurrency(maxDiscountAmount)})`}
                                                                     </span>
                                                                 )}
                                                             </p>
                                                         </div>
 
-                                                        {/* Discount Scope Indicator (Locked to Package Configuration) */}
-                                                        {pkgDiscountScope === "passenger" ? (
+                                                        {/* Discount Scope Indicator */}
+                                                        {effectiveDiscountScope === "passenger" ? (
                                                             <div className="inline-flex items-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs font-semibold gap-1.5 self-start sm:self-auto">
                                                                 <User className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                                                                 Per Passenger Discount
@@ -2521,7 +2573,7 @@ export function CreateBookingDialog({
                                                     {/* Calculation Type Header & Amount / Percentage Toggle */}
                                                     <div className="flex items-center justify-between gap-2">
                                                         <span className="text-xs font-semibold text-muted-foreground">
-                                                            {effectiveDiscountScope === "group" ? "Total Group Discount Input" : `Per-Passenger Discount Input (${travelerCount} Travelers)`}
+                                                            {effectiveInputScope === "group" ? "Total Group Discount Input" : `Per-Passenger Discount Input (${travelerCount} Travelers)`}
                                                         </span>
                                                         <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border text-xs">
                                                             <button
@@ -2551,7 +2603,7 @@ export function CreateBookingDialog({
                                                         </div>
                                                     </div>
 
-                                                    {effectiveDiscountScope === "group" ? (
+                                                    {effectiveInputScope === "group" ? (
                                                         /* Group Discount Input */
                                                         <div className="flex items-center gap-3 flex-wrap">
                                                             {discountInputType === "amount" ? (
@@ -2674,7 +2726,7 @@ export function CreateBookingDialog({
                                                         <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 py-2.5">
                                                             <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                                                             <AlertDescription className="text-xs font-medium">
-                                                                Warning: Discount amount ({BookingService.formatCurrency(formData.discountAmount)}) exceeds maximum allowed discount of {pkgDiscountType === "percentage" ? `${pkgMaxVal}%` : BookingService.formatCurrency(pkgMaxVal)} ({BookingService.formatCurrency(maxDiscountAmount)}) for this package.
+                                                                Warning: Discount amount ({BookingService.formatCurrency(formData.discountAmount)}) exceeds maximum allowed discount of {effectiveDiscountType === "percentage" ? `${effectiveMaxVal}%` : BookingService.formatCurrency(effectiveMaxVal)} ({BookingService.formatCurrency(maxDiscountAmount)}) for this {hasBatchCostSheetDiscount ? "batch" : "package"}.
                                                             </AlertDescription>
                                                         </Alert>
                                                     )}
@@ -3013,7 +3065,7 @@ export function CreateBookingDialog({
                                                                 const currentAmt = formData.allocations[custId] || "";
                                                                 const targetShare = shares[custId] || 0;
                                                                 const selection = formData.customerSelections[custId];
-                                                                const tier = selectedPackage?.packageTiers?.find(
+                                                                const tier = availableTiers.find(
                                                                     (t) => t.id === (formData.isCommonTier ? formData.packageTierId : selection?.tierId)
                                                                 );
 
@@ -3360,7 +3412,7 @@ export function CreateBookingDialog({
                                             <div className="space-y-2 max-h-[16vh] overflow-y-auto pr-1">
                                                 {formData.customers.map((c) => {
                                                     const selection = c.id ? formData.customerSelections[c.id] : undefined;
-                                                    const tier = selectedPackage?.packageTiers?.find(t => t.id === (formData.isCommonTier ? formData.packageTierId : selection?.tierId));
+                                                    const tier = availableTiers.find(t => t.id === (formData.isCommonTier ? formData.packageTierId : selection?.tierId));
                                                     return (
                                                         <div key={c.id} className="p-2 border rounded-lg bg-background text-xs space-y-1">
                                                             <div className="flex items-center justify-between">

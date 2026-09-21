@@ -29,6 +29,9 @@ export class Customer {
   @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;
 
+  @Column({ unique: true, name: 'customer_number' })
+  customerNumber: string;
+
   // Personal Details
   @Column({ name: 'first_name' })
   firstName: string;

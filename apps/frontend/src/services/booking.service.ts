@@ -5,6 +5,7 @@ import type {
     IBooking,
     IBookingListItem,
     IBookingLog,
+    IBookingLogsResponse,
     IBookingPayment,
     IBookingStatistics,
     ICancelBookingRequest,
@@ -60,8 +61,26 @@ export class BookingService {
         return response.data;
     }
 
-    static async getBookingLogs(id: string): Promise<IBookingLog[]> {
-        const response = await axiosInstance.get(`${this.baseUrl}/${id}/logs`);
+    static async getBookingLogs(
+        id: string,
+        page: number = 1,
+        limit: number = 5,
+        offset?: number,
+    ): Promise<IBookingLogsResponse> {
+        const response = await axiosInstance.get<IBookingLogsResponse>(`${this.baseUrl}/${id}/logs`, {
+            params: { page, limit, ...(offset !== undefined ? { offset } : {}) },
+        });
+        if (Array.isArray(response.data)) {
+            return {
+                data: response.data,
+                total: (response.data as IBookingLog[]).length,
+                page,
+                limit,
+                offset: offset || 0,
+                hasMore: false,
+                entityMeta: {},
+            };
+        }
         return response.data;
     }
 

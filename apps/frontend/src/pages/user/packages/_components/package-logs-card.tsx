@@ -3,22 +3,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
     HoverCard,
     HoverCardContent,
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useInfiniteLogs } from "@/hooks/use-infinite-logs";
+import axiosInstance from "@/lib/axios";
 import { getFileUrl } from "@/lib/utils";
 import { format } from "date-fns";
 import {
     Activity,
     Archive,
     CheckCircle2,
-    Clock,
     Edit,
     ExternalLink,
     FileText,
     History,
+    Loader2,
     Mail,
     Plus,
     RotateCcw,
@@ -45,13 +54,52 @@ export interface IPackageActivity {
 interface PackageLogsCardProps {
     logs: IPackageActivity[];
     loading?: boolean;
+    entityId?: string;
+    totalCount?: number;
+    externalOpen?: boolean;
+    onExternalOpenChange?: (open: boolean) => void;
 }
 
 export const PackageLogsCard: React.FC<PackageLogsCardProps> = ({
     logs,
     loading = false,
+    entityId,
+    totalCount,
+    externalOpen,
+    onExternalOpenChange,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isModalOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+    const setIsModalOpen = (open: boolean) => {
+        setInternalOpen(open);
+        onExternalOpenChange?.(open);
+    };
+
+    const total = totalCount ?? logs.length;
+
+    const {
+        modalLogs,
+        loadingMore,
+        hasMore,
+        scrollContainerRef,
+        sentinelRef,
+        handleScroll,
+        loadMore,
+    } = useInfiniteLogs<IPackageActivity>({
+        initialLogs: logs,
+        totalCount: total,
+        isOpen: isModalOpen,
+        pageSize: 15,
+        fetchPage: async ({ page, limit, offset }) => {
+            if (!entityId) return { data: [], total };
+            const res = await axiosInstance.get(`/packages/${entityId}/logs`, {
+                params: { page, limit, offset },
+            });
+            const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
+            const newTotal = Array.isArray(res.data) ? res.data.length : (res.data.total ?? total);
+            return { data, total: newTotal };
+        },
+    });
 
     const getActionMeta = (log: IPackageActivity) => {
         const action = log.action.toLowerCase();
@@ -65,22 +113,13 @@ export const PackageLogsCard: React.FC<PackageLogsCardProps> = ({
                     badgeColor:
                         "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800",
                 };
-            case "publish":
-            case "publish_update":
-                return {
-                    label: action === "publish_update" ? "Published Updates" : "Package Published",
-                    icon: Send,
-                    dotColor: "bg-indigo-500",
-                    badgeColor:
-                        "bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
-                };
             case "update":
                 return {
                     label: "Package Updated",
                     icon: Edit,
-                    dotColor: "bg-blue-500",
+                    dotColor: "bg-indigo-500",
                     badgeColor:
-                        "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
+                        "bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
                 };
             case "edit_draft":
                 return {
@@ -90,52 +129,51 @@ export const PackageLogsCard: React.FC<PackageLogsCardProps> = ({
                     badgeColor:
                         "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
                 };
+            case "publish":
+                return {
+                    label: "Package Published",
+                    icon: Send,
+                    dotColor: "bg-blue-500",
+                    badgeColor:
+                        "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
+                };
+            case "publish_update":
+                return {
+                    label: "Changes Published",
+                    icon: CheckCircle2,
+                    dotColor: "bg-teal-500",
+                    badgeColor:
+                        "bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800",
+                };
+            case "archive":
+                return {
+                    label: "Package Archived",
+                    icon: Archive,
+                    dotColor: "bg-gray-500",
+                    badgeColor:
+                        "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+                };
             case "unpublish":
                 return {
-                    label: "Unpublished",
+                    label: "Package Unpublished",
                     icon: RotateCcw,
                     dotColor: "bg-orange-500",
                     badgeColor:
                         "bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800",
                 };
-            case "archive":
-                return {
-                    label: "Archived",
-                    icon: Archive,
-                    dotColor: "bg-slate-500",
-                    badgeColor:
-                        "bg-slate-50 text-slate-800 border-slate-200 dark:bg-slate-950/50 dark:text-slate-300 dark:border-slate-800",
-                };
-            case "delete":
             case "discard_changes":
                 return {
-                    label: action === "discard_changes" ? "Draft Discarded" : "Deleted",
+                    label: "Draft Discarded",
                     icon: Trash2,
                     dotColor: "bg-rose-500",
                     badgeColor:
                         "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
                 };
-            case "approval_requested":
+            case "delete":
                 return {
-                    label: "Approval Requested",
-                    icon: Clock,
-                    dotColor: "bg-amber-500",
-                    badgeColor:
-                        "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
-                };
-            case "approval_approved":
-                return {
-                    label: "Approval Granted",
-                    icon: CheckCircle2,
-                    dotColor: "bg-emerald-500",
-                    badgeColor:
-                        "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800",
-                };
-            case "approval_rejected":
-                return {
-                    label: "Approval Rejected",
+                    label: "Package Deleted",
                     icon: XCircle,
-                    dotColor: "bg-rose-500",
+                    dotColor: "bg-rose-600",
                     badgeColor:
                         "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
                 };
@@ -149,189 +187,259 @@ export const PackageLogsCard: React.FC<PackageLogsCardProps> = ({
         }
     };
 
-    const displayedLogs = expanded ? logs : logs.slice(0, 5);
+    const renderLogItem = (log: IPackageActivity) => {
+        const meta = getActionMeta(log);
+        const Icon = meta.icon;
+        const authorName = log.user?.name || "System User";
+        const authorInitials = authorName
+            .split(" ")
+            .map((n) => n[0])
+            .slice(0, 2)
+            .join("")
+            .toUpperCase();
+        const avatarUrl = log.user?.avatar ? getFileUrl(log.user.avatar) : undefined;
 
-    return (
-        <Card className="shadow-xs border border-border/80">
-            <CardHeader className="pb-3 border-b border-border/60">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <History className="w-5 h-5 text-primary" />
-                        <div>
-                            <CardTitle className="text-base font-bold tracking-tight">
-                                Activity & Audit Logs
-                            </CardTitle>
-                            <p className="text-xs text-muted-foreground">
-                                History of revisions, publications, and state updates.
-                            </p>
-                        </div>
-                    </div>
-                    {logs.length > 0 && (
-                        <Badge variant="outline" className="font-mono text-xs">
-                            {logs.length} events
-                        </Badge>
-                    )}
+        return (
+            <div key={log.id} className="relative flex items-start gap-3 group">
+                {/* Centered Timeline Marker */}
+                <div
+                    className={`h-6 w-6 rounded-full shrink-0 z-10 border-2 border-background flex items-center justify-center text-white shadow-xs mt-0.5 ${meta.dotColor}`}
+                >
+                    <Icon className="w-3.5 h-3.5" />
                 </div>
-            </CardHeader>
 
-            <CardContent className="pt-4">
-                {loading ? (
-                    <div className="space-y-4">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex gap-3 items-start">
-                                <Skeleton className="h-6 w-6 rounded-full shrink-0 mt-0.5" />
-                                <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-4 w-1/3" />
-                                    <Skeleton className="h-3 w-3/4" />
-                                </div>
-                            </div>
-                        ))}
+                {/* Content Card */}
+                <div className="flex-1 min-w-0 bg-muted/30 hover:bg-muted/50 transition-colors p-3 rounded-lg border border-border/60 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <Badge
+                            variant="outline"
+                            className={`font-semibold text-[11px] px-2 py-0.5 border ${meta.badgeColor}`}
+                        >
+                            {meta.label}
+                        </Badge>
+
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                            {format(new Date(log.createdAt), "MMM d, yyyy • h:mm a")}
+                        </span>
                     </div>
-                ) : logs.length === 0 ? (
-                    <div className="py-8 text-center text-muted-foreground flex flex-col items-center justify-center">
-                        <FileText className="w-8 h-8 mb-2 opacity-40" />
-                        <p className="font-medium text-xs">No activity logs recorded</p>
-                    </div>
-                ) : (
-                    <div className="relative space-y-5 before:absolute before:top-3 before:bottom-3 before:left-[11px] before:w-[2px] before:bg-border/80">
-                        {displayedLogs.map((log) => {
-                            const meta = getActionMeta(log);
-                            const Icon = meta.icon;
-                            const authorName = log.user?.name || "System User";
-                            const authorInitials = authorName
-                                .split(" ")
-                                .map((n) => n[0])
-                                .slice(0, 2)
-                                .join("")
-                                .toUpperCase();
-                            const avatarUrl = log.user?.avatar
-                                ? getFileUrl(log.user.avatar)
-                                : undefined;
 
-                            return (
-                                <div key={log.id} className="relative flex items-start gap-3 group">
-                                    {/* Centered Timeline Marker */}
-                                    <div
-                                        className={`h-6 w-6 rounded-full shrink-0 z-10 border-2 border-background flex items-center justify-center text-white shadow-xs mt-0.5 ${meta.dotColor}`}
-                                    >
-                                        <Icon className="w-3.5 h-3.5" />
-                                    </div>
-
-                                    {/* Content Card */}
-                                    <div className="flex-1 min-w-0 bg-muted/30 hover:bg-muted/50 transition-colors p-3 rounded-lg border border-border/60 space-y-2">
-                                        <div className="flex flex-wrap items-center justify-between gap-1.5">
-                                            <Badge
-                                                variant="outline"
-                                                className={`font-semibold text-[11px] px-2 py-0.5 border capitalize ${meta.badgeColor}`}
-                                            >
-                                                {meta.label}
-                                            </Badge>
-
-                                            <span className="text-[11px] text-muted-foreground font-mono">
-                                                {format(new Date(log.createdAt), "MMM d, yyyy • HH:mm")}
-                                            </span>
-                                        </div>
-
-                                        {/* Performer with HoverCard */}
-                                        <div className="flex items-center gap-1.5 text-xs">
-                                            <span className="text-muted-foreground">By</span>
-                                            <HoverCard openDelay={150} closeDelay={150}>
-                                                <HoverCardTrigger asChild>
-                                                    <button
-                                                        type="button"
-                                                        className="inline-flex items-center gap-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer group/user focus:outline-none"
-                                                    >
-                                                        <Avatar className="w-5 h-5 ring-1 ring-border shrink-0">
-                                                            {avatarUrl && <AvatarImage src={avatarUrl} alt={authorName} />}
-                                                            <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-bold">
-                                                                {authorInitials}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <span className="font-medium text-foreground group-hover/user:text-primary transition-colors underline-offset-2 hover:underline">
-                                                            {authorName}
-                                                        </span>
-                                                    </button>
-                                                </HoverCardTrigger>
-                                                <HoverCardContent align="start" className="w-72 p-4 shadow-lg">
-                                                    <div className="flex items-start gap-3">
-                                                        <Avatar className="w-12 h-12 border shrink-0">
-                                                            {avatarUrl && <AvatarImage src={avatarUrl} alt={authorName} />}
-                                                            <AvatarFallback className="text-base bg-primary/10 text-primary font-bold">
-                                                                {authorInitials}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="space-y-1 min-w-0 flex-1">
-                                                            <h4 className="text-sm font-semibold truncate text-foreground">
-                                                                {authorName}
-                                                            </h4>
-                                                            {log.user?.email && (
-                                                                <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                                                                    <Mail className="w-3 h-3 shrink-0 opacity-70" />
-                                                                    {log.user.email}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    {log.user?.id && (
-                                                        <div className="pt-3 mt-3 border-t flex justify-end">
-                                                            <NavLink to={`/employees/${log.user.id}`}>
-                                                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5">
-                                                                    See Full Details
-                                                                    <ExternalLink className="w-3 h-3" />
-                                                                </Button>
-                                                            </NavLink>
-                                                        </div>
-                                                    )}
-                                                </HoverCardContent>
-                                            </HoverCard>
-                                        </div>
-
-                                        {/* Details message if string or structured */}
-                                        {typeof log.details === "string" ? (
-                                            <p className="text-xs text-foreground/90 leading-relaxed font-normal">
-                                                {log.details}
+                    {/* Performer with HoverCard */}
+                    <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-muted-foreground">By</span>
+                        <HoverCard openDelay={150} closeDelay={150}>
+                            <HoverCardTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer group/user focus:outline-none"
+                                >
+                                    <Avatar className="w-5 h-5 ring-1 ring-border shrink-0">
+                                        {avatarUrl && <AvatarImage src={avatarUrl} alt={authorName} />}
+                                        <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-bold">
+                                            {authorInitials}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium text-foreground group-hover/user:text-primary transition-colors underline-offset-2 hover:underline">
+                                        {authorName}
+                                    </span>
+                                </button>
+                            </HoverCardTrigger>
+                            <HoverCardContent align="start" className="w-72 p-4 shadow-lg">
+                                <div className="flex items-start gap-3">
+                                    <Avatar className="w-12 h-12 border shrink-0">
+                                        {avatarUrl && <AvatarImage src={avatarUrl} alt={authorName} />}
+                                        <AvatarFallback className="text-base bg-primary/10 text-primary font-bold">
+                                            {authorInitials}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="space-y-1 min-w-0 flex-1">
+                                        <h4 className="text-sm font-semibold truncate text-foreground">
+                                            {authorName}
+                                        </h4>
+                                        {log.user?.email && (
+                                            <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                                                <Mail className="w-3 h-3 shrink-0 opacity-70" />
+                                                {log.user.email}
                                             </p>
-                                        ) : log.details?.changesSummary ? (
-                                            <p className="text-xs text-foreground/90 leading-relaxed font-normal">
-                                                {log.details.changesSummary}
-                                            </p>
-                                        ) : null}
-
-                                        {/* Changed fields pill list */}
-                                        {log.details?.changedFields && Array.isArray(log.details.changedFields) && (
-                                            <div className="flex flex-wrap gap-1 pt-1">
-                                                {log.details.changedFields.map((field: string, idx: number) => (
-                                                    <Badge
-                                                        key={idx}
-                                                        variant="secondary"
-                                                        className="text-[10px] font-mono"
-                                                    >
-                                                        {field}
-                                                    </Badge>
-                                                ))}
-                                            </div>
                                         )}
                                     </div>
                                 </div>
-                            );
-                        })}
+                                {log.user?.id && (
+                                    <div className="pt-3 mt-3 border-t flex justify-end">
+                                        <NavLink to={`/employees/${log.user.id}`}>
+                                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5">
+                                                See Full Details
+                                                <ExternalLink className="w-3 h-3" />
+                                            </Button>
+                                        </NavLink>
+                                    </div>
+                                )}
+                            </HoverCardContent>
+                        </HoverCard>
                     </div>
-                )}
 
-                {logs.length > 5 && (
-                    <div className="pt-4 flex justify-center border-t border-border/40 mt-4">
+                    {/* Details text / Changed Fields */}
+                    {log.details?.note && (
+                        <p className="text-xs text-foreground/90 leading-relaxed font-normal">
+                            {log.details.note}
+                        </p>
+                    )}
+
+                    {/* Changed fields pill list */}
+                    {log.details?.changedFields && Array.isArray(log.details.changedFields) && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                            {log.details.changedFields.map((field: string, idx: number) => (
+                                <Badge
+                                    key={idx}
+                                    variant="secondary"
+                                    className="text-[10px] font-mono"
+                                >
+                                    {field}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const displayedLogs = logs.slice(0, 5);
+
+    return (
+        <>
+            <Card className="shadow-xs border border-border/80">
+                <CardHeader className="pb-3 border-b border-border/60">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <History className="w-5 h-5 text-primary" />
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight">
+                                    Activity & Audit Logs
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">
+                                    History of revisions, publications, and state updates.
+                                </p>
+                            </div>
+                        </div>
+                        <Badge variant="outline" className="font-mono text-xs">
+                            {total} {total === 1 ? "entry" : "entries"}
+                        </Badge>
+                    </div>
+                </CardHeader>
+
+                <CardContent className="pt-4">
+                    {loading ? (
+                        <div className="space-y-4">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="flex gap-3 items-start">
+                                    <Skeleton className="h-6 w-6 rounded-full shrink-0 mt-0.5" />
+                                    <div className="space-y-2 flex-1">
+                                        <Skeleton className="h-4 w-1/3" />
+                                        <Skeleton className="h-3 w-3/4" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : logs.length === 0 ? (
+                        <div className="py-8 text-center text-muted-foreground flex flex-col items-center justify-center">
+                            <FileText className="w-8 h-8 mb-2 opacity-40" />
+                            <p className="font-medium text-xs">No activity logs recorded</p>
+                        </div>
+                    ) : (
+                        <div className="relative space-y-5 before:absolute before:top-3 before:bottom-3 before:left-[11px] before:w-[2px] before:bg-border/80">
+                            {displayedLogs.map(renderLogItem)}
+                        </div>
+                    )}
+
+                    {total > 5 && (
+                        <div className="pt-4 flex justify-center border-t border-border/40 mt-4">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsModalOpen(true)}
+                                className="text-xs text-primary font-medium hover:text-primary/80 hover:bg-primary/5 transition-colors gap-1.5"
+                            >
+                                <History className="w-3.5 h-3.5" />
+                                Show All ({total} events)
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Audit Logs Modal with Infinite Scroll */}
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <DialogContent className="max-w-2xl sm:max-w-2xl w-[95vw] h-[80vh] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+                    <DialogHeader className="p-4 sm:p-5 border-b shrink-0">
+                        <div className="flex items-center justify-between pr-6">
+                            <DialogTitle className="text-base font-semibold flex items-center gap-2">
+                                <History className="w-4 h-4 text-primary" />
+                                Activity & Audit Logs
+                            </DialogTitle>
+                            <Badge variant="secondary" className="font-normal text-xs font-mono">
+                                {total} {total === 1 ? "entry" : "entries"}
+                            </Badge>
+                        </div>
+                        <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                            Complete history of package edits, drafts, and publication updates.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div
+                        ref={scrollContainerRef}
+                        onScroll={handleScroll}
+                        className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-5"
+                    >
+                        <div className="relative space-y-5 before:absolute before:top-3 before:bottom-3 before:left-[11px] before:w-[2px] before:bg-border/80">
+                            {modalLogs.map(renderLogItem)}
+                        </div>
+
+                        {hasMore && !loadingMore && (
+                            <div className="flex justify-center pt-2 pb-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => loadMore()}
+                                    className="text-xs text-muted-foreground hover:text-foreground h-8 gap-1.5"
+                                >
+                                    <History className="w-3.5 h-3.5" />
+                                    Load More Logs
+                                </Button>
+                            </div>
+                        )}
+
+                        {loadingMore && (
+                            <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                <span>Loading older logs...</span>
+                            </div>
+                        )}
+
+                        {!hasMore && (
+                            <p className="text-center text-xs text-muted-foreground/60 py-3">
+                                All {total} events loaded
+                            </p>
+                        )}
+
+                        <div ref={sentinelRef} className="h-4 w-full shrink-0" />
+                    </div>
+
+                    <div className="p-3 px-5 border-t bg-muted/10 flex justify-end shrink-0">
                         <Button
-                            type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={() => setExpanded(!expanded)}
-                            className="text-xs text-primary font-medium"
+                            onClick={() => setIsModalOpen(false)}
+                            className="text-xs"
                         >
-                            {expanded ? "Show Less" : `Show All (${logs.length} events)`}
+                            Close
                         </Button>
                     </div>
-                )}
-            </CardContent>
-        </Card>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 };
+
+export default PackageLogsCard;

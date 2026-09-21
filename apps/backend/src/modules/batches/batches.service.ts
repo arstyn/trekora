@@ -34,16 +34,28 @@ export class BatchesService {
     await this.logRepo.save(log);
   }
 
-  async getLogs(batchId: string) {
-    return this.logRepo.find({
+  async getLogs(batchId: string, page: number = 1, limit: number = 5, offset?: number) {
+    const skip = offset !== undefined ? offset : (page - 1) * limit;
+    const [data, total] = await this.logRepo.findAndCount({
       where: { batchId },
       relations: ['changedBy'],
       order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      offset: skip,
+      hasMore: skip + data.length < total,
+    };
   }
 
   async create(data: CreateBatchDto, organizationId: string, userId: string): Promise<Batch> {
-    const { packageId, coordinators, ignoreConflicts, customTierPrices, ...rest } = data;
+    const { packageId, coordinators, ignoreConflicts, customTierPrices, costSheet, ...rest } = data;
 
     if (!ignoreConflicts) {
       const conflicts = await this.checkConflicts(
@@ -68,6 +80,7 @@ export class BatchesService {
 
     const batch = this.batchRepo.create({
       ...rest,
+      costSheet: costSheet || null,
       package: { id: packageId },
       organizationId,
       coordinators: coordinatorsData,
@@ -85,6 +98,30 @@ export class BatchesService {
     const savedBatch = await this.batchRepo.save(batch);
     await this.logAction(savedBatch.id, userId, 'create', null, savedBatch);
     return savedBatch;
+  }
+
+  async getPreviousBatchCostSheet(packageId: string, organizationId: string): Promise<any> {
+    const batch = await this.batchRepo
+      .createQueryBuilder('batch')
+      .where('batch.package_id = :packageId', { packageId })
+      .andWhere('batch.organization_id = :organizationId', { organizationId })
+      .andWhere('batch.cost_sheet IS NOT NULL')
+      .orderBy('batch.startDate', 'DESC')
+      .getOne();
+
+    if (batch?.costSheet) {
+      return batch.costSheet;
+    }
+
+    // Fallback: check package cost sheet template
+    const pkg = await this.batchRepo.manager
+      .getRepository('Package')
+      .findOne({
+        where: { id: packageId, organizationId },
+        select: ['id', 'costSheet'],
+      } as any);
+
+    return (pkg as any)?.costSheet || null;
   }
 
   async findAll(
@@ -333,6 +370,28 @@ export class BatchesService {
     batch.status = BatchStatus.COMPLETED;
     const saved = await this.batchRepo.save(batch);
     await this.logAction(id, userId, 'status_change', prevStatus, BatchStatus.COMPLETED);
+    return saved;
+  }
+
+  async updateStatus(
+    id: string,
+    status: BatchStatus,
+    userId: string,
+    reason?: string,
+  ): Promise<Batch> {
+    const batch = await this.findOne(id);
+    const prevStatus = batch.status;
+    if (prevStatus === status) return batch;
+
+    batch.status = status;
+    const saved = await this.batchRepo.save(batch);
+    await this.logAction(
+      id,
+      userId,
+      'status_change',
+      { status: prevStatus },
+      { status, reason: reason || undefined },
+    );
     return saved;
   }
 

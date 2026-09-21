@@ -36,10 +36,19 @@ export class ActivityLogController {
   async findByEmployee(
     @Request() req: ApiRequestJWT,
     @Param('employeeId') employeeId: string,
-  ): Promise<ActivityLog[]> {
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '5', 10);
+    const offsetNum = offset !== undefined ? parseInt(offset, 10) : undefined;
     return this.activityLogService.findByEmployee(
       req.user.organizationId,
       employeeId,
+      pageNum,
+      limitNum,
+      offsetNum,
     );
   }
 
@@ -48,11 +57,20 @@ export class ActivityLogController {
     @Request() req: ApiRequestJWT,
     @Param('entityType') entityType: string,
     @Param('entityId') entityId: string,
-  ): Promise<ActivityLog[]> {
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '5', 10);
+    const offsetNum = offset !== undefined ? parseInt(offset, 10) : undefined;
     return this.activityLogService.findByEntity(
       req.user.organizationId,
       entityType,
       entityId,
+      pageNum,
+      limitNum,
+      offsetNum,
     );
   }
 }

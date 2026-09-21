@@ -56,4 +56,7 @@ export class CreateBatchDto {
   @ValidateNested({ each: true })
   @Type(() => CustomTierPriceDto)
   customTierPrices?: CustomTierPriceDto[];
+
+  @IsOptional()
+  costSheet?: any;
 }

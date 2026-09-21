@@ -113,7 +113,15 @@ export class PackageController {
 
   @Get(':id/logs')
   @RequirePermission('package', 'read')
-  getActivityLogs(@Param('id') id: string) {
-    return this.packageService.getActivityLogs(id);
+  getActivityLogs(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '5', 10);
+    const offsetNum = offset !== undefined ? parseInt(offset, 10) : undefined;
+    return this.packageService.getActivityLogs(id, pageNum, limitNum, offsetNum);
   }
 }

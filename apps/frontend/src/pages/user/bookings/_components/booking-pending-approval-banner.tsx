@@ -79,8 +79,9 @@ export function BookingPendingApprovalBanner({
                 </span>{' '}
                 on {new Date(pendingRequest.createdAt).toLocaleDateString()} at{' '}
                 {new Date(pendingRequest.createdAt).toLocaleTimeString([], {
-                  hour: '2-digit',
+                  hour: 'numeric',
                   minute: '2-digit',
+                  hour12: true,
                 })}
               </p>
               {pendingRequest.reason && (

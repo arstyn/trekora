@@ -1178,11 +1178,28 @@ export class PackageService {
     return this.findOne(id);
   }
 
-  async getActivityLogs(id: string): Promise<PackageActivity[]> {
-    return this.packageActivityRepository.find({
+  async getActivityLogs(
+    id: string,
+    page: number = 1,
+    limit: number = 5,
+    offset?: number,
+  ) {
+    const skip = offset !== undefined ? offset : (page - 1) * limit;
+    const [data, total] = await this.packageActivityRepository.findAndCount({
       where: { packageId: id },
       relations: ['user'],
       order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      offset: skip,
+      hasMore: skip + data.length < total,
+    };
   }
 }

@@ -150,8 +150,26 @@ export class PaymentService {
   }
 
   // Get audit logs for a payment
-  static async getPaymentLogs(id: string): Promise<PaymentLog[]> {
-    const response = await axiosInstance.get(`${this.baseUrl}/${id}/logs`);
+  static async getPaymentLogs(
+    id: string,
+    page: number = 1,
+    limit: number = 5,
+    offset?: number,
+  ): Promise<{ data: PaymentLog[]; total: number; hasMore: boolean }> {
+    const response = await axiosInstance.get<{
+      data: PaymentLog[];
+      total: number;
+      hasMore: boolean;
+    }>(`${this.baseUrl}/${id}/logs`, {
+      params: { page, limit, ...(offset !== undefined ? { offset } : {}) },
+    });
+    if (Array.isArray(response.data)) {
+      return {
+        data: response.data,
+        total: (response.data as PaymentLog[]).length,
+        hasMore: false,
+      };
+    }
     return response.data;
   }
 }

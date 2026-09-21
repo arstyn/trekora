@@ -44,6 +44,7 @@ export default function ViewCustomerPage() {
     const [customer, setCustomer] = useState<ICustomer | null>(null);
     const [bookings, setBookings] = useState<any[]>([]);
     const [customerLogs, setCustomerLogs] = useState<ICustomerLog[]>([]);
+    const [customerLogsTotal, setCustomerLogsTotal] = useState<number>(0);
     const [loadingLogs, setLoadingLogs] = useState(false);
     const [loading, setLoading] = useState(true);
     const [bookingsLoading, setBookingsLoading] = useState(true);
@@ -92,10 +93,16 @@ export default function ViewCustomerPage() {
         if (!id) return;
         try {
             setLoadingLogs(true);
-            const res = await axiosInstance.get<ICustomerLog[]>(
-                `/activity-log/entity/customer/${id}`,
-            );
-            setCustomerLogs(res.data);
+            const res = await axiosInstance.get<{
+                data: ICustomerLog[];
+                total: number;
+            }>(`/activity-log/entity/customer/${id}`, {
+                params: { page: 1, limit: 5 },
+            });
+            const logs = Array.isArray(res.data) ? res.data : (res.data.data || []);
+            const total = Array.isArray(res.data) ? res.data.length : (res.data.total ?? logs.length);
+            setCustomerLogs(logs);
+            setCustomerLogsTotal(total);
         } catch (err) {
             console.error("Failed to fetch customer logs:", err);
         } finally {
@@ -285,10 +292,17 @@ export default function ViewCustomerPage() {
                         </AvatarFallback>
                     </Avatar>
                     <div>
-                        <h1 className="text-3xl font-bold">
-                            {fullName}
-                        </h1>
-                        <p className="text-muted-foreground">Customer Details</p>
+                        <div className="flex items-center gap-2.5">
+                            <h1 className="text-3xl font-bold">
+                                {fullName}
+                            </h1>
+                            {customer.customerNumber && (
+                                <Badge variant="secondary" className="font-mono text-xs px-2 py-0.5 border">
+                                    #{customer.customerNumber}
+                                </Badge>
+                            )}
+                        </div>
+                        <p className="text-muted-foreground text-sm">Customer Details</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -650,7 +664,12 @@ export default function ViewCustomerPage() {
             </div>
 
             {/* Activity & Audit Logs */}
-            <CustomerLogsCard logs={customerLogs} loading={loadingLogs} />
+            <CustomerLogsCard
+                logs={customerLogs}
+                loading={loadingLogs}
+                entityId={id}
+                totalCount={customerLogsTotal}
+            />
 
             {/* Booking History card full width below */}
             <Card>

@@ -4,6 +4,7 @@ export type ILeadStatus = "new" | "contacted" | "qualified" | "lost" | "converte
 
 export interface ILead {
 	id: string;
+	leadNumber?: string;
 	name: string;
 	leadType: "individual" | "company";
 	company?: string;

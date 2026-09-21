@@ -1254,7 +1254,10 @@ export class PaymentService {
   async getLogs(
     paymentId: string,
     organizationId: string,
-  ): Promise<PaymentLogResponseDto[]> {
+    page: number = 1,
+    limit: number = 5,
+    offset?: number,
+  ) {
     const payment = await this.paymentRepository.findOne({
       where: { id: paymentId },
       relations: ['booking', 'recordedBy', 'verifiedBy'],
@@ -1264,29 +1267,39 @@ export class PaymentService {
       throw new NotFoundException('Payment not found or access denied');
     }
 
-    const logs = await this.paymentLogRepository.find({
+    const skip = offset !== undefined ? offset : (page - 1) * limit;
+    const [logs, total] = await this.paymentLogRepository.findAndCount({
       where: { paymentId },
       relations: ['changedBy'],
       order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
     });
 
-    if (logs.length > 0) {
-      return logs.map((log) => ({
-        id: log.id,
-        paymentId: log.paymentId,
-        action: log.action,
-        previousData: log.previousData,
-        newData: log.newData,
-        changedBy: log.changedBy
-          ? {
-              id: log.changedBy.id,
-              name: log.changedBy.name,
-              email: log.changedBy.email,
-              profilePhoto: log.changedBy.profilePhoto,
-            }
-          : null,
-        createdAt: log.createdAt,
-      }));
+    if (total > 0) {
+      return {
+        data: logs.map((log) => ({
+          id: log.id,
+          paymentId: log.paymentId,
+          action: log.action,
+          previousData: log.previousData,
+          newData: log.newData,
+          changedBy: log.changedBy
+            ? {
+                id: log.changedBy.id,
+                name: log.changedBy.name,
+                email: log.changedBy.email,
+                profilePhoto: log.changedBy.profilePhoto,
+              }
+            : null,
+          createdAt: log.createdAt,
+        })),
+        total,
+        page,
+        limit,
+        offset: skip,
+        hasMore: skip + logs.length < total,
+      };
     }
 
     // Baseline synthesized logs for existing/legacy payments without log entries
@@ -1347,7 +1360,15 @@ export class PaymentService {
       createdAt: payment.createdAt,
     });
 
-    return fallbackLogs;
+    const fallbackPaginated = fallbackLogs.slice(skip, skip + limit);
+    return {
+      data: fallbackPaginated,
+      total: fallbackLogs.length,
+      page,
+      limit,
+      offset: skip,
+      hasMore: skip + fallbackPaginated.length < fallbackLogs.length,
+    };
   }
 
   private async generatePaymentNumber(organizationId: string): Promise<string> {

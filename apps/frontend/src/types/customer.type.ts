@@ -7,6 +7,7 @@ export interface IRelative {
 
 export interface ICustomer {
 	id?: string;
+	customerNumber?: string;
 	// Personal Details
 	firstName: string;
 	lastName?: string;

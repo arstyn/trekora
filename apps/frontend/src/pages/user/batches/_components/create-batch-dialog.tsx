@@ -38,6 +38,9 @@ import {
 import type React from "react";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { BatchCostSheetEditor } from "./batch-cost-sheet-editor";
+import type { IBatchCostSheet } from "@/types/cost-sheet.types";
+import { createDefaultCostSheet } from "@/types/cost-sheet.types";
 
 interface CreateBatchDialogProps {
     open: boolean;
@@ -72,8 +75,8 @@ export function CreateBatchDialog({
         coordinators: [] as IEmployee[],
     });
     const [changeSeats, setChangeSeats] = useState(false);
-    const [changeTierPrices, setChangeTierPrices] = useState(false);
-    const [customTierPrices, setCustomTierPrices] = useState<any[]>([]);
+    const [costSheet, setCostSheet] = useState<IBatchCostSheet>(createDefaultCostSheet());
+    const [previousBatchCostSheet, setPreviousBatchCostSheet] = useState<IBatchCostSheet | null>(null);
 
     const selectedPackage = packages.find((p) => p.id === formData.packageId);
 
@@ -146,6 +149,16 @@ export function CreateBatchDialog({
         }
 
         if (currentStep === 3) {
+            const firstTier = costSheet?.tiers?.[0];
+            const adultCat = firstTier?.ageCategories?.[0];
+            const marginItem = adultCat?.items?.find((it: any) => it.isMargin);
+            if (!marginItem || Number(marginItem.cost) <= 0) {
+                newErrors.costSheet = "Please specify an operator margin greater than 0 in the cost sheet";
+                toast.warning("Please specify an operator margin in the cost sheet");
+            }
+        }
+
+        if (currentStep === 4) {
             if (formData.coordinators.length === 0) {
                 newErrors.coordinators = "Please select at least one coordinator";
             }
@@ -233,24 +246,29 @@ export function CreateBatchDialog({
         }
     }, [formData.packageId, formData.startDate, selectedPackage, formData.endDate]);
 
-    const handlePackageSelect = (pkg: IPackages) => {
+    const handlePackageSelect = async (pkg: IPackages) => {
         setFormData((prev) => ({
             ...prev,
             packageId: pkg.id,
         }));
-        
-        if (pkg.packageTiers) {
-            setCustomTierPrices(pkg.packageTiers.map(tier => ({
-                packageTierId: tier.id,
-                name: tier.name || "Standard",
-                adultCost: tier.adultCost,
-                childCostType: tier.childCostType,
-                childCostValue: tier.childCostValue,
-                infantCostType: tier.infantCostType,
-                infantCostValue: tier.infantCostValue,
-            })));
-        } else {
-            setCustomTierPrices([]);
+
+        try {
+            const res = await axiosInstance.get(`/batches/previous-cost-sheet/${pkg.id}`);
+            if (res.data && res.data.tiers && res.data.tiers.length > 0) {
+                setPreviousBatchCostSheet(res.data);
+                setCostSheet(res.data);
+            } else if ((pkg as any).costSheet && (pkg as any).costSheet.tiers) {
+                setCostSheet((pkg as any).costSheet);
+            } else {
+                setPreviousBatchCostSheet(null);
+                setCostSheet(createDefaultCostSheet());
+            }
+        } catch {
+            if ((pkg as any).costSheet && (pkg as any).costSheet.tiers) {
+                setCostSheet((pkg as any).costSheet);
+            } else {
+                setCostSheet(createDefaultCostSheet());
+            }
         }
 
         if (errors.packageId) {
@@ -300,8 +318,8 @@ export function CreateBatchDialog({
             coordinators: [],
         });
         setChangeSeats(false);
-        setChangeTierPrices(false);
-        setCustomTierPrices([]);
+        setCostSheet(createDefaultCostSheet());
+        setPreviousBatchCostSheet(null);
         setErrors({});
         setPackageSearch("");
         setCoordinatorSearch("");
@@ -315,7 +333,7 @@ export function CreateBatchDialog({
     const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
         if (e) e.preventDefault();
 
-        if (!validateStep(3)) {
+        if (!validateStep(4)) {
             toast.error("Please fix the errors before submitting");
             return;
         }
@@ -329,7 +347,7 @@ export function CreateBatchDialog({
                 seatChangeReason: changeSeats ? formData.seatChangeReason : undefined,
                 coordinators: formData.coordinators.map((c) => c.id),
                 ignoreConflicts: ignoredWarnings,
-                customTierPrices: changeTierPrices ? customTierPrices : undefined,
+                costSheet,
             };
             await axiosInstance.post(`/batches`, payload);
 
@@ -402,7 +420,12 @@ export function CreateBatchDialog({
                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
                         <div className="flex items-center gap-1.5">
                             <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${step >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>3</span>
-                            <span className={`text-xs hidden sm:inline font-medium ${step === 3 ? 'text-foreground' : 'text-muted-foreground'}`}>Coordinators</span>
+                            <span className={`text-xs hidden sm:inline font-medium ${step === 3 ? 'text-foreground' : 'text-muted-foreground'}`}>Cost Sheet & Pricing</span>
+                        </div>
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                        <div className="flex items-center gap-1.5">
+                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${step >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>4</span>
+                            <span className={`text-xs hidden sm:inline font-medium ${step === 4 ? 'text-foreground' : 'text-muted-foreground'}`}>Coordinators</span>
                         </div>
                     </div>
                 </div>
@@ -689,80 +712,29 @@ export function CreateBatchDialog({
                                                     </div>
                                                 )}
                                             </div>
-
-                                            <div className="border-t pt-5">
-                                                <h4 className="text-sm font-semibold text-foreground mb-4">Pricing Management</h4>
-
-                                                <div className="flex items-center justify-between border rounded-xl p-4 bg-muted/10">
-                                                    <div className="space-y-0.5">
-                                                        <Label htmlFor="changeTierPrices" className="text-sm font-semibold cursor-pointer">Custom Tier Pricing</Label>
-                                                        <p className="text-xs text-muted-foreground">Allows overriding the default pricing defined in the tour package.</p>
-                                                    </div>
-                                                    <Switch
-                                                        id="changeTierPrices"
-                                                        checked={changeTierPrices}
-                                                        onCheckedChange={(checked) => {
-                                                            setChangeTierPrices(checked);
-                                                        }}
-                                                    />
-                                                </div>
-
-                                                {changeTierPrices && (
-                                                    <div className="mt-4 space-y-4">
-                                                        {customTierPrices.map((tier, index) => (
-                                                            <div key={tier.packageTierId} className="p-4 border rounded-xl bg-card">
-                                                                <h5 className="text-xs font-bold uppercase mb-3 text-muted-foreground">{tier.name} Tier</h5>
-                                                                <div className="grid grid-cols-3 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs">Adult Price (₹)</Label>
-                                                                        <Input
-                                                                            type="number"
-                                                                            value={tier.adultCost || ""}
-                                                                            onChange={(e) => {
-                                                                                const newTiers = [...customTierPrices];
-                                                                                newTiers[index].adultCost = parseFloat(e.target.value);
-                                                                                setCustomTierPrices(newTiers);
-                                                                            }}
-                                                                            className="h-9"
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs">Child Price (₹)</Label>
-                                                                        <Input
-                                                                            type="number"
-                                                                            value={tier.childCostValue || ""}
-                                                                            onChange={(e) => {
-                                                                                const newTiers = [...customTierPrices];
-                                                                                newTiers[index].childCostValue = parseFloat(e.target.value);
-                                                                                setCustomTierPrices(newTiers);
-                                                                            }}
-                                                                            className="h-9"
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs">Infant Price (₹)</Label>
-                                                                        <Input
-                                                                            type="number"
-                                                                            value={tier.infantCostValue || ""}
-                                                                            onChange={(e) => {
-                                                                                const newTiers = [...customTierPrices];
-                                                                                newTiers[index].infantCostValue = parseFloat(e.target.value);
-                                                                                setCustomTierPrices(newTiers);
-                                                                            }}
-                                                                            className="h-9"
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
                                         </div>
                                     )}
 
-                                    {/* STEP 3: COORDINATORS */}
+                                    {/* STEP 3: COST SHEET & PRICING */}
                                     {step === 3 && (
+                                        <div className="space-y-4 animate-in fade-in duration-200">
+                                            <BatchCostSheetEditor
+                                                value={costSheet}
+                                                onChange={setCostSheet}
+                                                previousBatchCostSheet={previousBatchCostSheet}
+                                                packageTemplateCostSheet={(selectedPackage as any)?.costSheet}
+                                                packageName={selectedPackage?.name}
+                                            />
+                                            {errors.costSheet && (
+                                                <p className="text-xs text-destructive font-medium mt-1">
+                                                    {errors.costSheet}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* STEP 4: COORDINATORS */}
+                                    {step === 4 && (
                                         <div className="space-y-6">
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
@@ -907,7 +879,7 @@ export function CreateBatchDialog({
                                             </Button>
                                         )}
 
-                                        {step < 3 ? (
+                                        {step < 4 ? (
                                             <Button
                                                 type="button"
                                                 onClick={handleNext}
@@ -1017,6 +989,53 @@ export function CreateBatchDialog({
                                             </div>
                                         ) : (
                                             <p className="text-xs text-muted-foreground italic">Select package to view capacity</p>
+                                        )}
+                                    </div>
+
+                                    {/* Cost Sheet Summary */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cost Sheet</h4>
+                                            {costSheet?.hasTiers && (
+                                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-medium border-primary/30 text-primary">
+                                                    {costSheet.tiers.length} Tiers
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        {costSheet?.tiers && costSheet.tiers.length > 0 ? (
+                                            <div className="space-y-2 p-3 rounded-xl border bg-background text-xs">
+                                                {costSheet.tiers.map((tier) => {
+                                                    const adultCat = tier.ageCategories.find((c) => c.categoryKey === "adult" || c.name.toLowerCase() === "adult") || tier.ageCategories[0];
+                                                    const adultTotal = adultCat ? adultCat.items.reduce((s, i) => s + (Number(i.cost) || 0), 0) : 0;
+                                                    const marginItem = adultCat?.items.find((i) => i.isMargin);
+                                                    return (
+                                                        <div key={tier.id} className="pb-1.5 border-b last:border-0 last:pb-0">
+                                                            <div className="flex justify-between items-center font-medium">
+                                                                <span className="text-muted-foreground truncate">{tier.name}</span>
+                                                                <span className="font-bold text-foreground">₹{adultTotal.toLocaleString()}</span>
+                                                            </div>
+                                                            {marginItem && (
+                                                                <p className="text-[10px] text-emerald-600 mt-0.5">
+                                                                    Margin: ₹{Number(marginItem.cost).toLocaleString()}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                                {costSheet?.maxDiscountEnabled && (
+                                                    <div className="pt-2 border-t flex justify-between items-center text-[11px]">
+                                                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">Max Discount Limit:</span>
+                                                        <Badge variant="outline" className="text-[10px] bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-semibold px-1.5 py-0">
+                                                            {costSheet.maxDiscountType === "percentage"
+                                                                ? `${costSheet.maxDiscountPercentage ?? costSheet.maxDiscountValue}% Off`
+                                                                : `₹${(costSheet.maxDiscountValue || 0).toLocaleString("en-IN")} Off`}
+                                                            {" "}{costSheet.maxDiscountScope === "passenger" ? "/ Pass." : "Total"}
+                                                        </Badge>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground italic">No cost sheet configured</p>
                                         )}
                                     </div>
 

@@ -300,8 +300,17 @@ export class PaymentController {
 
   @Get(':id/logs')
   @RequirePermission('payment', 'read')
-  getLogs(@Param('id') id: string, @Request() req: ApiRequestJWT) {
-    return this.paymentService.getLogs(id, req.user.organizationId);
+  getLogs(
+    @Param('id') id: string,
+    @Request() req: ApiRequestJWT,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '5', 10);
+    const offsetNum = offset !== undefined ? parseInt(offset, 10) : undefined;
+    return this.paymentService.getLogs(id, req.user.organizationId, pageNum, limitNum, offsetNum);
   }
 
   @Post(':id/upload-receipt')

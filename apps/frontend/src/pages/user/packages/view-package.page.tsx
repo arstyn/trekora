@@ -9,22 +9,20 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import axiosInstance from "@/lib/axios";
-import type { IPackages, IPaymentStructure, PackageTier } from "@/types/package.schema";
+import type { IPackages, IPaymentStructure } from "@/types/package.schema";
 import {
     Calendar,
     CheckCircle,
+    Coins,
     Edit,
     History,
     MapPin,
-    Percent,
-    Tag,
     Users,
     XCircle
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { PackageLogsModal } from "./_components/package-logs-modal";
 import { PackageLogsCard, type IPackageActivity } from "./_components/package-logs-card";
 import {
     HeroSkeleton,
@@ -71,6 +69,7 @@ export default function ViewPackagePage() {
     const [loadingDetails, setLoadingDetails] = useState(true);
     const [isLogsOpen, setIsLogsOpen] = useState(false);
     const [packageLogs, setPackageLogs] = useState<IPackageActivity[]>([]);
+    const [packageLogsTotal, setPackageLogsTotal] = useState<number>(0);
     const [loadingLogs, setLoadingLogs] = useState(false);
 
     useEffect(() => {
@@ -165,10 +164,16 @@ export default function ViewPackagePage() {
         const fetchLogs = async () => {
             setLoadingLogs(true);
             try {
-                const res = await axiosInstance.get<IPackageActivity[]>(
-                    `/packages/${id}/logs`,
-                );
-                setPackageLogs(res.data);
+                const res = await axiosInstance.get<{
+                    data: IPackageActivity[];
+                    total: number;
+                }>(`/packages/${id}/logs`, {
+                    params: { page: 1, limit: 5 },
+                });
+                const logs = Array.isArray(res.data) ? res.data : (res.data.data || []);
+                const total = Array.isArray(res.data) ? res.data.length : (res.data.total ?? logs.length);
+                setPackageLogs(logs);
+                setPackageLogsTotal(total);
             } catch (error: any) {
                 console.error("Failed to load logs:", error);
             } finally {
@@ -184,10 +189,6 @@ export default function ViewPackagePage() {
         fetchDetails();
         fetchLogs();
     }, [id]);
-
-    const getTierTotalCost = (tier: any) => {
-        return Number(tier.adultCost) || 0;
-    };
 
     if (loadingBasic || !basicData) {
         return (
@@ -315,19 +316,6 @@ export default function ViewPackagePage() {
                                             {basicData.maxGuests || "Not set"}
                                         </div>
                                     </div>
-                                    {((basicData?.maxDiscountValue && basicData.maxDiscountValue > 0) || (basicData?.maxDiscountPercentage && basicData.maxDiscountPercentage > 0)) && (
-                                        <div className="text-center p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                                            <Percent className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
-                                            <div className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
-                                                Max Discount Limit
-                                            </div>
-                                            <div className="font-semibold text-emerald-900 dark:text-emerald-100">
-                                                {basicData.maxDiscountType === "percentage"
-                                                    ? `${basicData.maxDiscountPercentage}% Off ${basicData.maxDiscountScope === "passenger" ? "/ Passenger" : "Total"}`
-                                                    : `₹${(basicData.maxDiscountValue || 0).toLocaleString("en-IN")} Off ${basicData.maxDiscountScope === "passenger" ? "/ Passenger" : "Total"}`}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -492,94 +480,31 @@ export default function ViewPackagePage() {
                             <PaymentCancellationSkeleton />
                         ) : (
                             <>
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-                                        <div>
-                                            <CardTitle>Package Tiers & Pricing</CardTitle>
-                                            <CardDescription>
-                                                Base cost structure for this package
-                                            </CardDescription>
-                                        </div>
-                                        {((basicData?.maxDiscountValue && basicData.maxDiscountValue > 0) || (basicData?.maxDiscountPercentage && basicData.maxDiscountPercentage > 0)) && (
-                                            <Badge variant="outline" className="text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30 px-3 py-1 font-semibold flex items-center gap-1.5 text-xs">
-                                                <Tag className="w-3.5 h-3.5" />
-                                                Max Discount Limit: {basicData.maxDiscountType === "percentage"
-                                                    ? `${basicData.maxDiscountPercentage}%`
-                                                    : `₹${(basicData.maxDiscountValue || 0).toLocaleString("en-IN")}`} {basicData.maxDiscountScope === "passenger" ? "/ Passenger" : "Total"}
-                                            </Badge>
-                                        )}
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-4">
-                                            {paymentsAndCancellation?.packageTiers &&
-                                                paymentsAndCancellation.packageTiers.length > 0 ? (
-                                                paymentsAndCancellation.packageTiers.map(
-                                                    (tier: PackageTier, index: number) => {
-                                                        const isNormal = basicData?.packageSetup === "normal";
-                                                        const totalAdultCost = tier.adultCost ?? 0;
-                                                        const childCost = isNormal
-                                                            ? (Number(tier.childCostValue) || 0)
-                                                            : (tier.childCostType === "flat"
-                                                                ? Number(tier.childCostValue) || 0
-                                                                : (totalAdultCost * Number(tier.childCostValue || 0)) / 100);
-
-                                                        const infantCost = isNormal
-                                                            ? (Number(tier.infantCostValue) || 0)
-                                                            : (tier.infantCostType === "flat"
-                                                                ? Number(tier.infantCostValue) || 0
-                                                                : (totalAdultCost * Number(tier.infantCostValue || 0)) / 100);
-
-                                                        return (
-                                                            <div
-                                                                key={index}
-                                                                className="flex flex-col md:flex-row items-center justify-between p-4 border rounded-lg gap-4 bg-card"
-                                                            >
-                                                                <div className="mb-2 md:mb-0">
-                                                                    <h4 className="font-semibold text-lg text-primary flex items-center gap-2">
-                                                                        {tier?.name || "Pricing Tier"}
-                                                                        {isNormal && (
-                                                                            <Badge variant="secondary" className="text-[10px] uppercase font-semibold">Standard</Badge>
-                                                                        )}
-                                                                    </h4>
-                                                                </div>
-                                                                <div className="flex flex-wrap gap-4 text-center">
-                                                                    <div>
-                                                                        <div className="text-sm text-muted-foreground">Adult</div>
-                                                                        <div className="font-medium">₹{totalAdultCost.toLocaleString("en-IN")}</div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="text-sm text-muted-foreground">Child</div>
-                                                                        <div className="font-medium">₹{childCost.toLocaleString("en-IN")}</div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="text-sm text-muted-foreground">Infant</div>
-                                                                        <div className="font-medium">₹{infantCost.toLocaleString("en-IN")}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }
-                                                )
-                                            ) : (
-                                                <div className="text-center py-4 text-muted-foreground">
-                                                    <p>No package tiers have been defined yet.</p>
+                                <Card className="border-primary/20 bg-primary/5 shadow-xs">
+                                    <CardHeader className="pb-3">
+                                        <div className="flex items-center justify-between flex-wrap gap-2">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                                                    <Coins className="w-5 h-5" />
                                                 </div>
-                                            )}
-                                        </div>
-
-                                        {paymentsAndCancellation?.additionalCosts && paymentsAndCancellation.additionalCosts.length > 0 && (
-                                            <div className="mt-8 border-t pt-6">
-                                                <h4 className="font-semibold mb-4">Additional Costs</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {paymentsAndCancellation.additionalCosts.map((cost: any, index) => (
-                                                        <div key={index} className="flex justify-between items-center p-3 bg-secondary/20 rounded-lg">
-                                                            <span className="font-medium">{cost?.name}</span>
-                                                            <Badge variant="outline">₹{cost?.cost}</Badge>
-                                                        </div>
-                                                    ))}
+                                                <div>
+                                                    <CardTitle className="text-base font-bold">Batch Cost Sheets & Dynamic Pricing</CardTitle>
+                                                    <CardDescription className="text-xs">
+                                                        Pricing, age categories, margin, and discount limits are configured dynamically per batch.
+                                                    </CardDescription>
                                                 </div>
                                             </div>
-                                        )}
+                                            <NavLink to="/batches">
+                                                <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-semibold">
+                                                    View Batches
+                                                </Button>
+                                            </NavLink>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            Base costs, custom line-item expenses, operator margins, and maximum discount caps are calculated per batch in the Batches section. View or create batches to manage traveler pricing.
+                                        </p>
                                     </CardContent>
                                 </Card>
 
@@ -611,27 +536,8 @@ export default function ViewPackagePage() {
                                                                     <div className="text-2xl font-bold text-primary">
                                                                         {milestone?.amount || 0}%
                                                                     </div>
-                                                                    {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length === 1 && (
-                                                                        <div className="text-sm font-semibold text-emerald-600 mt-1">
-                                                                            ₹{Math.round(getTierTotalCost(paymentsAndCancellation.packageTiers[0]) * (milestone?.amount || 0) / 100).toLocaleString("en-IN")}
-                                                                        </div>
-                                                                    )}
                                                                 </div>
                                                             </div>
-
-                                                            {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 1 && (
-                                                                <div className="bg-secondary/20 rounded-md p-3 mt-1">
-                                                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Estimated Amount per Tier</div>
-                                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                                                        {paymentsAndCancellation.packageTiers.map((pkgTier: any, tIdx: number) => (
-                                                                            <div key={tIdx} className="bg-background rounded p-2 text-sm border shadow-sm">
-                                                                                <div className="text-xs text-muted-foreground truncate" title={pkgTier?.name}>{pkgTier?.name || "Tier"}</div>
-                                                                                <div className="font-semibold mt-0.5">₹{Math.round(getTierTotalCost(pkgTier) * (milestone?.amount || 0) / 100).toLocaleString("en-IN")}</div>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     ),
                                                 )
@@ -676,28 +582,9 @@ export default function ViewPackagePage() {
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-semibold text-lg capitalize">{tier?.timeframe?.replace(/_/g, " ") || "Not specified"}</span>
                                                                         <Badge variant="destructive" className="ml-2">{tier?.amount || 0}% fee</Badge>
-                                                                        {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length === 1 && (
-                                                                            <span className="text-sm font-semibold text-destructive ml-1">
-                                                                                (₹{Math.round(getTierTotalCost(paymentsAndCancellation.packageTiers[0]) * (tier?.amount || 0) / 100).toLocaleString("en-IN")})
-                                                                            </span>
-                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
-
-                                                            {paymentsAndCancellation?.packageTiers && paymentsAndCancellation.packageTiers.length > 1 && (
-                                                                <div className="bg-secondary/20 rounded-md p-3 mt-1">
-                                                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Cancellation Fee per Tier</div>
-                                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                                                        {paymentsAndCancellation.packageTiers.map((pkgTier: any, tIdx: number) => (
-                                                                            <div key={tIdx} className="bg-background rounded p-2 text-sm border border-destructive/10 shadow-sm">
-                                                                                <div className="text-xs text-muted-foreground truncate" title={pkgTier?.name}>{pkgTier?.name || "Tier"}</div>
-                                                                                <div className="font-semibold text-destructive mt-0.5">₹{Math.round(getTierTotalCost(pkgTier) * (tier?.amount || 0) / 100).toLocaleString("en-IN")}</div>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     ),
                                                 )
@@ -1111,19 +998,6 @@ export default function ViewPackagePage() {
                                         </span>
                                     </div>
                                 )}
-                                {((basicData?.maxDiscountValue && basicData.maxDiscountValue > 0) || (basicData?.maxDiscountPercentage && basicData.maxDiscountPercentage > 0)) && (
-                                    <div className="flex justify-between items-center pt-2 border-t">
-                                        <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                                            <Percent className="w-3.5 h-3.5" />
-                                            Max Discount:
-                                        </span>
-                                        <Badge variant="outline" className="text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30 font-semibold text-xs">
-                                            {basicData.maxDiscountType === "percentage"
-                                                ? `${basicData.maxDiscountPercentage}% Off`
-                                                : `₹${(basicData.maxDiscountValue || 0).toLocaleString("en-IN")} Off`}
-                                        </Badge>
-                                    </div>
-                                )}
                             </CardContent>
                         </Card>
 
@@ -1262,21 +1136,20 @@ export default function ViewPackagePage() {
                                 </CardContent>
                             </Card>
                         )}
-                    </div>
-
-                    {/* Right Sidebar - Package Activity & Audit Logs */}
-                    <div className="space-y-8">
-                        <PackageLogsCard logs={packageLogs} loading={loadingLogs} />
+                        {/* Right Sidebar - Package Activity & Audit Logs */}
+                        <div className="space-y-8">
+                            <PackageLogsCard
+                                logs={packageLogs}
+                                loading={loadingLogs}
+                                entityId={id}
+                                totalCount={packageLogsTotal}
+                                externalOpen={isLogsOpen}
+                                onExternalOpenChange={setIsLogsOpen}
+                            />
+                        </div>
                     </div>
                 </div>
             </main>
-
-            <PackageLogsModal
-                packageId={id!}
-                packageName={basicData?.name}
-                isOpen={isLogsOpen}
-                onClose={() => setIsLogsOpen(false)}
-            />
         </div>
     );
 }

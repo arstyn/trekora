@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -73,6 +74,18 @@ export class BatchesController {
     return this.batchService.findOne(id);
   }
 
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateBatchDto,
+    @Request() req: ApiRequestJWT,
+  ) {
+    if (!dto.status) {
+      throw new BadRequestException('Status is required');
+    }
+    return this.batchService.updateStatus(id, dto.status, req.user.userId, dto.reason);
+  }
+
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -116,7 +129,15 @@ export class BatchesController {
   }
 
   @Get(':id/logs')
-  getLogs(@Param('id') id: string) {
-    return this.batchService.getLogs(id);
+  getLogs(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '5', 10);
+    const offsetNum = offset !== undefined ? parseInt(offset, 10) : undefined;
+    return this.batchService.getLogs(id, pageNum, limitNum, offsetNum);
   }
 }

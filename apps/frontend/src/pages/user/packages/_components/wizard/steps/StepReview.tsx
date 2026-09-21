@@ -304,8 +304,6 @@ export function StepReview({
         compareArray("cancellationStructure", "Cancellation Structure");
         compareArray("documentRequirements", "Document Requirements");
         compareArray("preTripChecklist", "Pre-trip Checklist");
-        compareArray("packageTiers", "Package Tiers");
-        compareArray("additionalCosts", "Additional Costs");
 
         compareItinerary();
 
@@ -327,12 +325,6 @@ export function StepReview({
         issues.push({
             field: "Name",
             message: "Package name is missing",
-            severity: "error",
-        });
-    if (!values.packageTiers || values.packageTiers.length === 0)
-        issues.push({
-            field: "Package Tiers",
-            message: "At least one package tier must be defined",
             severity: "error",
         });
     if (!values.destination)
@@ -502,9 +494,9 @@ export function StepReview({
                             </span>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
-                            <span className="text-muted-foreground">Base Adult Price</span>
-                            <Badge variant="outline" className="text-xs font-mono font-bold border-primary/30 text-primary rounded-md">
-                                ₹{(values.packageTiers?.[0]?.adultCost || 0).toLocaleString()}
+                            <span className="text-muted-foreground">Pricing Model</span>
+                            <Badge variant="outline" className="text-xs font-semibold border-primary/30 text-primary rounded-md">
+                                Dynamic (Per Batch)
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center border-b pb-2">
