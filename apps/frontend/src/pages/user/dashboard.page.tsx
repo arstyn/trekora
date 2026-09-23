@@ -72,18 +72,18 @@ export default function Dashboard() {
 	}, []);
 
 	return (
-		<div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
+		<div className="w-full max-w-7xl mx-auto space-y-6 p-4 sm:p-6 lg:p-8">
 			{/* Role Switcher & Header */}
 			<DashboardRoleSwitcher
 				activeRole={activeRole}
 				onRoleChange={setActiveRole}
 			/>
 
-			{/* Module 1: Booking Details & Period Comparison (This Month vs Last Month, Domestic vs International) */}
+			{/* Module 1: Booking Details & Period Comparison */}
 			<BookingComparisonSection data={comparisonData} loading={loading} />
 
-			{/* Grid Row: Seat Vacancies (Module 2) & Payment Pendings (Module 3) */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			{/* Row 1: Seat Vacancies (Module 2) & Payment Pendings (Module 3) */}
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 				{/* Module 2: Seat Vacancy List */}
 				<SeatVacancySection items={seatVacancies} loading={loading} />
 
@@ -91,8 +91,8 @@ export default function Dashboard() {
 				<PaymentPendingSection items={paymentPendings} loading={loading} />
 			</div>
 
-			{/* Grid Row: Todos (Module 4), Approvals (Module 5), Notifications (Module 6) */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+			{/* Row 2: Todos (Module 4), Approvals (Module 5), Notifications (Module 6) */}
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
 				{/* Module 4: Todo's to be completed */}
 				<TodosSection items={todos} loading={loading} roleFilter={activeRole} />
 

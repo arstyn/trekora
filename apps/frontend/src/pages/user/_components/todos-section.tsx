@@ -11,12 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import type { DashboardTodoItem } from "@/services/dashboard.service";
 import {
-	CheckCircle2,
 	CheckSquare,
 	Clock,
 	Plus,
-	Sparkles,
-	Tag,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -35,7 +32,6 @@ export function TodosSection({
 	const [todos, setTodos] = useState<DashboardTodoItem[]>(initialItems);
 	const [newTodoTitle, setNewTodoTitle] = useState("");
 
-	// Sync initial items when prop updates
 	if (todos.length === 0 && initialItems.length > 0) {
 		setTodos(initialItems);
 	}
@@ -73,16 +69,15 @@ export function TodosSection({
 
 	if (loading) {
 		return (
-			<Card className="shadow-sm">
-				<CardHeader>
+			<Card className="shadow-xs border-border/80 h-full flex flex-col">
+				<CardHeader className="pb-3">
 					<div className="h-6 w-36 bg-muted animate-pulse rounded" />
+					<div className="h-4 w-48 bg-muted animate-pulse rounded mt-1" />
 				</CardHeader>
-				<CardContent>
-					<div className="space-y-3">
-						{Array.from({ length: 3 }).map((_, i) => (
-							<div key={i} className="h-12 bg-muted/60 animate-pulse rounded-lg" />
-						))}
-					</div>
+				<CardContent className="flex-1 space-y-3">
+					{Array.from({ length: 3 }).map((_, i) => (
+						<div key={i} className="h-14 bg-muted/50 animate-pulse rounded-lg" />
+					))}
 				</CardContent>
 			</Card>
 		);
@@ -91,40 +86,45 @@ export function TodosSection({
 	const pendingCount = todos.filter((t) => !t.isCompleted).length;
 
 	return (
-		<Card className="shadow-sm border-border/80 h-full flex flex-col justify-between">
-			<CardHeader className="pb-3">
-				<div className="flex items-center justify-between">
+		<Card className="shadow-xs border-border/80 h-full flex flex-col justify-between">
+			<CardHeader className="pb-3 border-b border-border/40">
+				<div className="flex items-center justify-between gap-2">
 					<div className="flex items-center gap-2">
-						<CheckSquare className="h-5 w-5 text-indigo-500" />
-						<CardTitle className="text-xl font-bold">To-Do Checklist</CardTitle>
+						<div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
+							<CheckSquare className="h-4 w-4 shrink-0" />
+						</div>
+						<CardTitle className="text-base font-bold tracking-tight">To-Do Checklist</CardTitle>
 					</div>
-					<Badge variant="secondary" className="text-xs font-semibold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300">
-						{pendingCount} Tasks Pending
+					<Badge
+						variant="secondary"
+						className="text-xs px-2.5 py-0.5 font-semibold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 shrink-0"
+					>
+						{pendingCount} Pending
 					</Badge>
 				</div>
-				<CardDescription>
+				<CardDescription className="text-xs mt-0.5">
 					Action items and follow-ups required for your role
 				</CardDescription>
 			</CardHeader>
 
-			<CardContent className="flex-1 space-y-4">
+			<CardContent className="p-4 flex-1 flex flex-col space-y-3 min-h-0">
 				{/* Inline Add Task Form */}
-				<form onSubmit={handleAddTodo} className="flex gap-2">
+				<form onSubmit={handleAddTodo} className="flex gap-2 shrink-0">
 					<Input
-						placeholder="Add quick action item / follow-up..."
+						placeholder="Add quick action item..."
 						value={newTodoTitle}
 						onChange={(e) => setNewTodoTitle(e.target.value)}
 						className="h-9 text-xs"
 					/>
-					<Button type="submit" size="sm" className="h-9 gap-1 font-medium text-xs">
+					<Button type="submit" size="sm" className="h-9 px-3 gap-1 font-semibold text-xs shrink-0">
 						<Plus className="h-3.5 w-3.5" /> Add
 					</Button>
 				</form>
 
-				{/* Todo List */}
-				<div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+				{/* Todo Scrollable List */}
+				<div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1.5 custom-dashboard-scroll flex-1">
 					{todos.length === 0 ? (
-						<div className="py-6 text-center text-muted-foreground text-xs border border-dashed rounded-lg">
+						<div className="py-12 text-center text-muted-foreground text-xs border border-dashed rounded-xl flex items-center justify-center">
 							No tasks pending! You are all caught up.
 						</div>
 					) : (
@@ -132,10 +132,10 @@ export function TodosSection({
 							<div
 								key={todo.id}
 								onClick={() => handleToggleTodo(todo.id)}
-								className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+								className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
 									todo.isCompleted
 										? "bg-muted/40 opacity-60 border-muted"
-										: "bg-card hover:bg-muted/20 border-border"
+										: "bg-card hover:bg-muted/30 border-border/80 hover:border-indigo-500/30"
 								}`}
 							>
 								<Checkbox
@@ -145,7 +145,7 @@ export function TodosSection({
 								/>
 								<div className="flex-1 min-w-0 space-y-1">
 									<p
-										className={`text-xs font-medium leading-snug ${
+										className={`text-xs font-semibold leading-snug ${
 											todo.isCompleted ? "line-through text-muted-foreground" : "text-foreground"
 										}`}
 									>
@@ -153,11 +153,11 @@ export function TodosSection({
 									</p>
 									<div className="flex items-center gap-2 text-[11px] text-muted-foreground">
 										<span className="flex items-center gap-1">
-											<Clock className="h-3 w-3" />
+											<Clock className="h-3 w-3 shrink-0" />
 											{todo.dueDate}
 										</span>
 										<span className="text-muted-foreground/40">•</span>
-										<span className="capitalize text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted">
+										<span className="capitalize text-[10px] font-medium px-1.5 py-0.2 rounded bg-muted/60">
 											{todo.roleCategory}
 										</span>
 									</div>
@@ -165,12 +165,12 @@ export function TodosSection({
 
 								<Badge
 									variant="outline"
-									className={`text-[10px] uppercase font-bold px-1.5 py-0.5 ${
+									className={`text-[10px] uppercase font-extrabold px-1.5 py-0.5 shrink-0 ${
 										todo.priority === "high"
-											? "bg-rose-500/10 text-rose-600 border-rose-200"
+											? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
 											: todo.priority === "medium"
-											? "bg-amber-500/10 text-amber-600 border-amber-200"
-											: "bg-slate-500/10 text-slate-600 border-slate-200"
+											? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+											: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30"
 									}`}
 								>
 									{todo.priority}
@@ -183,3 +183,4 @@ export function TodosSection({
 		</Card>
 	);
 }
+
