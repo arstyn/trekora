@@ -13,6 +13,8 @@ async function bootstrap() {
     new ExpressAdapter(server),
   );
 
+  app.setGlobalPrefix('api');
+
   const frontendUrl = process.env.FRONTEND_URL;
   app.enableCors({
     origin: frontendUrl

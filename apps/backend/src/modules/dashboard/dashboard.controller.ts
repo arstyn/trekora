@@ -89,4 +89,41 @@ export class DashboardController {
     const organizationId = req.user.organizationId;
     return this.dashboardService.getActiveOffers(organizationId, limit);
   }
+
+  @Get('booking-comparison')
+  async getBookingComparison(@Request() req: ApiRequestJWT) {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getBookingComparison(organizationId);
+  }
+
+  @Get('seat-vacancies')
+  async getSeatVacancies(@Request() req: ApiRequestJWT) {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getSeatVacancies(organizationId);
+  }
+
+  @Get('payment-pendings')
+  async getPaymentPendings(@Request() req: ApiRequestJWT) {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getPaymentPendings(organizationId);
+  }
+
+  @Get('todos')
+  async getTodos(@Request() req: ApiRequestJWT) {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getTodos(organizationId);
+  }
+
+  @Get('approvals')
+  async getApprovals(@Request() req: ApiRequestJWT) {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getApprovals(organizationId);
+  }
+
+  @Get('notifications')
+  async getNotifications(@Request() req: ApiRequestJWT) {
+    const organizationId = req.user.organizationId;
+    return this.dashboardService.getNotifications(organizationId);
+  }
 }
+
