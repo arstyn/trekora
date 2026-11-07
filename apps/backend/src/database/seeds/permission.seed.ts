@@ -558,4 +558,74 @@ export const permissions = [
     action: 'clear-data',
     description: 'Clear organization data (bookings, batches, customers, leads, employees, packages)',
   },
+
+  // Salary & Payroll permissions
+  {
+    name: 'salary.create',
+    resource: 'salary',
+    action: 'create',
+    description: 'Create employee salary structures and monthly salary slips',
+  },
+  {
+    name: 'salary.read',
+    resource: 'salary',
+    action: 'read',
+    description: 'View employee salaries and payroll records',
+  },
+  {
+    name: 'salary.update',
+    resource: 'salary',
+    action: 'update',
+    description: 'Update employee salary structures and monthly salary slips',
+  },
+  {
+    name: 'salary.delete',
+    resource: 'salary',
+    action: 'delete',
+    description: 'Delete draft salary slips',
+  },
+  {
+    name: 'salary.view',
+    resource: 'salary',
+    action: 'view',
+    description: 'View detailed salary slips and download PDF',
+  },
+  {
+    name: 'salary.manage',
+    resource: 'salary',
+    action: 'manage',
+    description: 'Disperse salary slip emails and configure salary slip design',
+  },
+
+  // Leave Management permissions
+  {
+    name: 'leave.create',
+    resource: 'leave',
+    action: 'create',
+    description: 'Record or apply for employee leaves',
+  },
+  {
+    name: 'leave.read',
+    resource: 'leave',
+    action: 'read',
+    description: 'View all employee leave records and balances',
+  },
+  {
+    name: 'leave.update',
+    resource: 'leave',
+    action: 'update',
+    description: 'Update employee leave records',
+  },
+  {
+    name: 'leave.delete',
+    resource: 'leave',
+    action: 'delete',
+    description: 'Delete pending leave requests',
+  },
+  {
+    name: 'leave.approve',
+    resource: 'leave',
+    action: 'approve',
+    description: 'Approve or reject employee leave requests',
+  },
 ];

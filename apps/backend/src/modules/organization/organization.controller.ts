@@ -49,21 +49,35 @@ export class OrganizationController {
   }
 
   // Update a organization by ID
-  // Update a organization by ID
   @Put(':id')
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'seal', maxCount: 1 }]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'seal', maxCount: 1 },
+      { name: 'salarySlipLogo', maxCount: 1 },
+      { name: 'salarySlipSeal', maxCount: 1 },
+    ]),
+  )
   async update(
     @Request() req: ApiRequestJWT,
     @Param('id') id: string,
     @Body() updateData: any,
-    @UploadedFiles() files?: { seal?: Express.Multer.File[] },
+    @UploadedFiles()
+    files?: {
+      seal?: Express.Multer.File[];
+      salarySlipLogo?: Express.Multer.File[];
+      salarySlipSeal?: Express.Multer.File[];
+    },
   ): Promise<Organization | null> {
     const sealFile = files?.seal?.[0] || null;
+    const salarySlipLogoFile = files?.salarySlipLogo?.[0] || null;
+    const salarySlipSealFile = files?.salarySlipSeal?.[0] || null;
     return await this.organizationService.update(
       id,
       updateData,
       req.user?.userId,
       sealFile || undefined,
+      salarySlipLogoFile || undefined,
+      salarySlipSealFile || undefined,
     );
   }
 

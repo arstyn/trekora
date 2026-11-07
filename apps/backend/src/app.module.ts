@@ -39,6 +39,8 @@ import { UserModule } from './modules/user/user.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { ApprovalModule } from './modules/approval/approval.module';
+import { LeaveModule } from './modules/leave/leave.module';
+import { SalaryModule } from './modules/salary/salary.module';
 
 @Module({
   imports: [
@@ -83,6 +85,8 @@ import { ApprovalModule } from './modules/approval/approval.module';
     AgentsModule,
     BatchOffersModule,
     ApprovalModule,
+    LeaveModule,
+    SalaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

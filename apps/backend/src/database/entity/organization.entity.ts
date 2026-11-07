@@ -49,6 +49,18 @@ export class Organization {
   @Column({ type: 'jsonb', nullable: true, name: 'invoice_fields' })
   invoiceFields: any | null;
 
+  @Column({ type: 'varchar', default: '#2563eb', name: 'salary_slip_color' })
+  salarySlipColor: string;
+
+  @Column({ type: 'varchar', nullable: true, name: 'salary_slip_logo' })
+  salarySlipLogo: string | null;
+
+  @Column({ type: 'varchar', nullable: true, name: 'salary_slip_seal' })
+  salarySlipSeal: string | null;
+
+  @Column({ type: 'jsonb', nullable: true, name: 'salary_slip_fields' })
+  salarySlipFields: any | null;
+
   @OneToMany(() => UserOrganization, (userOrg) => userOrg.organization)
   userOrganizations: UserOrganization[];
 }

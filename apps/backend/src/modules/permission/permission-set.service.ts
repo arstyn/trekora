@@ -317,6 +317,38 @@ export class PermissionSetService {
           await this.permissionSetPermissionRepository.save(linksToCreate);
         }
       }
+
+      // Also ensure Finance Manager & Finance Employee sets receive newly added salary/leave permissions
+      const financeSets = await this.permissionSetRepository.find({
+        where: [
+          { organizationId, name: 'Finance Manager' },
+          { organizationId, name: 'Finance Employee' },
+        ],
+        relations: ['permissionSetPermissions'],
+      });
+
+      for (const fSet of financeSets) {
+        const roleConfig =
+          fSet.name === 'Finance Manager'
+            ? defaultPermissionSets.finance_manager
+            : defaultPermissionSets.finance_employee;
+        const existingPermIds = new Set(
+          (fSet.permissionSetPermissions || []).map((psp) => psp.permissionId),
+        );
+        const wantedPermNames = new Set(roleConfig.permissionNames);
+        const missingFinancePerms = allPermissions.filter(
+          (p) => wantedPermNames.has(p.name) && !existingPermIds.has(p.id),
+        );
+        if (missingFinancePerms.length > 0) {
+          const linksToCreate = missingFinancePerms.map((p) =>
+            this.permissionSetPermissionRepository.create({
+              permissionSetId: fSet.id,
+              permissionId: p.id,
+            }),
+          );
+          await this.permissionSetPermissionRepository.save(linksToCreate);
+        }
+      }
     } catch (err) {
       console.error(
         `Failed to sync admin permission sets for org ${organizationId}:`,
