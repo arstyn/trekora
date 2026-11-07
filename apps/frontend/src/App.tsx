@@ -65,6 +65,13 @@ import PermissionSetsPage from "./pages/user/permissions/permission-sets.page";
 import PermissionsPage from "./pages/user/permissions/permissions.page";
 import SettingsPage from "./pages/user/settings/settings.page";
 import InvoiceSettingsPage from "./pages/user/settings/invoice-settings.page";
+import SalarySlipSettingsPage from "./pages/user/settings/salary-slip-settings.page";
+import SalariesPage from "./pages/user/salaries/salaries.page";
+import CreateSalaryPage from "./pages/user/salaries/create-salary.page";
+import EditSalaryPage from "./pages/user/salaries/edit-salary.page";
+import ViewSalaryPage from "./pages/user/salaries/view-salary.page";
+import LeavesPage from "./pages/user/leaves/leaves.page";
+import ViewLeavePage from "./pages/user/leaves/view-leave.page";
 import TodosPage from "./pages/user/todos/todos.page";
 import AgentsPage from "./pages/user/agents/agents.page";
 import CreateAgentPage from "./pages/user/agents/create-agent.page";
@@ -96,6 +103,13 @@ function AuthenticatedApp() {
                     <Route path="/customers/:id" element={<ViewCustomerPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/settings/invoice" element={<InvoiceSettingsPage />} />
+                    <Route path="/settings/salary-slip" element={<SalarySlipSettingsPage />} />
+                    <Route path="/salaries" element={<SalariesPage />} />
+                    <Route path="/salaries/create" element={<CreateSalaryPage />} />
+                    <Route path="/salaries/edit/:id" element={<EditSalaryPage />} />
+                    <Route path="/salaries/:id" element={<ViewSalaryPage />} />
+                    <Route path="/leaves" element={<LeavesPage />} />
+                    <Route path="/leaves/:id" element={<ViewLeavePage />} />
                     <Route
                         path="/permission-sets"
                         element={<PermissionSetsPage />}

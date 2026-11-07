@@ -55,6 +55,8 @@ export class OrganizationService {
     updateData: any,
     userId?: string,
     sealFile?: Express.Multer.File,
+    salarySlipLogoFile?: Express.Multer.File,
+    salarySlipSealFile?: Express.Multer.File,
   ): Promise<Organization | null> {
     const existingOrg = await this.findOne(id);
     const previousDays = existingOrg?.defaultBlockDays ?? 3;
@@ -66,11 +68,33 @@ export class OrganizationService {
       payload.invoiceSeal = sealUrl;
     }
 
+    if (salarySlipLogoFile) {
+      const logoUrl = await this.uploadService.uploadSingle(salarySlipLogoFile, 'organization-logos');
+      payload.salarySlipLogo = logoUrl;
+    } else if (payload.salarySlipLogo === 'null' || payload.salarySlipLogo === '') {
+      payload.salarySlipLogo = null;
+    }
+
+    if (salarySlipSealFile) {
+      const slipSealUrl = await this.uploadService.uploadSingle(salarySlipSealFile, 'organization-seals');
+      payload.salarySlipSeal = slipSealUrl;
+    } else if (payload.salarySlipSeal === 'null' || payload.salarySlipSeal === '') {
+      payload.salarySlipSeal = null;
+    }
+
     if (payload.invoiceFields && typeof payload.invoiceFields === 'string') {
       try {
         payload.invoiceFields = JSON.parse(payload.invoiceFields);
       } catch (err) {
         console.error('Failed to parse invoiceFields JSON:', err);
+      }
+    }
+
+    if (payload.salarySlipFields && typeof payload.salarySlipFields === 'string') {
+      try {
+        payload.salarySlipFields = JSON.parse(payload.salarySlipFields);
+      } catch (err) {
+        console.error('Failed to parse salarySlipFields JSON:', err);
       }
     }
 

@@ -2,6 +2,7 @@ import {
 	SidebarGroup,
 	SidebarGroupContent,
 	SidebarMenu,
+	SidebarMenuBadge,
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
@@ -19,6 +20,7 @@ export function NavMain({
 		title: string;
 		url: string;
 		icon?: LucideIcon;
+		badge?: number | string;
 	}[];
 	loading?: boolean;
 	onQuickCreate?: () => void;
@@ -63,6 +65,11 @@ export function NavMain({
 												<span>{item.title}</span>
 											</NavLink>
 										</SidebarMenuButton>
+										{item.badge !== undefined && (
+											<SidebarMenuBadge className="bg-amber-500 text-white font-bold text-[10px]">
+												{item.badge}
+											</SidebarMenuBadge>
+										)}
 									</SidebarMenuItem>
 								);
 						  })}

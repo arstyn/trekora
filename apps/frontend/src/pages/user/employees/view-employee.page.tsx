@@ -41,6 +41,14 @@ import { ActivateDialog } from "./_components/activate-modal";
 import { DeactivateDialog } from "./_components/deactivate-dialog";
 import { EmployeeModal } from "./_components/employee-modal";
 import { EmployeeLogsCard } from "./_components/employee-logs-card";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { SalaryService } from "@/services/salary.service";
+import { LeaveService } from "@/services/leave.service";
+import { SalarySlipService } from "@/services/salary-slip.service";
+import { SalaryStructureModal } from "../salaries/_components/salary-structure-modal";
+import type { IEmployeeSalaryStructure } from "@/types/salary.types";
+import type { ILeaveBalanceSummary } from "@/types/leave.types";
+import { Banknote, Plus } from "lucide-react";
 
 interface IActivityLog {
     id: string;
@@ -69,6 +77,14 @@ export default function ViewEmployeePage() {
     const [isActivateOpen, setIsActivateOpen] = useState(false);
     const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
     const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+    const [isSalaryStructureOpen, setIsSalaryStructureOpen] = useState(false);
+
+    const { hasPermission: canReadSalary } = useHasPermission("salary", "read");
+    const { hasPermission: canUpdateSalary } = useHasPermission("salary", "update");
+    const { hasPermission: canCreateSalary } = useHasPermission("salary", "create");
+
+    const [salaryStructure, setSalaryStructure] = useState<IEmployeeSalaryStructure | null>(null);
+    const [leaveBalance, setLeaveBalance] = useState<ILeaveBalanceSummary | null>(null);
 
     const fetchEmployee = useCallback(async () => {
         if (!id) return;
@@ -108,7 +124,15 @@ export default function ViewEmployeePage() {
     useEffect(() => {
         fetchEmployee();
         fetchLogs();
-    }, [fetchEmployee, fetchLogs]);
+        if (id) {
+            SalaryService.getStructure(id)
+                .then((s) => setSalaryStructure(s))
+                .catch(() => {});
+            LeaveService.getEmployeeLeaveBalance(id)
+                .then((b) => setLeaveBalance(b))
+                .catch(() => {});
+        }
+    }, [fetchEmployee, fetchLogs, id]);
 
     const handleSendInvite = async () => {
         if (!employee) return;
@@ -459,6 +483,126 @@ export default function ViewEmployeePage() {
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Salary Structure & Leave Balance Card */}
+                    {canReadSalary && (
+                        <Card className="shadow-sm">
+                            <CardHeader className="border-b flex flex-row items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-primary/10 p-2 rounded-lg text-primary">
+                                        <Banknote className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <CardTitle className="text-base">
+                                            Indian Salary Structure & Leave Quotas
+                                        </CardTitle>
+                                        <p className="text-xs text-muted-foreground">
+                                            Base monthly compensation, statutory identifiers, and annual leave balance
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {canUpdateSalary && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setIsSalaryStructureOpen(true)}
+                                            className="cursor-pointer"
+                                        >
+                                            <Edit className="w-3.5 h-3.5 mr-1.5" />
+                                            {salaryStructure ? "Edit Structure" : "Setup Salary"}
+                                        </Button>
+                                    )}
+                                    {canCreateSalary && (
+                                        <Button
+                                            size="sm"
+                                            onClick={() =>
+                                                navigate(`/salaries/create?employeeId=${employee.id}`)
+                                            }
+                                            className="cursor-pointer"
+                                        >
+                                            <Plus className="w-3.5 h-3.5 mr-1.5" />
+                                            Generate Payslip
+                                        </Button>
+                                    )}
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-4">
+                                {salaryStructure ? (
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                        <div className="p-3 rounded-lg bg-muted/30 border">
+                                            <div className="text-muted-foreground">Basic Salary</div>
+                                            <div className="font-mono font-bold text-sm mt-0.5">
+                                                {SalarySlipService.formatCurrency(salaryStructure.basicSalary)}
+                                            </div>
+                                        </div>
+                                        <div className="p-3 rounded-lg bg-muted/30 border">
+                                            <div className="text-muted-foreground">HRA + Allowances</div>
+                                            <div className="font-mono font-bold text-sm mt-0.5">
+                                                {SalarySlipService.formatCurrency(
+                                                    Number(salaryStructure.hra || 0) +
+                                                        Number(salaryStructure.da || 0) +
+                                                        Number(salaryStructure.conveyanceAllowance || 0) +
+                                                        Number(salaryStructure.medicalAllowance || 0) +
+                                                        Number(salaryStructure.specialAllowance || 0)
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="p-3 rounded-lg bg-muted/30 border">
+                                            <div className="text-muted-foreground">EPF + PT + TDS</div>
+                                            <div className="font-mono font-bold text-sm text-rose-600 mt-0.5">
+                                                -{SalarySlipService.formatCurrency(
+                                                    Number(salaryStructure.pfEmployee || 0) +
+                                                        Number(salaryStructure.esi || 0) +
+                                                        Number(salaryStructure.professionalTax || 0) +
+                                                        Number(salaryStructure.tds || 0)
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="p-3 rounded-lg bg-muted/30 border">
+                                            <div className="text-muted-foreground">Bank / PAN</div>
+                                            <div className="font-mono font-semibold text-xs mt-0.5 truncate">
+                                                {salaryStructure.bankName || "N/A"} • {salaryStructure.panNumber || "N/A"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-4 rounded-lg bg-muted/20 border text-xs text-muted-foreground flex items-center justify-between">
+                                        <span>No salary structure configured for {employee.name} yet.</span>
+                                    </div>
+                                )}
+
+                                {leaveBalance && (
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-2 border-t">
+                                        <div className="p-2.5 rounded-lg bg-blue-50/40 dark:bg-blue-950/20 border">
+                                            <div className="text-muted-foreground">Casual Leave (CL)</div>
+                                            <div className="font-mono font-bold mt-0.5">
+                                                {leaveBalance.balances.casual.remaining}/{leaveBalance.balances.casual.quota} left
+                                            </div>
+                                        </div>
+                                        <div className="p-2.5 rounded-lg bg-emerald-50/40 dark:bg-emerald-950/20 border">
+                                            <div className="text-muted-foreground">Sick Leave (SL)</div>
+                                            <div className="font-mono font-bold mt-0.5">
+                                                {leaveBalance.balances.sick.remaining}/{leaveBalance.balances.sick.quota} left
+                                            </div>
+                                        </div>
+                                        <div className="p-2.5 rounded-lg bg-indigo-50/40 dark:bg-indigo-950/20 border">
+                                            <div className="text-muted-foreground">Paid Leave (PL)</div>
+                                            <div className="font-mono font-bold mt-0.5">
+                                                {leaveBalance.balances.paid.remaining}/{leaveBalance.balances.paid.quota} left
+                                            </div>
+                                        </div>
+                                        <div className="p-2.5 rounded-lg bg-rose-50/40 dark:bg-rose-950/20 border">
+                                            <div className="text-muted-foreground">Unpaid / LOP Used</div>
+                                            <div className="font-mono font-bold text-rose-600 mt-0.5">
+                                                {leaveBalance.balances.unpaid.used} days
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 {/* Column 3 - Right Panel */}
@@ -561,6 +705,17 @@ export default function ViewEmployeePage() {
                     onActivate={handleReactivate}
                 />
             )}
+
+            <SalaryStructureModal
+                employeeId={employee.id}
+                employeeName={employee.name}
+                open={isSalaryStructureOpen}
+                onOpenChange={setIsSalaryStructureOpen}
+                onSuccess={(updatedStruct) => {
+                    setSalaryStructure(updatedStruct);
+                    fetchLogs();
+                }}
+            />
 
             {/* Resend Invite Confirmation */}
             <AlertDialog open={isResendConfirmOpen} onOpenChange={setIsResendConfirmOpen}>

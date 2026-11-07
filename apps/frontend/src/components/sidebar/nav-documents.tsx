@@ -21,6 +21,7 @@ import { NavLink, useLocation } from "react-router-dom";
 export function NavDocuments({
 	items,
 	loading,
+	label = "Sales",
 }: {
 	items: {
 		name: string;
@@ -29,13 +30,14 @@ export function NavDocuments({
 		badge?: number | string;
 	}[];
 	loading?: boolean;
+	label?: string;
 }) {
 	const { isMobile } = useSidebar();
 	const location = useLocation();
 
 	return (
 		<SidebarGroup className="group-data-[collapsible=icon]:hidden">
-			<SidebarGroupLabel>Sales</SidebarGroupLabel>
+			<SidebarGroupLabel>{label}</SidebarGroupLabel>
 			<SidebarMenu>
 				{loading
 					? Array.from({ length: 3 }).map((_, i) => (

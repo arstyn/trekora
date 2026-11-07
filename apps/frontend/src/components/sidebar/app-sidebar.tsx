@@ -24,6 +24,7 @@ import {
     BarChart3,
     BookUser,
     Building,
+    Calendar,
     ChevronsUpDown,
     FileChartColumnIncreasing,
     FileSpreadsheet,
@@ -41,7 +42,8 @@ import {
     ShieldCheck,
     Tickets,
     UserCheck,
-    UsersIcon
+    UsersIcon,
+    Wallet
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -96,6 +98,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const { hasPermission: canReadApprovals } = useHasPermission(
         "approval",
         "read",
+    );
+    const { hasPermission: canManageSalary } = useHasPermission(
+        "salary",
+        "manage",
     );
     const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
 
@@ -170,15 +176,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 url: "/todos",
                 icon: ListTodo,
             },
-            ...(canReadEmployees
-                ? [
-                    {
-                        title: "Employees",
-                        url: "/employees",
-                        icon: UsersIcon,
-                    },
-                ]
-                : []),
             ...(canReadPackages
                 ? [
                     {
@@ -216,11 +213,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 url: "/defaults",
                 icon: SettingsIcon,
             },
+            ...(canReadApprovals
+                ? [
+                    {
+                        title: "Approvals",
+                        url: "/approvals",
+                        icon: ShieldAlert,
+                        badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
+                    },
+                ]
+                : []),
+        ],
+        hrAndPayroll: [
+            ...(canReadEmployees
+                ? [
+                    {
+                        name: "Employees",
+                        url: "/employees",
+                        icon: UsersIcon,
+                    },
+                ]
+                : []),
             {
-                title: "Invoice Settings",
-                url: "/settings/invoice",
-                icon: Receipt,
+                name: "Salaries",
+                url: "/salaries",
+                icon: Wallet,
             },
+            {
+                name: "Leaves",
+                url: "/leaves",
+                icon: Calendar,
+            },
+            ...(canManageSalary || canManagePermissions
+                ? [
+                    {
+                        name: "Salary Slip Settings",
+                        url: "/settings/salary-slip",
+                        icon: FileSpreadsheet,
+                    },
+                ]
+                : []),
         ],
         documents: [
             ...(canReadLeads
@@ -259,16 +291,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     },
                 ]
                 : []),
-            ...(canReadApprovals
-                ? [
-                    {
-                        name: "Approvals",
-                        url: "/approvals",
-                        icon: ShieldAlert,
-                        badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
-                    },
-                ]
-                : []),
+            {
+                name: "Invoice Settings",
+                url: "/settings/invoice",
+                icon: Receipt,
+            },
         ],
         navSecondary: [
             ...(canManagePermissions
@@ -392,7 +419,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     loading={permissionsLoading}
                     onQuickCreate={() => setQuickCreateOpen(true)}
                 />
-                <NavDocuments items={data.documents} loading={permissionsLoading} />
+                <NavDocuments label="Sales" items={data.documents} loading={permissionsLoading} />
+                <NavDocuments label="HR & Payroll" items={data.hrAndPayroll} loading={permissionsLoading} />
                 <NavSecondary items={data.navSecondary} loading={permissionsLoading} className="mt-auto" />
             </SidebarContent>
             <QuickCreateModal
